@@ -49,9 +49,9 @@ LDFLAGS = @LDFLAGS@
 # Note that some things have changed!  This summarizes the changes:
 #
 # Script library	old:	/usr/local/lib/irc/script	
-#			new:    /usr/local/share/epic5/script
+#			new:    /usr/local/share/epic6/script
 # Help files		old:	/usr/local/lib/irc/help
-#			new:    /usr/local/share/epic5/help
+#			new:    /usr/local/share/epic6/help
 # Wserv location	old:	/usr/local/bin/wserv
 #			new:	/usr/local/libexec/wserv
 #
@@ -63,10 +63,10 @@ libexecdir  = @libexecdir@
 datarootdir = @datarootdir@
 mandir	    = @mandir@
 
-epic5       = @epic5@
-epic5_exe   = $(bindir)/$(epic5)
-wserv_exe   = $(libexecdir)/$(epic5)-wserv4
-epic5dir    = $(datarootdir)/$(epic5)
+epic6       = @epic6@
+epic6_exe   = $(bindir)/$(epic6)
+wserv_exe   = $(libexecdir)/$(epic6)-wserv4
+epic6dir    = $(datarootdir)/$(epic6)
 
 ############ You ought not change anything below this line ###################
 
@@ -84,41 +84,41 @@ MFLAGS ='CC=$(CC)'					\
 	'CFLAGS=$(CFLAGS)'				\
 	'DEFS=$(DEFS)'					\
 	'INSTALL_WSERV=$(wserv_exe)'			\
-	'IRCLIB=$(epic5dir)'				\
+	'IRCLIB=$(epic6dir)'				\
 	'LDFLAGS=$(LDFLAGS)'				\
 	'LIBS=$(LIBS)'					\
 	'RM=$(RM)'
 
 # To support parallel make, only recur to subdirectory once
-# instead of once for epic5 and once for wserv4.
+# instead of once for epic6 and once for wserv4.
 all everything:
-	@+cd source; $(MAKE2) epic5 @WSERV_BIN@
+	@+cd source; $(MAKE2) epic6 @WSERV_BIN@
 install installeverything: all installbin installscript installman
-installbin: installepic5 @WSERV_INSTALL@
+installbin: installepic6 @WSERV_INSTALL@
 
 uninstall uninstalleverything: uninstallbin uninstallscript uninstallman uninstalldirs
-uninstallbin: uninstallepic5 uninstallwserv4 uninstalloldbins
+uninstallbin: uninstallepic6 uninstallwserv4 uninstalloldbins
 
 VPATH=@srcdir@
 
 #
 # Main irc binary
 #
-epic5:
+epic6:
 	@+cd source; $(MAKE2) all
 
-EPIC 	  = $(epic5_exe)-$(VERSION)
-EPIC_OLD  = $(epic5_exe).old
-EPIC_LINK = $(epic5_exe)
-installepic5 installirc: epic5 installdirs 
-	$(INSTALL_PROGRAM) source/epic5 $(IP)$(DESTDIR)$(EPIC);	\
+EPIC 	  = $(epic6_exe)-$(VERSION)
+EPIC_OLD  = $(epic6_exe).old
+EPIC_LINK = $(epic6_exe)
+installepic6 installirc: epic6 installdirs 
+	$(INSTALL_PROGRAM) source/epic6 $(IP)$(DESTDIR)$(EPIC);	\
 	$(RM) $(IP)$(DESTDIR)$(EPIC_LINK); \
-	ln -s $(epic5)-$(VERSION) $(IP)$(DESTDIR)$(EPIC_LINK); 
-uninstallepic5 uninstallirc: 
+	ln -s $(epic6)-$(VERSION) $(IP)$(DESTDIR)$(EPIC_LINK); 
+uninstallepic6 uninstallirc: 
 	$(RM) $(IP)$(DESTDIR)$(EPIC)
 	$(RM) $(IP)$(DESTDIR)$(EPIC_LINK)
 uninstalloldbins:
-	$(RM) $(IP)$(DESTDIR)$(epic5_exe)-*
+	$(RM) $(IP)$(DESTDIR)$(epic6_exe)-*
 
 #
 # wserv
@@ -135,7 +135,7 @@ uninstallwserv4:
 #
 # Script library
 #
-scriptdir = $(epic5dir)/script
+scriptdir = $(epic6dir)/script
 installscript: installdirs 
 	for i in @srcdir@/script/*; \
 	do \
@@ -146,13 +146,13 @@ uninstallscript:
 	$(RM) -r $(IP)$(DESTDIR)$(scriptdir)/*
 
 installman: installdirs
-	$(INSTALL_DATA) @srcdir@/doc/epic5.1 $(IP)$(DESTDIR)$(mandir)/man1/$(epic5).1
+	$(INSTALL_DATA) @srcdir@/doc/epic6.1 $(IP)$(DESTDIR)$(mandir)/man1/$(epic6).1
 uninstallman: 
-	$(RM) $(IP)$(DESTDIR)$(mandir)/man1/$(epic5).1
+	$(RM) $(IP)$(DESTDIR)$(mandir)/man1/$(epic6).1
 
 installdirs:
 	umask 022; \
-	for i in $(IP)$(DESTDIR)$(epic5dir) \
+	for i in $(IP)$(DESTDIR)$(epic6dir) \
 		 $(IP)$(DESTDIR)$(scriptdir) \
 		 $(IP)$(DESTDIR)$(bindir) \
 		 $(IP)$(DESTDIR)$(libexecdir) \
@@ -161,7 +161,7 @@ installdirs:
 	done
 uninstalldirs:
 	for i in $(IP)$(DESTDIR)$(scriptdir) \
-		 $(IP)$(DESTDIR)$(epic5dir) ; do \
+		 $(IP)$(DESTDIR)$(epic6dir) ; do \
 	    if test -d $$i ; then rmdir $$i || true ; fi \
 	done
 

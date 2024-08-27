@@ -7,11 +7,6 @@ if (word(2 $loadinfo()) != [pf]) {
 ## and '$serverctl(GET x NEXT_SERVER_IN_GROUP)' which are not available in
 ## previous versions.
 
-if (info(i) < 1999 || J !~ [EPIC5*]) {
-	xecho -b EPIC5 (rev. 1999) or newer is required;
-	return;
-};
-
 load addset;
 
 package reconnect;

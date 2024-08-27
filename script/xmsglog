@@ -8,16 +8,6 @@ if (word(2 $loadinfo()) != [pf]) {
 ## results in adding of 16 arbitrary chars to your lines, if line
 ## length is a factor of 16.
 
-if (info(i) < 1702 || J !~ [EPIC5*]) {
-	xecho -b ERROR: xmsglog: load: EPIC5 (rev. 1702) or newer is required;
-	return;
-};
-
-if (match(*s* $info(o)) == 0) {
-	xecho -b ERROR: xmsglog: load: client compiled without SSL support: abort loading;
-	return;
-};
-
 package xmsglog;
 
 ## Xmsglog script for EPIC5.

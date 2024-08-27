@@ -5,7 +5,7 @@ if (word(2 $loadinfo()) != [pf]) {
 
 package basic;
 
-## Basic script for EPIC5.
+## Basic script for EPIC6
 ## Written by zlonix@efnet, public domain.
 ##
 ## Version: 1.0 (September, 2021)

@@ -404,7 +404,7 @@ alias theme.default.install (void) {
 		xecho -b $cparse("Mode change %K[%W$$2-%K]%n for user %c$$1%n by %W$$0%n" $*);
 	};
 	on ^channel_sync * {
-		xecho -b $cparse("%WEPIC5%n: Join to $$0 was synched in $$trunc(2 $1)%n secs!!" $*);
+		xecho -b $cparse("%WEPIC6%n: Join to $$0 was synched in $$trunc(2 $1)%n secs!!" $*);
 	};
 	on ^kick * {
 		xecho -b $cparse("$$0 was kicked off $$2 by %c$$1%n %K\\\(%n$3-%K\\\)%n" $*);

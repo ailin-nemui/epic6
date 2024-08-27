@@ -77,7 +77,7 @@ class RedirectHandler(BaseHTTPRequestHandler):
     def version_string(self):
         """Returns the server version reported in headers.
         """
-        return '%s %s epic5 %s (%s) (%s)' % (__name__, __version__, EPIC_RELEASE_VERSION, EPIC_RELEASE_NAME, EPIC_COMMIT_ID)
+        return '%s %s epic6 %s (%s) (%s)' % (__name__, __version__, EPIC_RELEASE_VERSION, EPIC_RELEASE_NAME, EPIC_COMMIT_ID)
 
 
 class EPICHTTPServer(SocketServerMixin, HTTPServer):

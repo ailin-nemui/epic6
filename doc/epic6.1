@@ -1,10 +1,10 @@
-.Dd July 31, 2006
-.Dt EPIC5 1
+.Dd August 26, 2024
+.Dt EPIC6 1
 .Sh NAME
-.Nm epic5
+.Nm epic6
 .Nd Internet Relay Chat client for UNIX like systems
 .Sh SYNOPSIS
-.Nm epic5
+.Nm epic6
 .Op Ar \-a
 .Op Ar \-b
 .Op Ar \-B
@@ -30,7 +30,7 @@
 .Op Ar server description list
 .Sh DESCRIPTION
 The
-.Nm EPIC5
+.Nm EPIC6 
 program is a unix-based character oriented user agent ('client') to 
 Internet Relay Chat.
 It is a fully functional ircII client with many useful extensions.  
@@ -49,7 +49,7 @@ Operate in so called
 This also turns on the
 .Op Ar \-d
 option.  
-.Nm EPIC5
+.Nm EPIC6
 will 
 .Xr fork 2
 immediately and the parent process will exit, returning you to your shell.
@@ -113,7 +113,7 @@ Do not connect to a server after reading the startup script.
 Instead, present the server list and advise the user to connect to a server manually.
 .It Fl S
 The
-.Nm EPIC5
+.Nm EPIC6
 program is being run as a shell script.
 You must make this look like #/path/to/epic -S other args.
 .It Fl v
@@ -157,16 +157,16 @@ server.
 The lower part of the screen (a single line) accepts keyboard input.
 .sp
 Some terminals do not support certain features required by
-.Nm epic5
+.Nm epic6
 , in which case you receive a message stating this.
 If this occurs, try changing the terminal type or run
-.Nm epic5
+.Nm epic6
 with the -d option.
 .Ss "Irc Commands:"
 Any line beginning with the slash character 
 .Dq /
 is regarded as an
-.Nm epic5
+.Nm epic6
 command (the command character may be changed).  
 Any line not beginning with this character is treated as a message to be sent to the current channel.
 The client has a built in help system.  
@@ -175,7 +175,7 @@ Install the help files (they should be available at the same place you got the c
 to open up the help system.
 .Ss "The .epicrc File:"
 When
-.Nm epic5
+.Nm epic6
 is executed, it checks the user's home directory for a
 .Pa ~/.epicrc 
 file, executing the commands in the file. 
@@ -184,42 +184,42 @@ Commands in this file do not need to have a leading slash character
 This allows predefinition of aliases and other features.
 .Sh PRACTICAL EXAMPLES
 Certainly any description of 
-.Nm epic5
+.Nm epic6
 in this man page will be sorely inadequate because most of the confusion doesn't even start until after you get the client to connect to a server.  
 But if you really have problems getting the client to connect to a server, try some of these:
 .Bl -tag -width "epic"
-.It Nm epic5
+.It Nm epic6
 Try this first.  
 This will assume all the defaults.  
 If the person who is maintaining epic at your site has done a halfway decent job, this will put you on a server that is somewhat local to you. 
-.It Nm "epic5 nickname irc.domain.com"
+.It Nm "epic6 nickname irc.domain.com"
 or something similar will attempt to connect to the irc server running on the host "irc.domain.com" (fill in a real irc server here) with the nickname of well, "nickname".  
 This is the most common way to specify an alternate server to use.
-.It Nm "epic5 nickname irc.domain.com:6664"
+.It Nm "epic6 nickname irc.domain.com:6664"
 Sometimes, some servers are really busy, and it can take them a long time to establish a connection with you on the default port (6667).  
 Most major servers on big public networks accept connections on many different ports, with the most common being most or all of the ports between 6660 and 6675.
 You can usually connect much faster if you use a port other than 6667, if the server you're connecting to supports an alternate port.
-.It Nm "epic5 nickname irc.efnet.net"
+.It Nm "epic6 nickname irc.efnet.net"
 If you're totally stumped and trying to get on efnet, try this.
-.It Nm "epic5 nickname irc.undernet.org"
+.It Nm "epic6 nickname irc.undernet.org"
 If you're totally stumped and trying to get on undernet, try this.
-.It Nm "epic5 nickname irc.dal.net"
+.It Nm "epic6 nickname irc.dal.net"
 If you're totally stumped and trying to get on dalnet, try this.
 .El
 .Sh "FILES"
-.Bl -tag -width "/usr/local/share/epic5"
-.It Nm /usr/local/bin/epic5
+.Bl -tag -width "/usr/local/share/epic6"
+.It Nm /usr/local/bin/epic6
 the default location of the binary
 .It Nm ~/.epicrc
 default initialization file
 .It Nm ~/.epic/
 directory you can put your own
-.Nm epic5
+.Nm epic6
 scripts into, that can then be loaded with /load
-.It Nm /usr/local/share/epic5
+.It Nm /usr/local/share/epic6
 default directory containing message-of-the-day, server list,
 help files and 
-.Nm epic5
+.Nm epic6
 scripts
 .El
 .Sh "THE HELP FILES"
@@ -246,7 +246,7 @@ The Online EPIC Help Pages
 .Pa <http://www.irchelp.org/>
 Lots of great help for new irc users.
 .Sh "SIGNALS"
-.Nm epic5
+.Nm epic6
 handles the following signals gracefully
 .Pp
 .TP
@@ -282,7 +282,7 @@ The type of terminal emulation to use
 .Xr ircd 8
 .Sh BUGS
 Any non-trivial piece of software has bugs.  
-.Nm EPIC5 
+.Nm EPIC6
 is no exception.
 You can refer to the 
 .Pa KNOWNBUGS 
@@ -303,7 +303,7 @@ was created by Michael Sandrof (ms5n+@andrew.cmu.edu).
 The current copyright holder of
 .Nm IRC II 
 is Matthew Green (mrg@mame.mu.oz.au).
-.Nm EPIC5
+.Nm EPIC6
 is maintained by EPIC Software Labs (list@epicsol.org).
 .Sh MANPAGE AUTHORS
 At one time or another, this man page has been edited by Darren Reed,

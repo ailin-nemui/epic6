@@ -2234,13 +2234,13 @@ static	int recursion = 0;		/* Recursion is bad */
 		strlcpy(buffer, "Ask user for panic message.", sizeof(buffer));
 
 	if (x_debug & DEBUG_CRASH)
-		irc_exit(0, "Panic: epic5-%lu:%s", commit_id, buffer);
+		irc_exit(0, "Panic: epic6-%lu:%s", commit_id, buffer);
 	else
-		irc_exit(1, "Panic: epic5-%lu:%s", commit_id, buffer);
+		irc_exit(1, "Panic: epic6-%lu:%s", commit_id, buffer);
 #endif
 	recursion--;
 	if (dead)
-		irc_exit(1, "Panic: epic5-%lu:%s", commit_id, buffer);
+		irc_exit(1, "Panic: epic6-%lu:%s", commit_id, buffer);
 	else
 		longjmp(panic_jumpseat, 1);
 }

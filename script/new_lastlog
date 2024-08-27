@@ -3,11 +3,6 @@ if (word(2 $loadinfo()) != [pf]) {
 	return;
 };
 
-if (info(i) < 1730 || J !~ [EPIC5*]) {
-	xecho -b ERROR: new_lastlog: load: EPIC5 (rev. 1730) or newer is required;
-	return;
-};
-
 package new_lastlog;
 
 ## New lastlog script for EPIC5.

@@ -28,7 +28,7 @@ default:
 	(cd ..;$(MAKE))
 
 VPATH=@srcdir@
-all: epic5
+all: epic6
 
 .c.o:
 	$(CC) $(CFLAGS) $(ANSIFLAGS) $(INCLUDES) -c $<
@@ -37,14 +37,14 @@ all: epic5
 # The executables
 #
 
-# epic5 (irc)
-epic5: $(OBJECTS) stringify
+# epic6 (irc)
+epic6: $(OBJECTS) stringify
 	sh info.c.sh
 	$(CC) $(CFLAGS) $(INCLUDES) -c info.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -o epic5 $(OBJECTS) info.o @PERLLIBS@ @RUBYLIBS@ @PYTHON_LDFLAGS@ $(LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o epic6 $(OBJECTS) info.o @PERLLIBS@ @RUBYLIBS@ @PYTHON_LDFLAGS@ $(LIBS)
 	$(RM) info.c info.o
 clean::
-	$(RM) epic5 $(OBJECTS)
+	$(RM) epic6 $(OBJECTS)
 
 # wserv
 wserv4: wserv.o ircsig.o compat.o
@@ -60,7 +60,7 @@ clean::
 	$(RM) stringify
 
 # 'make install'
-install: epic5
+install: epic6
 	(cd ..; $(MAKE) install)
 
 clean::

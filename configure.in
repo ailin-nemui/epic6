@@ -5,7 +5,7 @@ dnl thanks to the screen 3.3 configure.in for giving me examples to
 dnl work from and steal ;)
 dnl
 
-AC_INIT([epic5],[2])
+AC_INIT([epic6],[0])
 AC_CONFIG_SRCDIR([source/irc.c])
 AC_CONFIG_HEADERS([include/defs.h])
 AC_LANG(C)
@@ -16,7 +16,7 @@ dnl grok the version number - from source/irc.c
 dnl
 VERSION=`sed -n -e 's/;$//' -e '/const unsigned long	commit_id = /s///p' -e '/const unsigned long	commit_id/q' < $srcdir/source/irc.c` 
 AC_SUBST([VERSION])
-echo this is EPIC5 commit $VERSION
+echo this is EPIC6 commit $VERSION
 echo
 
 AC_PROG_CC
@@ -1157,7 +1157,7 @@ if test -z "$libdir"; then libdir=\${prefix}/lib; fi
 if test -z "$irclibdir"; then irclibdir=\${libdir}/irc; fi
 if test -z "$libexecdir"; then libexecdir=\${prefix}/libexec; fi
 
-epic5=`echo "epic5" | sed -e "$program_transform_name"`
+epic6=`echo "epic6" | sed -e "$program_transform_name"`
 if test "$program_prefix" = "NONE" ; then
 	program_prefix=
 fi
@@ -1284,7 +1284,7 @@ AC_SUBST(irclibdir)
 AC_SUBST(libexecdir)
 AC_SUBST(srcdir)
 AC_SUBST(includedir)
-AC_SUBST(epic5)
+AC_SUBST(epic6)
 AC_SUBST(program_transform_name)
 AC_SUBST(program_prefix)
 AC_SUBST(mandir)

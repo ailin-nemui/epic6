@@ -3,11 +3,6 @@ if (word(2 $loadinfo()) != [pf]) {
 	return;
 };
 
-if (J !~ [EPIC5*]) {
-	xecho -b ERROR: userlist: load: EPIC5 is required;
-	return;
-};
-
 package userlist;
 
 ## Userlist script for EPIC5.

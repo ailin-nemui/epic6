@@ -263,7 +263,7 @@
 #define DEFAULT_STATUS_SSL_ON "*SSL*"
 #define DEFAULT_STATUS_TRUNCATE_RHS 1
 #define DEFAULT_STATUS_UMODE " (+%#)"
-#define DEFAULT_STATUS_USER "EPIC5 -- Visit http://help.epicsol.org/ for help"
+#define DEFAULT_STATUS_USER "EPIC6 -- Visit https://epicsol.org/ for help"
 #define DEFAULT_STATUS_USER1 ""
 #define DEFAULT_STATUS_USER2 ""
 #define DEFAULT_STATUS_USER3 ""
@@ -312,7 +312,7 @@
 #define DEFAULT_TERM_DOES_BRIGHT_BLINK 0
 #define DEFAULT_TMUX_OPTIONS NULL
 #define DEFAULT_UNDERLINE_VIDEO 1
-#define DEFAULT_USER_INFORMATION "EPIC5 -- Into the abyss"
+#define DEFAULT_USER_INFORMATION "EPIC6 -- Did we get lost again?"
 #define DEFAULT_WORD_BREAK " \t"
 #define DEFAULT_WSERV_TYPE "screen"
 #define DEFAULT_XTERM "xterm"
