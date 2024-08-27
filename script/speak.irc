@@ -13,6 +13,8 @@
 ## things for us.
 ##
 
+### XXX This script depends on /queue and needs to be adapted
+
 # This script takes advantage of "newaway" and "netsplit" if loaded
 #load newaway
 #load netsplit

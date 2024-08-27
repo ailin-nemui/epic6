@@ -61,7 +61,6 @@
 #include "numbers.h"
 #include "output.h"
 #include "parse.h"
-#include "queue.h"
 #include "screen.h"
 #include "status.h"
 #include "stack.h"
@@ -282,7 +281,6 @@ static	IrcCommand irc_command[] =
 	{ "PYTHON",	pythoncmd	}, /* python.c */
 #endif
 	{ "QUERY",	query		},
-        { "QUEUE",      queuecmd        }, /* queue.c */
 	{ "QUIT",	e_quit		},
 	{ "QUOTE",	quotecmd	},
 	{ "RBIND",	rbindcmd	}, /* keys.c */

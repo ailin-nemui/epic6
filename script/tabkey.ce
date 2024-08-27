@@ -405,17 +405,17 @@ alias tabkey.cmd.foreach (...)
 	@ function_return = tabkey.nofallback($retval);
 };
 
-alias tabkey.cmd.help (...)
-{
-	bless;
-	@ :matches = [];
-	@ :path = restw(1 $left($curpos $L));
-	if (wordind == curpos) {@ push(path *)};
-	repeat $#path @ push(path $shift(path)*);
-	@ matches = globi($unsplit(/ $getset(HELP_PATH) $path));
-	repeat $#matches @ push(matches $rightw(1 $remws(/ $split(/ $shift(matches)))));
-	@ function_return = tabkey.nofallback($remw(CVS $matches));
-};
+#alias tabkey.cmd.help (...)
+#{
+#	bless;
+#	@ :matches = [];
+#	@ :path = restw(1 $left($curpos $L));
+#	if (wordind == curpos) {@ push(path *)};
+#	repeat $#path @ push(path $shift(path)*);
+#	@ matches = globi($unsplit(/ $getset(HELP_PATH) $path));
+#	repeat $#matches @ push(matches $rightw(1 $remws(/ $split(/ $shift(matches)))));
+#	@ function_return = tabkey.nofallback($remw(CVS $matches));
+#};
 
 alias tabkey.cmd.ig (...)
 {
@@ -657,22 +657,22 @@ alias tabkey.method.chan (...)
 	                    pattern(&$sar(g/\\/\\\\/$*)* $mychannels());
 };
 
-stack push alias alias.foo;
-alias alias.foo (...) {alias $*;alias $sar(g/globi/glob/$sar(g/filei/file/$*))};
-alias.foo tabkey.method.filei (f0)
-{
-	@ :f0 = sar(gr/\\/\\\\/f0);
-	@ :f0 = sar(gr/*/\\*/f0);
-	@ :f0 = sar(gr/?/\\?/f0);
-	@ :f0 = sar(gr/[/\\[/f0);
-	@ :f0 = sar(gr/]/\\]/f0);
-	@ :f0 = :f1 = globi("" $f0*);
-	while (numwords($f0) == 1 && f0 =~ [*/]) {
-		@ :f0 = globi("" $f0*);
-	};
-	@ function_return = f0 ? f0 : f1;
-};
-stack pop alias alias.foo;
+#stack push alias alias.foo;
+#alias alias.foo (...) {alias $*;alias $sar(g/globi/glob/$sar(g/filei/file/$*))};
+#alias.foo tabkey.method.filei (f0)
+#{
+#	@ :f0 = sar(gr/\\/\\\\/f0);
+#	@ :f0 = sar(gr/*/\\*/f0);
+#	@ :f0 = sar(gr/?/\\?/f0);
+#	@ :f0 = sar(gr/[/\\[/f0);
+#	@ :f0 = sar(gr/]/\\]/f0);
+#	@ :f0 = :f1 = globi("" $f0*);
+#	while (numwords($f0) == 1 && f0 =~ [*/]) {
+#		@ :f0 = globi("" $f0*);
+#	};
+#	@ function_return = f0 ? f0 : f1;
+#};
+#stack pop alias alias.foo;
 
 alias tabkey.method.mask (...)
 {

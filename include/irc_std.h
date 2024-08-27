@@ -31,6 +31,7 @@
 #include <stddef.h>
 #endif
 #include <setjmp.h>
+#include <glob.h>
 
 /*
  * Everybody needs these POSIX headers...

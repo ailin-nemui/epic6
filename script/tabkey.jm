@@ -549,19 +549,19 @@ alias match_file (fragment) {
 	return $matches;
 };
 
-alias match_help (fragment) {
-	@:matches = [];
-	@:help_path = getset(HELP_PATH);
-	@:help_matches = globi("${help_path}/${fragment}*");
-
-	fe ($help_matches) match {
-		@push(matches $rest(${@help_path + 1} $match));
-	};
-
-	@match_cycle_list = matches;
-
-	return $matches;
-};
+#alias match_help (fragment) {
+#	@:matches = [];
+#	@:help_path = getset(HELP_PATH);
+#	@:help_matches = globi("${help_path}/${fragment}*");
+#
+#	fe ($help_matches) match {
+#		@push(matches $rest(${@help_path + 1} $match));
+#	};
+#
+#	@match_cycle_list = matches;
+#
+#	return $matches;
+#};
 
 alias match_load (fragment) {
 	@:matches = [];
@@ -642,7 +642,7 @@ alias match_set (fragment) {
 
 alias match_theme (fragment) {
 	@:matches = [];
-	@:theme_matches = globi("${theme_directory}/${fragment}*.theme");
+	@:theme_matches = pattern(${fragment}*.theme ${theme_directory}/*)
 
 	fe ($theme_matches) match {
 		@push(matches $before(-1 . $rest(${@theme_directory + 1} $match)));

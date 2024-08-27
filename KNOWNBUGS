@@ -37,3 +37,7 @@ CHACHA20
 
 THE CHANGELOG SINCE THE LAST RELEASE:
 -------------------------------------
+* Sunset most of docs/ and other ancient files
+* Sunset /queue (and queue.c)
+* Sunset $globi() (and glob.c)
+* Sunset support for pre-wiki help files in script/

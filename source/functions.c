@@ -85,11 +85,7 @@
 #include "ctcp.h"
 #include "cJSON.h"
 
-#ifdef NEED_GLOB
-# include "glob.h"
-#else
-# include <glob.h>
-#endif
+#include <glob.h>
 
 #ifdef HAVE_REGEX_H
 # include <regex.h>
@@ -275,7 +271,6 @@ static	char
 	*function_getsets	(char *),
 	*function_getuid	(char *),
 	*function_glob		(char *),
-	*function_globi		(char *),
 	*function_hash_32bit	(char *),
 #if 0
 	*function_help_topics	(char *),
@@ -579,7 +574,6 @@ static BuiltInFunctions	built_in_functions[] =
 	{ "GETTMATCH",		function_gettmatch	},
 	{ "GETUID",		function_getuid		},
 	{ "GLOB",		function_glob		},
-	{ "GLOBI",		function_globi		},
 	{ "HASH_32BIT",		function_hash_32bit	},
 #if 0
 	{ "HELP_TOPICS",	function_help_topics	},
@@ -4430,20 +4424,13 @@ BUILT_IN_FUNCTION(function_notify, words)
 	return get_notify_nicks(showserver, showon);
 }
 
-#ifdef NEED_GLOB
-#define glob bsd_glob
-#define globfree bsd_globfree
-#endif
-#ifndef GLOB_INSENSITIVE
-#define GLOB_INSENSITIVE 0
-#endif
-
 BUILT_IN_FUNCTION(function_glob, word)
 {
 	char 	*path;
 	Filename path2;
 	char	*retval = NULL;
-	int 	numglobs, i;
+	int 	numglobs;
+	size_t	i;
 	glob_t 	globbers;
 
 	memset(&globbers, 0, sizeof(glob_t));
@@ -4476,8 +4463,7 @@ BUILT_IN_FUNCTION(function_glob, word)
 
 				size = strlen(globbers.gl_pathv[i]) + 4;
 				b = alloca(size);
-				snprintf(b, size, "\"%s\"", 
-						globbers.gl_pathv[i]);
+				snprintf(b, size, "\"%s\"", globbers.gl_pathv[i]);
 				malloc_strcat_wordlist(&retval, space, b);
 			}
 			else
@@ -4489,60 +4475,6 @@ BUILT_IN_FUNCTION(function_glob, word)
 
 	RETURN_MSTR(retval);
 }
-
-BUILT_IN_FUNCTION(function_globi, word)
-{
-	char 	*path;
-	Filename path2;
-	char	*retval = NULL;
-	int 	numglobs, i;
-	glob_t 	globbers;
-
-	memset(&globbers, 0, sizeof(glob_t));
-	while (word && *word)
-	{
-		char	*freepath = NULL;
-
-		GET_DWORD_ARG(path, word);
-		if (!path || !*path)
-			path = word, word = NULL;
-		else
-		{
-		   /* The CTCP enquoting is intentional, probably
-		    * to do de-\-ing */
-		    freepath = path = transform_string_dyn("-CTCP", path, 0, NULL);
-		    RETURN_IF_EMPTY(path);
-		}
-		expand_twiddle(path, path2);
-
-		if ((numglobs = bsd_glob(path2,
-				GLOB_MARK | GLOB_INSENSITIVE | GLOB_QUOTE | GLOB_BRACE, 
-				NULL, &globbers)) < 0)
-			RETURN_INT(numglobs);
-
-		for (i = 0; i < globbers.gl_pathc; i++)
-		{
-			if (strpbrk(globbers.gl_pathv[i], " \""))
-			{
-				size_t size;
-				char *b;
-
-				size = strlen(globbers.gl_pathv[i]) + 4;
-				b = alloca(size);
-				snprintf(b, size, "\"%s\"", 
-						globbers.gl_pathv[i]);
-				malloc_strcat_wordlist(&retval, space, b);
-			}
-			else
-				malloc_strcat_wordlist(&retval, space, globbers.gl_pathv[i]);
-		}
-		bsd_globfree(&globbers);
-		new_free(&freepath);
-	}
-
-	RETURN_MSTR(retval);
-}
-
 
 BUILT_IN_FUNCTION(function_mkdir, words)
 {

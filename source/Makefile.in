@@ -15,10 +15,10 @@ RM	= rm -f
 
 OBJECTS = alias.o alist.o ara.o array.o cJSON.o clock.o commands.o compat.o \
 	crypt.o crypto.o ctcp.o dcc.o debug.o elf.o exec.o files.o \
-	functions.o glob.o hook.o if.o ignore.o input.o irc.o \
+	functions.o hook.o if.o ignore.o input.o irc.o \
 	ircaux.o ircsig.o keys.o lastlog.o levels.o list.o log.o logfiles.o \
 	mail.o names.o network.o newio.o notify.o numbers.o output.o parse.o \
-	@PERLDOTOH@ @PYTHON_O@ queue.o recode.o reg.o @RUBYDOTOH@ screen.o \
+	@PERLDOTOH@ @PYTHON_O@ recode.o reg.o @RUBYDOTOH@ screen.o \
 	sdbm.o server.o sha2.o ssl.o status.o term.o timer.o \
 	vars.o wcwidth.o who.o window.o words.o 
 
@@ -230,10 +230,7 @@ functions.o: functions.c ../include/irc.h ../include/defs.h \
   ../include/numbers.h ../include/sedcrypt.h ../include/timer.h \
   ../include/functions.h ../include/options.h ../include/reg.h \
   ../include/ifcmd.h ../include/ssl.h ../include/extlang.h \
-  ../include/cJSON.h ../include/glob.h ../include/hook.h
-glob.o: glob.c ../include/config.h ../include/glob.h ../include/irc.h \
-  ../include/defs.h ../include/irc_std.h \
-  ../include/debug.h ../include/compat.h
+  ../include/cJSON.h ../include/hook.h
 hook.o: hook.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h \
   ../include/hook.h ../include/ircaux.h ../include/compat.h \
