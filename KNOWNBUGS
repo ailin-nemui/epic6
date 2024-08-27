@@ -47,3 +47,9 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * This means we can sunset pthreads
 * This means we can sunset pthreads-with-openssl locking
 * Reset $info(o), since most flags are mandatory (see UPDATES)
+* Sunset all compat stuff
+* This means we don't care about reapath, tparm, strlc*, etc
+* Use OpenSSL to do SHA256 hashing. (digest, digest_hexstr)
+* Sunset our custom sha2 implementation
+* Sunset our custom alloca implementation
+

@@ -5572,7 +5572,7 @@ static ssize_t	sha256_encoder (const char *orig, size_t orig_len, const void *me
         if (!orig || !dest || dest_len <= 0)
                 return -1;
 
-	sha256str(orig, orig_len, dest);
+	digest_hexstr(NULL, orig, orig_len, dest, dest_len);
 	return strlen(dest);
 }
 
@@ -6988,8 +6988,8 @@ int	rgb_to_256 (uint8_t r, uint8_t g, uint8_t b)
 size_t	hex256 (uint8_t x, char **retval)
 {
 static const char hexnum[] = "0123456789ABCDEF";
-	int	l = x & 0xF0 >> 4;
-	int	h = x & 0x0F;
+	int	l = (x & 0xF0) >> 4;
+	int	h = (x & 0x0F);
 
 	**retval = hexnum[l];
 	(*retval)++;
@@ -7006,5 +7006,71 @@ const char *	nonull (const char *x)
 		return x;
 	else
 		return empty_string;
+}
+
+/*********************************************************************************/
+char *  digest_hexstr (const char *type, const char *input, size_t inputlen, char *output, size_t outputlen)
+{
+	unsigned char *	local_output;
+	unsigned int	local_output_len;
+	char *		s;
+	EVP_MD_CTX *	ctx;
+	unsigned int	i;
+
+	if (type != NULL)
+		return NULL;
+	if ((ctx = EVP_MD_CTX_new()) == NULL)
+		return NULL;
+	if (!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL))
+		return NULL;
+	if (!EVP_DigestUpdate(ctx, input, inputlen))
+		return NULL;
+
+	local_output = alloca(EVP_MAX_MD_SIZE);
+	local_output_len = 0;
+	if (!EVP_DigestFinal_ex(ctx, local_output, &local_output_len))
+		return NULL;
+	EVP_MD_CTX_free(ctx);
+
+	for (s = output, i = 0; i < local_output_len; i++)
+	{
+		if (s - output >= (ptrdiff_t) outputlen - 3)	
+			return output;
+		hex256(local_output[i], &s);
+	}
+	return output;
+}
+
+char *  digest (const char *type, const char *input, size_t inputlen, char *output, size_t outputlen)
+{
+	unsigned char *	local_output;
+	unsigned int	local_output_len;
+	char *		s;
+	EVP_MD_CTX *	ctx;
+	unsigned int	i;
+
+	if (type != NULL)
+		return NULL;
+	if ((ctx = EVP_MD_CTX_new()) == NULL)
+		return NULL;
+	if (!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL))
+		return NULL;
+	if (!EVP_DigestUpdate(ctx, input, inputlen))
+		return NULL;
+
+	local_output = alloca(EVP_MAX_MD_SIZE);
+	local_output_len = 0;
+	if (!EVP_DigestFinal_ex(ctx, local_output, &local_output_len))
+		return NULL;
+	EVP_MD_CTX_free(ctx);
+
+	for (s = output, i = 0; i < local_output_len; i++)
+	{
+		if (s - output >= (ptrdiff_t) outputlen - 2)
+			return output;
+		s[0] = local_output[i];
+		s[1] = 0;
+	}
+	return output;
 }
 

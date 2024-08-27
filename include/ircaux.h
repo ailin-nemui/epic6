@@ -13,7 +13,6 @@
 #ifndef _IRCAUX_H_
 #define _IRCAUX_H_
 
-#include "compat.h"
 #include "network.h"
 #include "words.h"
 
@@ -294,6 +293,9 @@ const 	char *	inbound_recode 		(const char *, int, const char *, const char *, c
 	void    create_utf8_locale 	(void);
 	int	mkupper_l		(int);
 	int	mklower_l		(int);
+
+	char *  digest_hexstr 		(const char *type, const char *input, size_t inputlen, char *output, size_t outputlen);
+	char *  digest 			(const char *type, const char *input, size_t inputlen, char *output, size_t outputlen);
 
 #endif /* _IRCAUX_H_ */
 

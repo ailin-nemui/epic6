@@ -576,8 +576,8 @@ static void	ext256_passwd (const char *orig, size_t orig_len, char **passwd, siz
 
 static void	sha256_passwd (const char *orig, size_t orig_len, char **passwd, size_t *passwdlen)
 {
-	*passwd = new_malloc(32);
-	sha256(orig, orig_len, *passwd);
+	*passwd = new_malloc(34);
+	digest(NULL, orig, orig_len, *passwd, 34);
 	*passwdlen = 32;
 }
 

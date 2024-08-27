@@ -1,4 +1,4 @@
-/* include/defs.h.in.  Generated from configure.in by autoheader.  */
+/* include/defs.h.in.  Generated from configure.ac by autoheader.  */
 
 /* Define to 1 if using 'alloca.c'. */
 #undef C_ALLOCA
@@ -23,9 +23,6 @@
 
 /* Define if you can use __attribute__((may_alias)) */
 #undef HAVE_ATTRIBUTE_MAY_ALIAS
-
-/* Define this if your realpath() doesn't work for nonexistant files */
-#undef HAVE_BROKEN_REALPATH
 
 /* Define if you have clock_gettime() */
 #undef HAVE_CLOCK_GETTIME

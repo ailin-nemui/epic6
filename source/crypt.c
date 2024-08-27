@@ -149,14 +149,14 @@ static void	add_to_crypt (Char *nick, Char *serv, Char *passwd, Char *prog, int 
 		sed_type == SEDSHACRYPT)
 	{
 		if (d->passwd == NULL)
-			d->passwd = new_malloc(32);
-		memset(d->passwd, 0, 32);
-		d->passwdlen = 32;
+			d->passwd = new_malloc(34);
+		memset(d->passwd, 0, 34);
+		d->passwdlen = 34;
 
 		if (sed_type == AES256CRYPT)
 			memcpy(d->passwd, passwd, strlen(passwd));
 		else
-			sha256(passwd, strlen(passwd), d->passwd);
+			digest(NULL, passwd, strlen(passwd), d->passwd, d->passwdlen);
 	}
 	else
 	{

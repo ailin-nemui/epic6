@@ -45,8 +45,6 @@ typedef struct	CryptStru
 	/* These are for internal use only -- do not call outside crypt.c */
 	char *	decipher_message (const char *, size_t, List *, int *);
 	char *	cipher_message	(const char *, size_t, List *, int *);
-	char *  sha256str (const char *, size_t, char *);
-	char *  sha256 (const char *, size_t, char *);
 
 	ssize_t blowfish_encoder (const char *, size_t, const void *, size_t, char *, size_t);
 	ssize_t blowfish_decoder (const char *, size_t, const void *, size_t, char *, size_t);

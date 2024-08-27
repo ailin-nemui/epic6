@@ -421,25 +421,6 @@ AC_RUN_IFELSE([AC_LANG_PROGRAM([[
 
 dnl ----------------------------------------------------------
 dnl
-dnl Check for a realpath() that works.
-dnl
-AC_MSG_CHECKING(for useful realpath)
-AC_RUN_IFELSE([AC_LANG_PROGRAM([[
-	#include <sys/param.h>
-	#include <stdlib.h>
-]],[[
-	char resolved_path[PATH_MAX];
-
-	if (realpath("/etc/filethatdoesnotexist", resolved_path) == 0)
-		return 1;
-	return 0;
-]])],
-  AC_MSG_RESULT(yes),
-  AC_MSG_RESULT(no, your realpath is broken and/or worthless)
-  AC_DEFINE([HAVE_BROKEN_REALPATH], 1, [Define this if your realpath() doesn't work for nonexistant files]), :)
-
-dnl ----------------------------------------------------------
-dnl
 dnl Check for sys_siglist declaration
 dnl
 

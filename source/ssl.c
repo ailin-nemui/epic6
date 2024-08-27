@@ -108,7 +108,6 @@ static char *		get_bio_mem_string	(BIO *);
 static char *		get_x509_pem		(X509 *);
 static char *		get_x509_name		(X509_NAME *);
 static char *		internal_get_x509_sans 	(X509 * const);
-static void		ssl_setup_locking 	(void);
 static ssl_cert_error *	new_ssl_cert_error 	(int, int, const char *, ssl_cert_error *);
 static void		destroy_ssl_cert_errors (ssl_cert_error *);
 static int 		verify_callback 	(int, X509_STORE_CTX *);
@@ -336,7 +335,6 @@ static SSL_CTX	*SSL_CTX_init (int server)
 		return ctx;
 
 	mydata_index = SSL_get_ex_new_index(0, malloc_strdup("mydata index"), NULL, NULL, NULL);
-	ssl_setup_locking();
 	SSL_load_error_strings();
 	SSL_library_init();
 
