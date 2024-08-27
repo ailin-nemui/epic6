@@ -364,20 +364,8 @@
 /* Define if <term.h> requires <curses.h> to be included first */
 #undef TERM_H_REQUIRES_CURSES_H
 
-/* Define this if you want to use freebsd kqueue() as the multiplexer */
-#undef USE_FREEBSD_KQUEUE
-
-/* Define this if you want to use poll as the multiplexer */
-#undef USE_POLL
-
-/* Define this if you want to use pthreads as the multiplexer */
-#undef USE_PTHREAD
-
 /* Define this if you want to use select as the multiplexer */
 #undef USE_SELECT
-
-/* Define this if you want to use Solaris ports as the multiplexer */
-#undef USE_SOLARIS_PORTS
 
 /* Define for Solaris 2.5.1 so the uint32_t typedef from <sys/synch.h>,
    <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the

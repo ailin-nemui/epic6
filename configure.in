@@ -97,54 +97,7 @@ AC_MSG_RESULT([ok])
 
 dnl ----------------------------------------------------------
 dnl   Where does this belong?
-AC_MSG_CHECKING([which multiplexer function to use])
-AC_ARG_WITH(multiplex,
-[  --with-multiplex[=TYPE]           Multiplexer type (select,poll,freebsd-kqueue,pthread,solaris-ports)],[
-	if test "x$withval" = "x"; then
-		with_multiplex="select"
-	elif test "x$withval" = "xselect"; then
-		with_multiplex="select"
-	elif test "x$withval" = "xpoll"; then
-		with_multiplex="poll"
-	elif test "x$withval" = "xfreebsd-kqueue"; then
-		with_multiplex="kqueue"
-	elif test "x$withval" = "xsolaris-ports"; then
-		with_multiplex="port_create"
-	elif test "x$withval" = "xpthread"; then
-		with_multiplex="pthread_create"
-		if [ "x$sun_compiler" = "xyes" ] ; then
-			CFLAGS="CFLAGS -mt"
-		else
-			CFLAGS="$CFLAGS -pthread"
-		fi
-	else
-		with_multiplex="select"
-	fi
-],[
-	with_multiplex="select"
-])
-AC_MSG_RESULT($with_multiplex)
-AC_CHECK_FUNC($with_multiplex, [
-	if test "x$with_multiplex" = "xselect" ; then
-		AC_DEFINE([USE_SELECT], 1, [Define this if you want to use select as the multiplexer])
-		threading=0
-	elif test "x$with_multiplex" = "xpoll" ; then
-		AC_DEFINE([USE_POLL], 1, [Define this if you want to use poll as the multiplexer])
-		threading=0
-	elif test "x$with_multiplex" = "xkqueue" ; then
-		AC_DEFINE([USE_FREEBSD_KQUEUE], 1, [Define this if you want to use freebsd kqueue() as the multiplexer])
-		threading=0
-	elif test "x$with_multiplex" = "xport_create" ; then
-		AC_DEFINE([USE_SOLARIS_PORTS], 1, [Define this if you want to use Solaris ports as the multiplexer])
-		threading=0
-	elif test "x$with_multiplex" = "xpthread_create" ; then
-		AC_DEFINE([USE_PTHREAD], 1, [Define this if you want to use pthreads as the multiplexer])
-		threading=1
-	fi
-],[
-	AC_DEFINE([USE_SELECT], 1, [Define this if you want to use select as the multiplexer])
-	threading=0
-])
+AC_DEFINE([USE_SELECT], 1, [Define this if you want to use select as the multiplexer])
 
 
 dnl ----------------------------------------------------------
@@ -269,27 +222,8 @@ else
 		fi
 		AC_MSG_ERROR([I was unable to find OpenSSL.  If it is not installed, please install it.  If it is installed, please help me find it using --with-ssl=/usr/local or similar.])
 	else
-	    if test "x$threading" = "x1" ; then
-		AC_MSG_RESULT([yes])
-		AC_MSG_CHECKING([whether your SSL is threading compatable])
-		AC_RUN_IFELSE([AC_LANG_PROGRAM([[
-#define OPENSSL_THREAD_DEFINES
-#include <stdlib.h>
-#include <openssl/opensslconf.h>
-]],[[
-#if defined(THREADS)
-        return 0;
-#else
-        return 1;
-#endif
-]])],
-		AC_MSG_RESULT([yes])
-		AC_DEFINE([HAVE_SSL], 1, [Define this if you have a working ssl]),
-		AC_MSG_RESULT([no. Your system can not do SSL with pthreads]),:)
-	    else
 		AC_DEFINE([HAVE_SSL], 1, [Define this if you have a working ssl])
 		AC_MSG_RESULT([yes])
-	    fi
 	fi
 fi
 

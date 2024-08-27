@@ -1229,43 +1229,6 @@ static char *	internal_get_x509_sans (X509 *const cert)
 	return retval ? retval : malloc_strdup(empty_string);
 }
 
-/* * * PTHREAD NONSENSE * * * */
-# ifdef USE_PTHREAD
-#include <pthread.h>
-pthread_mutex_t *ssl_mutexes = NULL;
-
-static void	ssl_locking_callback (int mode, int n, const char *file, int line)
-{
-	if (mode & CRYPTO_LOCK)
-		pthread_mutex_lock(&ssl_mutexes[n]);
-	else
-		pthread_mutex_unlock(&ssl_mutexes[n]);
-}
-
-static unsigned long	ssl_id_callback (void)
-{
-	return (unsigned long)pthread_self();
-}
-
-static void	ssl_setup_locking (void)
-{
-	int	i, num;
-
-	num = CRYPTO_num_locks();
-	ssl_mutexes = (pthread_mutex_t *)new_malloc(sizeof(pthread_mutex_t) * num);
-	for (i = 0; i < num; i++)
-		pthread_mutex_init(&ssl_mutexes[i], NULL);
-
-	CRYPTO_set_locking_callback(ssl_locking_callback);
-	CRYPTO_set_id_callback(ssl_id_callback);
-}
-# else
-static void	ssl_setup_locking (void)
-{
-	return;
-}
-# endif
-
 /* * * SSL CERT ERROR STUFF * * * */
 static ssl_cert_error	*new_ssl_cert_error (int err, int depth, const char *oneline, ssl_cert_error *next)
 {

@@ -11,10 +11,11 @@ reimagined and brought back in a better form later.
 
 Things to remove
 =================
+*our glob (globi)  - Not sure if appropriate
+*queue		  - Easily scriptable
+*pthreads, etc	  - Just use select
 our SHA2	  - We can get this from openssl
-our glob (globi)  - Not sure if appropriate
 our sdbm (dbmctl) - Use a modern key-value store
-queue		  - Easily scriptable
 ruby		  - Incomplete/unloved
 perl		  - Incomplete/unloved
 All encryption but AES - Obsolete/insecure
@@ -41,3 +42,8 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Sunset /queue (and queue.c)
 * Sunset $globi() (and glob.c)
 * Sunset support for pre-wiki help files in script/
+* Sunset I/O disciplines other than select()
+* This means we can sunset ./configure --with-multiplex
+* This means we can sunset pthreads
+* This means we can sunset pthreads-with-openssl locking
+* Reset $info(o), since most flags are mandatory (see UPDATES)
