@@ -151,7 +151,7 @@
 /*
  * This function is used to prepare the $* string before calling a user
  * alias or function.  You should pass in the last argument from get_cmd_alias
- * to this function, and also the $* value.  The second value may very well
+ * to this function, and also the $* value.  The second value may well
  * be modified.
  */
 	void	prepare_alias_call	(void *, char **);

@@ -7,7 +7,7 @@ if (word(2 $loadinfo()) != [pf]) { load -pf $word(1 $loadinfo()); return; };
 # to the current target.  We also need to be able to turn it off automatically
 # because we won't be able to type any commands while it's active.  We need
 # to be able to configure the timeout, and we also want to be able to strip
-# any leading whitespace on the lines we paste.  (AnguzHawk asked for this
+# any leading spaces on the lines we paste.  (AnguzHawk asked for this
 # feature particularly.)
 #
 

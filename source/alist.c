@@ -317,7 +317,7 @@ void *	find_alist_item (alist *set, const char *name, int *cnt, int *loc)
 	 * 'name' would be the first item in a string of items that
 	 * all began with 'name'.  That is to say, if there is an
 	 * exact match, its sitting under item 'min'.  So we check
-	 * for that and whack the count appropriately.
+	 * for that and set the count appropriately.
 	 */
 	if (0 == (ALIST_ITEM(set, min)->name)[len])
 		*cnt *= -1;

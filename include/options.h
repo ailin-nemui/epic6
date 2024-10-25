@@ -17,6 +17,10 @@ const char compile_time_options[] = {
  					'b',
 #endif /* NO_BOTS */
  
+/* Implied on hooks -- because loadformats requires it */
+					'h',
+
+
 #ifdef HAVE_LIBARCHIVE
 					'r',
 #endif

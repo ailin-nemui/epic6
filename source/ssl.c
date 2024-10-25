@@ -1146,7 +1146,8 @@ static char *	internal_get_x509_sans (X509 *const cert)
 		return malloc_strdup(empty_string);
 
 	/*
-	 * If you're like me this seems like black magic. Let's unpack this.
+	 * If you're like me this seems impossible to understand. 
+	 * Let's unpack this.
  	 *
 	 *   X509 - SSL Certificates are properly known as "X.509 documents"
  	 *          so the object that represents them in OpenSSL is (X509).
@@ -1255,7 +1256,7 @@ static void	destroy_ssl_cert_errors (ssl_cert_error *chain)
 
 /*
  * verify_callback - Policy function for SSL Certificate Verification
- * (I pretty much cribbed this from 'man SSL_CTX_set_verify')
+ * (I mostly cribbed this from 'man SSL_CTX_set_verify')
  *
  * OpenSSL's default handling of SSL verification errors has two problems:
  * 1) It's "lossy" - it only remembers one error, discarding others

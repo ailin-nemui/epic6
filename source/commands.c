@@ -168,7 +168,6 @@ static	void	allocdumpcmd	(const char *, char *, const char *);
 static	void	eval_inputlist 	(char *, const char *);
 static void	parse_block (const char *, const char *, int interactive);
 
-/* I hate typedefs, but they sure can be useful.. */
 typedef void (*CmdFunc) (const char *, char *, const char *);
 
 /* IrcCommand: structure for each command in the command table */
@@ -455,7 +454,7 @@ BUILT_IN_COMMAND(e_clear)
 	char	*arg;
 	int	all = 0,
 		visible = 0,
-		hidden = 0;
+		invisible = 0;
 	int	clear = !strcmp(command, "CLEAR");
 	int	force = 1;
 
@@ -463,13 +462,15 @@ BUILT_IN_COMMAND(e_clear)
 	{
 		/* -ALL and ALL here becuase the help files used to be wrong */
 		if (!my_strnicmp(arg, "ALL", 1) || !my_strnicmp(arg+1, "ALL", 1))
-			visible = 0, hidden = 0, all = 1;
+			visible = 0, invisible = 0, all = 1;
 
 		else if (!my_strnicmp(arg+1, "VISIBLE", 1))
-			visible = 1, hidden = 0, all = 1;
+			visible = 1, invisible = 0, all = 1;
 
+		else if (!my_strnicmp(arg+1, "INVISIBLE", 1))
+			visible = 0, invisible = 1, all = 1;
 		else if (!my_strnicmp(arg+1, "HIDDEN", 1))
-			visible = 0, hidden = 1, all = 1;
+			visible = 0, invisible = 1, all = 1;
 
 		else if (!my_strnicmp(arg+1, "NOFORCE", 1))
 			force = 0;
@@ -481,9 +482,9 @@ BUILT_IN_COMMAND(e_clear)
 	if (all)
 	{
 		if (clear)
-			clear_all_windows(visible, hidden);
+			clear_all_windows(visible, invisible);
 		else
-			unclear_all_windows(visible, hidden, force);
+			unclear_all_windows(visible, invisible, force);
 	}
 	else
 	{
@@ -1111,7 +1112,7 @@ BUILT_IN_COMMAND(xechocmd)
 		}
 
 		case 'f':
-		case 'F': /* DO not notify for hidden windows (%F) */
+		case 'F': /* DO NOT notify for invisible windows (%F) */
 		{
 			next_arg(args, &args);
 			do_window_notifies = 0;
@@ -2158,8 +2159,8 @@ static void	loader_std (const char *file_contents, off_t file_contents_size, con
  * the automatic continuation of a statement across lines without having to
  * use \'s.  Further, semicolons had to be added between statements that 
  * were within {..}'s.  The result is a file that bears little resemblance 
- * to what ircII code actually looks like, and requires a heavyweight parser 
- * to convert a script into something that can be executed.
+ * to what ircII code actually looks like, and requires a special parser 
+ * with rules that aren't used anywhere else, which confuses people.
  *
  * The rules regarding the placement and matching of {'s and }'s, and the 
  * insertion of semicolons are, to be kind, irregular.  This irregularity
@@ -2177,7 +2178,7 @@ static void	loader_std (const char *file_contents, off_t file_contents_size, con
  * as a separate statement so you can break up your statements however it 
  * pleases you. 
  *
- * Because of the lack of processing overhead, the pf loader is lightweight
+ * Because of the lack of processing overhead, the pf loader is simpler
  * and is "signficantly" faster than the standard loader.  This can be a 
  * big win for large scripts.
  */

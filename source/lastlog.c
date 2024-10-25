@@ -494,7 +494,7 @@ void	set_lastlog_size (void *stuff)
  *	  be on.  If you turn off all options with --ALL and then turn 
  *	  some back on, those after --ALL will be on.
  *	* Up to three naked options may be specified for backwards 
- *	  compatability with ircII.  The very first naked parameter that 
+ *	  compatability with ircII.  The first naked parameter that 
  *	  is not a number is considered to be the argument to the -LITERAL 
  *	  option.  The second naked parameter had better be a number and
  *	  it is taken as the argument to the -NUMBER option.  The third naked

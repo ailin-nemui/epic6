@@ -278,7 +278,7 @@ static const char *	find_backward_quote (const char *input, const char *start, c
  *    more than one space between words, the first space belongs to the "left"
  *    word and all the rest of the spaces belong to the "right" word!
  *
- * XXX - The debugging printfs are ugly.
+ * XXX - The debugging printfs lack expected elegance/information
  */
 static int	move_to_prev_word (const char **str, const char *start, int extended, const char *delims)
 {
@@ -323,7 +323,7 @@ static int	move_to_prev_word (const char **str, const char *start, int extended,
 		pos--;
 
 	/*
-	 * Skip over whitespace
+	 * Skip over spaces
 	 */
 	while (pos >= start && ((*pos == 0) || my_isspace(*pos)))
 		pos--;
@@ -454,7 +454,7 @@ static int	move_to_prev_word (const char **str, const char *start, int extended,
  *    last word (there is not a next word).  In that case, ths current word 
  *    claims all of the trailing spaces and (*str) is set to the trailing nul.
  *
- * XXX - The debugging printfs are ugly.
+ * XXX - The debugging printfs are lacking elegance/information
  */
 static int	move_to_next_word (const char **str, const char *start, int extended, const char *delims)
 {
@@ -582,9 +582,9 @@ static int	move_to_next_word (const char **str, const char *start, int extended,
  * 
  * Return value:
  *  The return value is the beginning of the 'word'th word in 'start'.
- *   This may include leading whitespace which you will need to trim if
- *   you don't want surroundign whitespace.  This may include trailing
- *   whitespace if you ask for the last word and there is trailing whitespace.
+ *   This may include leading spaces which you will need to trim if
+ *   you don't want surrounding spaces.  This may include trailing
+ *   spaces if you ask for the last word and there are trailing spaces.
  *
  * Notes:
  *  'mark' is not used as an input parameter.  Upon return, it is set to 
@@ -796,7 +796,7 @@ char *	real_extract2 (const char *start, int firstword, int lastword, int extend
  * extract is a simpler version of extract2, it is used when we dont
  * want special treatment of "firstword" if it is negative.  This is
  * typically used by the word/list functions, which also dont care if
- * we strip out or leave in any whitespace, we just do what is the
+ * we strip out or leave in any spaces, we just do what is the
  * fastest.
  */
 char *	real_extract (char *start, int firstword, int lastword, int extended)
@@ -819,8 +819,8 @@ char *	real_extract (char *start, int firstword, int lastword, int extended)
 	 * ITS OK TO TAKE OUT SPACES HERE, AS THE USER SHOULDNT EXPECT
 	 * THAT THE WORD FUNCTIONS WOULD RETAIN ANY SPACES. (That is
 	 * to say that since the word/list functions dont pay attention
-	 * to the whitespace anyhow, noone should have any problem with
-	 * those ops removing bothersome whitespace when needed.)
+	 * to the spaces anyhow, no-one should have any problem with
+	 * those ops removing bothersome spaces when needed.)
 	 */
 	while (*start && my_isspace(*start))
 		start++;

@@ -129,7 +129,7 @@ Then, you can use any of these python functions:
 					 You must "handle" the fd, or it will busy-loop.
 					 If you block while handling the fd, epic will block
 			CallableObject - A python method that takes one integer argument.
-					 It will be called if the fd is found to be invalid.
+					 It will be called if the fd is found to be unusable.
 					 (ie, select(2) returns EBADF).  This would be 
 					 caused by something close()ing the fd, but 
 					 _epic.cancel_callback() [see below] didn't get called.
@@ -149,7 +149,7 @@ Then, you can use any of these python functions:
 					 their buffers are saturated).  If you block while
 					 handling the fd, epic will block.
 			CallableObject - A python method that takes one integer argument.
-					 It will be called if the fd is found to be invalid.
+					 It will be called if the fd is found to be unusable.
 					 (ie, select(2) returns EBADF).  This would be 
 					 caused by something close()ing the fd, but 
 					 _epic.cancel_callback() [see below] didn't get called.

@@ -247,6 +247,7 @@ void	flush_all_symbols (void)
 				new_free(&s->builtin_variable->data->string);
 				new_free(&s->builtin_variable->orig_data->string);
 			}
+			new_free(&s->builtin_variable->orig_data);
 			new_free(&s->builtin_variable->data);
 			new_free(&s->builtin_variable->script);
 			new_free(&s->builtin_variable);
@@ -563,7 +564,7 @@ BUILT_IN_COMMAND(localcmd)
 	if (!args)
 		args = LOCAL_COPY(empty_string);
 
-	if (!my_strnicmp(name, "-dump", 2))	/* Illegal name anyways */
+	if (!my_strnicmp(name, "-dump", 2))	/* Unusable name anyways */
 	{
 		destroy_var_aliases(&call_stack[wind_index].alias);
 		return;

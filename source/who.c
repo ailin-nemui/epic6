@@ -1912,7 +1912,7 @@ void	userhost_returned (int refnum, const char *from, const char *comm, const ch
 		 * with this bogus entry, because thats the historical
 		 * behavior.  This can cause a problem if you do a USERHOST
 		 * and wait on the 302 numeric.  I think waiting on the 302
-		 * numeric is stupid, anyhow.
+		 * numeric is improper, anyhow.
 		 */
 		else
 		{

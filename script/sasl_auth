@@ -25,7 +25,7 @@ package sasl_auth;
 ##
 ## !!! WARNING  !!! WARNING !!! WARNING !!! WARNING !!! WARNING !!!
 ##    Never forget that your password may be intercepted, which
-##    is also very easy with the only currently implemented
+##    is also easy with the only currently implemented
 ##    method. Because of that consider using SSL connection, and
 ##    do not use same password for IRC and anything important,
 ##    it can be easily read by root user on your server.
@@ -73,8 +73,7 @@ package sasl_auth;
 ##    so, this may never be implemented);
 ##  - in case of a long base64 string for authentication it may
 ##    not fit to the maximum message length and authentication
-##    will be failed, it can happen if you have very long
-##    password;
+##    will be failed, it can happen if you have a long password;
 
 load capctl;
 

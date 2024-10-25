@@ -641,7 +641,7 @@ int wild_match (const char *p, const char *str)
 
 /*
  * Hrm.  Here's the plan -- can we convert ircII patterns to normal
- * regexes?  Well, the syntax should be pretty simple, right?
+ * regexes?  Well, the syntax should be simple, right?
  *
  * 	ircII Char:			regex char:
  *	-----------			-----------

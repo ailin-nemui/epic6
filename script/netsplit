@@ -31,7 +31,7 @@ if (word(2 $loadinfo()) != [pf]) { load -pf $word(1 $loadinfo()); return; };
 # that will NOT be treated as server names..
 ^alias boguspat { ^assign isbogus.pats $isbogus.pats $*;echo $* added; } ;
 
-# Next two are pretty obvious
+# Next two are obvious
 ^alias boguslist { echo Pats: $isbogus.pats; };
 ^alias bogusclear { ^assign -isbogus.pats;echo Bogus list clean; };
 

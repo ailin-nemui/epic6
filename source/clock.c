@@ -80,7 +80,7 @@ static		int	hour = -1;
 
 	/* 
 	 * Every time /set clock_interval goes off this function calls
-	 * localtime() to update $Z.  Localtime() is very expensive, so
+	 * localtime() to update $Z.  Localtime() is expensive, so
 	 * if you /set clock_interval too low you will use a lot of cpu.
 	 */
 	get_time(&tv);

@@ -49,7 +49,7 @@ scrollback view is changed.
    1) Determine visible top of display
    2) Calculate Display item at bottom of display
    3) Link the indicator after the Display Item 
-      a) But before display_ip if the indicator is at the very bottom
+      a) But before display_ip if the indicator is at the bottom
    4) Do a recalculate_window_cursor_and_display_ip()
 
 Issue: Above-or-Not-Visible

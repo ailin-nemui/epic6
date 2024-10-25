@@ -323,9 +323,8 @@ static void 	dcc_garbage_collect (void)
 
 /*
  * Note that 'erased' does not neccesarily have to be on ClientList.
- * In fact, it may very well NOT be on ClientList.  The handling at the
- * beginning of the function is only to sanity check that it isnt on 
- * ClientList when we blow it away.
+ * Normally you would have unlinked the DCC already, but we double check
+ * to make sure before we blow it away.
  */
 static 	void		dcc_erase (DCC_list *erased)
 {
@@ -903,7 +902,7 @@ static int	dcc_connected (int fd)
 					encoded_description,
 					dcc->filesize)))
 			    /*
-			     * Compatability with bitchx
+			     * Compatability with bx 
 			     */
 			jvs_blah = do_hook(DCC_CONNECT_LIST, "%s GET %s %s %s " INTMAX_FORMAT, 
 					dcc->user, p_addr, p_port,
@@ -1152,7 +1151,7 @@ static	int	dcc_listen (DCC_list *dcc)
 
 #ifdef MIRC_BROKEN_DCC_RESUME
 	/*
-	 * For stupid MIRC dcc resumes, we need to stash the
+	 * For MIRC dcc resumes, we need to stash the
 	 * local port number, because the remote client will send
 	 * back that port number as its ID of what file it wants
 	 * to resume (rather than the filename. ick.)
@@ -1228,7 +1227,7 @@ static void	dcc_send_booster_ctcp (DCC_list *dcc)
 
 	/*
 	 * If the family the user asked for is not the family of the address
-	 * we want to put in the handshake, something is very wrong.  Tell
+	 * we want to put in the handshake, something is wrong.  Tell
 	 * the user about it and give up.
 	 */
 	if (family_ != family(&my_sockaddr))
@@ -1754,7 +1753,7 @@ DCC_SUBCOMMAND(dcc_close_subcmd)
 
 /*
  * Usage: /DCC CLOSEALL
- * It leaves your DCC list very empty
+ * It leaves your DCC list empty
  */
 static void dcc_closeall (char *args)
 {
@@ -2684,7 +2683,7 @@ void	register_dcc_offer (const char *user, char *type, char *description, char *
 	}
 
 	/*
-	 * Check for invalid or illegal IP addresses.
+	 * Check for bogus IP addresses.
 	 */
 	if (family(&offer) == AF_INET)
 	{
@@ -2841,7 +2840,7 @@ void	register_dcc_offer (const char *user, char *type, char *description, char *
 
 	/* 
 	 * DCC SEND and CHAT have different arguments, so they can't
-	 * very well use the exact same hooked data.  Both now are
+	 * use the exact same hooked data.  Both now are
 	 * identical for $0-4, and SEND adds filename/size in $5-6 
 	 */
 	lock_dcc(dcc);
@@ -3980,9 +3979,9 @@ void 	dcc_reject (const char *from, char *type, char *args)
 
 static void	DCC_close_filesend (DCC_list *Client, const char *info, const char *errormsg)
 {
-	char	lame_ultrix[13];	/* should be plenty */
-	char	lame_ultrix2[13];
-	char	lame_ultrix3[13];
+	char	ultrix_[13];	/* should be plenty */
+	char	ultrix2_[13];
+	char	ultrix3_[13];
 	double 	xtime, xfer;
 	char	*encoded_description;
 	int	l;
@@ -3994,17 +3993,17 @@ static void	DCC_close_filesend (DCC_list *Client, const char *info, const char *
 		xfer = Client->bytes_sent - Client->resume_size;
 	else
 		xfer = Client->bytes_read - Client->resume_size;
-	snprintf(lame_ultrix, sizeof(lame_ultrix), 
+	snprintf(ultrix_, sizeof(ultrix_), 
 			"%2.4g", (xfer / 1024.0 / xtime));
 
-	/* Cant pass %g to put_it (lame ultrix/dgux), fix suggested by sheik. */
+	/* Cant pass %g to put_it (ultrix_/dgux), fix suggested by sheik. */
 	if (xfer <= 0)
 		xfer = 1;
-	snprintf(lame_ultrix2, sizeof(lame_ultrix2), "%2.4g", xfer / 1024.0);
+	snprintf(ultrix2_, sizeof(ultrix2_), "%2.4g", xfer / 1024.0);
 
 	if (xtime <= 0)
 		xtime = 1;
-	snprintf(lame_ultrix3, sizeof(lame_ultrix3), "%2.6g", xtime);
+	snprintf(ultrix3_, sizeof(ultrix3_), "%2.6g", xtime);
 
 	lock_dcc(Client);
 	
@@ -4016,11 +4015,11 @@ static void	DCC_close_filesend (DCC_list *Client, const char *info, const char *
 
 	l = message_from(Client->user, LEVEL_DCC);
 	if (do_hook(DCC_LOST_LIST,"%s %s %s %s %s",
-		Client->user, info, encoded_description, lame_ultrix,
+		Client->user, info, encoded_description, ultrix_,
 		errormsg))
 	     say("DCC %s:%s [%skb] with %s completed in %s sec (%s kb/sec)",
-		info, Client->description, lame_ultrix2, Client->user, 
-		lame_ultrix3, lame_ultrix);
+		info, Client->description, ultrix2_, Client->user, 
+		ultrix3_, ultrix_);
 	pop_message_from(l);
 
 	new_free(&encoded_description);
@@ -4304,7 +4303,7 @@ char *	dccctl (char *input)
 		} else if (!my_strnicmp(listc, "FULL_LINE_BUFFER", len)) {
 			RETURN_INT(client->full_line_buffer);
 		} else if (!my_strnicmp(listc, "FLAGS", len)) {
-			/* This is pretty much a crock. */
+			/* XXX - Returning this as an integer doesn't help the caller */
 			RETURN_INT(client->flags);
 		} else if (!my_strnicmp(listc, "LASTTIME", len)) {
 			malloc_strcat_word(&retval, space, ltoa(client->lasttime.tv_sec), DWORD_NO);

@@ -108,7 +108,7 @@ static int	deinit_mbox_checking (void)
 
 /*
  * mbox_count -- return the number of emails in an mbox.
- * Ok.  This is lame, but so what?
+ * Ok.  This is a hack, but so what?
  *
  * Return value:
  *  The number of emails in an mbox, done by counting the lines that start 

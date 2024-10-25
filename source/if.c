@@ -80,14 +80,13 @@ static char *	my_next_expr (char **args, char type, int whine, int wantchar)
 	*expr_end = 0;
 
 	/* 
-	 * Reset the input string to non-whitespace after the expression.
+	 * Reset the input string to a non-space after the expression.
 	 * "expr_end + 1" is safe here -- "expr_end" points at where the
-	 * old } or ) was, and there is at the very least a nul character
-	 * after that.
+	 * old } or ) was, and there is at least a nul character after that.
 	 */
 	*args = skip_spaces(expr_end + 1);
 
-	/* Remove any extraneous whitespace in the expression */
+	/* Remove any extraneous spaces in the expression */
 	expr_start = skip_spaces(expr_start + 1);
 	remove_trailing_spaces(expr_start, 1);
 
@@ -812,7 +811,7 @@ BUILT_IN_COMMAND(forcmd)
 	while (1)
 	{
 		/* 
-		 * This is very intentional.
+		 * This is quite intentional.
 		 * "lameeval" gets mangled every time through, so we need
 		 * to take a fresh copy from scratch each time.
 		 */

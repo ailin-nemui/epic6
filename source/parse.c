@@ -1312,7 +1312,7 @@ static 	void 	p_snotice (const char *from, const char *to, const char *line)
 }
 
 /*
- * The main handler for those wacky NOTICE commands...
+ * The main handler for NOTICE commands...
  * This is as much like p_privmsg as i can get away with.
  */
 static void 	p_notice (const char *from, const char *comm, const char **ArgList)
@@ -1612,7 +1612,7 @@ void 	parse_server (const char *orig_line, size_t orig_line_size)
  * back together into "buffer" unless the result is bigger than "buffsiz" 
  * in which case it's put into a new_malloc()ed buffer stashed in 'extra'.
  *
- * XXX Ugh.  I hate that I made this so complicated just to generalize this.
+ * XXX Ugh.  I dislike that I made this so complicated just to generalize this.
  */
 void	rfc1459_any_to_utf8 (char *buffer, size_t buffsiz, char **extra)
 {

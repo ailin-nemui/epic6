@@ -52,7 +52,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3000;
+const unsigned long	commit_id = 3001;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -866,10 +866,10 @@ static void	do_signals(void)
  * dcc, ttys, notify, the whole ball o wax, but it does NOT iterate!
  * 
  * You should usually NOT call io() unless you are specifically waiting
- * for something from a file descriptor.  Experience has shown that this
- * function can be called from pretty much anywhere and it doesnt have
- * any serious re-entrancy problems.  It certainly is more reliably 
- * predictable than the old irc_io, and it even uses less CPU.
+ * for something from a file descriptor.  There are no known re-entrancy
+ * problems, and it is intended that you should be able to call this 
+ * function from anywhere.  It has been optimized from the original 
+ * irc_io() function from ircII.
  *
  * Heavily optimized for EPIC3-final to do as little work as possible
  *			-jfn 3/96

@@ -137,7 +137,7 @@ alias xmsglog (args) {
 			(p) { @ :print_last = optarg; if (!isnumber($optarg) || optarg <= 0) @ :error = 1; };
 
 			## XXX: it seems that we can't return from while getopt() loop to abort,
-			## XXX: otherwise strange things will happen, so I decided to use very simple
+			## XXX: otherwise strange things will happen, so I decided to use simple
 			## XXX: error handling mechanism, alas!
 			(!) { @ :error = 1; };
 			(-) { @ :error = 1; };

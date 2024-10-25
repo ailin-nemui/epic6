@@ -1,5 +1,5 @@
 /*
- * server.c:  Things dealing with that wacky program we call ircd.
+ * server.c:  Things dealing with that program we call ircd.
  *
  * Copyright (c) 1990 Michael Sandroff.
  * Copyright (c) 1991, 1992 Troy Rollo.
@@ -999,10 +999,10 @@ static int 	read_server_file (const char *file_path)
 int 	read_default_server_file (void)
 {
 	Filename	file_path;
-	char *	clang_is_hateful;
+	char *	clang_is_frustrating;
 
-	if ((clang_is_hateful = getenv("IRC_SERVERS_FILE")))
-		strlcpy(file_path, clang_is_hateful, sizeof file_path);
+	if ((clang_is_frustrating = getenv("IRC_SERVERS_FILE")))
+		strlcpy(file_path, clang_is_frustrating, sizeof file_path);
 	else
 	{
 #ifdef SERVERS_FILE
@@ -3976,7 +3976,7 @@ void	server_passive_wait (int i, const char *stuff)
  * server to send a 421 NOSUCHCOMMAND numeric back to us.  
  *
  * Ordinarily, this would be non-controversial, except that you might do
- * a /WAIT while another /WAIT is already pending.  This can get ugly, 
+ * a /WAIT while another /WAIT is already pending.  This can get messy,
  * so how we choose to manage that is, _No WAIT shall return until ALL 
  * pending WAITs have completed_.  This means a WAIT does not return at 
  * the first possible convenience; but only when it is guaranteed to be
@@ -4463,7 +4463,7 @@ void	set_server_005 (int refnum, char *setting, const char *value)
 		add_to_alist((&s->a005), setting, new_005);
 	}
 
-	/* XXX I hate this, i hate this, i hate this.  This is a hack XXX */
+	/* XXX This is a hack XXX */
 	/* We need to set up a table to handle 005 callbacks. */
 	if (!my_stricmp(setting, "CASEMAPPING"))
 	{

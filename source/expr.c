@@ -1632,8 +1632,7 @@ static	char	*alias_special_char (char **buffer, char *ptr, const char *args, cha
 			char	*ph = ptr + 1;
 
 			/* 
-			 * BLAH. This didnt allow for nesting before.
-			 * How lame.
+			 * This didnt allow for nesting before.
 			 */
 			if ((span = MatchingBracket(ph, '{', '}')) >= 0)
 				ptr = ph + span;
@@ -1688,9 +1687,9 @@ static	char	*alias_special_char (char **buffer, char *ptr, const char *args, cha
 		}
 
 		/*
-		 * $* is the very special "all args" expando.  You really
+		 * $* is the special "all args" expando.  You really
 		 * shouldnt ever use $0-, because its a lot more involved
-		 * (see below).  $* is handled here; very quickly, quietly,
+		 * (see below).  $* is handled here; quickly, quietly,
 		 * and without any fuss.
 		 */
 		case '*':

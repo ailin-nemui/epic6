@@ -528,7 +528,7 @@ static void remove_hook (int which, char *nick, int sernum, int quiet)
 			new_free(&(tmp->stuff));
 			new_free(&(tmp->filename));
 			if (tmp->arglist != NULL)
-                    destroy_arglist(&(tmp->arglist));
+			    destroy_arglist(&(tmp->arglist));
 					
 	
 			hooklist[tmp->userial] = NULL;
@@ -568,6 +568,8 @@ static void remove_hook (int which, char *nick, int sernum, int quiet)
 		new_free(&(tmp->nick));
 		new_free(&(tmp->stuff));
 		new_free(&(tmp->filename));
+		if (tmp->arglist != NULL)
+			destroy_arglist(&(tmp->arglist));
 		tmp->next = NULL;
 		
 		new_free((char **)&tmp);
@@ -1014,7 +1016,7 @@ static int 	do_hook_internal (int which, char **result, const char *format, va_l
 
 /* 
  * shook: the SHOOK command -- this probably doesnt belong here,
- * and shook is probably a stupid name.  It simply asserts a fake
+ * and shook is probably a bad name.  It simply asserts a fake
  * hook event for a given type.  Fraught with peril!
  */
 BUILT_IN_COMMAND(shookcmd)
@@ -1228,7 +1230,7 @@ BUILT_IN_COMMAND(oncmd)
 			nick = malloc_strdup(nick);
 			
 			/*
-			 * If nick is empty, something is very wrong.
+			 * If nick is empty, something is wrong.
 			 */
 			if (!*nick)
 			{
@@ -1265,7 +1267,7 @@ BUILT_IN_COMMAND(oncmd)
 
 
 			/*
-			 * Slurp up any whitespace after the nick
+			 * Slurp up any spaces after the nick
 			 */
 			while (my_isspace(*args))
 				args++;
@@ -1334,6 +1336,7 @@ BUILT_IN_COMMAND(oncmd)
 						type, nick, type, str,
 						(not ? "nothing" : exp),
 						noise_info[noisy]->name, sernum, userial);
+				new_free(&str);
 			}
 			else
 			{
@@ -1746,7 +1749,7 @@ enum
  *         'gettypes' may be set, and not all gettypes will silently ignore
  *         being set.
  *
- *   It is very important to remember that GET won't ever SET anything(!!!)
+ *   It is super important to remember that GET won't ever SET anything(!!!)
  *   Won't, and shouldn't.
  *
  *   * GET/SET types:

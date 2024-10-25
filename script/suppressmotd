@@ -4,7 +4,7 @@ if (word(2 $loadinfo()) != [pf]) { load -pf $word(1 $loadinfo()); return; };
 # Here's the story.  We want to suppress server-side MOTDs.
 # I don't know why anyone would want to do this, but eh, this
 # used to be an epic function and i removed it and people noticed
-# it so I'm honor bound to script it at the very least.
+# it so I'm honor bound to script it at the least.
 #
 load addset;
 addset suppress_server_motd bool;

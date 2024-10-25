@@ -14,7 +14,7 @@
 #
 #   NOTIFY_USERHOST_AUTOMATIC -- if set on, userhosts will be displayed in
 #                                the signon messages (this can lag you if you
-#                                have a very large notify list)
+#                                have a large notify list)
 #
 #
 # note: this script uses the serial number 556 for its serial hooks

@@ -11,14 +11,8 @@
 
 #define NOCRYPT		-2
 #define ANYCRYPT	-1
-#define PROGCRYPT	0
-#define	SEDCRYPT	1
-#define SEDSHACRYPT	2
-#define CAST5CRYPT	3
-#define BLOWFISHCRYPT	4
-#define AES256CRYPT	5
-#define AESSHA256CRYPT	6
-#define FISHCRYPT	7
+#define AES256CRYPT	0
+#define AESSHA256CRYPT	1
 
 /*
  * Crypt: the crypt list structure,  consists of the nickname, and the
@@ -26,14 +20,10 @@
  */
 typedef struct	CryptStru
 {
-/*
-	char *	nick;
-*/
 	char *	serv;
 	char *	passwd;
 	int	passwdlen;
 	int	sed_type;
-	char *	prog;
 	int	refnum;
 }	Crypt;
 
@@ -46,18 +36,9 @@ typedef struct	CryptStru
 	char *	decipher_message (const char *, size_t, List *, int *);
 	char *	cipher_message	(const char *, size_t, List *, int *);
 
-	ssize_t blowfish_encoder (const char *, size_t, const void *, size_t, char *, size_t);
-	ssize_t blowfish_decoder (const char *, size_t, const void *, size_t, char *, size_t);
-	ssize_t cast5_encoder (const char *, size_t, const void *, size_t, char *, size_t);
-	ssize_t cast5_decoder (const char *, size_t, const void *, size_t, char *, size_t);
 	ssize_t aes_encoder (const char *, size_t, const void *, size_t, char *, size_t);
 	ssize_t aes_decoder (const char *, size_t, const void *, size_t, char *, size_t);
 	ssize_t aessha_encoder (const char *, size_t, const void *, size_t, char *, size_t);
 	ssize_t aessha_decoder (const char *, size_t, const void *, size_t, char *, size_t);
-	ssize_t fish_encoder (const char *, size_t, const void *, size_t, char *, size_t);
-	ssize_t fish_decoder (const char *, size_t, const void *, size_t, char *, size_t);
-
-	void     encrypt_sed (char *, int, const char *, int);
-	void     decrypt_sed (char *, int, const char *, int);
 
 #endif /* _CRYPT_H_ */

@@ -515,10 +515,10 @@ int	make_status (int window_, Status *status)
 		return -1;
 	}
 
-	/* For hidden windows, we just pretend they're on the main screen */
+	/* For invisible windows, we just pretend they're on the main screen */
 	if (get_window_screennum(window_) < 0)
 	{
-		debuglog("make_status(%d) -- updating hidden window", user_refnum);
+		debuglog("make_status(%d) -- updating invisible window", user_refnum);
 		screen_columns = get_screen_columns(main_screen);
 	}
 	else
@@ -782,7 +782,7 @@ int	make_status (int window_, Status *status)
 		    anything_changed++;
 
 		    /*
-		     * Ends up that BitchX always throws this hook and
+		     * Ends up that bx always throws this hook and
 		     * people seem to like having this thrown in standard
 		     * mode, so i'll go along with that.
 		     *
@@ -863,7 +863,7 @@ int	redraw_status (int window_, Status *status)
 
 		if (dumb_mode || !foreground || get_window_screennum(window_) < 0)
 		{
-			debuglog("redraw_status(%d/%d/%d): dumb/bg/hidden",
+			debuglog("redraw_status(%d/%d/%d): dumb/bg/invisible",
 				user_refnum, status_line, line);
 			continue;
 		}
@@ -980,7 +980,7 @@ int     permit_status_update (int flag)
         status_updates_permitted = flag;
 	debuglog("permit_status_update: %d -> %d", old_flag, flag);
 
-	/* XXX I hate this, but I just want this problem to go away. */
+	/* XXX This is a hack, but I just want this problem to go away. */
 	/* This is caused by doing a /window command within /on window_create */
 	if (flag && defered_status_updates)
 	{
@@ -1028,8 +1028,8 @@ int     permit_status_update (int flag)
  * for each status expando you have in your status bar (ie, %T calls 
  * status_time()).  Each function returns a malloced string, which is then
  * sprintf()d into a bigger string, and the malloced string is freed.
- * This is inefficient, because status redraws happen pretty frqeuently
- * and malloc()ing is very expensive.
+ * This is inefficient, because status redraws happen frqeuently
+ * and malloc()ing is expensive.
  *
  * Historically, when epic redraws your status bar, it calls a function
  * for each status expando, just like ircII, but each function has its
@@ -1231,8 +1231,8 @@ STATUS_FUNCTION(status_right_justify)
 
 /*
  * Displays whatever windows are notifying, and have notified
- * (usually when output happens on hidden windows that you marked with 
- * /window notify on)
+ * (usually when output happens on invisible windows that you 
+ * marked with /window notify on)
  */
 STATUS_FUNCTION(status_notify_windows)
 {
@@ -1248,8 +1248,8 @@ STATUS_FUNCTION(status_notify_windows)
 		return empty_string;
 
 	/*
-	 * Look for any notifying windows that have had some output since 
-	 * they have been hidden and collect their refnums.
+	 * Look for any notifying windows that have had some output while
+	 * they've been invisible and collect their refnums.
 	 */
 	*buf2 = 0;
 	while (traverse_all_windows2(&w))
@@ -1495,7 +1495,7 @@ STATUS_FUNCTION(status_mail)
 	/*
 	 * The order is important here.  We check to see whether or not
 	 * this is a current-type window *FIRST* because most of the time
-	 * that will be false, and check_mail() is very expensive; we dont
+	 * that will be false, and check_mail() is expensive; we dont
 	 * want to do it if we're going to ignore the result.
 	 */
 	if (!get_int_var(MAIL_VAR) || !DISPLAY_ON_WINDOW || 

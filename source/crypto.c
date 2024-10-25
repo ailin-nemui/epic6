@@ -1,5 +1,5 @@
 /*
- * crypto.c: SED/CAST5/BLOWFISH/AES encryption and decryption routines.
+ * crypto.c: AES encryption and decryption routines.
  *
  * Copyright (c) 1990 Michael Sandroff.
  * Copyright (c) 1991, 1992 Troy Rollo.
@@ -34,49 +34,6 @@
  */
 
 /*
- *	-About CAST5
- *
- * IRCII includes support for cast5-cbc (ircII calls it cast128) which is a
- * symmetric cipher that uses a 128 bit key (hense cast128) and a 64 bit 
- * initialization vector.
- *
- * IRCII sends the a CTCP message:
- *	PRIVMSG <target> :\001CAST128ED-CBC <payload>\001\r\n
- *
- * Where the <payload> is composed of:
- *	<Initialization Vector>		An 8-byte random Cast IV
- *	<Blocks>			Some number of 8 byte blocks
- *	<Final Block>			A final block with up to 7 bytes of 
- *					data. The final byte tells you how many
- *					bytes should be ignored.
- *
- * The whole thing is encrypted with CAST5-CBC.  Well, the IV is not encrypted
- * but you still have to run it through the decrypter because the CBC won't be
- * set up correctly if you don't.
- *
- * If a message is not divisible by 8 chars, and does not have at least two
- * blocks (an IV and a Final Block), it is probably a rogue message and should 
- * be discarded.
- *
- * The ircII format is almost compatable with openssl -- whereas openssl
- * expects the all of the fill bytes in <Final Block> to be the same, ircII
- * fills them in with random chars.  We must decrypt the string in unbuffered
- * mode or openssl will throw fits.  We handle the fill bytes ourself.
- *
- * When we encrypt a message, we let openssl do the buffering, so the fill 
- * bytes are not random, but ircII doesn't care.
- */
-
-/*
- *	-About BlowFish
- *
- * EPIC supports BlowFish-cbc in the same format as Cast5-CBC:
- *	PRIVMSG <target> :\001BLOWFISH-CBC <payload>\001\r\n
- * with the same <payload> as cast5.  This is only supported with EPIC for
- * now.  It is not compatable with FiSH (a plugin for mirc, irssi, and xchat)
- */
-
-/*
  *	-About AES-256
  *
  * EPIC supports AES-256-cbc in the same format as Cast5-CBC:
@@ -106,48 +63,6 @@
  * a passphrase.
  */
 
-/*
- *	- About FiSH
- *
- * EPIC does not support FiSH yet.  Fish looks like this:
- *	PRIVMSG <target> :+OK <payload>\r\n
- * where <payload> are 64 byte blocks encoded with base64 into 12 characters.
- */
-
-/*
- *	- About SED
- *
- * Some will look at these routines and recoil in horror with their insecurity.
- * It is true that SED ("Simple Encrypted Data", although maybe "Slightly 
- * Entropic Data" is closer to truth) is a XOR-CBC stream cipher that uses 
- * the same cipherkey for each message and is therefore subject to all the 
- * trivial stream cipher attacks.  So it doesn't provide security.
- *
- * But what SED does provide is an effective defense against server-side 
- * pattern matching.  This is useful for discretely sending /DCC offers.
- * Because a DCC SEND reveals not only your real IP address, but also a port
- * from which you will send a file to the first taker, and because the server
- * sees this information before anyone else does, the security of your DCCs
- * are only as secure as your server admin.  For those who use rogue networks,
- * using SED to send twiddle your DCC offers is better than nothing.
- *
- * Alas, CTCP-over-SED is only compatable with EPIC and BitchX.
- */
-
-/*
- *	- About SED-SHA
- *
- * All XOR-CBC stream ciphers that re-use their key are subject to
- * substitution attacks (by man-in-the-middle who has two ciphertexts) and 
- * key recovery (by man-in-the-middle who has one plaintext).  SED-SHA does
- * not promise any better security than SED, but it does use SHA256() of your
- * cipherkey to make the key longer (32 bytes).
- *
- * The SED-SHA cipher is always available, since it doesn't depend on openssl.
- * Alas, SED-SHA is not going to be compatable with non-epic5 users.
- */
-
-
 #include "irc.h"
 #include "list.h"
 #include "sedcrypt.h"
@@ -159,10 +74,7 @@
 #include <openssl/rand.h>
 
 static char *	decipher_evp (const char *passwd, int passwdlen, const char *ciphertext, int cipherlen, const EVP_CIPHER *type, int *outlen, int ivsize);
-static char *	decrypt_by_prog (const char *str, size_t *len, List *crypt);
-
 static char *	cipher_evp (const char *passwd, int passwdlen, const char *plaintext, int plaintextlen, const EVP_CIPHER *type, int *retsize, int ivsize);
-static char *	encrypt_by_prog (const char *str, size_t *len, List *crypt);
 
 /* This function is used by CTCP handling, but not by xform! */
 char *	decipher_message (const char *ciphertext, size_t len, List *cryptl, int *retlen)
@@ -171,28 +83,14 @@ char *	decipher_message (const char *ciphertext, size_t len, List *cryptl, int *
     {
 	Crypt *crypti = (Crypt *)(cryptl->d);
 
-	if (crypti->sed_type == CAST5CRYPT || crypti->sed_type == BLOWFISHCRYPT ||
-	    crypti->sed_type == AES256CRYPT || crypti->sed_type == AESSHA256CRYPT ||
-	    crypti->sed_type == FISHCRYPT)
+	if ( crypti->sed_type == AES256CRYPT || crypti->sed_type == AESSHA256CRYPT)
 	{
 	    char *	outbuf = NULL;
 	    const EVP_CIPHER *type;
 	    int	bytes_to_trim;
 	    int ivsize, blocksize;
 
-	    if (crypti->sed_type == CAST5CRYPT)
-	    {
-		ivsize = 8, blocksize = 8;
-	    }
-	    else if (crypti->sed_type == BLOWFISHCRYPT)
-	    {
-		ivsize = 8, blocksize = 8;
-	    }
-	    else if (crypti->sed_type == FISHCRYPT)
-	    {
-		ivsize = 0, blocksize = 8;
-	    }
-	    else if (crypti->sed_type == AES256CRYPT || crypti->sed_type == AESSHA256CRYPT)
+	    if (crypti->sed_type == AES256CRYPT || crypti->sed_type == AESSHA256CRYPT)
 	    {
 		ivsize = 16, blocksize = 16;
 	    }
@@ -217,13 +115,7 @@ char *	decipher_message (const char *ciphertext, size_t len, List *cryptl, int *
 		break;
 	    }
 
-	    if (crypti->sed_type == CAST5CRYPT)
-		type = EVP_cast5_cbc();
-	    else if (crypti->sed_type == BLOWFISHCRYPT)
-		type = EVP_bf_cbc();
-	    else if (crypti->sed_type == FISHCRYPT)
-		type = EVP_bf_ecb();
-	    else if (crypti->sed_type == AES256CRYPT || crypti->sed_type == AESSHA256CRYPT)
+	    if (crypti->sed_type == AES256CRYPT || crypti->sed_type == AESSHA256CRYPT)
 		type = EVP_aes_256_cbc();
 	    else
 		break;		/* Not supported */
@@ -241,24 +133,6 @@ char *	decipher_message (const char *ciphertext, size_t len, List *cryptl, int *
 	    outbuf[len - bytes_to_trim] = 0; 
 	    memmove(outbuf, outbuf + ivsize, len - ivsize);
 	    return (char *)outbuf;
-	}
-	else if (crypti->sed_type == SEDCRYPT || crypti->sed_type == SEDSHACRYPT)
-	{
-		char *	text;
-
-		text = new_malloc(len + 1);
-		memmove(text, ciphertext, len);
-		decrypt_sed(text, len, crypti->passwd, crypti->passwdlen);
-		*retlen = len;
-		return (char *)text;
-	}
-	else if (crypti->sed_type == PROGCRYPT)
-	{
-		char *retval;
-
-		retval = decrypt_by_prog(ciphertext, &len, cryptl);
-		*retlen = len;
-		return (char *)retval;
 	}
 	else
 		panic(1, "decipher_message: crypti->sed_type %d is not valid", crypti->sed_type);
@@ -278,7 +152,7 @@ static char *	decipher_evp (const char *passwd_, int passwdlen, const char *ciph
 	int	outlen2;
         EVP_CIPHER_CTX *context = EVP_CIPHER_CTX_new();
 
-	if(context == NULL) {
+	if (context == NULL) {
 		yell("ERROR: Could not generate cipher context");
 		return NULL;
 	}
@@ -317,59 +191,6 @@ static char *	decipher_evp (const char *passwd_, int passwdlen, const char *ciph
 	return (char *)outbuf;
 }
 
-void     decrypt_sed (char *str_, int len, const char *passwd_, int passwdlen)
-{
-	unsigned char *str = (unsigned char *)str_;
-const 	unsigned char *passwd = (const unsigned char *)passwd_;
-        int	passwd_pos,
-                i;
-        char    mix,
-                tmp;
-
-        if (!passwd)
-                return;                 /* no decryption */
-
-        passwdlen = strlen((const char *)passwd);
-        passwd_pos = 0;
-        mix = 0;
-
-        for (i = 0; i < len; i++)
-        {
-                tmp = mix ^ str[i] ^ passwd[passwd_pos]; 
-                str[i] = tmp;
-                mix ^= tmp;
-                passwd_pos = (passwd_pos + 1) % passwdlen;
-        }
-        str[i] = (char) 0;
-}
-
-static char *	decrypt_by_prog (const char *str, size_t *len, List *cryptl)
-{
-        char    *ret = NULL, *input;
-        char *  args[3];
-        int     iplen;
-	Crypt *	crypti = (Crypt *)(cryptl->d);
-
-        args[0] = malloc_strdup(crypti->prog);
-        args[1] = malloc_strdup("decrypt");
-        args[2] = NULL;
-        input = malloc_strdup2(crypti->passwd, "\n");
-
-        iplen = strlen(input);
-        new_realloc((void**)&input, *len + iplen);
-        memmove(input + iplen, str, *len);
-
-        *len += iplen;
-        ret = exec_pipe(crypti->prog, input, len, args);
-
-        new_free(&args[0]);
-        new_free(&args[1]);
-        new_free((char**)&input);
-
-        new_realloc((void**)&ret, 1+*len);
-        ret[*len] = 0;
-        return ret;
-}
 
 /*************************************************************************/
 char *	cipher_message (const char *orig_message, size_t len, List *cryptl, int *retlen)
@@ -381,30 +202,13 @@ char *	cipher_message (const char *orig_message, size_t len, List *cryptl, int *
 	if (!orig_message || !crypti || !retlen)
 		return NULL;
 
-	if (crypti->sed_type == CAST5CRYPT || crypti->sed_type == BLOWFISHCRYPT ||
-	    crypti->sed_type == FISHCRYPT ||
-	    crypti->sed_type == AES256CRYPT || crypti->sed_type == AESSHA256CRYPT)
+	if (crypti->sed_type == AES256CRYPT || crypti->sed_type == AESSHA256CRYPT)
 	{
 	    char *ciphertext = NULL;
 	    size_t	ivlen;
 	    const EVP_CIPHER *type;
 
-	    if (crypti->sed_type == CAST5CRYPT)
-	    {
-		type = EVP_cast5_cbc();
-		ivlen = 8;
-	    }
-	    else if (crypti->sed_type == BLOWFISHCRYPT)
-	    {
-		type = EVP_bf_cbc();
-		ivlen = 8;
-	    }
-	    else if (crypti->sed_type == FISHCRYPT)
-	    {
-		type = EVP_bf_ecb();
-		ivlen = 0;		/* XXX Sigh */
-	    }
-	    else if (crypti->sed_type == AES256CRYPT || crypti->sed_type == AESSHA256CRYPT)
+	    if (crypti->sed_type == AES256CRYPT || crypti->sed_type == AESSHA256CRYPT)
 	    {
 		type = EVP_aes_256_cbc();
 		ivlen = 16;
@@ -420,24 +224,6 @@ char *	cipher_message (const char *orig_message, size_t len, List *cryptl, int *
 		return NULL;
 	    }
 	    return (char *)ciphertext;
-	}
-	else if (crypti->sed_type == SEDCRYPT || crypti->sed_type == SEDSHACRYPT)
-	{
-		char *	ciphertext;
-
-		ciphertext = new_malloc(len + 1);
-		memmove(ciphertext, orig_message, len);
-		encrypt_sed(ciphertext, len, crypti->passwd, strlen(crypti->passwd));
-		*retlen = len;
-		return (char *)ciphertext;
-	}
-	else if (crypti->sed_type == PROGCRYPT)
-	{
-		char *ciphertext;
-
-		ciphertext = encrypt_by_prog(orig_message, &len, cryptl);
-		*retlen = len;
-		return (char *)ciphertext;
 	}
 	else
 		panic(1, "cipher_message: crypti->sed_type %d is not valid", crypti->sed_type);
@@ -504,60 +290,6 @@ static char *	cipher_evp (const char *passwd_, int passwdlen, const char *plaint
 	return (char *)outbuf;
 }
 
-void     encrypt_sed (char *str_, int len, const char *passwd_, int passwd_len)
-{
-	unsigned char *str = (unsigned char *)str_;
-	unsigned char *passwd = (unsigned char *)passwd_;
-        int     passwd_pos,
-                i;
-        char    mix, 
-                tmp;
-
-        if (!passwd)
-                return;                 /* no encryption */
-
-        passwd_len = strlen((char *)passwd);
-        passwd_pos = 0;
-        mix = 0;
-
-        for (i = 0; i < len; i++)
-        {
-                tmp = str[i];
-                str[i] = mix ^ tmp ^ passwd[passwd_pos];
-                mix ^= tmp;
-                passwd_pos = (passwd_pos + 1) % passwd_len;
-        }
-        str[i] = (char) 0;
-}
-
-static char *	encrypt_by_prog (const char *str, size_t *len, List *cryptl)
-{
-        char    *ret = NULL, *input;
-        char *  args[3];
-        int     iplen;
-	Crypt *	crypti = (Crypt *)(cryptl->d);
-
-        args[0] = malloc_strdup(crypti->prog);
-        args[1] = malloc_strdup("encrypt");
-        args[2] = NULL;
-        input = malloc_strdup2(crypti->passwd, "\n");
-
-        iplen = strlen(input);
-        new_realloc((void**)&input, *len + iplen);
-        memmove(input + iplen, str, *len);
-
-        *len += iplen;
-        ret = exec_pipe(crypti->prog, input, len, args);
-
-        new_free(&args[0]);
-        new_free(&args[1]);
-        new_free((char**)&input);
-
-        new_realloc((void**)&ret, 1+*len);
-        ret[*len] = 0;
-        return (char *)ret;
-}
-
 /**************************************************************************/
 static void	ext256_passwd (const char *orig, size_t orig_len, char **passwd, size_t *passwdlen)
 {
@@ -587,6 +319,30 @@ static void	copy_passwd (const char *orig, size_t orig_len, char **passwd, size_
 	*passwdlen = orig_len;
 }
 
+#if 0
+static void 	PBKDF2_HMAC_SHA_512 (const char *pass, uint32_t outputBytes, char* hexResult, uint8_t *binResult)
+{
+	unsigned int 	i;
+	unsigned char 	digest[outputBytes];
+	unsigned char	salt[32];
+	uint32_t	iterations;
+
+        err = RAND_bytes(salt, sizeof(salt));
+        if (err != 1)
+                return;
+        err = RAND_bytes(&iterations, sizeof(iterations);
+        if (err != 1)
+                return 0;
+
+	PKCS5_PBKDF2_HMAC(pass, strlen(pass), salt, sizeof(salt), iterations, EVP_sha512(), outputBytes, digest);
+	for (i = 0; i < sizeof(digest); i++)
+	{
+		sprintf(hexResult + (i * 2), "%02x", 255 & digest[i]);
+		binResult[i] = digest[i];
+	};
+}
+#endif
+
 /*
  * These are helper functions for $xform() to do SSL strong crypto.
  * XXX These are cut and pasted from decipher_message. 
@@ -595,8 +351,8 @@ static void	copy_passwd (const char *orig, size_t orig_len, char **passwd, size_
 ssize_t	x ## _encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len) \
 { 									\
 	int	retsize = 0; 						\
-	char *	retval; 					\
-	char *realpasswd;					\
+	char *	retval; 						\
+	char *realpasswd;						\
 	char *	realpasswd_;						\
 	size_t	realpasswdlen;						\
 									\
@@ -607,7 +363,7 @@ ssize_t	x ## _encoder (const char *orig, size_t orig_len, const void *meta, size
 	} 								\
 									\
 	make_passwd (meta, meta_len, &realpasswd_, &realpasswdlen);	\
-	realpasswd = (char *)realpasswd_;			\
+	realpasswd = (char *)realpasswd_;				\
 	retval = cipher_evp(realpasswd, realpasswdlen, orig, orig_len,	\
 				y (), &retsize, ivsize); 		\
 	if (retval && retsize > 0) 					\
@@ -696,9 +452,6 @@ ssize_t	x ## _decoder (const char *ciphertext, size_t len, const void *meta, siz
 	return retlen;												\
 }
 
-CRYPTO_HELPER_FUNCTIONS(blowfish, EVP_bf_cbc, 8, 8, copy_passwd, 1)
-CRYPTO_HELPER_FUNCTIONS(fish, EVP_bf_ecb, 8, 0, copy_passwd, 1)
-CRYPTO_HELPER_FUNCTIONS(cast5, EVP_cast5_cbc, 8, 8, copy_passwd, 1)
 CRYPTO_HELPER_FUNCTIONS(aes, EVP_aes_256_cbc, 16, 16, ext256_passwd, 1)
 CRYPTO_HELPER_FUNCTIONS(aessha, EVP_aes_256_cbc, 16, 16, sha256_passwd, 1)
 

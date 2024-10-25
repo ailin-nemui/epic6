@@ -279,8 +279,8 @@ static int	file_write (int logtype, int fd, const char *stuff)
  *			fflush() returned EOF
  *		or, the return value of fprintf().
  *  
- * This function is nothing but a bald wrapper to file_write which does
- * all of the heavy lifting.
+ * This function is nothing but a wrapper to file_write which does
+ * most of the work.
  */
 int 	target_file_write (const char *fdstr, const char *stuff)
 {

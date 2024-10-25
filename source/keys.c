@@ -161,7 +161,7 @@ static void	bindctl_getmap 		(Key *, const char *, int, char **);
  * #1:  I reuse the code from show_all_bindings in various forms all over
  *      the place.  It might be better to write small functions, and one
  *      'recurse_keys' function which is passed those small functions.
- * #2:  This file is very disorganized and messy.
+ * #2:  This file is disorganized and messy.
  */
 
 

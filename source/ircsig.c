@@ -83,7 +83,6 @@ static sigfunc *reset_one_signal (int sig_no, sigfunc *sig_handler)
 	sigemptyset(&sa.sa_mask);
 	sigaddset(&sa.sa_mask, sig_no);
 
-	/* this is ugly, but the `correct' way.  i hate c. -mrg */
 	sa.sa_flags = 0;
 #if defined(SA_RESTART) || defined(SA_INTERRUPT)
 	if (SIGALRM == sig_no || SIGINT == sig_no)

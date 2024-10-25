@@ -173,7 +173,7 @@ extern	unsigned 	current_window_priority;
 	int		get_window_log_mangle 			(int);
 	int     	get_window_beep_always 			(int);
 	Mask *  	get_window_notify_mask 			(int);
-	int     	get_window_notify_when_hidden 		(int);
+	int     	get_window_notify_when_invisible	(int);
 
 	int		set_window_change_line			(int, int);
 	int		set_window_cursor 			(int, int);

@@ -98,14 +98,14 @@ typedef	struct	WindowStru
 	short		rebuild_scrollback;	/* True if scrollback needs rebuild */
 
 	/* User-settable flags */
-	short		notify_when_hidden;	/* True to notify for hidden output */
+	short		notify_when_invisible;	/* True to notify for invisible output */
 	short		notified;		/* True if we have notified */
 	char *		notify_name;		/* The name for %{1}F */
 	short		beep_always;		/* True if a beep to win always beeps */
 	Mask		notify_mask;		/* the notify mask.. */
 	short		skip;			/* Whether window should be skipped */
 	short		old_co;			/* .... */
-	short		my_columns;		/* How wide we are when hidden */
+	short		my_columns;		/* How wide we are when invisible */
 	short		indent;			/* How far /set indent goes */
 	short		swappable;		/* Can it be swapped in or out? */
 	short		scrolladj;		/* Push back top-of-win on grow? */
@@ -220,7 +220,7 @@ static const char *onoff[] = { "OFF", "ON" };
  * The current window.  This replaces the old notion of "curr_scr_win" 
  * which had the arbitrary restriction that you could not easily operate
  * on a window that was not on the current screen, and switching between
- * screens (or to a hidden window) was impossible.  We no longer have any
+ * screens (or to an invisible window) was impossible.  We no longer have any
  * concept of "current screen", opting instead to use "last_input_screen"
  * for handling input events, and "current_window" for everything else.
  * current_window is set when you do an input event, so all those places
@@ -229,8 +229,8 @@ static const char *onoff[] = { "OFF", "ON" };
 static	int	current_window_ = -1;
 
 /*
- * All of the hidden windows.  These windows are not on any screen, and
- * therefore are not visible.
+ * All of the invisible (hidden) windows.  These windows are not on 
+ * any screen, and therefore are not visible.
  */
 static	int	_invisible_list = -1;
 
@@ -432,7 +432,7 @@ int	new_window (int screen_)
 	new_w->update = 0;
 
 	/* User-settable flags */
-	new_w->notify_when_hidden = 0;
+	new_w->notify_when_invisible = 0;
 	new_w->notified = 0;
 	new_w->notify_name = NULL;
 	new_w->beep_always = 0;
@@ -540,7 +540,7 @@ int	new_window (int screen_)
 	new_w->scrolling_top_of_display = new_w->top_of_scrollback;
 	new_w->old_display_lines = 1;
 
-	/* Make the window visible (or hidden) to set its geometry */
+	/* Make the window visible (or invisible) to set its geometry */
 	if (screen_ >= 0 && add_to_window_list(screen_, new_w->refnum) >= 1)
 		set_screens_current_window(screen_, new_w->refnum);
 	else
@@ -601,7 +601,7 @@ static int	unlink_window (int window_)
 		fixed = 0;
 
 	/*
-	 * If this is a hidden window and the client is not going down,
+	 * If this is an invisible window and the client is not going down,
 	 * you cannot kill this window if:
 	 *
 	 * 1) This is a fixed window and it is the only window.
@@ -759,6 +759,7 @@ static void	delete_window_contents (int window_)
 	new_free(&window->logfile);
 	new_free(&window->name);
 	new_free(&window->uuid);
+	new_free(&window->original_server_string);
 
 	/* Delete the indicator if it's not already in the logical display */
 	if (window->scrollback_indicator->prev == NULL &&
@@ -900,7 +901,7 @@ static int	traverse_all_windows (int *window_)
 
 		/*
 		 * If there are no other screens, then if there is a list
-		 * of hidden windows, try that.  Otherwise we're done.
+		 * of invisible windows, try that.  Otherwise we're done.
 		 */
 		if (ns_ < 0 && get_invisible_list() < 1)
 			return 0;
@@ -912,7 +913,7 @@ static int	traverse_all_windows (int *window_)
 
 	/*
 	 * Otherwise there are no other windows, and we're not on a screen
-	 * (eg, we're hidden), so we're all done here.
+	 * (eg, we're invisible), so we're all done here.
 	 */
 	else
 		return 0;
@@ -1096,7 +1097,7 @@ void 	add_to_invisible_list (int window_)
  *
  * Argument:
  *	screen	- The screen to which the window will be visible
- *	window 	- A window to be made visible (must be hidden/new).
+ *	window 	- A window to be made visible (must be invisible/new).
  *
  * Notes:
  *	Adding a window to a screen involves two decisions
@@ -1137,12 +1138,12 @@ static int	add_to_window_list (int screen_, int window_)
 	 * XXX There should be sanity checks here:
 	 *   1. "new_w->screen" should be NULL
 	 *	1b. If it is not NULL, it should be in screen->_window_list.
-	 *	1c. If it is NULL, it should be on hidden_list.
+	 *	1c. If it is NULL, it should be on invisible_list.
 	 */
 
 	/*
 	 * Hidden windows "notify" (%F) or "activity" (%E) when they
-	 * have output while hidden; but when they're made visible,
+	 * have output while invisible; but when they're made visible,
 	 * they're no longer eligible for notification.
 	 */
 	new_w->notified = 0;
@@ -1362,7 +1363,7 @@ static void	recalculate_window_positions (int screen_)
 	short	top;
 
 	if (screen_ < 0)
-		return;		/* Window is hidden.  Dont bother */
+		return;		/* Window is invisible.  Dont bother */
 
 	top = 0;
 	while (traverse_all_windows_on_screen2(&window_, screen_))
@@ -1385,10 +1386,10 @@ static void	recalculate_window_positions (int screen_)
  *
  * Arguments:
  *	v_window_	- The refnum of a visible window.
- *	window_		- A valid hidden window refnum 
- *			  If not a valid hidden window refnum (either <= 0 or 
+ *	window_		- A valid invisible window refnum 
+ *			  If not a valid invisible window refnum (either <= 0 or 
  *			  just invalid), silently replaced with an unspecified
- *			  hidden window (usually the LAST window)
+ *			  invisible window (usually the LAST window)
  *
  * Caveats:
  *	This function tries to avoid recoverable failures.  If the window
@@ -1396,18 +1397,18 @@ static void	recalculate_window_positions (int screen_)
  *	be chosen rather than failing the operation.
  *	
  * Errors:
- *	- If there are no hidden windows, obviously you can't swap one in
+ *	- If there are no invisible windows, obviously you can't swap one in
  *	- If v_window_ is not visible
  *	- If window_ is not invisible (it tries to avoid this)
  *	- If v_window_ is not swappable
- *	- If window_ is not swappable and there are other hidden windows
+ *	- If window_ is not swappable and there are other invisible windows
  *		Note that in situations where you didn't select window_,
  *		the client may select an unswappable window and then fail on 
- *		it, rather than looking for a hidden window that wouldn't fail.
+ *		it, rather than looking for a invisible window that wouldn't fail.
  *		Allowing this to fail could be considered a bug
  *
  *
- *	If "window_" is not a valid hidden window, then a hidden window
+ *	If "window_" is not a valid invisible window, then a invisible window
  *	will be selected to avoid failure.
  *
  * swap_window: This swaps the given window with the current window.  The
@@ -1417,7 +1418,7 @@ static void	recalculate_window_positions (int screen_)
  */
 static	void	swap_window (int v_window_, int window_)
 {
-	int	check_hidden = 1;
+	int	check_invisible = 1;
 	int	recalculate_everything = 0;
 	Window *v_window, *window;
 	int	screen_;
@@ -1450,7 +1451,7 @@ static	void	swap_window (int v_window_, int window_)
 
 	if (!window && get_invisible_list() >= 1)
 	{
-		check_hidden = 0;
+		check_invisible = 0;
 		window_ = get_invisible_list();
 		window = get_window_by_refnum_direct(window_);
 	}
@@ -1471,11 +1472,11 @@ static	void	swap_window (int v_window_, int window_)
 
 	/*
 	 * THE VISIBLE WINDOW MUST BE VISIBLE
-	 * THE HIDDEN WINDOW MUST BE INVISIBLE
+	 * THE INVISIBLE WINDOW MUST BE INVISIBLE
 	 */
 	if (get_window_screennum(window_) >= 0 || get_window_screennum(v_window_) < 0)
 	{
-		say("You can only SWAP a hidden window with a visible window.");
+		say("You can only SWAP an invisible window with a visible window.");
 		return;
 	}
 
@@ -1490,7 +1491,7 @@ static	void	swap_window (int v_window_, int window_)
 			say("Window %d is not swappable", v_window->user_refnum);
 		return;
 	}
-	if (check_hidden && !window->swappable)
+	if (check_invisible && !window->swappable)
 	{
 		if (window->name)
 			say("Window %s is not swappable", window->name);
@@ -1501,7 +1502,7 @@ static	void	swap_window (int v_window_, int window_)
 
 	/*
 	 * ADD THE CURRENTLY VISIBLE WINDOW TO THE INVISIBLE LIST
-	 * REMOVE THE CURRENTLY HIDDEN WINDOW FROM THE INVISIBLE LIST
+	 * REMOVE THE CURRENTLY INVISIBLE WINDOW FROM THE INVISIBLE LIST
 	 */
 	set_screen_last_window_refnum(screen_, v_window_);
 	remove_from_invisible_list(window_);
@@ -1531,7 +1532,7 @@ static	void	swap_window (int v_window_, int window_)
 
 	/*
 	 * IF THE CURRENTLY VISIBLE WINDOW IS THE LAST INPUT WINDOW
-	 * Make the currently hidden window the last input window
+	 * Make the currently invisible window the last input window
 	 */
 	if (get_screen_input_window(screen_) == (int)v_window_)
 	{
@@ -1814,7 +1815,7 @@ static 	void 	resize_window (int how, int window_, int offset)
 
 	if (get_window_screennum(window_) < 0)
 	{
-		say("You cannot change the size of hidden windows!");
+		say("You cannot change the size of invisible windows!");
 		return;
 	}
 
@@ -1920,7 +1921,7 @@ static void	resize_window_display (int window_)
 	 */
 	else if (cnt < 0)
 	{
-		/* Use any whitespace we may have lying around */
+		/* Use any spaces we may have lying around */
 		cnt += (window->old_display_lines - 
 			window->scrolling_distance_from_display_ip);
 		for (i = 0; i > cnt; i--)
@@ -2061,7 +2062,7 @@ static	int	restart = 0;
 		 *  2. Physical changes
 		 * Some updates implicate both.  
 		 *
-		 * We cannot do physical updates on hidden windows (since 
+		 * We cannot do physical updates on invisible windows (since 
 		 * they are not visible), so this function first does the
 		 * logical updates and conditionally the physical updates.
 		 */
@@ -2138,7 +2139,7 @@ static	int	restart = 0;
 			tmp->update &= (~FORCE_STATUS);
 			tmp->update &= (~REDRAW_STATUS);
 			tmp->update &= (~UPDATE_STATUS);
-			debuglog("update_all_windows(%d), hidden (not redrawn)", tmp->user_refnum);
+			debuglog("update_all_windows(%d), invisible (not redrawn)", tmp->user_refnum);
 			continue;
 		}
 
@@ -2425,9 +2426,10 @@ void 	recalculate_windows (int screen_)
 	 */
 	if (excess_li > 0)
 	{
-		int	assigned_lines;
+		int	assigned_lines, circuit_breaker;
 
 		assigned_lines = 0;
+		circuit_breaker = 0;
 		while (assigned_lines < excess_li)
 		{
 			/*
@@ -2444,7 +2446,7 @@ void 	recalculate_windows (int screen_)
 				 * If this is a fixed window, and there is 
 				 * another window, then skip it.
 				 */
-				if (tmp->fixed_size && window_count)
+				if (tmp->fixed_size && window_count && circuit_breaker < 1000)
 					continue;
 
 				tmp->display_lines++;
@@ -2452,6 +2454,13 @@ void 	recalculate_windows (int screen_)
 
 				if (assigned_lines >= excess_li)
 					break;
+			}
+			if (circuit_breaker++ >= 10000)
+			{
+				yell("recalculate_windows: I'm having trouble. "
+				     "Handed out %d of %d excess lines",
+						assigned_lines, excess_li);
+				break;
 			}
 		}
 	}
@@ -2654,7 +2663,7 @@ static void 	my_goto_window (int screen_, int which)
 
 	if ((which < 0) || (which > get_screen_visible_windows(screen_)))
 	{
-		say("GOTO: Illegal value");
+		say("GOTO: Value is out of range");
 		return;
 	}
 	i = 1;
@@ -2678,18 +2687,18 @@ static int 	hide_window (int window_)
 	if (get_window_screennum(window_) < 0)
 	{
 		if (get_window_name(window_))
-			say("Window %s is already hidden", get_window_name(window_));
+			say("Window %s is already invisible", get_window_name(window_));
 		else
-			say("Window %d is already hidden", get_window_user_refnum(window_));
+			say("Window %d is already invisible", get_window_user_refnum(window_));
 		return 0;
 	}
 
 	if (!get_window_swappable(window_))
 	{
 		if (get_window_name(window_))
-			say("Window %s can't be hidden", get_window_name(window_));
+			say("Window %s can't be invisible", get_window_name(window_));
 		else
-			say("Window %d can't be hidden", get_window_user_refnum(window_));
+			say("Window %d can't be invisible", get_window_user_refnum(window_));
 		return 0;
 	}
 
@@ -2706,7 +2715,7 @@ static int 	hide_window (int window_)
 
 /*
  * swap_last_window:  This swaps the current window with the last window
- * that was hidden.
+ * that was invisible.
  * This is a keybinding.
  */
 BUILT_IN_KEYBINDING(swap_last_window)
@@ -2738,7 +2747,7 @@ BUILT_IN_KEYBINDING(next_window)
 }
 
 /*
- * swap_next_window:  This swaps the current window with the next hidden 
+ * swap_next_window:  This swaps the current window with the next invisible
  * window.
  * This is a keybinding.
  */
@@ -2770,7 +2779,7 @@ BUILT_IN_KEYBINDING(previous_window)
 
 /*
  * swap_previous_window:  This swaps the current window with the next 
- * hidden window.
+ * invisible window.
  * This is a keybinding
  */
 BUILT_IN_KEYBINDING(swap_previous_window)
@@ -3860,15 +3869,15 @@ static void 	clear_window (int window_)
 	window_statusbar_needs_redraw(window->refnum);
 }
 
-void 	clear_all_windows (int visible, int hidden)
+void 	clear_all_windows (int visible, int invisible)
 {
 	int	window_;
 
 	for (window_ = 0; traverse_all_windows2(&window_); )
 	{
-		if (visible && !hidden && get_window_screennum(window_) < 0)
+		if (visible && !invisible && get_window_screennum(window_) < 0)
 			continue;
-		if (!visible && hidden && get_window_screennum(window_) >= 0)
+		if (!visible && invisible && get_window_screennum(window_) >= 0)
 			continue;
 
 		clear_window(window_);
@@ -3912,15 +3921,15 @@ static void	unclear_window (int window_)
 	window_statusbar_needs_redraw(window->refnum);
 }
 
-void	unclear_all_windows (int visible, int hidden, int force)
+void	unclear_all_windows (int visible, int invisible, int force)
 {
 	int	window_;
 
 	for (window_ = 0; traverse_all_windows2(&window_); )
 	{
-		if (visible && !hidden && get_window_screennum(window_) < 0)
+		if (visible && !invisible && get_window_screennum(window_) < 0)
 			continue;
-		if (!visible && hidden && get_window_screennum(window_) >= 0)
+		if (!visible && invisible && get_window_screennum(window_) >= 0)
 			continue;
 		if (force)
 			reset_window_clear_point(window_);
@@ -4809,13 +4818,13 @@ Mask *	get_window_notify_mask (int window)
 	return &win->notify_mask;
 }
 
-int	get_window_notify_when_hidden (int window)
+int	get_window_notify_when_invisible (int window)
 {
 	Window *win;
 
 	if (!(win = get_window_by_refnum_direct(window)))
 		return 0;
-	return win->notify_when_hidden;
+	return win->notify_when_invisible;
 }
 
 static int	get_window_display_counter_incr (int window)
@@ -4883,7 +4892,7 @@ static int	get_invisible_window (const char *name, char **args)
 		if (my_strnicmp(arg, "LAST", strlen(arg)) == 0)
 		{
 			if (get_invisible_list() < 1)
-				say("%s: There are no hidden windows", name);
+				say("%s: There are no invisible windows", name);
 			return get_invisible_list();
 		}
 		if ((tmp_ = get_window2(name, &arg)) >= 1)
@@ -4893,10 +4902,10 @@ static int	get_invisible_window (const char *name, char **args)
 			else
 			{
 				if (get_window_name(tmp_))
-					say("%s: Window %s is not hidden!",
+					say("%s: Window %s is not invisible!",
 						name, get_window_name(tmp_));
 				else
-					say("%s: Window %d is not hidden!",
+					say("%s: Window %d is not invisible!",
 						name, get_window_user_refnum(tmp_));
 			}
 		}
@@ -5009,7 +5018,7 @@ WINDOWCMD(add)
  * the current window.  
  *  - If the previous window does not exist, the top window on the screen is used.
  *  - If the previous window is visible, then it behaves as /WINDOW REFNUM.   
- *  - If the previous window is hidden, then it behaves as /WINDOW SWAP 
+ *  - If the previous window is invisible, then it behaves as /WINDOW SWAP 
  *
  * Caveats:
  *  - If the previous window is on a different screen, then it is made the
@@ -5017,8 +5026,8 @@ WINDOWCMD(add)
  *
  * Side effects:
  *	The previous window is made the current window
- *	If the previous window is hidden, it is made visible and the current window
- *		is made hidden.
+ *	If the previous window is invisible, it is made visible and the current window
+ *		is made invisible.
  *	If the previous window is visible, both will remain visible.
  *	If the previous window is on a different screen, the current window of the
  *		current screen will remain unchanged,
@@ -5065,7 +5074,7 @@ WINDOWCMD(back)
  * and the rest is discretionary (scrolling).
  *
  * Warnings:
- *	/WINDOW BALANCE 	on a hidden window is a no-op.
+ *	/WINDOW BALANCE 	on an invisible window is a no-op.
  *	/WINDOW -BALANCE	is a no-op
  */
 WINDOWCMD(balance)
@@ -5086,13 +5095,13 @@ WINDOWCMD(balance)
 }
 
 /*
- * Usage:	/WINDOW BEEP_ALWAYS ON		Sound beeps, even when hidden
- *		/WINDOW BEEP_ALWAYS OFF		Don't sound beeps when hidden
- *	Controls whether you hear beeps in this window when it's hidden
+ * Usage:	/WINDOW BEEP_ALWAYS ON		Sound beeps, even when invisible
+ *		/WINDOW BEEP_ALWAYS OFF		Don't sound beeps when invisible
+ *	Controls whether you hear beeps in this window when it's invisible
  * 
  * Caveats:
- *  - Whenever a beep happens in a hidden window with BEEP_ALWAYS ON,
- *    A message will appear in the current window telling you what hidden
+ *  - Whenever a beep happens in an invisible window with BEEP_ALWAYS ON,
+ *    A message will appear in the current window telling you what invisible
  *    window had the beep
  *  - Beeping is supplementary to notification (%F)
  *
@@ -5454,7 +5463,7 @@ WINDOWCMD(describe)
 	    say("\tNo logfile given");
 
 	say("\tNotification is %s", 
-				onoff[window->notify_when_hidden]);
+				onoff[window->notify_when_invisible]);
 	say("\tNotify level is %s", 
 				mask_to_str(&window->notify_mask));
 
@@ -5679,8 +5688,8 @@ WINDOWCMD(grow)
  * /WINDOW HIDE
  * This directs the client to remove the specified window from the current
  * (visible) screen and place the window on the client's invisible list.
- * A hidden window has no "screen", and so can not be seen, and does not
- * have a size.  It can be unhidden onto any screen.
+ * An invisible window has no "screen", and so can not be seen, and does not
+ * have a size.  It can be shown (added) onto any screen.
  */
 WINDOWCMD(hide)
 {
@@ -5886,11 +5895,11 @@ WINDOWCMD(kill)
 }
 
 /*
- * /WINDOW KILL_ALL_HIDDEN
- * This kills all of the hidden windows.  If the current window is hidden,
+ * /WINDOW KILL_ALL_INVISIBLE (KILL_ALL_HIDDEN)
+ * This kills all of the invisible windows.  If the current window is invisible,
  * then the current window will probably change to another window.
  */
-WINDOWCMD(kill_all_hidden)
+WINDOWCMD(kill_all_invisible)
 {
 	int	tmp_;
 	int	reset_current_window = 0;
@@ -5977,7 +5986,7 @@ WINDOWCMD(killable)
 /*
  * /WINDOW KILLSWAP
  * This arranges for the current window to be replaced by the last window
- * to be hidden, and also destroys the current window.
+ * to be invisible, and also destroys the current window.
  */
 WINDOWCMD(killswap)
 {
@@ -5998,7 +6007,7 @@ WINDOWCMD(killswap)
 			delete_window_contents(refnum);
 	}
 	else
-		say("There are no hidden windows!");
+		say("There are no invisible windows!");
 
 	return current_window_;
 }
@@ -6007,8 +6016,8 @@ WINDOWCMD(killswap)
  * /WINDOW LAST
  * This changes the current window focus to the window that was most recently
  * the current window *but only if that window is still visible*.  If the 
- * window is no longer visible (having been HIDDEN), then the next window
- * following the current window will be made the current window.
+ * window is no longer visible (via WINDOW HIDE), then the next window following 
+ * the current window will be made the current window.
  */
 WINDOWCMD(last)
 {
@@ -6480,7 +6489,7 @@ WINDOWCMD(merge)
  *
  * Warnings:
  *	When <number> == 0			is a no-op
- *	When window is hidden			is a no-op
+ *	When window is invisible		is a no-op
  *	When there is only one window on screen	is a no-op
  *	/WINDOW -MOVE				is a no-op
  *
@@ -6512,7 +6521,7 @@ WINDOWCMD(move)
  *
  * Warnings:
  *	When <number> < 1			is a no-op
- *	When window is hidden			is a no-op
+ *	When window is invisible		is a no-op
  *	When there is only one window on screen	is a no-op
  *	/WINDOW -MOVE_TO			is a no-op
  *
@@ -6630,7 +6639,7 @@ WINDOWCMD(new)
  * Usage:	/WINDOW NEW_HIDE
  * 		/WINDOW -NEW_HIDE	(is permitted but not recommended)
  *
- * Create a new window that is hidden from its inception.
+ * Create a new window that is invisible from its inception.
  * This is an atomic version of /WIDNDOW NEW HIDE.
  */
 WINDOWCMD(new_hide)
@@ -6643,28 +6652,28 @@ WINDOWCMD(new_hide)
  * Usage:	/WINDOW NEXT
  * 		/WINDOW -NEXT	(is permitted but not recommended)
  *
- * Do a /WINDOW SWAP with the hidden window whose user refnum is 
+ * Do a /WINDOW SWAP with the invisible window whose user refnum is 
  * immediately after this window's.
  *
  * Conceptually, every window is sorted according to its "user_refnum".
  * You can use /WINDOW NEXT to cycle through your invisible windows
  * in user_refnum sort order.  It will wrap around to the highest refnum
- * when you reach the lowest hidden window.
+ * when you reach the lowest invisible window.
  *
  * Return value:
- *	The next higher hidden window is returned
+ *	The next higher invisible window is returned
  *
  * Errors:
- *	No hidden windows		is an error
+ *	No invisible windows		is an error
  *
  * Warnings:
  *	No warnings
  *
  * Side effects;
- *	The current window is hidden
- *	The next higher hidden window is made visible
- *	The next higher hidden window is made the current window
- *	The next higher hidden window is made the current input window
+ *	The current window is made invisible
+ *	The next higher invisible window is made visible
+ *	The next higher invisible window is made the current window
+ *	The next higher invisible window is made the current input window
  */
 WINDOWCMD(next)
 {
@@ -6695,7 +6704,7 @@ WINDOWCMD(next)
 
 	if (next == NULL || next == window)
 	{
-		say("There are no hidden windows");
+		say("There are no invisible windows");
 		return 0;
 	}
 
@@ -6726,10 +6735,10 @@ WINDOWCMD(notify)
 		return 0;
 
 	if (!args)
-		window->notify_when_hidden = 0;
+		window->notify_when_invisible = 0;
 	else
 	{
-		if (!get_boolean("NOTIFY", args, &window->notify_when_hidden))
+		if (!get_boolean("NOTIFY", args, &window->notify_when_invisible))
 			return 0;
 	}
 
@@ -6948,8 +6957,8 @@ WINDOWCMD(number)
  * 
  * Make the window most recently /WINDOW PUSHed the current window
  * If that window no longer exists, the one PUSHed before that is used.
- * If that window is hidden, behave as though you did /WINDOW SHOW 
- * If that window is not hidden, behave as though you did /WINDOW REFNUM
+ * If that window is invisible, behave as though you did /WINDOW SHOW 
+ * If that window is visible, behave as though you did /WINDOW REFNUM
  *
  * Return value:
  *	The previously PUSHed window is returned
@@ -6959,7 +6968,7 @@ WINDOWCMD(number)
  *
  * Warnings:
  *	/WINDOW -POP						is a no-op
- *	/WINDOW POP in a hidden window 				is a no-op
+ *	/WINDOW POP in an invisible window 			is a no-op
  *	/WINDOW POP when no previously PUSHes have occurred	is a no-op
  *	/WINDOW POP when all previous PUSHes have been KILLed	is a no-op
  *
@@ -6981,7 +6990,7 @@ WINDOWCMD(pop)
 
 	if (get_window_screennum(window->refnum) < 0)
 	{
-		say("Cannot pop the window stack from a hidden window");
+		say("Cannot pop the window stack from an invisible window");
 		return refnum;
 	}
 
@@ -7015,28 +7024,28 @@ WINDOWCMD(pop)
  * Usage:	/WINDOW PREVIOUS
  * 		/WINDOW -PREVIOUS	(is permitted but not recommended)
  *
- * Do a /WINDOW SWAP with the hidden window whose user refnum is 
+ * Do a /WINDOW SWAP with the invisible window whose user refnum is 
  * immediately before this window's.
  *
  * Conceptually, every window is sorted according to its "user_refnum".
  * You can use /WINDOW PREVIOUS to cycle through your invisible windows
  * in user_refnum sort order.  It will wrap around to the highest refnum
- * when you reach the lowest hidden window.
+ * when you reach the lowest invisible window.
  *
  * Return value:
- *	The next lower hidden window is returned
+ *	The next lower invisible window is returned
  *
  * Errors:
- *	No hidden windows		is an error
+ *	No invisible windows		is an error
  *
  * Warnings:
  *	No warnings
  *
  * Side effects;
  *	The current window is hidden
- *	The next lower hidden window is made visible
- *	The next lower hidden window is made the current window
- *	The next lower hidden window is made the current input window
+ *	The next lower invisible window is made visible
+ *	The next lower invisible window is made the current window
+ *	The next lower invisible window is made the current input window
  */
 WINDOWCMD(previous)
 {
@@ -7071,7 +7080,7 @@ WINDOWCMD(previous)
 
 	if (previous == NULL || previous == window)
 	{
-		say("There are no hidden windows to swap in");
+		say("There are no invisible windows to swap in");
 		return 0;
 	}
 
@@ -7092,7 +7101,7 @@ WINDOWCMD(previous)
  *
  * Warnings:
  *	/WINDOW -PUSH						is a no-op
- *	/WINDOW PUSH in a hidden window 			is a no-op
+ *	/WINDOW PUSH in an invisible window 			is a no-op
  */
 WINDOWCMD(push)
 {
@@ -7106,7 +7115,7 @@ WINDOWCMD(push)
 
 	if (get_window_screennum(window->refnum) < 0)
 	{
-		say("Cannot push a hidden window onto the window stack");
+		say("Cannot push an invisible window onto the window stack");
 		return refnum;
 	}
 
@@ -7196,7 +7205,7 @@ EXT_WINDOWCMD(query)
  * The rebuild happens "later"
  *
  * Errors:
- *	No hidden windows		is an error
+ *	No invisible windows		is an error
  *
  * Warnings:
  *	/WINDOW -REBUILD_SCROLLBACK	is a no-op
@@ -7256,9 +7265,6 @@ WINDOWCMD(rebuild_scrollback)
  * /WINDOW REJOIN is a terminal verb: it always slurps up all of the rest
  * of the command as it's arguments and returns NULL and you cannot do any
  * more operations after it is finished.
- *
- * If this function looks insane, it's because I wrote it after a long
- * day of coding in java, and so I am, in fact, commitable right now.
  */
 EXT_WINDOWCMD(rejoin)
 {
@@ -8312,7 +8318,8 @@ static const window_ops options [] = {
 	{ "HOLD_SLIDER",	windowcmd_hold_slider		},
 	{ "INDENT",		windowcmd_indent 		},
 	{ "KILL",		windowcmd_kill 			},
-	{ "KILL_ALL_HIDDEN",	windowcmd_kill_all_hidden	},
+	{ "KILL_ALL_HIDDEN",	windowcmd_kill_all_invisible	},
+	{ "KILL_ALL_INVISIBLE",	windowcmd_kill_all_invisible	},
 	{ "KILL_OTHERS",	windowcmd_kill_others 		},
 	{ "KILLABLE",		windowcmd_killable		},
 	{ "KILLSWAP",		windowcmd_killswap 		},
@@ -8711,7 +8718,7 @@ static int	add_to_display (int window_, const char *str, intmax_t refnum)
 	}
 
 	/*
-	 * XXX I don't like this very much, but this is a placeholder
+	 * XXX I don't like this much, but this is a placeholder
 	 * for a superior solution someday.
 	 *
 	 * The problem is how to handle output in zero-height windows.
@@ -8875,7 +8882,7 @@ static int	flush_scrollback (int window_, int abandon)
  * of the scrollback (below the current hold view).  
  * 		This is the /WINDOW FLUSH command.
  *
- * If a user holds for a very long time, they could have many hundreds or
+ * If a user holds for a long enough time, they could have many hundreds or
  * thousands of lines that they have never seen.  Perhaps the user chooses
  * not to see those lines at all, and uses /WINDOW FLUSH to throw them away.
  * We figure out what things the user has never seen (below the bottom of
@@ -9774,7 +9781,7 @@ char 	*windowctl 	(char *input)
 	    } else if (!my_strnicmp(listc, "MISCFLAGS", len)) {
 		RETURN_INT(0);
 	    } else if (!my_strnicmp(listc, "NOTIFY", len)) {
-		RETURN_INT(w->notify_when_hidden);
+		RETURN_INT(w->notify_when_invisible);
 	    } else if (!my_strnicmp(listc, "NOTIFY_NAME", len)) {
 		RETURN_STR(w->notify_name);
 	    } else if (!my_strnicmp(listc, "NOTIFIED", len)) {

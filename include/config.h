@@ -50,26 +50,14 @@
 #define DEFAULT_SSL_CIPHERS NULL
 
 /*
- * This is an experimental feature to thwart infinite recursion.  It is not
- * very sophisticated so it's not turned on by default.  In the future I 
- * will probably do something less lame.
- *
- * When this many stack frames are created, epic will refuse to make any
- * more.  This will stop epic from crashing with a segfault when you do 
+ * EPIC creates stack frames to hold local variables when you run an 
+ * alias, on, etc.  When this many stack frames are created, the client 
+ * will presume things have gone terribly wrong and will bail out ("panic").
+ * This will stop epic from crashing with a segfault when you do 
  * infinite recursion, but it's possible that epic may infinitely recurse
  * if your alias is tricky enough.  Pick your poison
  */
 #define MAX_STACK_FRAMES 20000
-
-/*
- * This sets how you want to see the 368 numeric to be hooked.  The default
- * (#undef) is the traditional EPIC behavior.
- *		EPIC		ircII
- *	$0	server		server
- *	$1	number of bans	channel name
- *	$2	channel name	<nothing -- now number of bans>
- */
-#undef IRCII_LIKE_BAN_SUMMARY
 
 /*
  * When this is define'd, the -z flag, the IRCUSER and USER environment 
@@ -89,29 +77,7 @@
  */
 #define WINDOW_CREATE
 
-/*
- * Define this if you want an mIRC compatable /dcc resume capability.
- * Note that this BREAKS THE IRC PROTOCOL, and if you use this feature,
- * the behavior is NON COMPLIANT.  If this warning doesnt bother you,
- * and you really want this feature, then go ahead and #define this.
- *
- * Unfortunately, due to popular pressure, im having to #define this by
- * default.  The capability wont be turned on, however, unless you also
- * do a /set mirc_broken_dcc_resume on,   which is OFF by default.  No,
- * there will not be a way to default it to ON short of modifying vars.c.
- * This is a comprimise, and i wont give any further.  Those who dont want
- * this feature can #undef this, or can hook /on set "mirc_broken_dcc_resume".
- */
 #define MIRC_BROKEN_DCC_RESUME
-
-/*
- * Youll want to define this if your system is missing the glob()
- * call, or if its broken (solaris).
- *
- * Actually, you should #define this if you can compile the supplied
- * glob.c.  If it works, dont mess with it.
- */
-#define NEED_GLOB
 
 /* And here is the port number for default client connections.  */
 #define IRC_PORT 6667
@@ -119,7 +85,7 @@
 /*
  * If you want to have a file containing the list of irc servers to 
  * use, define SERVERS_FILE to be that filename.  Put the file in the 
- * ircII library directory.  This file should be whitespace seperated
+ * ircII library directory.  This file should be space seperated
  * hostname:portnum:password (with the portnum and password being
  * optional).  This server list will supercede the DEFAULT_SERVER
  */
@@ -343,8 +309,8 @@
 
 #undef	I_DONT_TRUST_MY_USERS	/* There are certain things that the stock
 				   ircII client doesnt allow users to do
-				   that are neither illegal by the letter of
-				   the protocol nor the spirit of the protocol.
+				   that are acceptable by both the letter and
+				   the spirit of the protocol.
 				   These are the things that only a really
 				   anal retentive person would want to totaly
 				   prohibit his users from doing without any

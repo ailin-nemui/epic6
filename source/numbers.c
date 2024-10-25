@@ -1,6 +1,6 @@
 /*
  * numbers.c: handles all those strange numeric response dished out by that
- * wacky, nutty program we call ircd 
+ * program we call ircd 
  *
  * Copyright (c) 1990 Michael Sandroff.
  * Copyright (c) 1991, 1992 Troy Rollo.
@@ -832,9 +832,8 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 				/* Also, cs's "too many nick changes" num */
 	{
 		/*
-		 * Ugh. What a total trainwreck this is.  Sometimes, I
-		 * really hate all the ircd's out there in the world that
-		 * have to be supported.
+		 * Sometimes, all those ircd's out there in the world can 
+		 * present a real challenge to maintain coherence.
 		 *
 		 * Well, there are at least four different, occasionally
 		 * scrutable ways we can get this numeric.

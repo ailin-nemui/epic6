@@ -730,7 +730,7 @@ static void	term_attribute (Attribute *a)
  *	Unlike some other clients, EPIC does not simply slurp up all digits 
  *	after a ^C sequence (either by calling strtol() or while (isdigit()),
  *	because some people put ^C sequences before legitimate output with 
- * 	numbers (like the time on your status bar).  This function is very
+ * 	numbers (like the time on your status bar).  This function is 
  *	careful only to consume the characters that represent a bona fide 
  *	^C code.  This means things like "^C49" resolve to "^C4" + "9"
  *
@@ -740,7 +740,7 @@ static ssize_t	read_color_seq_new (const char *start, void *d)
 {
 	/* 
 	 * We map C-colors to X-colors here
-	 * If the value is -1, then that is an illegal ^C lvalue.
+	 * Unacceptable C-colors are mapped to COLOR_NONE (-1)
 	 */
 	static	uint32_t	fg_x_color_conv[] = {
 		 COLOR_X(231),  COLOR_X(16),  COLOR_X(18),  COLOR_X(28), 
@@ -822,7 +822,7 @@ static ssize_t	read_color_seq_new (const char *start, void *d)
 		}
 
 		/*
-		 * Check for the very special case of a definite terminator.
+		 * Check for the special case of a definite terminator.
 		 * If the argument to ^C is -1, then we absolutely know that
 		 * this ends the code without starting a new one
 		 */
@@ -1039,7 +1039,7 @@ static ssize_t	read_rgb_seq (const char *start, void *d)
 		}
 
 		/*
-		 * Check for the very special case of a definite terminator.
+		 * Check for the special case of a definite terminator.
 		 * If the argument to ^X is -1, then we absolutely know that
 		 * this ends the code without starting a new one
 		 */
@@ -1200,7 +1200,7 @@ static ssize_t	read_color256_seq (const char *start, void *d)
 		}
 
 		/*
-		 * Check for the very special case of a definite terminator.
+		 * Check for the special case of a definite terminator.
 		 * If the argument to ^X# is -1, then we absolutely know that
 		 * this ends the code without starting a new one
 		 */
@@ -2421,8 +2421,8 @@ const 	char 	*words;
 				break;
 			}
 			/* 
-			 * The above is only for non-whitespace.
-			 * whitespace is...
+			 * The above is only for non-spaces.
+			 * spaces are...
 			 */
 			FALLTHROUGH
 			/* FALLTHROUGH */
@@ -2501,7 +2501,7 @@ const 	char 	*words;
 				col--;
 
 			/*
-			 * XXX Hackwork and trickery here.  In the very rare
+			 * XXX Hackwork and trickery here.  In the rare
 			 * case where we end the output string *exactly* at
 			 * the end of the line, then do not do any more of
 			 * the following handling.  Just punt right here.
@@ -2532,7 +2532,7 @@ const 	char 	*words;
 			 * that the (now) second line needs to be broken right 
 			 * there, and we chew up (and lose) a character going 
 			 * through the parsing loop before we notice this.
-			 * Not good.  It seems that in this very rare case, 
+			 * Not good.  It seems that in this rare case, 
 			 * people would rather not have the really long word 
 			 * be sent to the second line, but rather included on 
 			 * the first line (it does look better this way), 
@@ -2737,6 +2737,7 @@ const 	char 	*words;
 	new_free(&output[line]);
 	new_free(&cont_free);
 	new_free(&str_free);
+	new_free(&buffer);
 	*lused = line - 1;
 	return output;
 }
@@ -2752,7 +2753,7 @@ const 	char 	*words;
  * If you change the above three functions, you would do well to make sure to 
  * adjust this function, for if you do not, then HIGGLEDY PIGGLEDY WILL ENSUE.
  *
- * XXX - This is a bletcherous inelegant hack and i hate it.
+ * XXX - This is a bletcherous inelegant hack and i need to refactor it.
  *
  * This function is used for:
  *	1. Toplines
@@ -3088,7 +3089,7 @@ void 	add_to_screen (const char *buffer)
 
 	/*
 	 * The next priority is "LEVEL_NONE" which is only ever
-	 * used by the /WINDOW command, but I'm not even sure it's very
+	 * used by the /WINDOW command, but I'm not even sure it's 
 	 * useful.  Maybe I'll think about this again later.
 	 */
 	else if ((get_who_level() == LEVEL_NONE) && 
@@ -3300,9 +3301,9 @@ static void 	add_to_window (int window_, const char *str)
 	cursor_to_input();
 
 	/*
-	 * Handle special cases for output to hidden windows -- A beep to
-	 * a hidden window with /window beep_always on results in a real beep 
-	 * and a message to the current window.  Output to a hidden window 
+	 * Handle special cases for output to invisible windows -- A beep to
+	 * an invisible window with /window beep_always on results in a real beep 
+	 * and a message to the current window.  Output to an invisible window 
 	 * with /window notify on results in a message to the current window 
 	 * and a status bar redraw.
 	 *
@@ -3323,7 +3324,7 @@ static void 	add_to_window (int window_, const char *str)
 	    {
 		set_window_notified(window_, 1);
 	    	do_hook(WINDOW_NOTIFIED_LIST, "%u %s", get_window_user_refnum(window_), level_to_str(get_who_level()));
-		if (get_window_notify_when_hidden(window_))
+		if (get_window_notify_when_invisible(window_))
 			type = "Activity";
 		update_all_status();
 	    }
@@ -3951,7 +3952,7 @@ void 	kill_screen (int screen_)
 
 	if (!screen)
 	{
-		say("You may not kill the hidden screen.");
+		say("You may not kill the invisible screen.");
 		return;
 	}
 	if (main_screen == screen_)
@@ -4011,7 +4012,7 @@ int	get_screen_bottom_window (int screen_)
 	int	refnum;
 
 	if (!(screen = get_screen_by_refnum(screen_)))
-		panic(1, "get_screen_bottom_window: screen %d is hidden", screen_);
+		panic(1, "get_screen_bottom_window: screen %d is invisible", screen_);
 	if (screen->_window_list == -1)
 		panic(1, "get_screen_bottom_window: screen %d has no windows?", screen->screennum);
 
@@ -4382,7 +4383,7 @@ void	fire_normal_prompt (const char *utf8str)
  * shouldn't continue without answering.
  *
  * As of the time of this writing (10/13) your callback function does not
- * need to be utf8 aware, but that is going to change very soon.
+ * need to be utf8 aware, but that is going to change someday.
  *
  * Arguments:
  *	prompt	The prompt to display to the user.  This will interrupt

@@ -1045,8 +1045,8 @@ static cJSON_bool print_array(const cJSON * const item, printbuffer * const outp
 static cJSON_bool parse_object(cJSON * const item, parse_buffer * const input_buffer);
 static cJSON_bool print_object(const cJSON * const item, printbuffer * const output_buffer);
 
-/* Utility to jump whitespace and cr/lf */
-static parse_buffer *buffer_skip_whitespace(parse_buffer * const buffer)
+/* Utility to jump spaces and cr/lf */
+static parse_buffer *buffer_skip_spaces(parse_buffer * const buffer)
 {
     if ((buffer == NULL) || (buffer->content == NULL))
     {
@@ -1128,7 +1128,7 @@ CJSON_PUBLIC(cJSON *) cJSON_ParseWithLengthOpts(const char *value, size_t buffer
         goto fail;
     }
 
-    if (!parse_value(item, buffer_skip_whitespace(skip_utf8_bom(&buffer))))
+    if (!parse_value(item, buffer_skip_spaces(skip_utf8_bom(&buffer))))
     {
         /* parse failure. ep is set. */
         goto fail;
@@ -1137,7 +1137,7 @@ CJSON_PUBLIC(cJSON *) cJSON_ParseWithLengthOpts(const char *value, size_t buffer
     /* if we require null-terminated JSON without appended garbage, skip and then check for a null terminator */
     if (require_null_terminated)
     {
-        buffer_skip_whitespace(&buffer);
+        buffer_skip_spaces(&buffer);
         if ((buffer.offset >= buffer.length) || buffer_at_offset(&buffer)[0] != '\0')
         {
             goto fail;
@@ -1467,7 +1467,7 @@ static cJSON_bool parse_array(cJSON * const item, parse_buffer * const input_buf
     }
 
     input_buffer->offset++;
-    buffer_skip_whitespace(input_buffer);
+    buffer_skip_spaces(input_buffer);
     if (can_access_at_index(input_buffer, 0) && (buffer_at_offset(input_buffer)[0] == ']'))
     {
         /* empty array */
@@ -1509,12 +1509,12 @@ static cJSON_bool parse_array(cJSON * const item, parse_buffer * const input_buf
 
         /* parse next value */
         input_buffer->offset++;
-        buffer_skip_whitespace(input_buffer);
+        buffer_skip_spaces(input_buffer);
         if (!parse_value(current_item, input_buffer))
         {
             goto fail; /* failed to parse value */
         }
-        buffer_skip_whitespace(input_buffer);
+        buffer_skip_spaces(input_buffer);
     }
     while (can_access_at_index(input_buffer, 0) && (buffer_at_offset(input_buffer)[0] == ','));
 
@@ -1626,7 +1626,7 @@ static cJSON_bool parse_object(cJSON * const item, parse_buffer * const input_bu
     }
 
     input_buffer->offset++;
-    buffer_skip_whitespace(input_buffer);
+    buffer_skip_spaces(input_buffer);
     if (can_access_at_index(input_buffer, 0) && (buffer_at_offset(input_buffer)[0] == '}'))
     {
         goto success; /* empty object */
@@ -1672,12 +1672,12 @@ static cJSON_bool parse_object(cJSON * const item, parse_buffer * const input_bu
 
         /* parse the name of the child */
         input_buffer->offset++;
-        buffer_skip_whitespace(input_buffer);
+        buffer_skip_spaces(input_buffer);
         if (!parse_string(current_item, input_buffer))
         {
             goto fail; /* failed to parse name */
         }
-        buffer_skip_whitespace(input_buffer);
+        buffer_skip_spaces(input_buffer);
 
         /* swap valuestring and string, because we parsed the name */
         current_item->string = current_item->valuestring;
@@ -1690,12 +1690,12 @@ static cJSON_bool parse_object(cJSON * const item, parse_buffer * const input_bu
 
         /* parse the value */
         input_buffer->offset++;
-        buffer_skip_whitespace(input_buffer);
+        buffer_skip_spaces(input_buffer);
         if (!parse_value(current_item, input_buffer))
         {
             goto fail; /* failed to parse value */
         }
-        buffer_skip_whitespace(input_buffer);
+        buffer_skip_spaces(input_buffer);
     }
     while (can_access_at_index(input_buffer, 0) && (buffer_at_offset(input_buffer)[0] == ','));
 

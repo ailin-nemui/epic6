@@ -911,7 +911,7 @@ static void	new_io_event (int vfd)
 	if (!(ioe = io_rec[vfd]))
 		panic(1, "new_io_event: vfd [%d] isn't set up!", vfd);
 
-	/* If it's dirty, something is very wrong. */
+	/* If it's dirty, something is wrong. */
 	if (!ioe->clean)
 		panic(1, "new_io_event: vfd [%d] hasn't been cleaned yet", vfd);
 

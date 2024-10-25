@@ -53,7 +53,7 @@
 /*
  * Question: Why is this math parser so much more hideous than the old one?
  *
- * Answer: The implementation looks very very complex, and to a certain 
+ * Answer: The implementation looks extra complex, and to a certain 
  * extent it is.  However, do not be frightened by the malicious abuse of 
  * macros and the over-use of inline functions.  The design of this math 
  * parser is not nearly as complex as its implementation.  Maybe that is 
@@ -2277,11 +2277,10 @@ static int	zzlex (expr_info *c)
 		 * expand_alias().  If we want to get the *value of the
 		 * variable $lval), then we will get the "expanded" value,
 		 * which will use the "raw" value to do the variable name
-		 * lookup.  See?  It's really pretty straightforward.  The
-		 * reason we do all this is to make sure that the expansion
-		 * of the variable name happens *at most once*, and that if
-		 * the variable is not actually referenced, then the expansion
-		 * isn't done at all.
+		 * lookup.  See?  It's straightforward.  The reason we do all 
+		 * this is to make sure that the expansion of the variable name
+		 * happens *at most once*, and that if the variable is not 
+		 * actually referenced, then the expansion isn't done at all.
 		 */
 		default:
 handle_expando:

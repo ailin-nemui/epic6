@@ -45,7 +45,7 @@ if (word(2 $loadinfo()) != [pf]) {
 ## time are equal, but less than your current threshold, you won't be
 ## notified, since user probably got disconnected by accident.
 ##
-## Be very careful with your settings, since it's very easy to flood
+## Be extra careful with your settings, since it's easy to flood
 ## your server and run upon server-side ignore. Also, don't forget
 ## that some IRC operators set special user flag to see who is issuing
 ## /whois on them - they may be annoyed by continuous requests from

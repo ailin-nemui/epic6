@@ -55,8 +55,6 @@
  * Change a selected ENCRYPT:
  *   - NEWTARGET serv/nick
  *   - PASSWORD newpass
- *   - TYPE newcipher
- *   - PROGRAM {newcode}
  *
  * Change status of ENCRYPT:
  *   - ON       (send encrypted messages by default)
@@ -79,24 +77,18 @@ struct ciphertypes {
 };
 
 struct ciphertypes ciphers[] = {
-   { PROGCRYPT,      NULL,        "Program",  "SED"	      },
-   { SEDCRYPT,       "-SED",      "SED",      "SED"	      },
-   { SEDSHACRYPT,    "-SEDSHA",   "SED+SHA",  "SEDSHA"        },
-   { CAST5CRYPT,     "-CAST",     "CAST5",    "CAST128ED-CBC" },
-   { BLOWFISHCRYPT,  "-BLOWFISH", "BLOWFISH", "BLOWFISH-CBC"  },
    { AES256CRYPT,    "-AES",	  "AES",      "AES256-CBC"    },
    { AESSHA256CRYPT, "-AESSHA",	  "AES+SHA",  "AESSHA256-CBC" },
-   { FISHCRYPT,	     NULL,	  "FiSH",     "BLOWFISH-EBC"  },
    { NOCRYPT,        NULL,        NULL,       NULL            }
 };
 
 /* XXX sigh XXX */
-const char *allciphers = "SED, SEDSHA, CAST, BLOWFISH, AES or AESSHA";
+const char *allciphers = "AES or AESSHA";
 
 static	List *	internal_is_crypted (Char *nick, Char *serv);
 static int	internal_remove_crypt (Char *nick, Char *serv);
 static void	cleanse_crypto_item (List *item);
-const char *	happypasswd (const char *key, int sed_type);
+const char *	happypasswd (const char *key);
 
 /*
  * add_to_crypt:  Create a new ENCRYPT entry
@@ -112,7 +104,7 @@ const char *	happypasswd (const char *key, int sed_type);
  * nickname is already in the list, then the password is changed to the 
  * supplied password. 
  */
-static void	add_to_crypt (Char *nick, Char *serv, Char *passwd, Char *prog, int sed_type)
+static void	add_to_crypt (Char *nick, Char *serv, Char *passwd, int sed_type)
 {
 	List *	new_crypt;
 	Crypt *	d;
@@ -134,7 +126,6 @@ static void	add_to_crypt (Char *nick, Char *serv, Char *passwd, Char *prog, int 
 	d->serv = NULL;
 	d->passwd = NULL;
 	d->passwdlen = 0;
-	d->prog = NULL;
 	d->sed_type = sed_type;
 
 	/* Fill in the 'nick' field. */
@@ -145,8 +136,7 @@ static void	add_to_crypt (Char *nick, Char *serv, Char *passwd, Char *prog, int 
 		malloc_strcpy(&d->serv, serv);
 
 	/* Fill in the 'passwd' field. */
-	if (sed_type == AES256CRYPT || sed_type == AESSHA256CRYPT || 
-		sed_type == SEDSHACRYPT)
+	if (sed_type == AES256CRYPT || sed_type == AESSHA256CRYPT)
 	{
 		if (d->passwd == NULL)
 			d->passwd = new_malloc(34);
@@ -163,15 +153,6 @@ static void	add_to_crypt (Char *nick, Char *serv, Char *passwd, Char *prog, int 
 		malloc_strcpy(&d->passwd, passwd);
 		d->passwdlen = strlen(d->passwd);
 	}
-
-	/* Fill in the 'prog' field. */
-	if (prog && *prog)
-	{
-		malloc_strcpy(&d->prog, prog);
-		d->sed_type = PROGCRYPT;
-	}
-	else
-		new_free(&d->prog);
 
 	/* XXX new_crypt has bifurcated primary passwd! */
 	add_item_to_list(&crypt_list, new_crypt);
@@ -247,11 +228,6 @@ static void	cleanse_crypto_item (List *item)
 		memset(d->passwd, 0, d->passwdlen);
 		new_free((char **)&(d->passwd));
 	}
-	if (d->prog)
-	{
-		memset(d->prog, 0, strlen(d->prog));
-		new_free((char **)&(d->prog));
-	}
 	memset(d, 0, sizeof(Crypt));
 
 	return;
@@ -284,12 +260,7 @@ static void	cleanse_crypto_item (List *item)
 	    if (tmp->name && my_stricmp(tmp->name, nick))		\
 		continue;						\
 	    if (sed_type != ANYCRYPT && ((Crypt *)(tmp->d))->sed_type != sed_type)	\
-	    {								\
-		if (sed_type == SEDCRYPT && ((Crypt *)(tmp->d))->sed_type != PROGCRYPT) \
-			/* ok */;					\
-		else							\
 			continue;					\
-	    }
 
 #define CHECK_CRYPTO_LIST(x) \
 	for (tmp = crypt_list; tmp; tmp = tmp->next)		\
@@ -354,11 +325,10 @@ List *	is_crypted (Char *nick, int serv, const char *ctcp_cmd)
 /*
  * encrypt_cmd: the ENCRYPT command, the user interface to the crypt list.
  *
- * 	/ENCRYPT server/target -type passwd
+ * 	/ENCRYPT server/target passwd
  *
  *  Where "server" is a refnum, ourname, itsname, group, or altname,
  *  Where "target" is a nickname or channel
- *  Where "type" is SED, SEDSHA, CAST, BLOWFISH, AES, or AESSHA
  *  Where "passwd" is a passkey
  *
  * Messages to and from the target on the corresponding server are ciphered
@@ -377,9 +347,8 @@ BUILT_IN_COMMAND(encrypt_cmd)
 	char	*nick = NULL, 
 		*passwd = NULL, 
 		*prog = NULL;
-	int	sed_type = SEDCRYPT;
+	int	sed_type = AESSHA256CRYPT;
 	char *	arg;
-	int	i;
 	int	remove_it = 0;
 
 	while ((arg = new_next_arg(args, &args)))
@@ -390,33 +359,13 @@ BUILT_IN_COMMAND(encrypt_cmd)
 	    else if (!my_stricmp(arg, "-CLEAR"))
 		clear_crypto_list();
 
-	    else if (*arg == '-')
-	    {
-		sed_type = NOCRYPT;
-		for (i = 0; ciphers[i].username; i++)
-		{
-		    if (ciphers[i].flagname && 
-					!my_stricmp(arg,ciphers[i].flagname))
-			sed_type = ciphers[i].sed_type;
-		}
-
-		if (sed_type == NOCRYPT)
-		    goto usage_error;
-	    }
 	    else if (nick == NULL)
 		nick = arg;
 	    else if (passwd == NULL)
 		passwd = arg;
-	    else if (prog == NULL)
-	    {
-		prog = arg;
-		sed_type = PROGCRYPT;
-	    }
 	    else
 	    {
-usage_error:
-		say("Usage: /ENCRYPT -TYPE nick passwd \"prog\"");
-		say("       Where TYPE is %s", allciphers);
+		say("Usage: /ENCRYPT nick passwd");
 		return;
 	    }
 	}
@@ -445,7 +394,7 @@ usage_error:
 	    }
 	    else 
 	    {
-		add_to_crypt(nick, serv, passwd, prog, sed_type);
+		add_to_crypt(nick, serv, passwd, sed_type);
 		say("You will now cipher messages with '%s' on '%s' using '%s' "
 			"with the passwd '%s'.",
 				nick, serv ? serv : "<any>",
@@ -460,14 +409,10 @@ usage_error:
 
 		say("Your %ss:", command);
 		for (tmp = crypt_list; tmp; tmp = tmp->next)
-		    say("You are ciphering messages with '%s' on '%s' using '%s' "
-			   "with the passwd '%s'.",
+		    say("You are ciphering messages with '%s' on server %s with the passwd '%s'.",
 				tmp->name, 
 				((Crypt *)(tmp->d))->serv ? ((Crypt *)(tmp->d))->serv : "<any>",
-				((Crypt *)(tmp->d))->prog ? ((Crypt *)(tmp->d))->prog : 
-					ciphers[((Crypt *)(tmp->d))->sed_type].username, 
-				happypasswd((char *)(((Crypt *)(tmp->d))->passwd), 
-						((Crypt *)(tmp->d))->sed_type));
+				happypasswd((char *)(((Crypt *)(tmp->d))->passwd))); 
 	}
 	else
 	    say("You are not ciphering messages with anyone.");
@@ -570,21 +515,16 @@ char *	decrypt_msg (const char *str, List *crypti)
 	return plaintext;
 }
 
-const char *	happypasswd (const char *passwd, int sed_type)
+const char *	happypasswd (const char *passwd)
 {
-	static char prettypasswd[BIG_BUFFER_SIZE];
+	static char passwd_[BIG_BUFFER_SIZE];
 
-	if (sed_type == AESSHA256CRYPT || sed_type == SEDSHACRYPT)
-	{
-		int	i;
-		for (i = 0; i < 32; i++)		/* XXX */
-		    snprintf(prettypasswd + (i * 2), 3, "%2.2X", 
-				(unsigned)(unsigned char)passwd[i]);
-	}
-	else
-		strlcpy(prettypasswd, passwd, sizeof(prettypasswd));
+	int	i;
+	for (i = 0; i < 32; i++)		/* XXX */
+	    snprintf(passwd_ + (i * 2), 3, "%2.2X", 
+			(unsigned)(unsigned char)passwd[i]);
 
-	return prettypasswd;
+	return passwd_;
 }
 
 

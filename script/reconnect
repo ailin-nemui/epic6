@@ -176,7 +176,7 @@ addset auto_reconnect bool {
 				@ auto_reconnect.failures[$group_enc]++;
 
 				if (attempt <= auto_reconnect_retries && auto_reconnect.overflow != 1) {
-					## This is ugly hack for detecting when we must
+					## This is inelegent hack for detecting when we must
 					## try next server in a group
 					@ auto_reconnect.overflow = (attempt == auto_reconnect_retries);
 

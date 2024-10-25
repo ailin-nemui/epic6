@@ -276,7 +276,7 @@ typedef char Filename[PATH_MAX + 1];
 #endif
 
 /*
- * Now we deal with lame systems that dont have correct select()
+ * Now we deal with systems that dont have correct select()
  * support (like aix 3.2.5, and older linux systems.)
  */
 #ifndef NBBY
@@ -361,7 +361,6 @@ typedef struct stat		Stat;
 #endif
 
 
-#ifndef NO_SSL
 /* Everybody needs these OpenSSL headers */
 #include <openssl/crypto.h>
 #include <openssl/x509.h>
@@ -371,6 +370,6 @@ typedef struct stat		Stat;
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/opensslconf.h>
-#endif
+#include <openssl/rand.h>
 
 #endif /* __irc_std_h */

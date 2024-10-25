@@ -105,7 +105,7 @@ static	PyObject *global_vars = NULL;
  *   epic.cmd	- runcmds() -- Run a block of code, 
  * 			but don't expand $'s (like from the input line)
  *   epic.eval	- runcmds() -- Run a block of code, 
- *			expand $'s, but $* is []  (this is lame)
+ *			expand $'s, but $* is []  (this is inconsistent)
  *   epic.expr	- parse_inline() -- Evaluate an expression string 
  *			and return the result 
  *   epic.call	- call_function() -- Evaluate a "funcname(argument list)" 

@@ -533,7 +533,10 @@ const char *	prompt;
 	{
 	/* <<<< INDENTED BACK ONE TAB FOR MY SANITY <<<<< */
 
-	/* XXX This is an ugly way to do this. */
+	/* 
+	 * XXX Using "which_screen == 0" to mean "update every screen"
+	 * is kind of a hack.
+	 */
 	if (which_screen >= 0 && which_screen != s)
 		continue;	/* Only update this screen */
 
@@ -564,7 +567,7 @@ const char *	prompt;
 	 *  I thought it would be easy to just calculate the 'zone' that
 	 *  every logical character would be in, but there are three
 	 *  complications:
-	 *	1. Changing between zones doesn't happen very much
+	 *	1. Changing between zones doesn't happen often.
 	 *	2. The size of zones can change frequently (prompt/indicators)
 	 *	3. The condition required to switch zones is easily described
 	 *  
@@ -774,8 +777,8 @@ const char *	prompt;
 		 * The space for the input line is the width of the screen
 		 * minus the size of those two parts.  The "maybe" parts
 		 * throw a monkey wrench since the space for the input line
-		 * very much depends on where we are, and where we decide
-		 * to put the START! 
+		 * depends on where we are, and where we decide to put the 
+		 * START! 
 		 *
 		 * As a nod to history, we try to make the zones symmetrical
 		 * (ie, if you cursor right off the end of zone 0, you will
@@ -834,7 +837,7 @@ const char *	prompt;
 			/* 
 			 * Zones 1-N are the same width.  Yes, I know
 			 * that adding IND_RIGHT_LEN is cheating, but
-			 * that's a very small thing.  I think?
+			 * that's a small thing.  I think?
 			 */
 			zone_length = get_screen_columns(last_input_screen) -
 					INPUT_PROMPT_LEN -
@@ -1128,11 +1131,11 @@ BUILT_IN_KEYBINDING(input_forward_word)
 
 	cursor_to_input();
 
-	/* Move to the end of the current word to the whitespace */
+	/* Move to the end of the current word to the space */
 	while (THIS_CHAR && !WHITESPACE(THIS_CHAR))
 		input_move_cursor(RIGHT, 1);
 
-	/* Move past the whitespace to the start of the next word */
+	/* Move past any spaces to the start of the next word */
 	while (THIS_CHAR && WHITESPACE(THIS_CHAR))
 		input_move_cursor(RIGHT, 1);
 }
@@ -1151,7 +1154,7 @@ BUILT_IN_KEYBINDING(input_backward_word)
 	if (LOGICAL_CURSOR > 0 && !WHITESPACE(THIS_CHAR) && WHITESPACE(PREV_CHAR))
 		input_move_cursor(LEFT, 1);
 
-	/* Move to the start of the current whitespace */
+	/* Move to the start of the current spaces */
 	while (LOGICAL_CURSOR > 0 && WHITESPACE(THIS_CHAR))
 		input_move_cursor(LEFT, 1);
 

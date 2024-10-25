@@ -131,7 +131,7 @@ static	struct	termios	oldb, newb;
  * but everyone else (including ncurses and solaris) uses
  *     char *tparm (const char *, ...);
  * and there's no way to cover those two arglists with one prototype, so
- * we're left with these idiot wrapper functions.
+ * we're left with these regretable wrapper functions.
  */
 static char *tparm1 (const char *str, int l1)
 {
@@ -714,7 +714,7 @@ void	term_inputline_putchar (unsigned char c)
 
 	/*
 	 * Any nonprintable characters we lop off.  In addition to this,
-	 * we catch the very nasty 0x9b which is the escape character with
+	 * we catch the nasty 0x9b which is the escape character with
 	 * the high bit set.  
 	 */
 	if (c < 0x20/* || c == 0x9b*/)
@@ -1238,8 +1238,8 @@ int	term_resize (void)
 		 * screen.  So we race screen, and if we ask for the size of
 		 * the screen before it accounts for the caption bar, then
 		 * we lose, because we'll get the wrong number of lines, and
-		 * that will screw up the status bar.  So we do this very
-		 * small sleep to increase the chances of us losing the race,
+		 * that will screw up the status bar.  So we do this small 
+		 * sleep to increase the chances of us losing the race, 
 		 * which means we win.  Got it?
 		 *
 		 * P.S. -- GNU Screen is all kinds of icky.

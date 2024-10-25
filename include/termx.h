@@ -170,7 +170,7 @@ struct my_term {
 	const char *TI_cuf1;	 /* nd  / cuf1      non-destructive space (move right one space) */
 	const char *TI_ll;	 /* ll  / ll        last line, first column (if no cup) */
 	const char *TI_cuu1;	 /* up  / cuu1      up one line */
-	const char *TI_cvvis;	 /* vs  / cvvis     make cursor very visible */
+	const char *TI_cvvis;	 /* vs  / cvvis     make cursor extra visible */
 	const char *TI_dch1;	 /* dc  / dch1      delete character (P*) */
 	const char *TI_dl1;	 /* dl  / dl1       delete line (P*) */
 	const char *TI_dsl;	 /* ds  / dsl       disable status line */

@@ -2,8 +2,8 @@ if (word(2 $loadinfo()) != [pf]) { load -pf $word(1 $loadinfo()); return; };
 
 #
 # Just a quick and dirty /scan routine. It's about as fast as I could
-# make it. It could be fast if the nicks weren't aligned but that'd be
-# ugly.
+# make it. It could be fast if the nicks weren't aligned but that would
+# make it hard for people to parse.
 #
 # - whitefang (thall@magenet.com)
 #

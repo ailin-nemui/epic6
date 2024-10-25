@@ -237,7 +237,6 @@ static	char
 	*function_dccctl	(char *),
 	*function_deuhc		(char *),
 	*function_diff 		(char *),
-	*function_encryptparm 	(char *),
 	*function_eof 		(char *),
 	*function_epic		(char *),
 	*function_error		(char *),
@@ -341,6 +340,7 @@ static	char
 	*function_pad		(char *),
 	*function_pattern 	(char *),
 	*function_pass		(char *),
+	*function_pbkdf2	(char *),
 #ifdef HAVE_PERL
 	*function_perl		(char *),
 	*function_perlcall	(char *),
@@ -513,7 +513,6 @@ static BuiltInFunctions	built_in_functions[] =
 	{ "COUNT",		function_count		},
 	{ "CP437TEST",		function_cp437test	},
 	{ "CPARSE",		function_cparse		},
-	{ "CRYPT",		function_crypt		},
 	{ "CTCPCTL",		function_ctcpctl	},
 	{ "CURCMD",		function_curcmd		},
 	{ "CURPOS",		function_curpos 	},
@@ -526,7 +525,6 @@ static BuiltInFunctions	built_in_functions[] =
 	{ "DEUHC",		function_deuhc		},
 	{ "DIFF",               function_diff 		},
 	{ "ENCODINGCTL",	function_encodingctl	},
-	{ "ENCRYPTPARM",	function_encryptparm	},
 	{ "EOF",		function_eof 		},
 	{ "EPIC",		function_epic		},
 	{ "EXEC",		function_exec		},
@@ -668,6 +666,7 @@ static BuiltInFunctions	built_in_functions[] =
 	{ "PAD",		function_pad		},
 	{ "PASS",		function_pass		},
 	{ "PATTERN",		function_pattern	},
+	{ "PBKDF2",		function_pbkdf2		},
 #ifdef HAVE_PERL
 	{ "PERL",		function_perl		},
 	{ "PERLCALL",		function_perlcall	},
@@ -2161,16 +2160,16 @@ BUILT_IN_FUNCTION(function_restw, word)
 BUILT_IN_FUNCTION(function_remw, word)
 {
 	int	where;
-	char *	lame = NULL;
+	char *	word_ = NULL;
 	char *	placeholder;
 	char *	booya;
 
-	lame = LOCAL_COPY(word);
-	where = my_atol((placeholder = function_findw(lame)));
+	word_ = LOCAL_COPY(word);
+	where = my_atol((placeholder = function_findw(word_)));
 	new_free(&placeholder);
 
 	/* Whack off the word we're looking for... */
-	GET_FUNC_ARG(lame, word);
+	GET_FUNC_ARG(word_, word);
 
 	/* XXX Cut and pasted from $notw(). */
         /* An invalid word simply returns the string as-is */
@@ -2485,17 +2484,17 @@ COPATFUNC(function_corfilter, firstel, pattern, 1)
 BUILT_IN_FUNCTION(function_beforew, word)
 {
 	int     where;
-	char	*lame = (char *) 0;
+	char	*word_ = (char *) 0;
 	char	*placeholder;
 
-	lame = LOCAL_COPY(word);
+	word_ = LOCAL_COPY(word);
 	where = my_atol((placeholder = function_findw(word))) + 1;
 	new_free(&placeholder);
 
 	if (where < 1)
 		RETURN_EMPTY;
 
-	placeholder = extractfw(lame, 1, where - 1);
+	placeholder = extractfw(word_, 1, where - 1);
 	return placeholder;
 }
 		
@@ -2503,17 +2502,17 @@ BUILT_IN_FUNCTION(function_beforew, word)
 BUILT_IN_FUNCTION(function_tow, word)
 {
 	int     where;
-	char	*lame = (char *) 0;
+	char	*word_ = (char *) 0;
 	char	*placeholder;
 
-	lame = LOCAL_COPY(word);
+	word_ = LOCAL_COPY(word);
 	where = my_atol((placeholder = function_findw(word))) + 1;
 	new_free(&placeholder);
 
 	if (where < 1)
 		RETURN_EMPTY;
 
-	placeholder = extractfw(lame, 1, where);
+	placeholder = extractfw(word_, 1, where);
 	return placeholder;
 }
 
@@ -2521,10 +2520,10 @@ BUILT_IN_FUNCTION(function_tow, word)
 BUILT_IN_FUNCTION(function_afterw, word)
 {
 	int     where;
-	char	*lame = (char *) 0;
+	char	*word_ = (char *) 0;
 	char	*placeholder;
 
-	lame = malloc_strdup(word);
+	word_ = malloc_strdup(word);
 	placeholder = function_findw(word);
 	where = my_atol(placeholder) + 1;
 
@@ -2532,11 +2531,11 @@ BUILT_IN_FUNCTION(function_afterw, word)
 
 	if (where < 1)
 	{
-		new_free(&lame);
+		new_free(&word_);
 		RETURN_EMPTY;
 	}
-	placeholder = extractfw(lame, where + 1, EOS);
-	new_free(&lame);
+	placeholder = extractfw(word_, where + 1, EOS);
+	new_free(&word_);
 	return placeholder;
 }
 
@@ -2544,10 +2543,10 @@ BUILT_IN_FUNCTION(function_afterw, word)
 BUILT_IN_FUNCTION(function_fromw, word)
 {
 	int     where;
-	char 	*lame = (char *) 0;
+	char 	*word_ = (char *) 0;
 	char	*placeholder;
 
-	lame = malloc_strdup(word);
+	word_ = malloc_strdup(word);
 	placeholder = function_findw(word);
 	where = my_atol(placeholder) + 1;
 
@@ -2555,12 +2554,12 @@ BUILT_IN_FUNCTION(function_fromw, word)
 
 	if (where < 1)
 	{
-		new_free(&lame);
+		new_free(&word_);
 		RETURN_EMPTY;
 	}
 
-	placeholder = extractfw(lame, where, EOS);
-	new_free(&lame);
+	placeholder = extractfw(word_, where, EOS);
+	new_free(&word_);
 	return placeholder;
 }
 
@@ -2867,7 +2866,7 @@ char *function_shift (char *word)
  * Usage: $unshift(<lval> <text>)
  * Note that <lval> and <text> are not <word> or <word list>, so the
  * rules governing double quotes and spaces and all that don't apply.
- * If <lval> has an illegal character, the false value is returned.
+ * If <lval> has an unacceptable character, the false value is returned.
  */
 char *function_unshift (char *word)
 {
@@ -2883,7 +2882,7 @@ char *function_unshift (char *word)
 
 	if (isspace(*word))
 		*word++ = 0;
-	/* If the variable has an illegal character, punt */
+	/* If the variable has an unacceptable character, punt */
 	else if (!*var || *word)
 		RETURN_EMPTY;
 
@@ -2921,7 +2920,7 @@ char *function_push (char *word)
 
 	if (isspace(*word))
 		*word++ = 0;
-	/* If the variable has an illegal character, punt */
+	/* If the variable has an unacceptable character, punt */
 	else if (*word)
 		RETURN_EMPTY;
 
@@ -4102,45 +4101,6 @@ BUILT_IN_FUNCTION(function_fsize, words)
 	RETURN_INT(file_size(expanded));
 }
 
-/* 
- * Contributed by CrowMan
- * Updated by caf to allow selection of any hashing method supported by the
- * system.
- */
-/*
- * $crypt(password salt)
- * 
- * This returns a password hash when given a salt and password.  The function
- * supports all hashing methods supported by the local C library, with the
- * hashing method selected by the format of the salt string.  See your local
- * crypt(3) man page for details.
- *
- * All systems (and older versions of EPIC) support the classic DES-based UNIX
- * hashing function, which is selected by a two-character salt in the range 
- * [a-zA-Z0-9./].  This method returns a 13-char string and truncates the
- * supplied password to 8 characters.  It is also comically weak in the modern
- * era.
- *
- * Returns an empty string if one or both args missing, or if crypt() fails.
- *
- * Credits: Thanks to Strongbow for showing me how crypt() works.
- * Written by: CrowMan
- */
-BUILT_IN_FUNCTION(function_crypt, words)
-{
-#ifdef HAVE_CRYPT
-	char *pass, *salt;
-	char *ret;
-
-	GET_DWORD_ARG(pass, words)
-	GET_DWORD_ARG(salt, words)
-	ret = crypt(pass, salt);
-	RETURN_STR(ret);		/* Dont call function in macro! */
-#else
-	RETURN_EMPTY;
-#endif
-}
-
 BUILT_IN_FUNCTION(function_info, words)
 {
 	char *which;
@@ -4577,7 +4537,7 @@ BUILT_IN_FUNCTION(function_uniq, word)
 	 * never made it into the distribution.
 	 *
 	 * Sort followed up with a remove duplicates.  Standard stuff,
-	 * only, the whacky way we go about it is due to compatibility.
+	 * The unusual way we go about it is due to backwards compatability.
 	 *
 	 * The major assumption here is that the pointers in list[] are
 	 * in ascending order.  Since split_wordlist() works by inserting nuls
@@ -4586,7 +4546,7 @@ BUILT_IN_FUNCTION(function_uniq, word)
 	qsort((void *)list, listc, sizeof(char *), sort_it);
 
 	/* Remove _subsequent_ duplicate values wrt the original list
-	 * This means, kill the higher valued pointers value.
+	 * This means, remove the higher valued pointers value.
 	 */
 	for (listo = 0, listi = 1; listi < listc; listi++) {
 		if (sort_it(&list[listi], &list[listo])) {
@@ -5352,8 +5312,8 @@ BUILT_IN_FUNCTION(function_leftpc, word)
 
 
 /*
- * This was written to have the same net-effect as bitchx.  However, we use
- * ^C codes rather than ansi codes as bitchx does.  You shouldnt notice one
+ * This was written to have the same net-effect as bx.  However, we use
+ * ^C codes rather than ansi codes as bx does.  You shouldnt notice one
  * way or the other.
  */
 char *	function_cparse (char *input)
@@ -6614,7 +6574,7 @@ BUILT_IN_FUNCTION(function_indextoword, input)
 
 	/*
 	 * This is a special case to handle multiple runs of words.
-	 * According to our wacky word rules, the *FIRST* space after
+	 * According to our legacy word rules, the *FIRST* space after
 	 * a word belongs to the previous word; but the second and
 	 * subsequent spaces belong to the following word. (urgh).
 	 *
@@ -6783,8 +6743,8 @@ BUILT_IN_FUNCTION(function_builtin, input)
 
 /*
  * Returns what the status-line %F expando would return, except it is 
- * space-seperated.  Basically, it is all the windows that are hidden,
- * that have /window notify on, and have output since they were hidden.
+ * space-seperated.  Basically, it is all the windows that are invisible
+ * that have /window notify on, and have output while they were invisible.
  */
 BUILT_IN_FUNCTION(function_notifywindows, input)
 {
@@ -7002,22 +6962,6 @@ BUILT_IN_FUNCTION(function_unsplit, input)
 	while ((word = new_next_arg(input, &input)))
 		malloc_strcat_word(&retval, sep, word, DWORD_NO);
 	RETURN_MSTR(retval);
-}
-
-BUILT_IN_FUNCTION(function_encryptparm, input)
-{
-	char	*ret = NULL, *entry = NULL;
-	List	*key;
-
-	GET_FUNC_ARG(entry, input);
-	if ((key = is_crypted(entry, from_server, NULL))) 
-	{
-		malloc_strcat_word(&ret, space, key->name, DWORD_DWORDS);
-		malloc_strcat_word(&ret, space, (char *)(((Crypt *)(key->d))->passwd), DWORD_DWORDS);
-		malloc_strcat_word(&ret, space, ((Crypt *)(key->d))->prog, DWORD_DWORDS);
-	}
-
-	RETURN_MSTR(ret);
 }
 
 BUILT_IN_FUNCTION(function_serverctl, input)
@@ -8510,7 +8454,7 @@ BUILT_IN_FUNCTION(function_rgb, input)
 				bg_b = work_b;
 			}
 			else
-				break;		/* Something has gone very wrong */
+				break;		/* Something has gone wrong */
 		}
 	}
 
@@ -8740,4 +8684,51 @@ BUILT_IN_FUNCTION(function_hex, input)
 	RETURN_MSTR(retval);
 }
 
+/*
+ * $pbkdf2(password)	- Create a PBKDF2 cipherkey from your weak password
+ *
+ * Arguments:
+ *	password	- Your pathetic excuse for a password
+ *
+ * Return value:
+ *	The hex-encoded salt (random number)
+ *	The hex-encoded cipherkey password derived from 'password' and 'salt'.
+ *	You need to include the salt in any message encrypted with the cipherkey.
+ *	You can pass the cipherkey to $xform() as the "key"
+ *
+ * Notes: We do 12,800 iterations which is wholly inadequate, but is fast.
+ * The purpose of this is to turn your pathetic password into something that 
+ * you wouldn't be ashamed to use, not to safeguard national security secrets.
+ */
+BUILT_IN_FUNCTION(function_pbkdf2, input)
+{
+	uint32_t	saltBytes = 32;
+        unsigned char   salt[saltBytes];
+	char 		saltBytesHexOutput[saltBytes * 2 + 1];
+
+	uint32_t	outputBytes = 32;
+        unsigned char   output[outputBytes];
+	char		outputHexOutput[outputBytes * 2 + 1];
+
+	uint16_t	iterations;
+        unsigned int    i;
+	int		err;
+	char *		retval = NULL;
+ 
+        err = RAND_bytes(salt, saltBytes);
+        if (err != 1)
+		RETURN_STR("rand bytes failed [salt]");
+	iterations = 12800;
+
+	yell("Doing %d iterations", (int)iterations);
+        PKCS5_PBKDF2_HMAC(input, strlen(input), salt, saltBytes, iterations, EVP_sha256(), outputBytes, output);
+
+        for (i = 0; i < saltBytes; i++)
+                sprintf(saltBytesHexOutput + (i * 2), "%02x", (salt[i] & 0xFF));
+        for (i = 0; i < outputBytes; i++)
+                sprintf(outputHexOutput + (i * 2), "%02x", (output[i] & 0xFF));
+
+	malloc_sprintf(&retval, "%s %s", saltBytesHexOutput, outputHexOutput);
+	RETURN_MSTR(retval);
+}
 

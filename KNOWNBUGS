@@ -11,10 +11,10 @@ reimagined and brought back in a better form later.
 
 Things to remove
 =================
-*our glob (globi)  - Not sure if appropriate
+*our glob (globi) - Not sure if appropriate
 *queue		  - Easily scriptable
 *pthreads, etc	  - Just use select
-our SHA2	  - We can get this from openssl
+*our SHA2	  - We can get this from openssl
 our sdbm (dbmctl) - Use a modern key-value store
 ruby		  - Incomplete/unloved
 perl		  - Incomplete/unloved
@@ -36,6 +36,11 @@ Mouse support
 PBKDF
 CHACHA20
 
+Actual bugs
+================
+* /SET NEW_SERVER_LASTLOG_LEVEL does not work properly because it doesn't check window servers.
+
+
 THE CHANGELOG SINCE THE LAST RELEASE:
 -------------------------------------
 * Sunset most of docs/ and other ancient files
@@ -52,4 +57,21 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Use OpenSSL to do SHA256 hashing. (digest, digest_hexstr)
 * Sunset our custom sha2 implementation
 * Sunset our custom alloca implementation
-
+* Sunset ara, the feature that never was
+* Add circuit breaker if recalculate_windows gets jammed [from epic5]
+* Fix two memory leaks; one major, one minor [from epic5]
+* Fix more memory leaks [from epic5]
+* Begin a project to review and revise comments all over the code base.
+* Particularly, things that come across as insulting/unkind are rewritten.
+* Sunset IRCII_LIKE_BAN_SUMMARY
+* Sunset our custom glob()
+* Adopt a new IRCII_COMMENT for epic6 (yay!)
+* Sunset FiSH support
+* Sunset SED, SEDSHA, CAST5, BLOWFISH e2e support
+* Sunset "external encryption" e2e support
+* Sunset being able to specify what kind of e2e encryption to use
+* Sunset our quirky random number generators; use OpenSSL always.
+* Sunset $crypt() and $encryptparm().
+* Consolidate "hidden" and "invisible" to just "invisible"
+* Add /window kill_all_invisible
+* Add $pbkdf2(), Improve your passwords

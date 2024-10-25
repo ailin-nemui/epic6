@@ -2957,8 +2957,8 @@ const char *	ftoa (double foo)
 
 /* 
  * MatchingBracket returns the next unescaped bracket of the given type 
- * This used to be real simple (see the final else clause), but very
- * expensive.  Since its called a lot, i unrolled the two most common cases
+ * This used to be real simple (see the final else clause), but expensive.  
+ * Since its called a lot, i unrolled the two most common cases
  * (parens and brackets) and parsed them out with switches, which should 
  * really help the cpu usage.  I hope.  Everything else just falls through
  * and uses the old tried and true method.
@@ -3876,7 +3876,7 @@ int     is_string_empty (const char *str)
  *	that includes the first 'count' words in 'str', perhaps modified
  *	by the above rules.  Spaces between words are retained, but words
  *	before the first word and after the last word will be trimmed.
- *  Furthermore, because the whitespace character after the last word in
+ *  Furthermore, because the space character after the last word in
  *	the return value shall be filled in with a NUL character, the 
  *	'*new_ptr' value will be set to the position after this NUL.
  *  Subject to the following conditions:
@@ -4013,8 +4013,8 @@ void	dequoter (char **str, int full, int extended, const char *delims)
 	{
 	    /* 
 	     * If the string contains only one character,
-	     * then it cannot very well contain two delims,
-	     * can it?  Return the string unchanged.
+	     * then it cannot contain two delims, can it?  
+	     * Return the string unchanged.
 	     */
 	    if (c == 0)
 		return;
@@ -4544,7 +4544,7 @@ char *	substitute_string (const char *string, const char *oldstr, const char *ne
 		return malloc_strdup(string);
 	oldcplen = quick_code_point_count(oldstr);
 
-	/* XXX ok. so it's lame. */
+	/* XXX ok. so it's a hack. */
 	if (global)
 		max_matches = 99999;
 	else
@@ -4937,275 +4937,6 @@ static ssize_t	enc_decoder (const char *orig, size_t orig_len, const void *meta,
         return dest_i;
 }
 
-
-/**********************************************************************/
-static char fish64_chars[] =
-    "./0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-/*
- * Convert 4 bytes (32 bits) into 6 RADIX64 (printable) characters.
- *
- * Taking 4 bytes, convert them into an (unsigned int) the same way that
- * base64 does.  Then convert that (unsigned int) into 6 characters grabbing
- * 6 bits at a time, working right to left.  
- *
- * The final output byte only contains 2 bits of information, and so it is
- * padded on the left with 4 zero bits.
- *
- * If the input string is short (doesn't contain 4 bytes) then we will just
- * fill in the missing bytes with zeros (which happens during our multiply)
- *
- * This function is (semantically) the same as l64a()
- */
-static int	four_bytes_to_fish64 (const char *input, size_t inputlen, char *output, size_t outputlen)
-{
-	uint32_t	packet = 0;
-
-        if (outputlen < 6)
-		return -1;	/* Sorry Dave, I can't let you do that. */
-
-	/* 
-	 * Any bytes beyond the end of the string are treated as nuls.
-	 * This is the way FiSH does it, so we must do it too.
-	 */
-	if (inputlen > 0)	packet = (uint32_t)(unsigned char)input[0];
-        packet *= 256;
-	if (inputlen > 1)	packet += (uint32_t)(unsigned char)input[1];
-        packet *= 256;
-	if (inputlen > 2)	packet += (uint32_t)(unsigned char)input[2];
-        packet *= 256;
-	if (inputlen > 3)	packet += (uint32_t)(unsigned char)input[3];
-
-        output[0] = fish64_chars[ packet & 0x0000003fL          ];
-        output[1] = fish64_chars[(packet & 0x00000fc0UL) >> 6   ];
-        output[2] = fish64_chars[(packet & 0x0003f000UL) >> 12  ];
-        output[3] = fish64_chars[(packet & 0x00fc0000UL) >> 18  ];
-        output[4] = fish64_chars[(packet & 0x3f000000UL) >> 24  ];
-        output[5] = fish64_chars[(packet & 0xc0000000UL) >> 30  ];
-
-#if 0
-yell("The input packet is %c %c %c %c %#x", input[0], input[1], 
-					    input[2], input[3], packet);
-yell("Byte 0: %#x",  packet & 0x0000003fL          );
-yell("Byte 1: %#x", (packet & 0x00000fc0UL) >> 6   );
-yell("Byte 2: %#x", (packet & 0x0003f000UL) >> 12  );
-yell("Byte 3: %#x", (packet & 0x00fc0000UL) >> 18  );
-yell("Byte 4: %#x", (packet & 0x3f000000UL) >> 24  );
-yell("Byte 5: %#x", (packet & 0xc0000000UL) >> 30  );
-#endif
-
-	return 0;
-}
-
-/*
- * Convert 8 bytes (64 bits) into 12 RADIX64 (printable) characters.
- *
- * Chop the 64 bits into two 32-bit blocks, and encode them RIGHT TO LEFT,
- * so the first character is the low 6 bits of the 8th byte, and the sixth
- * character is the high 2 bits of the 5th byte; and the seventh character
- * is the low 6 bits of the 4th byte, and the twelfth character is the high
- * 2 bits of the 1st byte.  Got it?
- */
-static int	eight_bytes_to_fish64 (const char *input, size_t inputlen, char *output, size_t outputlen)
-{
-	if (outputlen < 12)
-		return -1;	/* Sorry Dave, I can't let you do that. */
-
-	/* We can't do 'input + 4' blindly -- that might be an illegal ptr! */
-	if (inputlen >= 4)
-	    four_bytes_to_fish64(input + 4, inputlen - 4, output, outputlen);
-	else
-	    four_bytes_to_fish64(NULL, 0, output, outputlen);
-
-	four_bytes_to_fish64(input, inputlen, output + 6, outputlen - 6);
-
-	return 0;
-}
-
-/*
- * Convert binary data into printable text compatable with FiSH ("FiSH64").
- *
- * Convert the input buffer into 8 byte (64 bit) chunks and encode them into
- * 12 output bytes using char8_to_fish64.
- */
-static ssize_t	fish64_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
-{
-	size_t	ib	= 0;	/* Input Bytes Consumed */
-	size_t	ob	= 0;	/* Output Bytes Generated */
-
-        if (!orig || !dest || dest_len <= 0)
-                return -1;
-
-	/*
-	 * Convert each 8 byte packet into 12 radix64 chars, and then
-	 * advance to the next packet.  
-	 */
-	for (ib = 0; ib < orig_len && dest_len > ob; )
-	{
-		if (eight_bytes_to_fish64(orig + ib, orig_len - ib, 
-					   dest + ob, dest_len - ob) < 0)
-			break;		/* Something went wrong */
-		ib += 8;
-		ob += 12;
-	}
-
-	/* 
-	 * Remember, this is the number of output bytes, which is
-	 * always a multiple of 12.  FiSH demands no less.
-	 */
-	if (ob >= dest_len)
-		ob = dest_len - 1;
-	dest[ob] = 0;
-	return ob;
-}
-
-/* * * * */
-static	int	fishbyte (int	character)
-{
-	char *	p;
-
-	p = strchr(fish64_chars, character);
-	if (p == NULL)
-		return -1;
-	else
-		return p - fish64_chars;
-}
-
-/*
- * Convert 6 RADIX64 (printable) characters into 4 binary bytes (32 bits)
- *
- * For each RADIX64 character, take the low 6 bits, and assign them RIGHT
- * TO LEFT to the 32 bits.  
- *
- * The final radix64 character contains only 2 bits of information, so we
- * ignore the high 6 bits for it.
- *
- * If the input string is short (doesn't contain 6 radix chars) then we will 
- * just pretend they contained zero bits.
- *
- * This function is (semantically) the same as a64l() 
- */
-static int	fish64_to_four_bytes (const char *input, size_t inputlen, char *output, size_t outputlen)
-{
-	int	decoded[6] = {0};
-
-	if (outputlen < 4)
-		return -1;	/* Sorry Dave, I can't let you do that */
-
-	/*
-	 * Why do I do it this way when FiSH just packs it into an int and
-	 * peels off 6 bits at a time?  Because this way does not depend on 
-	 * undefined considerations for how bits are stored in ints.
-	 */
-
-	if (inputlen >= 6)	decoded[5] = fishbyte(input[5]);
-	if (inputlen >= 5)	decoded[4] = fishbyte(input[4]);
-	if (inputlen >= 4)	decoded[3] = fishbyte(input[3]);
-	if (inputlen >= 3)	decoded[2] = fishbyte(input[2]);
-	if (inputlen >= 2)	decoded[1] = fishbyte(input[1]);
-	if (inputlen >= 1)	decoded[0] = fishbyte(input[0]);
-
-
-	/* Char 5 Char 4 Char 3 Char 2 Char 1 Char 0  <- input */
-	/* 543210 543210 543210 543210 543210 543210  <- input bit */
-	/* ....00 000000 111111 112222 222233 333333  <- output byte */
-	/* ....76 543210 765432 107654 321076 543210  <- output bit */
-
-	/*  0x03   0x3F   0x3F   0x30   0x3C   0x3F
-				 0x0F	0x03	     */
-
-	output[0] =  ((decoded[5] & 0x03) << 6);	/* 2 high bits */
-	output[0] += (decoded[4] & 0x3F);		/* 6 low bits */
-
-	output[1] =  ((decoded[3] & 0x3F) << 2);	/* 6 high bits */
-	output[1] += ((decoded[2] & 0x30) >> 4);	/* 2 low bits */
-
-	output[2] =  ((decoded[2] & 0x0F) << 4);	/* 4 high bits */
-	output[2] += ((decoded[1] & 0x3C) >> 2);	/* 4 low bits */
-
-	output[3] =  ((decoded[1] & 0x03) << 6);	/* 2 high bits */
-	output[3] += (decoded[0] & 0x3F);		/* 6 low bits */
-
-#if 0
-yell("Input Byte 0: %#x",  decoded[0]);
-yell("Input Byte 1: %#x",  decoded[1]);
-yell("Input Byte 2: %#x",  decoded[2]);
-yell("Input Byte 3: %#x",  decoded[3]);
-yell("Input Byte 4: %#x",  decoded[4]);
-yell("Input Byte 5: %#x",  decoded[5]);
-yell("The output packet is %c %c %c %c %#x", output[0], output[1], 
-					    output[2], output[3], decoded);
-#endif
-
-	return 0;
-}
-
-/*
- * Convert 12 RADIX64 (printable) characters into 8 bytes (64 bits)
- *
- * Chop the 12 RADIX64 characters into two 6 character blocks, and then
- * decode them RIGHT TO LEFT, so the first character goes into the low 6
- * bits of the 8th byte, and the sixth character goes into the high 2 bits
- * of the 5th byte; and the seventh character goes into the low 6 bits of 
- * the 4th byte; and the twelfth character goes into the high 2 bits of the
- * 1st byte.  Got it?
- */
-static int	fish64_to_eight_bytes (const char *input, size_t inputlen, char *output, size_t outputlen)
-{
-	if (outputlen < 8)
-		return -1;	/* Sorry Dave, I can't let you do that. */
-
-	/* We can't do 'input + 6' blindly -- that might be an illegal ptr! */
-	if (inputlen >= 6)
-	    fish64_to_four_bytes(input + 6, inputlen - 6, output, outputlen);
-	else
-	    fish64_to_four_bytes(NULL, 0, output, outputlen);
-
-	fish64_to_four_bytes(input, inputlen, output + 4, outputlen - 4);
-	return 0;
-}
-
-/*
- * Convert FiSH compatable data ("FiSH64") into binary data
- *
- * Convert the input buffer into 12 byte chunks and decode them into 8 bytes
- * of binary data using fish64_to_eight_bytes.
- */
-static ssize_t	fish64_decoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
-{
-	size_t	ib	= 0;	/* Input Bytes Consumed */
-	size_t	ob	= 0;	/* Output Bytes Generated */
-
-        if (!orig || !dest || dest_len <= 0)
-                return -1;
-
-	/*
-	 * A sanity check -- our input buffer must contain only FiSH64 chars
-	 * XXX Yea. yea yea, this is lame.  I'll take it out later.
-	 */
-	if (strspn(orig, fish64_chars) != orig_len)
-		yell("The FiSH64 string contains non-fish64 chars: [%s]", orig);
-
-	/*
-	 * Convert each 12 byte packet into 8 output bytes, and then
-	 * advance to the next packet.  
-	 */
-	for (ib = 0; ib < orig_len && dest_len > ob; )
-	{
-		if (fish64_to_eight_bytes(orig + ib, orig_len - ib, 
-					   dest + ob, dest_len - ob) < 0)
-			break;		/* Something went wrong */
-		ib += 12;
-		ob += 8;
-	}
-
-	/* 
-	 * Remember, this is the number of output bytes, which is
-	 * always a multiple of 8.  FiSH demands no less.
-	 */
-	return ob;
-}
-
 /*****************************************************************************/
 /* Begin BSD licensed code */
 /*
@@ -5349,40 +5080,6 @@ static ssize_t	b64_decoder (const char *orig, size_t orig_len, const void *meta,
 }
 
 /* End BSD licensed stuff (see compat.c!) */
-
-static ssize_t	sed_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
-{
-	size_t	len;
-
-        if (!orig || !dest || dest_len <= 0)
-                return -1;
-
-	if (dest_len < orig_len)
-		len = dest_len;
-	else
-		len = orig_len;
-
-	memmove(dest, orig, len);
-	encrypt_sed(dest, len, meta, meta_len);
-	return len;
-}
-
-static ssize_t	sed_decoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
-{
-	size_t	len;
-
-        if (!orig || !dest || dest_len <= 0)
-                return -1;
-
-	if (dest_len < orig_len)
-		len = dest_len;
-	else
-		len = orig_len;
-
-	memmove(dest, orig, len);
-	decrypt_sed(dest, len, meta, meta_len);
-	return len;
-}
 
 /*
  * RFC1459 messages are ALMOST 8-bit clean.
@@ -5542,16 +5239,6 @@ static ssize_t	null_encoder (const char *orig, size_t orig_len, const void *meta
 		dest_i = dest_len - 1;
 	dest[dest_i] = 0;
         return dest_i;
-}
-
-static ssize_t	crypt_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
-{
-	return 0;
-}
-
-static ssize_t	crypt_decoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
-{
-	return 0;
 }
 
 static ssize_t	all_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
@@ -5757,17 +5444,11 @@ struct Transformer default_transformers[] = {
 {	0,	"ENC",		0, 2, 8,  enc_encoder,	  enc_decoder	 },
 {	0,	"LEN",		0, 1, 0,  len_encoder,	  len_encoder	 },
 {	0,	"B64",		0, 2, 8,  b64_encoder,	  b64_decoder	 },
-{	0,	"FISH64",	0, 2, 16, fish64_encoder, fish64_decoder },
-{	0,	"SED",		1, 2, 8,  sed_encoder,	  sed_decoder	 },
 {	0,	"CTCP",		0, 2, 8,  ctcp_encoder,	  ctcp_decoder	 },
 {	0,	"NONE",		0, 1, 8,  null_encoder,	  null_encoder	 },
-{	0,	"DEF",		0, 1, 16, crypt_encoder,  crypt_decoder	 },
 {	0,	"SHA256",	0, 0, 65, sha256_encoder, sha256_encoder },
-{	0,	"BF",		1, 1, 8,  blowfish_encoder, blowfish_decoder },
-{	0,	"CAST",		1, 1, 8,  cast5_encoder,    cast5_decoder    },
 {	0,	"AES",		1, 1, 8,  aes_encoder,	    aes_decoder	     },
 {	0,	"AESSHA",	1, 1, 8,  aessha_encoder,   aessha_decoder   },
-{	0,	"FISH",		1, 1, 16, fish_encoder,     fish_decoder     },
 {	0,	"ICONV",	1, 4, 16, iconv_recoder,  iconv_recoder },
 {	0,	"ALL",		0, 0, 256, all_encoder,	  all_encoder	},
 {	-1,	NULL,		0, 0, 0,   NULL,	  NULL		}
