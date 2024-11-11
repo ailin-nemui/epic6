@@ -65,9 +65,9 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Sunset our custom sha2 implementation
 * Sunset our custom alloca implementation
 * Sunset ara, the feature that never was
-* Add circuit breaker if recalculate_windows gets jammed [from epic5]
-* Fix two memory leaks; one major, one minor [from epic5]
-* Fix more memory leaks [from epic5]
+* (<- 2141) Add circuit breaker if recalculate_windows gets jammed
+* (<- 2141) Fix two memory leaks; one major, one minor
+* (<- 2142) Fix more memory leaks 
 * Begin a project to review and revise comments all over the code base.
 * Particularly, things that come across as insulting/unkind are rewritten.
 * Sunset IRCII_LIKE_BAN_SUMMARY
@@ -83,7 +83,7 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Add /window kill_all_invisible
 * Add $pbkdf2(), Improve your passwords
 * Check for, link to sqlite at build time (stay tuned!)
-* Support backrefs with extended regex for BSD, Mac OS (sigh)
+* (-> 2145) Support backrefs with extended regex for BSD, Mac OS (sigh)
 * Various reformattings in header files
 * Sunset all spurious #define's in config.h
 * Sweep config.h and remove all #define's that don't exist
@@ -91,4 +91,5 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Sunset CPU Saver mode because it's not 1994 any more
 * Sunset the "old math parser" and /xdebug old_math_parser
 * GC old code that converted wildcard patterns to regexes
-* Script fixes from zlonix and skered (sync to epic5)
+* (<- 2146, 2147) script fixes from zlonix, skered
+* (<- 2144) fix openssl evp padding
