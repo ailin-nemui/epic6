@@ -91,4 +91,4 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Sunset CPU Saver mode because it's not 1994 any more
 * Sunset the "old math parser" and /xdebug old_math_parser
 * GC old code that converted wildcard patterns to regexes
-
+* Script fixes from zlonix and skered (sync to epic5)
