@@ -311,7 +311,6 @@ void 	init_binds (void)
     ADDBIND("BLINK",			    insert_blink		    );
     ADDBIND("BOLD",			    insert_bold			    );
     ADDBIND("CLEAR_SCREEN",		    my_clear_screen		    );
-    ADDBIND("CPU_SAVER",		    cpu_saver_on		    );
     ADDBIND("DEBUG_INPUT_LINE",		    debug_input_line	            );
     ADDBIND("DELETE_CHARACTER",		    input_delete_character	    );
     ADDBIND("DELETE_NEXT_WORD",		    input_delete_next_word	    );

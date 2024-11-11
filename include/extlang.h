@@ -32,24 +32,24 @@
 #define __EXTLANG_H__
 
 #ifdef HAVE_PERL
-extern	void	perlstartstop (int);
-extern	char *	perlcall (char *, char *, char *, long, char *);
-extern	char *	perleval (char *);
-BUILT_IN_COMMAND(perlcmd);
+	void	perlstartstop (int);
+	char *	perlcall (char *, char *, char *, long, char *);
+	char *	perleval (char *);
+	BUILT_IN_COMMAND(perlcmd);
 #endif
 
 #ifdef HAVE_RUBY
-extern	void	ruby_startstop (int);
-extern	char *	rubyeval (char *);
-BUILT_IN_COMMAND(rubycmd);
+	void	ruby_startstop (int);
+	char *	rubyeval (char *);
+	BUILT_IN_COMMAND(rubycmd);
 #endif
 
 #ifdef HAVE_PYTHON
-extern	char *	python_eval_expression (char *);
-extern	void	python_eval_statement (char *);
-extern	char *  call_python_directly (const char *, char *args);
-BUILT_IN_COMMAND(pythoncmd);
-BUILT_IN_COMMAND(pydirect_cmd);
+	char *	python_eval_expression (char *);
+	void	python_eval_statement (char *);
+	char *  call_python_directly (const char *, char *args);
+	BUILT_IN_COMMAND(pythoncmd);
+	BUILT_IN_COMMAND(pydirect_cmd);
 #endif
 
 #endif

@@ -36,26 +36,12 @@
 #ifndef __clock_h__
 #define __clock_h__
 
-#include "keys.h"
-
-extern char *	time_format;
-extern char	clock_timeref[];
-
-	void	reset_clock		(void *);
-	const char *	get_clock	(void);
-	void	clock_systimer		(void);
-	void	set_clock_interval	(void *);
-	void	set_clock_format	(void *);
-	void	my_set_clock		(void *);
-
-extern int	cpu_saver;
-
-	int	cpu_saver_timer		(void *);
-	void	set_cpu_saver_after	(void *);
-	void	set_cpu_saver_every	(void *);
-	BUILT_IN_KEYBINDING(cpu_saver_on);
-
-	int	update_system_timer	(const char *);
-	void	reset_system_timers	(void);
+	void		reset_clock		(void *);
+	const char *	get_clock		(void);
+	void		clock_systimer		(void);
+	void		set_clock_interval	(void *);
+	void		set_clock_format	(void *);
+	void		my_set_clock		(void *);
+	int		update_system_timer	(const char *);
 
 #endif

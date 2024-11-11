@@ -276,8 +276,8 @@ static void	initialize_hook_functions (void)
 	int	i, b;
 	char *  p;
 
-	hook_functions = malloc(NUMBER_OF_LISTS * sizeof(Hookables));
-	p = malloc(4050);
+	hook_functions = new_malloc(NUMBER_OF_LISTS * sizeof(Hookables));
+	p = new_malloc(4050);
 
 	for (i = 0; i < FIRST_NAMED_HOOK; i++, p += 4)
 	{
@@ -965,7 +965,6 @@ static int 	do_hook_internal (int which, char **result, const char *format, va_l
 		return retval;
 
     implied_hook:
-#ifdef IMPLIED_ON_HOOKS
     do
     {
 	char *	func_call = NULL;
@@ -1007,7 +1006,6 @@ static int 	do_hook_internal (int which, char **result, const char *format, va_l
 		h->mark--;
     }
     while (0);
-#endif
 
 	if (!result || !*result)
 		panic(1, "do_hook: Didn't set result anywhere.");
@@ -2559,7 +2557,6 @@ char *hookctl (char *input)
 				case 4:
 				case 5:
 				case 6:		RETURN_INT(hooks->params);
-#ifdef IMPLIED_ON_HOOKS
 				case 7:		if (set) {
 								if (*input == '{')
 								{
@@ -2578,7 +2575,6 @@ char *hookctl (char *input)
 								RETURN_INT(1);
 							} else
 								RETURN_STR(hooks->implied);
-#endif
 			}
 			RETURN_EMPTY;
 			break;

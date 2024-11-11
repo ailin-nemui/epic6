@@ -46,6 +46,9 @@
 #include <errno.h>
 #include <sys/stat.h>
 /* I used to #include <locale.h>, but centos 5.11 required special handling */
+#ifdef HAVE_REGEX_H
+#include <regex.h>
+#endif
 
 /*
  * Everybody needs these INET headers...

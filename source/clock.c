@@ -57,11 +57,11 @@
  * calls to get_string_var, which is truly bogus, but neccesary for any
  * semblance of efficiency.
  */
-	char		*time_format = NULL;	/* XXX Bogus XXX */
+static	char		*time_format = NULL;	/* XXX Bogus XXX */
 static	const char	*strftime_24hour = "%R";
 static	const char	*strftime_12hour = "%I:%M%p";
 static	char		current_clock[256];
-	char		clock_timeref[] = "CLKTIM";
+static	char		clock_timeref[] = "CLKTIM";
 
 static void	reset_broken_clock (void)
 {
@@ -192,86 +192,10 @@ void	my_set_clock (void *stuff)
 }
 
 /************************************************************************/
-/*			CPU SAVER WATCHDOG				*/
-/************************************************************************/
-	int	cpu_saver = 0;
-
-BUILT_IN_KEYBINDING(cpu_saver_on)
-{
-        cpu_saver = 1;
-        update_all_status(); 
-}
-
-static const char cpu_saver_timeref[] = "CPUTIM";
-
-/*
- * This is a watchdog timer that checks to see when we're idle enough to 
- * turn on CPU SAVER mode.  The above timers may honor what we do here but
- * they're not required to.
- */
-int	cpu_saver_timer (void *schedule_only)
-{
-	double	interval;
-	double	been_idlin;
-
-	if (cpu_saver)
-		return 0;
-
-	get_time(&now);
-	been_idlin = time_diff(idle_time, now);
-	interval = get_int_var(CPU_SAVER_AFTER_VAR) * 60;
-
-	if (interval < 1)
-		return 0;
-
-	if (been_idlin > interval)
-		cpu_saver_on(0, NULL);
-	else
-		add_timer(1, cpu_saver_timeref, interval - been_idlin, 
-				1, cpu_saver_timer, NULL, NULL, 
-				GENERAL_TIMER, -1, 0, 0);
-	return 0;
-}
-
-void    set_cpu_saver_after (void *stuff)
-{
-	const VARIABLE *v;
-	int	value;
-
-	v = stuff;
-	value = v->integer;
-
-        if (value == 0)
-	{
-		/* Remove the watchdog timer only if it is running. */
-		if (timer_exists(cpu_saver_timeref))
-			remove_timer(cpu_saver_timeref);
-	}
-	else
-                cpu_saver_timer(NULL);
-}
-
-void	set_cpu_saver_every (void *stuff)
-{
-	VARIABLE *v;
-	int	value;
-
-	v = stuff;
-	value = v->integer;
-
-	if (value < 60)
-	{
-		say("/SET CPU_SAVER_EVERY must be set to at least 60");
-		v->integer = 60;
-	}
-}
-
-/************************************************************************/
 /*			SYSTEM TIMERS					*/
 /************************************************************************/
 struct system_timer {
 	char *	name;
-	int	honors_cpu_saver;
 	int *	interval_variable;
 	int *	toggle_variable;
 	Timeval	last_event;
@@ -279,16 +203,16 @@ struct system_timer {
 };
 
 struct system_timer system_timers[] = {
-	{ clock_timeref, 	1, 
+	{ clock_timeref, 	 
 	  &CLOCK_INTERVAL_VAR, 	&CLOCK_VAR, 	{ 0, 0 },
 	  clock_systimer 	},
-	{ notify_timeref, 	1, 
+	{ notify_timeref, 	 
 	  &NOTIFY_INTERVAL_VAR,  &NOTIFY_VAR, 	{ 0, 0 },
 	  notify_systimer	},
-	{ mail_timeref, 	1, 
+	{ mail_timeref, 	 
 	  &MAIL_INTERVAL_VAR, 	&MAIL_VAR, 	{ 0, 0 },
 	  mail_systimer 	},
-	{ NULL,			0, 
+	{ NULL,			 
 	  0,			0,		{ 0, 0 },
 	  NULL 			}
 };
@@ -297,7 +221,6 @@ struct system_timer system_timers[] = {
  * This is a unified callback function that handles the processing for all
  * of the system timers.  
  * It calculates how long until the callback should be called again:
- *	If CPU SAVER mode is on, then /set CPU_SAVE_EVERY seconds
  *	If it is off, then the next round /SET *_INTERVAL seconds
  *	  where * is "CLOCK", "NOTIFY" or "MAIL".
  * Then it calls the processing callback ("callback") to do the work.
@@ -310,17 +233,8 @@ static int	system_timer (void *entry)
 
 	item = entry;
 
-	if (item->honors_cpu_saver && cpu_saver)
-	{
-	    nominal_timeout = get_int_var(CPU_SAVER_EVERY_VAR);
-	    timeout = nominal_timeout;
-	}
-	else
-	{
-	    nominal_timeout = get_int_var(*item->interval_variable);
-	    timeout = time_to_next_interval(nominal_timeout);
-	}
-
+	nominal_timeout = get_int_var(*item->interval_variable);
+	timeout = time_to_next_interval(nominal_timeout);
 	add_timer(1, item->name, timeout, 1, system_timer, entry, NULL, 
 				GENERAL_TIMER, -1, 0, 0);
 
@@ -364,16 +278,4 @@ int	update_system_timer (const char *entry)
 	return -1;
 }
 
-/**************************************************************************/
-/*
- * When cpu saver mode is turned off (by the user pressing a key), then
- * we immediately do all of the system timers and then they will reset
- * themselves to go off as regular.
- */
-void	reset_system_timers (void)
-{
-	cpu_saver = 0;
-	update_system_timer(NULL);
-	cpu_saver_timer(NULL);
-}
 

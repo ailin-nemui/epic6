@@ -34,13 +34,7 @@
 #ifndef __reg_h__
 #define __reg_h__
 
-#ifdef HAVE_REGEX_H
-# include <regex.h>
-#endif
-
         int     wild_match      (const char *, const char *);
-        int     pattern_regcomp (regex_t *, const char *, int);
-        char *  pattern2regex   (const char *, int *);
 
 #endif
 

@@ -98,7 +98,6 @@ STATUS_FUNCTION(status_refnum_real);
 STATUS_FUNCTION(status_null_function);
 STATUS_FUNCTION(status_notify_windows);
 STATUS_FUNCTION(status_voice);
-STATUS_FUNCTION(status_cpu_saver_mode);
 STATUS_FUNCTION(status_position);
 STATUS_FUNCTION(status_scrollback);
 STATUS_FUNCTION(status_scroll_info);
@@ -118,7 +117,6 @@ static	char	*query_format 		= (char *) 0;
 static	char	*clock_format 		= (char *) 0;
 static	char	*hold_lines_format 	= (char *) 0;
 static	char	*channel_format 	= (char *) 0;
-static	char	*cpu_saver_format 	= (char *) 0;
 static	char	*mail_format 		= (char *) 0;
 static	char	*nick_format		= (char *) 0;
 static	char	*server_format 		= (char *) 0;
@@ -159,7 +157,6 @@ struct status_formats status_expandos[] = {
 { 0, 'H', status_hold,		NULL,			NULL },
 { 0, 'I', status_insert_mode,   NULL,			NULL },
 { 0, 'K', status_scrollback,	NULL,			NULL },
-{ 0, 'L', status_cpu_saver_mode,&cpu_saver_format,	&STATUS_CPU_SAVER_VAR },
 { 0, 'M', status_mail,		&mail_format,		&STATUS_MAIL_VAR },
 { 0, 'N', status_nickname,	&nick_format,		&STATUS_NICKNAME_VAR },
 { 0, 'O', status_overwrite_mode,NULL,			NULL },
@@ -1739,22 +1736,6 @@ STATUS_FUNCTION(status_dcc)
 STATUS_FUNCTION(status_dcc_all)
 {
 	return DCC_get_current_transfer();
-}
-
-/*
- * This displays something if the client is in 'cpu saver' mode.
- * A discussion of that mode should be found in irc.c, so i wont get
- * into it here.
- */
-STATUS_FUNCTION(status_cpu_saver_mode)
-{
-	STATUS_VARS
-
-	if (!cpu_saver)
-		return empty_string;
-
-	PRESS(cpu_saver_format, "CPU")
-	RETURN
 }
 
 /*

@@ -243,15 +243,13 @@ typedef struct
  */
 static void	setup_expr_info (expr_info *c)
 {
-#ifdef NO_CHEATING
 	int	i;
-#endif
 
 	c->ptr = NULL;
 	c->noeval = 0;
 	c->operand = 1;
 	c->token = 0;
-#ifdef NO_CHEATING
+
 	for (i = 0; i <= TOKENCOUNT; i++)
 	{
 		TOK(c, i).used = USED_NONE;
@@ -264,10 +262,7 @@ static void	setup_expr_info (expr_info *c)
 	}
 	for (i = 0; i <= STACKSZ; i++)
 		c->stack[i] = 0;
-#else
-	memset(c->tokens, 0, sizeof(c->tokens));
-	memset(c->stack, 0, sizeof(c->stack));
-#endif
+
 	c->sp = -1;
 	c->mtok = 0;
 	c->errflag = 0;

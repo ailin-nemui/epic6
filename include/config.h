@@ -1,95 +1,23 @@
 /* 
- * 'new' config.h:
- *	A configuration file designed to make best use of the abilities
- *	of ircII, and trying to make things more intuitively understandable.
+ * config.h:
  *
- * Original: Michael Sandrof
- * V2 by Carl V. Loesch (lynx@dm.unirm1.it)
+ * This file provides default values for runtime variables that must have them.
+ * They are used to boot up and load your ~/.epicrc where you can change them
+ *
+ *   Don't fret if you don't like these values -- 
+ *   you can override all of them at runtime.
+ *   They're just here so the client can bootstrap itself.
  */
 
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/*
- * Notes to the unwary:
- *
- *  -- You cant just add a ``#define DEFAULT_X'' and expect it to work.
- *     Those things that do not have defaults are that way on purpose.
- *     Either they have their own defaults, or a default is inappropriate.
- *
- *  -- Unless the description expliclity says that the #define is optional,
- *     you may NOT remove it or #undef it, else the client will not compile 
- *     properly.
- */
-
 /* 
- *  This is where you define a list of ``fallback'' servers in case the client
- *  cannot under other circumstances figure out where to connect.   Normally,
- *  the server to use is determined by the ``SERVERS_FILE'' (see below), or
- *  by a server specified on the command line.   But if for some reason your
- *  ``SERVERS_FILE'' isnt there or isnt readable, or the user doesnt specify
- *  a server, then this list will be used.
- *
- *  The list should be a space seperated list of the form 
- *  hostname:portnum:password.  The portnum and password are optional.  
- *  An example is:
- *
- *	#define DEFAULT_SERVER "irc.iastate.edu irc-2.mit.edu:6666:lag-2sux"
- *
- *  THIS DEFINE IS -!-NOT-!- OPTIONAL.  You must provide a fallback list or
- *  the client will NOT compile and work properly!  Use the default here if
- *  you dont have other servers to use.
+ * If you're looking for where to specify the default servers, the client
+ * doesn't do that any more.  See the script/servers script.  
+ * If the user does not provide a server to connect to, the client will 
+ * start up in disconnected mode and let the user take the initiative.
  */
-#define DEFAULT_SERVER "irc.efnet.net irc.undernet.org irc.dal.net"
-
-/*
- * By default we let OpenSSL choose the ciphers we wnat to use.
- * But if you were really bent on overruling that, you could do it here.
- * If you change this, you are expected to know what you are doing.
- */
-#define DEFAULT_SSL_CIPHERS NULL
-
-/*
- * EPIC creates stack frames to hold local variables when you run an 
- * alias, on, etc.  When this many stack frames are created, the client 
- * will presume things have gone terribly wrong and will bail out ("panic").
- * This will stop epic from crashing with a segfault when you do 
- * infinite recursion, but it's possible that epic may infinitely recurse
- * if your alias is tricky enough.  Pick your poison
- */
-#define MAX_STACK_FRAMES 20000
-
-/*
- * When this is define'd, the -z flag, the IRCUSER and USER environment 
- * variables, as well as the /IRCUSER command will be honored.  This is 
- * not nearly as big a deal as it used to be, because every server uses 
- * identd and ignores the client-specified username.  There is no compelling 
- * reason for any site using identd to forbid this behavior by default.  
- * Any site that wont run identd i dont have a lot of sympathy for.
- */
-#define ALLOW_USER_SPECIFIED_LOGIN
-
-/*
- * I moved this here because it seemed to be the most appropriate
- * place for it.  Define this if you want support for ``/window create''
- * and its related features.  If you dont want it, youll save some code,
- * and you wont need 'wserv'.
- */
-#define WINDOW_CREATE
-
-#define MIRC_BROKEN_DCC_RESUME
-
-/* And here is the port number for default client connections.  */
-#define IRC_PORT 6667
-
-/*
- * If you want to have a file containing the list of irc servers to 
- * use, define SERVERS_FILE to be that filename.  Put the file in the 
- * ircII library directory.  This file should be space seperated
- * hostname:portnum:password (with the portnum and password being
- * optional).  This server list will supercede the DEFAULT_SERVER
- */
-#define SERVERS_FILE "ircII.servers"
 
 /*
  * The /LOAD path is now generated at runtime, rather than at compile time.
@@ -100,27 +28,25 @@
  */
 #define DEFAULT_IRCPATH "~/.epic:~/.irc:%s/script:."
 
-#define IMPLIED_ON_HOOKS
-
 /*
- * Below are the IRCII variable defaults.  For boolean variables, use 1 for
- * ON and 0 for OFF.  You may set string variable to NULL if you wish them to
- * have no value.  None of these are optional.  You may *not* comment out or
- * remove them.  They are default values for variables and are required for
- * proper compilation.
+ * These are the compiled-in default values for /SET variables.
+ * I cannot emphasize strongly enough that all of these can be changed
+ * at runtime in your ~/.epicrc, so please don't feel you need to change
+ * them here.
+ *
+ * - A /set value that is a string should be a C string or NULL
+ * - A /set value that is a boolean should be 0 for OFF and 1 for ON
+ * - A /set value that is an integer should be a C integer.
+ * If you don't know, don't touch.
  */
 #define DEFAULT_ACCEPT_INVALID_SSL_CERT 1
 #define DEFAULT_ALLOW_C1_CHARS 0
-#define DEFAULT_ALT_CHARSET 1
 #define DEFAULT_ALWAYS_SPLIT_BIGGEST 1
 #define DEFAULT_AUTOMARGIN_OVERRIDE 0
 #define DEFAULT_BANNER "***"
 #define DEFAULT_BANNER_EXPAND 0
 #define DEFAULT_BEEP 1
-#define DEFAULT_BEEP_MAX 3
 #define DEFAULT_BLANK_LINE_INDICATOR NULL
-#define DEFAULT_BLINK_VIDEO 1
-#define	DEFAULT_BOLD_VIDEO 1
 #define DEFAULT_BROKEN_AIXTERM 0
 #define DEFAULT_CHANNEL_NAME_WIDTH 0
 #define DEFAULT_CLOCK 1
@@ -128,7 +54,6 @@
 #define DEFAULT_CLOCK_FORMAT NULL
 #define DEFAULT_CLOCK_INTERVAL 60
 #define DEFAULT_CMDCHARS "/"
-#define DEFAULT_COLOR 1
 #define DEFAULT_COMMENT_HACK 1
 #define DEFAULT_CONTINUED_LINE "+"
 #define DEFAULT_CPU_SAVER_AFTER 0
@@ -141,26 +66,19 @@
 #define DEFAULT_DCC_SLIDING_WINDOW 1
 #define DEFAULT_DCC_STORE_PATH NULL
 #define DEFAULT_DCC_USE_GATEWAY_ADDR 0
-#define DEFAULT_DEFAULT_SCRIPT_ENCODING "ISO-8859-1"
 #define DEFAULT_DISPATCH_UNKNOWN_COMMANDS 0
 #define DEFAULT_DISPLAY 1
-#define DEFAULT_DISPLAY_ANSI 1
-#define DEFAULT_DISPLAY_PC_CHARACTERS 4
 #define DEFAULT_DO_NOTIFY_IMMEDIATELY 1
-#define DEFAULT_EIGHT_BIT_CHARACTERS 1
 #define DEFAULT_FIRST_LINE NULL
 #define DEFAULT_FLOATING_POINT_MATH 0
 #define DEFAULT_FLOATING_POINT_PRECISION 16
 #define DEFAULT_HIDE_PRIVATE_CHANNELS 0
-#define DEFAULT_HIGHLIGHT_CHAR "BOLD"
-#define DEFAULT_HIGH_BIT_ESCAPE 2
 #define DEFAULT_HOLD_SLIDER 100
 #define DEFAULT_INDENT 0
 #define DEFAULT_INPUT_INDICATOR_LEFT "+ "
 #define DEFAULT_INPUT_INDICATOR_RIGHT " +"
 #define DEFAULT_INPUT_PROMPT "> "
 #define DEFAULT_INSERT_MODE 1
-#define DEFAULT_INVERSE_VIDEO 1
 #define DEFAULT_KEY_INTERVAL 1000
 #define DEFAULT_LASTLOG 256
 #define DEFAULT_LASTLOG_LEVEL "ALL"
@@ -173,7 +91,6 @@
 #define DEFAULT_METRIC_TIME 0
 #define DEFAULT_MIRC_BROKEN_DCC_RESUME 0
 #define DEFAULT_MODE_STRIPPER 0
-#define DEFAULT_ND_SPACE_MAX 160
 #define DEFAULT_NEW_SERVER_LASTLOG_LEVEL "ALL,-DCC"
 #define DEFAULT_NOTIFY 1
 #define DEFAULT_NOTIFY_INTERVAL 60
@@ -181,12 +98,10 @@
 #define DEFAULT_NOTIFY_ON_TERMINATION 1
 #define DEFAULT_NOTIFY_USERHOST_AUTOMATIC 1
 #define DEFAULT_NO_CONTROL_LOG 0
-#define DEFAULT_NO_CTCP_FLOOD 1
 #define DEFAULT_NO_FAIL_DISCONNECT 0
-#define DEFAULT_OLD_MATH_PARSER 0
 #define DEFAULT_OLD_SERVER_LASTLOG_LEVEL "NONE"
 #define DEFAULT_PAD_CHAR ' '
-#define DEFAULT_QUIT_MESSAGE "ircII %s -- Are we there yet?"
+#define DEFAULT_QUIT_MESSAGE "ircII %s -- What next?"
 #define DEFAULT_SCREEN_OPTIONS NULL
 #define DEFAULT_SCROLLBACK 256
 #define DEFAULT_SCROLLBACK_RATIO 50
@@ -197,6 +112,7 @@
 #define DEFAULT_SHOW_CHANNEL_NAMES 1
 #define DEFAULT_SHOW_NUMERICS 0
 #define	DEFAULT_SHOW_STATUS_ALL 0
+#define DEFAULT_SSL_CIPHERS NULL
 #define DEFAULT_SSL_ROOT_CERTS_LOCATION NULL
 #define DEFAULT_STATUS_AWAY " (Away)"
 #define DEFAULT_STATUS_CHANNEL " %C"
@@ -227,7 +143,6 @@
 #define DEFAULT_STATUS_SERVER " (%S)"
 #define DEFAULT_STATUS_SSL_OFF "*RAW*"
 #define DEFAULT_STATUS_SSL_ON "*SSL*"
-#define DEFAULT_STATUS_TRUNCATE_RHS 1
 #define DEFAULT_STATUS_UMODE " (+%#)"
 #define DEFAULT_STATUS_USER "EPIC6 -- Visit https://epicsol.org/ for help"
 #define DEFAULT_STATUS_USER1 ""
@@ -273,57 +188,13 @@
 #define DEFAULT_STATUS_WINDOW "^^^^^^^^"
 #define DEFAULT_SUPPRESS_FROM_REMOTE_SERVER 0
 #define DEFAULT_SWITCH_CHANNELS_BETWEEN_WINDOWS 1
-#define DEFAULT_TAB 1
-#define	DEFAULT_TAB_MAX 0
 #define DEFAULT_TERM_DOES_BRIGHT_BLINK 0
 #define DEFAULT_TMUX_OPTIONS NULL
-#define DEFAULT_UNDERLINE_VIDEO 1
 #define DEFAULT_USER_INFORMATION "EPIC6 -- Did we get lost again?"
 #define DEFAULT_WORD_BREAK " \t"
 #define DEFAULT_WSERV_TYPE "screen"
 #define DEFAULT_XTERM "xterm"
 #define DEFAULT_XTERM_OPTIONS NULL
-
-/*
- * People have wanted me to explain some of these #defines.  Well,
- * Ill tell you what i will do.  I will tell you that some of these
- * defines turn on obscure features, and others turn on features that
- * are specificly placed there at the request of one of the debuggers,
- * but i am making the option of using it available to the general 
- * public.  You should always be aware of what changing one of these 
- * #defines might do to affect the operation of the client.  You can get
- * a good feel for the impact by grepping the source code for them.
- * General "themes" of what the defines do are listed on the right.  
- * These "themes" describe the *spirit* of the define, but do NOT 
- * annotate every reprocussion of defining it!
- *
- * Also, i dont guarantee that changing any of these defines will
- * or wont compile correctly, so you may have to be prepared to do
- * some minor debugging in that case (send patches along to me if
- * you do =)  Dont change any of these unless you know what it will do.
- */
-#undef HACKED_DCC_WARNING	/* warn if handshake != sender */
-#undef HARD_UNFLASH		/* do a hard reset instead of soft on refresh */
-#undef NO_BOTS			/* no bots allowed */
-#undef NO_CHEATING		/* always do it the "right" way, no shortcuts */
-
-#undef	I_DONT_TRUST_MY_USERS	/* There are certain things that the stock
-				   ircII client doesnt allow users to do
-				   that are acceptable by both the letter and
-				   the spirit of the protocol.
-				   These are the things that only a really
-				   anal retentive person would want to totaly
-				   prohibit his users from doing without any
-				   exceptions.  When i find these things, i
-				   #ifdef them out under this define.  The
-				   specific list of what may or may not be
-				   contained under this define can change
-				   from release to release.  This replaces
-				   the I_AM_A_FASCIST_BASTARD define which
-				   several people found offensive because
-				   they wanted to define it =) */
-
-#undef ALLOC_DEBUG
 
 #endif /* _CONFIG_H_ */
 

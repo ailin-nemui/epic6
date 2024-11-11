@@ -71,6 +71,8 @@ static 	void	ison_notify (int refnum, char *AskedFor, char *AreOn);
 static 	void	rebuild_notify_ison 	(int server);
 
 
+/* XXX This should be refactored to not need a Server pointer */
+
 #define NOTIFY_LIST(s)		(&(s->notify_list))
 #define NOTIFY_MAX(s)  		(s->notify_list.max)
 #define NOTIFY_ITEM(s, i) 	((NotifyItem *)(s->notify_list.list[i]->data))

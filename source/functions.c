@@ -443,7 +443,7 @@ static	char
 char	*wrapper_pattern	(char *, int),
 	*wrapper_rpattern	(char *, int);
 
-extern char
+char
 	*function_cparse	(char *),
 	*function_push		(char *),
 	*function_pop		(char *),
@@ -4113,11 +4113,7 @@ BUILT_IN_FUNCTION(function_info, words)
 	else if (!my_strnicmp(which, "I", 1))
 		RETURN_INT(commit_id);
 	else if (!my_strnicmp(which, "M", 1))
-	{
-		if (get_int_var(OLD_MATH_PARSER_VAR))
-			RETURN_INT(0);
-		RETURN_INT(1);
-	}
+		RETURN_INT(1);		/* New math parser only */
 	else if (!my_strnicmp(which, "O", 1))
 		RETURN_FSTR(compile_time_options);
 	else if (!my_strnicmp(which, "S", 1))
@@ -4912,9 +4908,15 @@ BUILT_IN_FUNCTION(function_regcomp_cs, input)
 {
 	char *	dest;
 	regex_t preg;
+	int	flag;
+
+	flag = REG_EXTENDED;
+#ifdef REG_ENHANCED
+	flag |= REG_ENHANCED;
+#endif
 
 	memset(&preg, 0, sizeof(preg)); 	/* make valgrind happy */
-	last_regex_error = regcomp(&preg, input, REG_EXTENDED);
+	last_regex_error = regcomp(&preg, input, flag);
 
 	dest = transform_string_dyn("+ENC", (char *)&preg, 
 					sizeof(regex_t), NULL);
@@ -4925,9 +4927,15 @@ BUILT_IN_FUNCTION(function_regcomp, input)
 {
 	char *	dest;
 	regex_t preg;
+	int	flag;
+
+	flag = REG_EXTENDED | REG_ICASE;
+#ifdef REG_ENHANCED
+	flag |= REG_ENHANCED;
+#endif
 
 	memset(&preg, 0, sizeof(preg)); 	/* make valgrind happy */
-	last_regex_error = regcomp(&preg, input, REG_EXTENDED | REG_ICASE);
+	last_regex_error = regcomp(&preg, input, flag);
 
 	dest = transform_string_dyn("+ENC", (char *)&preg, 
 					sizeof(regex_t), NULL);
@@ -6469,8 +6477,10 @@ BUILT_IN_FUNCTION(function_functioncall, input)
 	 * these for your own use -- because who knows, one day i may make
 	 * them static and your use of them will not be my fault! :p
 	 */
+#if 0
 	extern	int	wind_index;		 	/* XXXXX Ick */
 	extern	int	last_function_call_level;	/* XXXXX Ick */
+#endif
 
 	/*
 	 * If the last place we slapped down a FUNCTION_RETURN is in the

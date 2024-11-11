@@ -75,7 +75,6 @@ static struct debug_opts opts[] =
 	{ "EXTRACTW_DEBUG",	DEBUG_EXTRACTW_DEBUG },
 	{ "MESSAGE_FROM",	DEBUG_MESSAGE_FROM },
 	{ "WHO_QUEUE",		DEBUG_WHO_QUEUE },
-	{ "OLD_MATH",		0 },
 	{ "UNICODE",		DEBUG_UNICODE },
 	{ "DWORD",        	DEBUG_DWORD },
 	{ "RECODE",		DEBUG_RECODE },

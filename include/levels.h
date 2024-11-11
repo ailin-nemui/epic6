@@ -168,15 +168,15 @@ static int	mask_isset (const Mask *set, int bit)
 
 /*---------------- end of bsd stuff ------------------*/
 
-	void		init_levels	(void);
-	int		add_new_level	(const char *);
-	int		add_new_level_alias (int, const char *);
-	char *		get_all_levels	(void);
-	const char *	mask_to_str	(const Mask *);
-	int		str_to_mask	(Mask *, const char *, char **);
-	void    	standard_level_warning (const char *, char **);
-	const char *	level_to_str	(int);
-	int		str_to_level	(const char *);
-	char *		levelctl	(char *);
+	void		init_levels		(void);
+	int		add_new_level		(const char *);
+	int		add_new_level_alias 	(int, const char *);
+	char *		get_all_levels		(void);
+	const char *	mask_to_str		(const Mask *);
+	int		str_to_mask		(Mask *, const char *, char **);
+	void    	standard_level_warning 	(const char *, char **);
+	const char *	level_to_str		(int);
+	int		str_to_level		(const char *);
+	char *		levelctl		(char *);
 
 #endif

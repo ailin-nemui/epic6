@@ -155,7 +155,6 @@ const	AI *		next_addr;		/* The next one to try upon failure */
         int             doing_ctcp;
 
 }	Server;
-extern	Server	**server_list; 
 
 	int    	serverinfo_matches_servref	(ServerInfo *, int);
         int    	clear_serverinfo 		(ServerInfo *s);

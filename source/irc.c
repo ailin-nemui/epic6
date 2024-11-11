@@ -52,7 +52,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3001;
+const unsigned long	commit_id = 3002;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -104,7 +104,7 @@ const char ridiculous_version_name[] = "Otiose";
  */
 
 /* The ``DEFAULT'' port used for irc server connections. */
-int		irc_port = IRC_PORT;
+int		irc_port = 6667;
 
 /* 
  * When a numeric is being processed, this holds the negative value
@@ -216,9 +216,7 @@ static		char	switch_help[] =
   The [server list] are one or more server descriptions               \n\
   The [switches] are zero or more of the following:                   \n\
       -a\tThe [server list] adds to default server list               \n"
-#ifndef NO_BOTS
 "      -b\tThe program should run in the background ``bot mode''       \n"
-#endif
 "      -B\tLoads your .ircrc file before you connect to a server.      \n\
       -d\tThe program should run in ``dumb mode'' (no fancy screen)   \n\
       -h\tPrint this help message                                     \n\
@@ -486,19 +484,21 @@ static	void	show_version (void)
  */
 static	void	parse_args (int argc, char **argv)
 {
-	int ch;
-	int append_servers = 0;
-	struct passwd *entry;
-	char *ptr = (char *) 0;
-	const char *cptr = NULL;
-	const char *tmp_hostname = NULL;
-	char *the_path = NULL;
+	int 		ch;
+	int 		append_servers = 0;
+	struct passwd *	entry;
+	char *		ptr = (char *) 0;
+	const char *	cptr = NULL;
+	const char *	tmp_hostname = NULL;
+	char *		the_path = NULL;
+	int		altargc = 0;
+	char **		altargv;
 
-	int altargc = 0;
-	char **altargv;
-
-	extern char *optarg;
-	extern int optind;
+	/* 
+	 * https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/unistd.h.html
+	 * says that <unistd.h> shall define 'optarg' and 'optind'.
+	 * In the past, we used to declare them extern ourselves.
+	 */
 
 	*nickname = 0;
 
@@ -527,6 +527,7 @@ static	void	parse_args (int argc, char **argv)
 	if ((cptr = getenv("IRCNICK")))
 		strlcpy(nickname, cptr, sizeof nickname);
 
+	/* XXX Rewrite this XXX */
 	/*
 	 * We now allow users to use IRCUSER or USER if we couldnt get the
 	 * username from the password entries.  For those systems that use
@@ -541,32 +542,28 @@ static	void	parse_args (int argc, char **argv)
 		if ((cptr = getenv("LOGNAME")) && *cptr)
 			set_var_value(DEFAULT_USERNAME_VAR, cptr, 0);
 
-#ifndef ALLOW_USER_SPECIFIED_LOGIN
-	if (empty(get_string_var(DEFAULT_USERNAME_VAR)))
-#endif
-		if ((cptr = getenv("IRCUSER")) && *cptr) 
-			set_var_value(DEFAULT_USERNAME_VAR, cptr, 0);
-#ifdef ALLOW_USER_SPECIFIED_LOGIN
-		else if (empty(get_string_var(DEFAULT_USERNAME_VAR)))
-			;
-#endif
-		else if ((cptr = getenv("USER")) && *cptr) 
-			set_var_value(DEFAULT_USERNAME_VAR, cptr, 0);
-		else if ((cptr = getenv("HOME")) && *cptr)
-		{
-			const char *cptr2 = strrchr(cptr, '/');
-			if (cptr2)
-				set_var_value(DEFAULT_USERNAME_VAR, cptr2, 0);
-			else
-				set_var_value(DEFAULT_USERNAME_VAR, cptr, 0);
-		}
+	if ((cptr = getenv("IRCUSER")) && *cptr) 
+		set_var_value(DEFAULT_USERNAME_VAR, cptr, 0);
+	else if (empty(get_string_var(DEFAULT_USERNAME_VAR)))
+		;
+	else if ((cptr = getenv("USER")) && *cptr) 
+		set_var_value(DEFAULT_USERNAME_VAR, cptr, 0);
+	else if ((cptr = getenv("HOME")) && *cptr)
+	{
+		const char *cptr2 = strrchr(cptr, '/');
+		if (cptr2)
+			set_var_value(DEFAULT_USERNAME_VAR, cptr2, 0);
 		else
-		{
-			fprintf(stderr, "I dont know what your user name is.\n");
-			fprintf(stderr, "Set your LOGNAME environment variable\n");
-			fprintf(stderr, "and restart EPIC.\n");
-			exit(1);
-		}
+			set_var_value(DEFAULT_USERNAME_VAR, cptr, 0);
+	}
+	else
+	{
+		fprintf(stderr, "I dont know what your user name is.\n");
+		fprintf(stderr, "Set your LOGNAME environment variable\n");
+		fprintf(stderr, "and restart EPIC.\n");
+		exit(1);
+	}
+	/* XXX Rewrite this ^^^^ */
 
 	if ((cptr = getenv("IRCNAME")))
 		set_var_value(DEFAULT_REALNAME_VAR, cptr, 0);
@@ -706,11 +703,6 @@ static	void	parse_args (int argc, char **argv)
 				break;
 
 			case 'b':
-/* siiiiiiiigh */
-#ifdef NO_BOTS
-				fprintf(stderr, "This client was compiled to not support the -b flag. Tough for you.\n");
-				exit(1);
-#endif
 				dumb_mode = 1;
 				use_input = 0;
 				background = 1;
@@ -801,9 +793,11 @@ static	void	parse_args (int argc, char **argv)
 		read_default_server_file();
 		if (!server_list_size())
 		{
+#if 0
 			ptr = malloc_strdup(DEFAULT_SERVER);
 			add_servers(ptr, NULL);
 			new_free(&ptr);
+#endif
 		}
 	}
 
@@ -1009,7 +1003,7 @@ static	int		level = 0,
 }
 
 /*************************************************************************/
-void    load_ircrc (void)
+static void    load_ircrc (void)
 {
 	if (startup_file || quick_startup)
 		return;
@@ -1153,7 +1147,7 @@ int 	main (int argc, char *argv[])
 	window_check_servers();
 
 	get_time(&idle_time);
-	reset_system_timers();
+	update_system_timer(NULL);
 
 	/*
 	 * Have you ever seen a setjmp() before?

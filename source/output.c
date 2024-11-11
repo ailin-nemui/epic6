@@ -63,11 +63,10 @@ static	char	putbuf[OBNOXIOUS_BUFFER_SIZE + 1];
  */
 static void	unflash (void)
 {
-#ifdef HARD_UNFLASH
+#if 0
 	fwrite("\033c", 2, 1, stdout);		/* hard reset */
-#else
-	fwrite("\033)0", 3, 1, stdout);		/* soft reset */
 #endif
+	fwrite("\033)0", 3, 1, stdout);		/* soft reset */
 }
 
 /* sig_refresh_screen: the signal-callable version of refresh_screen */

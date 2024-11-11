@@ -144,7 +144,7 @@ commands.o: commands.c ../include/irc.h ../include/defs.h \
   ../include/ignore.h ../include/levels.h ../include/input.h \
   ../include/keys.h ../include/lastlog.h ../include/log.h \
   ../include/names.h ../include/notify.h ../include/numbers.h \
-  ../include/output.h ../include/parse.h ../include/queue.h \
+  ../include/output.h ../include/parse.h \
   ../include/screen.h ../include/window.h ../include/status.h \
    ../include/stack.h ../include/termx.h \
   ../include/timer.h ../include/newio.h ../include/reg.h \
@@ -411,12 +411,6 @@ python.o: python.c ../include/irc.h \
   ../include/commands.h ../include/functions.h ../include/output.h \
   ../include/ifcmd.h ../include/extlang.h ../include/newio.h \
   ../include/server.h ../include/who.h
-queue.o: queue.c ../include/irc.h ../include/defs.h ../include/config.h \
-  ../include/irc_std.h ../include/debug.h \
-  ../include/alias.h ../include/ircaux.h \
-  ../include/network.h ../include/words.h ../include/vars.h \
-  ../include/commands.h ../include/ifcmd.h ../include/queue.h \
-  ../include/output.h
 recode.o: recode.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h \
   ../include/functions.h ../include/ircaux.h \

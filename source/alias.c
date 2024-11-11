@@ -2342,6 +2342,9 @@ int	make_local_stack 	(const char *name)
 {
 	wind_index++;
 
+/* This used to be in config.h, but it should be a runtime value */
+#define MAX_STACK_FRAMES 20000
+
 #ifdef MAX_STACK_FRAMES
 	if (wind_index >= MAX_STACK_FRAMES)
 	{

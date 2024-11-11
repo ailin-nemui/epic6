@@ -1690,7 +1690,6 @@ BUILT_IN_COMMAND(load)
 	void	(*loader) (const char *, off_t, const char *, const char *, struct load_info *);
 	char *	file_contents = NULL;
 	off_t	file_contents_size = 0;
-	/* This should default to /SET DEFAULT_SCRIPT_ENCODING */
 	const char *	declared_encoding = NULL;
 
 	if (++load_depth == MAX_LOAD_DEPTH)
@@ -3570,7 +3569,7 @@ void    runcmds_with_arglist (const char *what, char *args, const char *subargs)
  * Arguments:
  *	org_line  - A block of ircII statements.  They will be run in sequence.
  *	args	  - The value of $* to use for this block.
- *		  - (DEPRECATED) May be NULL if 'orig_line' is a single
+ *		  - (DEPRECATED) May be NULL if 'org_line' is a single
  *		    statement that must not be subject to $-expansion
  *		    (old /load, /sendline, /on input, dumb mode input)
  *		    *** IF args IS NULL, name MUST ALSO BE NULL! ***
@@ -3581,7 +3580,7 @@ void    runcmds_with_arglist (const char *what, char *args, const char *subargs)
  * If args is NULL, the 'org_line' argument is passed straight through to 
  * parse_statement().
  *
- * If args is not NULL, the 'orig_line' argument is parsed, statement by 
+ * If args is not NULL, the 'org_line' argument is parsed, statement by 
  * statement, and each statement is passed through to parse_statement().
  */
 static void	parse_block (const char *org_line, const char *args, int interactive)
@@ -3846,9 +3845,9 @@ expression_statement:
 			prevcmd = current_command;
 			current_command = cmd;
 		}
-		if (alias) {
+
+		if (alias) 
 			call_user_command(cmd, alias, args, arglist);
-		}
 		else if (builtin)
 			builtin(cmd, args, subargs);
 		else if (get_int_var(DISPATCH_UNKNOWN_COMMANDS_VAR))
@@ -3856,9 +3855,8 @@ expression_statement:
 		else if (do_hook(UNKNOWN_COMMAND_LIST, "%s%s %s", cmdchar_used >= 2 ? "//" : "", cmd, args))
 			say("Unknown command: %s", cmd);
 
-		if (alias || builtin) {
+		if (alias || builtin)
 			current_command = prevcmd;
-		}
 
 		new_free(&cmd);
 	}
@@ -3909,9 +3907,6 @@ BUILT_IN_COMMAND(returncmd)
 
 BUILT_IN_COMMAND(botmodecmd)
 {
-#if defined(NO_BOTS)
-	yell("This client was configured not to allow bots.  Bummer.");
-#else
 	if (dumb_mode) {
 		use_input = 0;
 		background = 1;
@@ -3927,7 +3922,6 @@ BUILT_IN_COMMAND(botmodecmd)
 	} else {
 		say("Bot mode can only be entered from Dumb mode.");
 	}
-#endif
 }
 
 void	help_topics_commands (FILE *f)

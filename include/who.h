@@ -10,7 +10,10 @@ void clean_server_queues (int);
 
 /* WHO queue */
 
-/* XXX This should be in who.c */
+/*
+ * XXX Although this should be in who.c,
+ * the Server object uses it.  How bogus.
+ */
 typedef struct WhoEntryT
 {
 	int  refnum;

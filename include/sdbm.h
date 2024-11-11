@@ -8,8 +8,8 @@ struct SDBM;
 typedef struct SDBM SDBM;
 
 typedef struct {
-	const char *dptr;
-	int dsize;
+	const char *	dptr;
+	int 		dsize;
 } Datum;
 
 /*
@@ -21,12 +21,12 @@ typedef struct {
 /*
  * ndbm interface
  */
-extern SDBM *	sdbm_open (const char *, int, int);
-extern void 	sdbm_close (SDBM *);
-extern Datum 	sdbm_fetch (SDBM *, Datum);
-extern int 	sdbm_delete (SDBM *, Datum);
-extern int 	sdbm_store (SDBM *, Datum, Datum, int);
-extern Datum 	sdbm_firstkey (SDBM *);
-extern Datum 	sdbm_nextkey (SDBM *);
-extern int	sdbm_error (SDBM *);
+	SDBM *	sdbm_open 	(const char *, int, int);
+	void 	sdbm_close 	(SDBM *);
+	Datum 	sdbm_fetch 	(SDBM *, Datum);
+	int 	sdbm_delete 	(SDBM *, Datum);
+	int 	sdbm_store 	(SDBM *, Datum, Datum, int);
+	Datum 	sdbm_firstkey 	(SDBM *);
+	Datum 	sdbm_nextkey 	(SDBM *);
+	int	sdbm_error 	(SDBM *);
 

@@ -105,12 +105,12 @@
 
 	char **	get_subarray_elements 	(Char *root, int *howmany, int type);
 
-	extern  char ** pmatch_cmd_alias        (Char *name, int *howmany, int maxret, int start, int rev);
-	extern  char ** pmatch_assign_alias     (Char *name, int *howmany, int maxret, int start, int rev);
-	extern  char ** pmatch_builtin_commands        (Char *name, int *howmany, int maxret, int start, int rev);
-	extern  char ** pmatch_builtin_functions       (Char *name, int *howmany, int maxret, int start, int rev);
-	extern  char ** pmatch_builtin_expandos       (Char *name, int *howmany, int maxret, int start, int rev);
-	extern  char ** pmatch_builtin_variables       (Char *name, int *howmany, int maxret, int start, int rev);
+	char ** pmatch_cmd_alias        (Char *name, int *howmany, int maxret, int start, int rev);
+	char ** pmatch_assign_alias     (Char *name, int *howmany, int maxret, int start, int rev);
+	char ** pmatch_builtin_commands        (Char *name, int *howmany, int maxret, int start, int rev);
+	char ** pmatch_builtin_functions       (Char *name, int *howmany, int maxret, int start, int rev);
+	char ** pmatch_builtin_expandos       (Char *name, int *howmany, int maxret, int start, int rev);
+	char ** pmatch_builtin_variables       (Char *name, int *howmany, int maxret, int start, int rev);
 
 
 	void	bucket_var_alias (Bucket *, const char *);
@@ -205,10 +205,10 @@
 /*
  * Truly bogus. =)
  */
-	char 	*canon_number (char *input);
+	char *	canon_number (char *input);
 
-	char	*aliasctl (char *);
-	char	*symbolctl (char *);
+	char *	aliasctl (char *);
+	char *	symbolctl (char *);
 
 	char *	after_expando (char *, int, int *);
 
@@ -237,10 +237,10 @@ struct ArgListT {
 	int	dot_flag;
 };
 typedef struct ArgListT ArgList;
-extern ArgList *parse_arglist (char *arglist);
-extern void	destroy_arglist (ArgList **);
-extern char *	print_arglist (ArgList *);
-extern ArgList *clone_arglist (ArgList *);
+	ArgList *parse_arglist 	(char *arglist);
+	void	destroy_arglist (ArgList **);
+	char *	print_arglist 	(ArgList *);
+	ArgList *clone_arglist 	(ArgList *);
 #endif
 
 	void	flush_all_symbols (void);

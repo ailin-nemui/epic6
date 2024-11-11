@@ -3699,11 +3699,7 @@ int	real_message_setall (int refnum, const char *who, int level, const char *fil
 	if (x_debug & DEBUG_MESSAGE_FROM)
 		yell("Setting context %d [%d:%s:%s] {%s:%d}", context_counter, refnum, who ? who : "<null>", level_to_str(level), file, line);
 
-#ifdef NO_CHEATING
-	malloc_strcpy(&contexts[context_counter].who_from, who);
-#else
 	contexts[context_counter].who_from = who;
-#endif
 	contexts[context_counter].who_level = level;
 	contexts[context_counter].who_file = file;
 	contexts[context_counter].who_line = line;
@@ -3736,6 +3732,11 @@ static void	adjust_context_windows (int old_win, int new_win)
  * message_from: With this you can set the who_from variable and the 
  * who_mask variable, used by the display routines to decide which 
  * window messages should go to.
+ *
+ * Note - YOU OWN 'who'!  WE COPY THE POINTER BUT YOU STILL OWN THE OBJECT!
+ * YOU _MUST_ CALL pop_message_from() OR ALL HECK WILL BREAK LOOSE!
+ * 
+ * XXX Ugh. that's ugly. 
  */
 int	real_message_from (const char *who, int level, const char *file, int line)
 {
@@ -3758,11 +3759,7 @@ int	real_message_from (const char *who, int level, const char *file, int line)
 	if (x_debug & DEBUG_MESSAGE_FROM)
 		yell("Setting context %d [-:%s:%s] {%s:%d}", context_counter, who ? who : "<null>", level_to_str(level), file, line);
 
-#ifdef NO_CHEATING
-	malloc_strcpy(&contexts[context_counter].who_from, who);
-#else
 	contexts[context_counter].who_from = who;
-#endif
 	contexts[context_counter].who_level = level;
 	contexts[context_counter].who_file = file;
 	contexts[context_counter].who_line = line;
@@ -3781,9 +3778,7 @@ void	pop_message_from (int context)
 			contexts[context_counter-1].who_line);
 
 	context_counter--;
-#ifdef NO_CHEATING
-	new_free(&contexts[context_counter].who_from);
-#endif
+	contexts[context_counter].who_from = NULL;
 	contexts[context_counter].who_level = LEVEL_NONE;
 	contexts[context_counter].who_file = NULL;
 	contexts[context_counter].who_line = -1;

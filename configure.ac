@@ -233,6 +233,8 @@ AC_CHECK_LIB(resolv, gethostbyname, LIBS="$LIBS -lresolv",)
 AC_CHECK_LIB(crypt, crypt, LIBS="$LIBS -lcrypt",)
 AC_CHECK_LIB(m, pow, LIBS="$LIBS -lm",)
 AC_CHECK_LIB(rt, clock_gettime, LIBS="$LIBS -lrt",)
+AC_CHECK_LIB(sqlite, sqlite_open, LIBS="$LIBS -lsqlite",)
+AC_CHECK_LIB(regex, regcomp, LIBS="$LIBS -lregex",)
 
 termcap=0;
 warn_again=0;

@@ -55,7 +55,6 @@ static	FILE *	who_log = NULL;
 static	int	who_global_refnum = 0;
 static	char	who_timeref[] = "WHOTIM";
 
-
 static int	who_queue_debug (void *unused);
 
 static void	WHO_DEBUG (const char *format, ...)

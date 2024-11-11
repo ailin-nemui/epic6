@@ -13,21 +13,12 @@
  
 const char compile_time_options[] = {
  
-#ifdef NO_BOTS
- 					'b',
-#endif /* NO_BOTS */
- 
 /* Implied on hooks -- because loadformats requires it */
 					'h',
-
 
 #ifdef HAVE_LIBARCHIVE
 					'r',
 #endif
-
-#ifdef I_DONT_TRUST_MY_USERS
- 					't',
-#endif /* I_DONT_TRUST_MY_USERS */
 
 					'\0'
 };

@@ -407,8 +407,6 @@ void 	init_variables_stage1 (void)
 	VAR(CMDCHARS, 			STR,  NULL);
 	VAR(COMMENT_HACK, 		BOOL, NULL);
 	VAR(CONTINUED_LINE, 		STR,  NULL);
-	VAR(CPU_SAVER_AFTER, 		INT,  set_cpu_saver_after);
-	VAR(CPU_SAVER_EVERY, 		INT,  set_cpu_saver_every);
 	VAR(CURRENT_WINDOW_LEVEL, 	STR,  set_current_window_mask);
 	VAR(DCC_AUTO_SEND_REJECTS, 	BOOL, NULL);
 	VAR(DCC_CONNECT_TIMEOUT,	INT,  NULL);
@@ -467,9 +465,7 @@ void 	init_variables_stage1 (void)
 	VAR(NOTIFY_ON_TERMINATION,	BOOL, NULL);
 	VAR(NOTIFY_USERHOST_AUTOMATIC,	BOOL, NULL);
 	VAR(NO_CONTROL_LOG,		BOOL, NULL);	/* XXX /set mangle_logfile */
-	VAR(NO_CTCP_FLOOD,              BOOL, NULL);
 	VAR(NO_FAIL_DISCONNECT,         BOOL, NULL);
-	VAR(OLD_MATH_PARSER,            BOOL, NULL);
 	VAR(OLD_SERVER_LASTLOG_LEVEL,   STR,  set_old_server_lastlog_mask);
 #define DEFAULT_OUTPUT_REWRITE NULL
 	VAR(OUTPUT_REWRITE,             STR,  NULL);

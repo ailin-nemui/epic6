@@ -16,7 +16,6 @@
 #define CTCP_QUOTE_EM           "\r\n\001\\"
 
 extern	int	sed;
-extern	int	in_ctcp_flag;
 
 	char *	do_ctcp 	(int, const char *, const char *, char *);
 	void	send_ctcp 	(int, const char *, const char *, const char *, ...) /*__A(4)*/;

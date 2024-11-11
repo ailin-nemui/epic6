@@ -46,6 +46,7 @@
 #include "alias.h"
 #include "clock.h"
 #include "exec.h"
+#include "keys.h"
 #include "screen.h"
 #include "window.h"
 #include "output.h"
@@ -4111,8 +4112,6 @@ static void 	do_screens (int fd)
 
 		/* Reset the idleness data for the user */
 		get_time(&idle_time);
-		if (cpu_saver)
-			reset_system_timers();
 
 		/* 
 		 * Set the global processing context for the client to the 

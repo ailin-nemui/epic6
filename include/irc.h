@@ -158,8 +158,6 @@ extern const	char	git_commit[];
 	void	irc_exit 		(int, const char *, ...) /*__A(2)*/ __N;
 	BUILT_IN_KEYBINDING(irc_quit);
 
-        void    load_ircrc              (void);
-
 /* This lives in debuglog.h but I need it everywhere */
 	int     debuglog (const char *format, ...);
 

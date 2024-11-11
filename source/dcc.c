@@ -139,9 +139,7 @@ static	char *		default_dcc_port = NULL;
 static	void		dcc_chat 		(char *);
 DCC_SUBCOMMAND(dcc_chat_subcmd);
 static	void		dcc_get 		(char *);
-#ifdef MIRC_BROKEN_DCC_RESUME
 static	void		dcc_resume 		(char *);
-#endif
 DCC_SUBCOMMAND(dcc_get_subcmd);
 static	void 		dcc_close 		(char *);
 DCC_SUBCOMMAND(dcc_close_subcmd);
@@ -175,10 +173,8 @@ static	char *		dcc_urlencode		(const char *);
 static	char *		dcc_urldecode		(const char *);
 static	void		fill_in_default_port	(DCC_list *dcc);
 
-#ifdef MIRC_BROKEN_DCC_RESUME
 static 	void 		dcc_getfile_resume_demanded (const char *, char *, char *, char *);
 static	void		dcc_getfile_resume_start    (const char *, char *, char *, char *);
-#endif
 
 
 /*
@@ -200,9 +196,7 @@ struct
 	{ "CLOSEALL",	dcc_closeall		},
 	{ "LIST",	dcc_list 		},
 	{ "RENAME",	dcc_rename 		},
-#ifdef MIRC_BROKEN_DCC_RESUME
 	{ "RESUME",	dcc_resume 		},
-#endif
 	{ NULL,		(dcc_function) NULL 	}
 };
 
@@ -1149,7 +1143,6 @@ static	int	dcc_listen (DCC_list *dcc)
 	    }
 	}
 
-#ifdef MIRC_BROKEN_DCC_RESUME
 	/*
 	 * For MIRC dcc resumes, we need to stash the
 	 * local port number, because the remote client will send
@@ -1158,7 +1151,6 @@ static	int	dcc_listen (DCC_list *dcc)
 	 */
 	inet_ntostr(&dcc->local_sockaddr, NULL, 0, p_port, 12, 0);
 	malloc_strcpy(&dcc->othername, p_port);
-#endif
 	new_open(dcc->socket, do_dcc, NEWIO_ACCEPT, 1, dcc->server);
 
 	/*
@@ -1784,7 +1776,6 @@ static void dcc_get (char *args)
 	dcc_get_subcmd(argc + 1, argv, NULL);
 }
 
-#ifdef MIRC_BROKEN_DCC_RESUME
 /*
  * Usage: /DCC RESUME <nick> [file|*]
  * The '*' file gets all offered files.
@@ -1798,7 +1789,6 @@ static void dcc_resume (char *args)
 	argc = split_args(args, &argv[1], 9);
 	dcc_get_subcmd(argc + 1, argv, NULL);
 }
-#endif
 
 static void	handle_invalid_savedir (const char *pathname)
 {
@@ -1939,7 +1929,6 @@ jumpstart_get:
 			dcc->local_filename = malloc_strdup(fullname);
 			dcc->open_callback = NULL;
 
-#ifdef MIRC_BROKEN_DCC_RESUME
 			if (resume && get_int_var(MIRC_BROKEN_DCC_RESUME_VAR) && 
 				stat(fullname, &sb) != -1) 
 			{
@@ -1984,7 +1973,6 @@ jumpstart_get:
 					set_server_protocol_state(from_server, proto);
 			}
 			else
-#endif
 			{
 				if ((file = open(fullname, O_WRONLY|O_TRUNC|O_CREAT, 0644))==-1)
 				{
@@ -2373,7 +2361,6 @@ static	void	dcc_filesend (char *args)
 		 */
 		filenames_parsed++;
 
-#ifdef I_DONT_TRUST_MY_USERS
 		/*
 		 * Dont allow the user to send a file that is in "/etc" or
 		 * a file that ends in "/passwd".  Presumably this is for
@@ -2384,10 +2371,9 @@ static	void	dcc_filesend (char *args)
 				!end_strcmp(fullname, "/passwd", 7))
 		{
 			/* MESSAGE_FROM */
-			say("Send Request Rejected");
+			say("Sending %s is a terrible idea.  Use a pastebin so the whole world can see it!", fullname);
 			continue;
 		}
-#endif
 
 		if (access(fullname, R_OK))
 		{
@@ -2620,7 +2606,6 @@ void	register_dcc_offer (const char *user, char *type, char *description, char *
 	    }
 	    dtype = DCC_FILEREAD;
 	}
-#ifdef MIRC_BROKEN_DCC_RESUME
 	else if (!my_stricmp(type, "RESUME"))
 	{
 		/* 
@@ -2645,7 +2630,6 @@ void	register_dcc_offer (const char *user, char *type, char *description, char *
 		dcc_getfile_resume_start (user, description, address, port);
 		break;
 	}
-#endif
         else
         {
 		/* MESSAGE_FROM */
@@ -2699,56 +2683,6 @@ void	register_dcc_offer (const char *user, char *type, char *description, char *
 	{
 		/* Reserved for future expansion */
 	}
-
-#ifdef HACKED_DCC_WARNING
-	/*
-	 * Check for hacked (forged) IP addresses.  A handshake is considered
-	 * forged if the address in the handshake is not the same address that
-	 * the user is using on irc.  This is not turned on by default because
-	 * it can make epic block on dns lookups, which rogue users can use
-	 * to make your life painful, and also because a lot of networks are
-	 * using faked hostnames on irc, which makes this a waste of time.
-	 */
-	if (family(&offer) == AF_INET)
-	{
-		char *	fromhost;
-		SSu	irc_addr;
-
-		if (!(fromhost = strchr(FromUserHost, '@')))
-		{
-			/* FROM_MESSAGE */
-			yell("### Incoming handshake from a non-user peer!");
-			break;
-		}
-
-		fromhost++;
-		irc_addr.sa.sa_family = family(&offer);
-		if (inet_strton(fromhost, port, &irc_addr, AI_ADDRCONFIG))
-		{
-			/* FROM_MESSAGE */
-			yell("### Incoming handshake has an address or port "
-				"[%s:%s] that could not be figured out!", 
-				fromhost, port);
-			yell("### Please use caution in deciding whether to "
-				"accept it or not");
-		}
-		else if (family(&offer) == AF_INET)
-		{
-		   if (irc_addr.si.sin_addr.s_addr != offer.si.sin_addr.s_addr)
-		   {
-			/* MESSAGE_FROM */
-			say("WARNING: Fake dcc handshake detected! [%x]", 
-				V4ADDR(offer.si).s_addr);
-			say("Unless you know where this dcc request is coming from");
-			say("It is recommended you ignore it!");
-		   }
-		}
-	}
-	else if (family(&offer) == AF_INET6)
-	{
-		/* Reserved for future expansion */
-	}
-#endif
 
 	/* 	CHECK HANDSHAKE PORT FOR VALIDITY 	*/
 	if ((realport = strtoul(port, NULL, 10)) < 1024)
@@ -2913,13 +2847,11 @@ display_it:
 		    /* MESSAGE_FROM */
 		    say("Use /DCC CLOSE GET %s %s        to not get the file.",
 				user, dcc->description);
-#ifdef MIRC_BROKEN_DCC_RESUME
 		if (resume)
 		    /* MESSAGE_FROM */
 		    say("Use /DCC RESUME %s %s           to continue the "
 			"copy where it left off.",
 				user, dcc->description);
-#endif
 		if (get)
 		    /* MESSAGE_FROM */
 		    say("Use /DCC GET %s %s              to overwrite the "
@@ -4155,12 +4087,6 @@ static void	fill_in_default_port (DCC_list *dcc)
 
 
 /*
- * This stuff doesnt conform to the protocol.
- * Thanks mirc for disregarding the protocol.
- */
-#ifdef MIRC_BROKEN_DCC_RESUME
-
-/*
  * When the peer demands DCC RESUME
  * We send out a DCC ACCEPT
  */
@@ -4235,8 +4161,6 @@ static	void	dcc_getfile_resume_start (const char *nick, char *filename, char *po
 	Client->flags |= DCC_TWOCLIENTS;
 	dcc_connect(Client);
 }
-
-#endif
 
 char *	dccctl (char *input)
 {

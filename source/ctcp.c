@@ -668,7 +668,7 @@ char *	do_ctcp (int request, const char *from, const char *to, char *str)
 				}
 				else
 				{
-					strlcat(local_ctcp_buffer, ptr, sizeof local_ctcp_buffer);
+					snprintf(local_ctcp_buffer, sizeof(local_ctcp_buffer), "%s", ptr);
 					new_free(&ptr);
 					if (CTCP(i)->flag & CTCP_RESTARTABLE)
 						continue; 
