@@ -93,3 +93,8 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * GC old code that converted wildcard patterns to regexes
 * (<- 2146, 2147) script fixes from zlonix, skered
 * (<- 2144) fix openssl evp padding
+* (<- 2148) GLOB_QUOTE is not a thing that exists.
+* (<- 2149) Change notion of "away" to "away_message" 
+* (<- 2149) Add notion of "away status" and $serverctl(GET x AWAY_STATUS)
+* (<- 2150) Add /exec -exit {} (rb fusion)
+

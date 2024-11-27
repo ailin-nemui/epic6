@@ -1023,7 +1023,8 @@ static	int	dcc_connect (DCC_list *dcc)
 		break;
 	}
 
-	dcc->socket = client_connect(&local, locallen, &dcc->offer, sizeof(dcc->offer.ss));
+	/* Remember, network_client() is unconditionally nonblocking! */
+	dcc->socket = network_client(&local, locallen, &dcc->offer, sizeof(dcc->offer.ss));
 
 	if (dcc->socket < 0)
 	{
@@ -1117,8 +1118,7 @@ static	int	dcc_listen (DCC_list *dcc)
 	 */
 	dcc->flags |= DCC_MY_OFFER;
 
-	while ((dcc->socket = ip_bindery(dcc->family, dcc->want_port, 
-				      &dcc->local_sockaddr)) < 0)
+	while ((dcc->socket = network_server(dcc->family, dcc->want_port, &dcc->local_sockaddr)) < 0)
 	{
 	    /* XXX Maybe this shouldn't be done for $listen()s. */
 	    char *encoded_description = NULL;
@@ -3167,7 +3167,7 @@ const	char *	utf8_text = NULL;
 		char timestr[256];
 
 		*timestr = 0;
-		if (get_server_away(NOSERV))
+		if (get_server_away_message(NOSERV))
 			snprintf(timestr, sizeof(timestr), " <%s>", my_ctime(time(NULL)));
 
 		put_it("=%s= %s%s", Client->user, utf8_text, timestr);

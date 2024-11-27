@@ -63,7 +63,7 @@ static int	Socket 		(int, int, int);
 
 /*****************************************************************************/
 /*
- * NAME: client_connect
+ * NAME: network_client
  * USAGE: Create a new socket and establish both endpoints with the 
  *        arguments given.
  * ARGS: l - A local sockaddr structure representing the local side of
@@ -75,7 +75,7 @@ static int	Socket 		(int, int, int);
  *       rl - The sizeof(r) -- if 0, then 'r' is treated as a NULL value.
  *            Therefore, 0 is not permitted.
  */
-int	client_connect (SSu *l, socklen_t ll, SSu *r, socklen_t rl)
+int	network_client (SSu *l, socklen_t ll, SSu *r, socklen_t rl)
 {
 	int	fd = -1;
 	int	family_ = AF_UNSPEC;
@@ -87,13 +87,13 @@ int	client_connect (SSu *l, socklen_t ll, SSu *r, socklen_t rl)
 
 	if (!r)
 	{
-		syserr(-1, "client_connect: remote addr missing (connect to who?)");
+		syserr(-1, "network_client: remote addr missing (connect to who?)");
 		return -1;
 	}
 
 	if (l && r && family(l) != family(r))
 	{
-		syserr(-1, "client_connect: local addr protocol (%d) is different "
+		syserr(-1, "network_client: local addr protocol (%d) is different "
 			"from remote addr protocol (%d)", 
 			family(l), family(r));
 		return -1;
@@ -106,33 +106,33 @@ int	client_connect (SSu *l, socklen_t ll, SSu *r, socklen_t rl)
 
 	if ((fd = Socket(family_, SOCK_STREAM, 0)) < 0)
 	{
-		syserr(-1, "client_connect: socket(%d) failed: %s", family_, strerror(errno));
+		syserr(-1, "network_client: socket(%d) failed: %s", family_, strerror(errno));
 		return -1;
 	}
 
 	if (l && bind(fd, &l->sa, ll))
 	{
-	    syserr(-1, "client_connect: bind(%d) failed: %s", fd, strerror(errno));
+	    syserr(-1, "network_client: bind(%d) failed: %s", fd, strerror(errno));
 	    close(fd);
 	    return -1;
 	}
 
 	if (Connect(fd, r))
 	{
-	    syserr(-1, "client_connect: connect(%d) failed: %s", fd, strerror(errno));
+	    syserr(-1, "network_client: connect(%d) failed: %s", fd, strerror(errno));
 	    close(fd);
 	    return -1;
 	}
 
 	if (x_debug & DEBUG_SERVER_CONNECT)
-		yell("Connected on des [%d]", fd);
+		yell("Connect begun on des [%d]", fd);
 	return fd;
 }
 
 
 /*****************************************************************************/
 /*
- * NAME: ip_bindery
+ * NAME: network_server
  * USAGE: Establish a local passive (listening) socket at the given port.
  * ARGS: family - AF_INET is the only supported argument.
  *       port - The port to establish the connection upon.  May be 0, 
@@ -148,27 +148,27 @@ int	client_connect (SSu *l, socklen_t ll, SSu *r, socklen_t rl)
  * NOTES: This function lacks IPv6 support.
  *        This function lacks Unix Domain Socket support.
  */
-int	ip_bindery (int family, unsigned short port, SSu *storage)
+int	network_server (int family, unsigned short port, SSu *storage)
 {
 	socklen_t len;
 	int	fd;
 
 	if (inet_vhostsockaddr(family, port, NULL, storage, &len))
 	{
-		syserr(-1, "ip_bindery: inet_vhostsockaddr(%d,%d) failed.", family, port);
+		syserr(-1, "network_server: inet_vhostsockaddr(%d,%d) failed.", family, port);
 		return -1;
 	}
 
 	if (!len)
 	{
-		syserr(-1, "ip_bindery: inet_vhostsockaddr(%d,%d) didn't "
+		syserr(-1, "network_server: inet_vhostsockaddr(%d,%d) didn't "
 			"return an address I could bind", family, port);
 		return -1;
 	}
 
 	if ((fd = client_bind(storage, len)) < 0)
 	{
-		syserr(-1, "ip_bindery: client_bind(%d,%d) failed.", family, port);
+		syserr(-1, "network_server: client_bind(%d,%d) failed.", family, port);
 		return -1;
 	}
 

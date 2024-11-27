@@ -3722,10 +3722,7 @@ int	create_additional_screen (void)
 		panic(1, "Opening new wound");
 
 	local_sockaddr.si.sin_family = AF_INET;
-#ifndef INADDR_LOOPBACK
-#define INADDR_LOOPBACK 0x7f000001
-#endif
-	local_sockaddr.si.sin_addr.s_addr = htonl((INADDR_ANY));
+	local_sockaddr.si.sin_addr.s_addr = htonl((INADDR_LOOPBACK));
 	local_sockaddr.si.sin_port = 0;
 
 	if ((new_cmd = client_bind(&local_sockaddr, sizeof(local_sockaddr.si))) < 0)
