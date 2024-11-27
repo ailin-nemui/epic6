@@ -97,4 +97,4 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * (<- 2149) Change notion of "away" to "away_message" 
 * (<- 2149) Add notion of "away status" and $serverctl(GET x AWAY_STATUS)
 * (<- 2150) Add /exec -exit {} (rb fusion)
-
+* (<- 2151,2152) UX improvements to ssl server connections
