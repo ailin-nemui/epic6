@@ -1,5 +1,25 @@
 EPIC6-0.2
 
+*** News 12/12/2024 [3008] -- New function $token(<lval> <string>) 
+	By special request of fusion!
+
+	Usage: 	$token(<lval> <string>)
+	<lval> refers to a variable name that has some value in it.
+
+	The value in $<lval> is divided into three parts:
+	  1. The part before <string>
+	  2. The part that is exactly <string>
+	  3. The part that comes after <string>
+
+	When <string> is found in $<lval>:
+		The return function is the first part
+		$<lval> is assigned to the third part
+	When <string> is not found in $<lval>
+		The return value is the value of $<lval>
+		$<lval> is removed
+
+	In all cases, spaces are ordinary characters.
+
 *** News 08/26/2024 -- EPIC6 forked from EPIC5
 	A new journey awaits!
 

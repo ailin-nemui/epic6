@@ -415,6 +415,7 @@ static	char
 	*function_tell		(char *),
 	*function_timerctl	(char *),
 	*function_tobase	(char *),
+	*function_token		(char *),
         *function_tow		(char *),
 	*function_translate 	(char *),
 	*function_truncate 	(char *),
@@ -756,6 +757,7 @@ static BuiltInFunctions	built_in_functions[] =
 	{ "TIME",		function_time 		},
 	{ "TIMERCTL",		function_timerctl	},
 	{ "TOBASE",		function_tobase 	},
+	{ "TOKEN",		function_token		},
         { "TOLOWER",		function_tolower 	},
 	{ "TOUPPER",		function_toupper 	},
 	{ "TOW",                function_tow 		},
@@ -8737,6 +8739,42 @@ BUILT_IN_FUNCTION(function_pbkdf2, input)
                 sprintf(outputHexOutput + (i * 2), "%02x", (output[i] & 0xFF));
 
 	malloc_sprintf(&retval, "%s %s", saltBytesHexOutput, outputHexOutput);
+	RETURN_MSTR(retval);
+}
+
+BUILT_IN_FUNCTION(function_token, input)
+{
+	char	*var,
+	 	*value, 
+		*free_it;
+	ssize_t	offset;
+const 	char 	*part3;
+	char 	*retval;
+
+	GET_FUNC_ARG(var, input);
+	upper(var);
+	free_it = value = get_variable(var);
+	if (!value || !*value)
+	{
+		new_free(&free_it);
+		RETURN_EMPTY;
+	}
+
+	if ((offset = stristr(value, input)) < 0)
+	{
+		/* Not found */
+		part3 = empty_string;
+	}
+	else
+	{
+		/* Found */
+		part3 = value + offset + strlen(input);
+		value[offset] = 0;
+	}
+
+	malloc_strcpy(&retval, value);
+	add_var_alias(var, part3, 0);
+	new_free(&free_it);
 	RETURN_MSTR(retval);
 }
 
