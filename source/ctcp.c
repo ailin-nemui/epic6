@@ -180,18 +180,6 @@ static	void	add_ctcp (const char *name, int flag, const char *desc, CTCP_Handler
 	add_to_bucket(ctcp_bucket, name_copy, ctcp);
 }
 
-/*
- * XXX This global variable is sadly used to tell other systems
- * about whether a CTCP resulted in an encrypted message.
- * (SED stands for "Simple Encrypted Data", which used to be the
- * only form of encryption).  There has not yet been designed
- * an easier way to pass this kind of info back to the handler
- * that has to decide whether to throw /on encrypted_privmsg or not.
- * Oh well.
- */
-int     sed = 0;
-
-
 /**************************** CTCP PARSERS ****************************/
 
 /********** INLINE EXPANSION CTCPS ***************/
@@ -241,7 +229,6 @@ CTCP_HANDLER(do_crypto)
 		if (ret)
 			new_free(&ret);
 
-		sed = 2;
 		malloc_strcpy(&ret, "[ENCRYPTED MESSAGE]");
 		return ret;
 	} 
@@ -290,7 +277,6 @@ CTCP_HANDLER(do_crypto)
 		ret = extra;
 	}
 
-	sed = 1;
 	return ret;
 }
 
@@ -1051,21 +1037,6 @@ int	init_ctcp (void)
 				do_crypto, 	do_crypto, NULL, NULL );
 	add_ctcp("AES256-CBC", 		CTCP_ORDINARY | CTCP_RAW | CTCP_RESTARTABLE,
 				"transmit aes256-cbc ciphertext",
-				do_crypto, 	do_crypto, NULL, NULL );
-	add_ctcp("CAST128ED-CBC", 	CTCP_ORDINARY | CTCP_RAW | CTCP_RESTARTABLE,
-				"transmit cast5-cbc ciphertext",
-				do_crypto, 	do_crypto, NULL, NULL );
-	add_ctcp("BLOWFISH-CBC", 	CTCP_ORDINARY | CTCP_RAW | CTCP_RESTARTABLE,
-				"transmit blowfish-cbc ciphertext",
-				do_crypto, 	do_crypto, NULL, NULL );
-	add_ctcp("FISH", 		CTCP_ORDINARY | CTCP_RAW | CTCP_RESTARTABLE,
-				"transmit FiSH (blowfish-ecb with sha256'd key) ciphertext",
-				do_crypto, 	do_crypto, NULL, NULL );
-	add_ctcp("SED", 		CTCP_ORDINARY | CTCP_RAW | CTCP_RESTARTABLE,
-				"transmit simple_encrypted_data ciphertext",
-				do_crypto, 	do_crypto, NULL, NULL );
-	add_ctcp("SEDSHA", 		CTCP_ORDINARY | CTCP_RAW | CTCP_RESTARTABLE,
-				"transmit simple_encrypted_data ciphertext using a sha256 key",
 				do_crypto, 	do_crypto, NULL, NULL );
 
 	return 0;

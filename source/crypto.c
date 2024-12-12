@@ -83,14 +83,14 @@ char *	decipher_message (const char *ciphertext, size_t len, List *cryptl, int *
     {
 	Crypt *crypti = (Crypt *)(cryptl->d);
 
-	if ( crypti->sed_type == AES256CRYPT || crypti->sed_type == AESSHA256CRYPT)
+	if ( crypti->cipher_type == AES256CRYPT || crypti->cipher_type == AESSHA256CRYPT)
 	{
 	    char *	outbuf = NULL;
 	    const EVP_CIPHER *type;
 	    int	bytes_to_trim;
 	    int ivsize, blocksize;
 
-	    if (crypti->sed_type == AES256CRYPT || crypti->sed_type == AESSHA256CRYPT)
+	    if (crypti->cipher_type == AES256CRYPT || crypti->cipher_type == AESSHA256CRYPT)
 	    {
 		ivsize = 16, blocksize = 16;
 	    }
@@ -115,7 +115,7 @@ char *	decipher_message (const char *ciphertext, size_t len, List *cryptl, int *
 		break;
 	    }
 
-	    if (crypti->sed_type == AES256CRYPT || crypti->sed_type == AESSHA256CRYPT)
+	    if (crypti->cipher_type == AES256CRYPT || crypti->cipher_type == AESSHA256CRYPT)
 		type = EVP_aes_256_cbc();
 	    else
 		break;		/* Not supported */
@@ -135,7 +135,7 @@ char *	decipher_message (const char *ciphertext, size_t len, List *cryptl, int *
 	    return (char *)outbuf;
 	}
 	else
-		panic(1, "decipher_message: crypti->sed_type %d is not valid", crypti->sed_type);
+		panic(1, "decipher_message: crypti->cipher_type %d is not valid", crypti->cipher_type);
     }
     while (0);
 
@@ -202,13 +202,13 @@ char *	cipher_message (const char *orig_message, size_t len, List *cryptl, int *
 	if (!orig_message || !crypti || !retlen)
 		return NULL;
 
-	if (crypti->sed_type == AES256CRYPT || crypti->sed_type == AESSHA256CRYPT)
+	if (crypti->cipher_type == AES256CRYPT || crypti->cipher_type == AESSHA256CRYPT)
 	{
 	    char *ciphertext = NULL;
 	    size_t	ivlen;
 	    const EVP_CIPHER *type;
 
-	    if (crypti->sed_type == AES256CRYPT || crypti->sed_type == AESSHA256CRYPT)
+	    if (crypti->cipher_type == AES256CRYPT || crypti->cipher_type == AESSHA256CRYPT)
 	    {
 		type = EVP_aes_256_cbc();
 		ivlen = 16;
@@ -226,7 +226,7 @@ char *	cipher_message (const char *orig_message, size_t len, List *cryptl, int *
 	    return (char *)ciphertext;
 	}
 	else
-		panic(1, "cipher_message: crypti->sed_type %d is not valid", crypti->sed_type);
+		panic(1, "cipher_message: crypti->cipher_type %d is not valid", crypti->cipher_type);
 
 	return NULL;
 }

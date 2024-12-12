@@ -20,7 +20,7 @@ if (word(2 $loadinfo()) != 'pf') {
 #
 #	FUNCTIONS:
 #		B64DECODE, B64ENCODE, DECODE, ENCODE, IGMASK, IGTYPE, LASTSERVER,
-#		MYSERVERS, NOTIFYWINDOWS, RIGMASK, RIGTYPE, SEDCRYPT, SERVERGROUP,
+#		MYSERVERS, NOTIFYWINDOWS, RIGMASK, RIGTYPE, SERVERGROUP,
 #		SERVERNAME, SERVERNICK, SERVERNUM, SERVEROURNAME, SERVERTYPE,
 #		SERVPORTS, SHA256, URLDECODE, URLENCODE, WINBOUND, WINCURSORLINE,
 #		WINLEVEL, WINLINE, WINNAM, WINNICKLIST, WINNUM, WINQUERY, WINREFS,
@@ -153,19 +153,6 @@ alias rigmask (pattern, void) {
 
 alias rigtype (...) {
 	return $ignorectl(with_type $*);
-};
-
-alias sedcrypt (encode, who, ...) {
-	if (!(:val = encryptparm(who))) {
-		return;
-	};
-	@ :key = word(1 $val);
-	if (encode == 1) {
-		return $xform(+SED $key $who $*);
-	} else if (encode == 0) {
-		return $xform(-SED $key $who $*);
-	};
-	return;
 };
 
 alias servergroup (refnum default "$serverctl(from_server)", void) {

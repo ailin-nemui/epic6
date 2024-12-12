@@ -23,7 +23,7 @@ typedef struct	CryptStru
 	char *	serv;
 	char *	passwd;
 	int	passwdlen;
-	int	sed_type;
+	int	cipher_type;
 	int	refnum;
 }	Crypt;
 

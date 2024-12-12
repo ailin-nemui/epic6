@@ -43,6 +43,20 @@ Arena allocation
 tcgetwinsize() instead of ioctl()
 
 
+Create $token() for fusion
+   $token(<lval><space><string>)
+<lval> refers to a variable name that has some value in it.
+The value in $<lval> is divided into three parts:
+  1. The part before <string>
+  2. The part that is exactly <string>
+  3. The part that comes after <string>
+When <string> is not found in $<lval> then the entire value of
+  $<lval> becomes part #1, and parts #2 and #3 are empty.
+Part #1 is the return value of the function
+Part #3 becomes the new value of $<lval>
+In all cases, spaces are ordinary characters.
+ 
+
 Actual bugs
 ================
 * /SET NEW_SERVER_LASTLOG_LEVEL does not work properly because it doesn't check window servers.
@@ -98,3 +112,6 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * (<- 2149) Add notion of "away status" and $serverctl(GET x AWAY_STATUS)
 * (<- 2150) Add /exec -exit {} (rb fusion)
 * (<- 2151,2152) UX improvements to ssl server connections
+* Sunset /on encrypted_(privmsg|notice)
+* Rename 'sed_type' to 'cipher_type'
+* GC any remaining code pertaining to sunset encryption types

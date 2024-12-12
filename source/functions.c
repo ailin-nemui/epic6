@@ -7428,8 +7428,7 @@ BUILT_IN_FUNCTION(function_dbmctl, input)
  *	ENC		Base16 encoding		(reversable, no meta)
  *	B64		Base64 encoding		(reversable, no meta)
  *	CTCP		CTCP encoding		(reversable, no meta)
- *	SED		Simple Encrypt Data	(reversable, requires meta)
- *	DEF		Default encryption	(reversable, requires meta)
+ *	AESSHA256	AES encryption using SHA256 of password	(reversable, requires meta)
  *
  * You can string together multiple transformations.  Any transformation
  * that requires a meta value (ie, a cipherkey) should be supplied after 
@@ -7447,32 +7446,32 @@ BUILT_IN_FUNCTION(function_dbmctl, input)
  * Examples:
  * 	URL-encode a string	$xform(+URL this is a string)
  *	URL-decode a string	$xform(-URL this%20is%20a%20string)
- *	SED-cipher a string	$xform(+SED password this is a string)
- *	SED-decipher a string	$xform(-sed password <whatever>)
+ *	AESSHA256-cipher a string	$xform(+AESSHA256 password this is a string)
+ *	AESSHA256-decipher a string	$xform(-AESSHA256 password <whatever>)
  *
  * More practical examples:
  * 1) Read binary data from a file, encrypt it, and url encode it again.
  *	@fd = open(file.txt R)
  *	@data = read($fd 1024)
- *	@cipher = xform("-CTCP +SED +URL" password $data)
+ *	@cipher = xform("-CTCP +AESSHA256 +URL" password $data)
  *	@close($fd)
  *	msg someone $cipher
  *
  * Why does this work?  
  *  -- $read() returns ctcp-enquoted data, so -CTCP removes it
- *  -- Now we have binary data, so +SED will cipher it
+ *  -- Now we have binary data, so +AESSHA256 will cipher it
  *  -- Now we have ciphertext, so +URL will url encode it.
  *
  * We can send this to someone else, and they can put it in $cipher...
  *
  *	@newfd = open(newfile.txt W)
- *	@newdata = xform("-URL -SED +CTCP" password $cipher)
+ *	@newdata = xform("-URL -AESSHA256 +CTCP" password $cipher)
  *	@writeb($newfd $newdata)
  *	@close($newfd)
  *
  * We did the reverse of the above:
  *  -- We -URL to recover the binary data
- *  -- We -SED to decrypt it using the password
+ *  -- We -AESSHA256 to decrypt it using the password
  *  -- We +CTCP to put it in a form we can use with $writeb().
  *
  * Viola!

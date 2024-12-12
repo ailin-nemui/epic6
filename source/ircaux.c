@@ -5457,7 +5457,7 @@ struct Transformer default_transformers[] = {
 int	max_transform;
 int	max_number_of_transforms = 256;
 struct Transformer transformers[256];		/* XXX */
-int	NONE_xform, URL_xform, ENC_xform, B64_xform, FISH64_xform;
+int	NONE_xform, URL_xform, ENC_xform, B64_xform;
 int	CTCP_xform, SHA256_xform;
 
 /*
@@ -5693,7 +5693,6 @@ void	init_transforms (void)
 	URL_xform = lookup_transform("URL", &numargs, &d1, &d2);
 	ENC_xform = lookup_transform("ENC", &numargs, &d1, &d2);
 	B64_xform = lookup_transform("B64", &numargs, &d1, &d2);
-	FISH64_xform = lookup_transform("FISH64", &numargs, &d1, &d2);
 	CTCP_xform = lookup_transform("CTCP", &numargs, &d1, &d2);
 	SHA256_xform = lookup_transform("SHA256", &numargs, &d1, &d2);
 }

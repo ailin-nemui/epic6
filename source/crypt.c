@@ -70,7 +70,7 @@
 static	List	*crypt_list = NULL;
 
 struct ciphertypes {
-	int	sed_type;
+	int	cipher_type;
 	const char *flagname;
 	const char *username;
 	const char *ctcpname;
@@ -98,13 +98,13 @@ const char *	happypasswd (const char *key);
  *	serv	- The "serv" part of "serv/nick"
  *	passwd	- The password
  *	prog	- A program to /exec (instead of crypt cipher)
- *	sed_type - The Cipher to use (use PROGCRYPT if prog != NULL)
+ *	cipher_type - The Cipher to use (use PROGCRYPT if prog != NULL)
  *
  * add_to_crypt: adds the nickname and key pair to the crypt_list.  If the
  * nickname is already in the list, then the password is changed to the 
  * supplied password. 
  */
-static void	add_to_crypt (Char *nick, Char *serv, Char *passwd, int sed_type)
+static void	add_to_crypt (Char *nick, Char *serv, Char *passwd, int cipher_type)
 {
 	List *	new_crypt;
 	Crypt *	d;
@@ -126,7 +126,7 @@ static void	add_to_crypt (Char *nick, Char *serv, Char *passwd, int sed_type)
 	d->serv = NULL;
 	d->passwd = NULL;
 	d->passwdlen = 0;
-	d->sed_type = sed_type;
+	d->cipher_type = cipher_type;
 
 	/* Fill in the 'nick' field. */
 	malloc_strcpy(&new_crypt->name, nick);
@@ -136,14 +136,14 @@ static void	add_to_crypt (Char *nick, Char *serv, Char *passwd, int sed_type)
 		malloc_strcpy(&d->serv, serv);
 
 	/* Fill in the 'passwd' field. */
-	if (sed_type == AES256CRYPT || sed_type == AESSHA256CRYPT)
+	if (cipher_type == AES256CRYPT || cipher_type == AESSHA256CRYPT)
 	{
 		if (d->passwd == NULL)
 			d->passwd = new_malloc(34);
 		memset(d->passwd, 0, 34);
 		d->passwdlen = 34;
 
-		if (sed_type == AES256CRYPT)
+		if (cipher_type == AES256CRYPT)
 			memcpy(d->passwd, passwd, strlen(passwd));
 		else
 			digest(NULL, passwd, strlen(passwd), d->passwd, d->passwdlen);
@@ -259,7 +259,7 @@ static void	cleanse_crypto_item (List *item)
 #define CHECK_NICK_AND_TYPE \
 	    if (tmp->name && my_stricmp(tmp->name, nick))		\
 		continue;						\
-	    if (sed_type != ANYCRYPT && ((Crypt *)(tmp->d))->sed_type != sed_type)	\
+	    if (cipher_type != ANYCRYPT && ((Crypt *)(tmp->d))->cipher_type != cipher_type)	\
 			continue;					\
 
 #define CHECK_CRYPTO_LIST(x) \
@@ -273,7 +273,7 @@ static void	cleanse_crypto_item (List *item)
 List *	is_crypted (Char *nick, int serv, const char *ctcp_cmd)
 {
 	List *	tmp;
-	int	sed_type = NOCRYPT;
+	int	cipher_type = NOCRYPT;
 	int	i;
 
 	if (!crypt_list)
@@ -282,20 +282,20 @@ List *	is_crypted (Char *nick, int serv, const char *ctcp_cmd)
 	/* 
 	 * ctcp_cmd is either NULL ("Any type")
 	 * or a string containing a specific ctcp type.
-	 * We can convert the ctcp type to a sed type using
+	 * We can convert the ctcp type to a cipher type using
 	 * the 'ciphers' table.
 	 */
 	if (ctcp_cmd != NULL)
 	{
 		for (i = 0; ciphers[i].username; i++)
 			if (!my_stricmp(ciphers[i].ctcpname, ctcp_cmd))
-				sed_type = ciphers[i].sed_type;
+				cipher_type = ciphers[i].cipher_type;
 
-		if (sed_type == NOCRYPT)
+		if (cipher_type == NOCRYPT)
 			return NULL;	/* This nick is not ciphered with that type */
 	}
 	else
-		sed_type = ANYCRYPT;
+		cipher_type = ANYCRYPT;
 
 	/* Look for the refnum -- Bummer, special case */
 	for (tmp = crypt_list; tmp; tmp = tmp->next)
@@ -347,7 +347,7 @@ BUILT_IN_COMMAND(encrypt_cmd)
 	char	*nick = NULL, 
 		*passwd = NULL, 
 		*prog = NULL;
-	int	sed_type = AESSHA256CRYPT;
+	int	cipher_type = AESSHA256CRYPT;
 	char *	arg;
 	int	remove_it = 0;
 
@@ -394,11 +394,11 @@ BUILT_IN_COMMAND(encrypt_cmd)
 	    }
 	    else 
 	    {
-		add_to_crypt(nick, serv, passwd, sed_type);
+		add_to_crypt(nick, serv, passwd, cipher_type);
 		say("You will now cipher messages with '%s' on '%s' using '%s' "
 			"with the passwd '%s'.",
 				nick, serv ? serv : "<any>",
-				prog ? prog : ciphers[sed_type].username, 
+				prog ? prog : ciphers[cipher_type].username, 
 				passwd);
 	    }
 	}
@@ -423,7 +423,7 @@ BUILT_IN_COMMAND(encrypt_cmd)
  *
  * Whenever you have a C string containing plain text and you want to 
  * convert it into something you can send over irc, you call is_crypted()
- * with the cipher sed_type of "ANYCRYPT" to return a session, and then you 
+ * with the cipher_type of "ANYCRYPT" to return a session, and then you 
  * pass the string and the passwd to this function.  This function returns a
  * malloced string containing a payload that you can send in a PRIVMSG/NOTICE.
  *
@@ -455,12 +455,12 @@ char *	crypt_msg (const char *str, List *crypti)
 		return ciphertext;	/* Here goes nothing! */
 	}
 
-	if (ciphers[((Crypt *)(crypti->d))->sed_type].ctcpname)
+	if (ciphers[((Crypt *)(crypti->d))->cipher_type].ctcpname)
 	     snprintf(buffer, sizeof(buffer), "%c%s %s%c",
-			CTCP_DELIM_CHAR, ciphers[((Crypt *)(crypti->d))->sed_type].ctcpname, 
+			CTCP_DELIM_CHAR, ciphers[((Crypt *)(crypti->d))->cipher_type].ctcpname, 
 			dest, CTCP_DELIM_CHAR);
 	else
-		panic(1, "crypt_msg: ((Crypt *)(crypti->d))->sed_type == %d not supported.", ((Crypt *)(crypti->d))->sed_type);
+		panic(1, "crypt_msg: ((Crypt *)(crypti->d))->cipher_type == %d not supported.", ((Crypt *)(crypti->d))->cipher_type);
 
 	new_free(&ciphertext);
 	new_free(&dest);

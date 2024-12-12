@@ -406,7 +406,6 @@ static void	p_privmsg (const char *from, const char *comm, const char **ArgList)
 		{ rfc1459_odd(from, comm, ArgList); return; }
 
 	set_server_doing_privmsg(from_server, 1);
-	sed = 0;
 
 	/*
 	 * Do ctcp's first, and if there's nothing left, then dont
@@ -475,24 +474,6 @@ static void	p_privmsg (const char *from, const char *comm, const char **ArgList)
 	{
 		set_server_doing_privmsg(from_server, 0);
 		return;
-	}
-
-	/* Encrypted privmsgs are specifically exempted from flood control */
-	if (sed)
-	{
-		int	do_return = 1;
-
-		sed = 0;
-		l = message_from(target, level);
-		if (do_hook(ENCRYPTED_PRIVMSG_LIST, "%s %s %s", 
-					from, real_target, message))
-			do_return = 0;
-		pop_message_from(l);
-
-		if (do_return) {
-			set_server_doing_privmsg(from_server, 0);
-			return;
-		}
 	}
 
 	/* Control the "last public/private nickname" variables */
@@ -1329,7 +1310,6 @@ static void 	p_notice (const char *from, const char *comm, const char **ArgList)
 		{ rfc1459_odd(from, comm, ArgList); return; }
 
 	set_server_doing_notice(from_server, 1);
-	sed = 0;
 
 	/* Do normal /CTCP reply handling */
 	/* XXX -- Casting "message" to (char *) is cheating. */
@@ -1384,27 +1364,6 @@ static void 	p_notice (const char *from, const char *comm, const char **ArgList)
 	{
 		set_server_doing_notice(from_server, 0);
 		return;
-	}
-
-	/* Let the user know if it is an encrypted notice */
-	/* Note that this is always hooked, even during a flood */
-	if (sed)
-	{
-		int	do_return = 1;
-
-		sed = 0;
-		l = message_from(target, LEVEL_NOTICE);
-
-		if (do_hook(ENCRYPTED_NOTICE_LIST, "%s %s %s", 
-				from, real_target, message))
-			do_return = 0;
-
-		pop_message_from(l);
-
-		if (do_return) {
-			set_server_doing_notice(from_server, 0);
-			return;
-		}
 	}
 
 	/* Go ahead and throw it to the user */

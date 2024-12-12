@@ -30,9 +30,5 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY 
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
  * SUCH DAMAGE.
- *
- * Some files, (notably, glob.c, and compat.c) may contain some source that
- * is covered by the original BSD 3-clause license, rather than the above
- * license.  Please refer to those files for more specific information.
  */
 
