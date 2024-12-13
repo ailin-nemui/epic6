@@ -48,7 +48,6 @@
 #include "names.h"
 #include "parse.h"
 #include "commands.h"
-#include "notify.h"
 #include "vars.h"
 #include "who.h"
 #include "alias.h"
@@ -748,8 +747,10 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 		if (!(nick = ArgList[0]))
 			{ rfc1459_odd(from, comm, ArgList); goto END; }
 
+#if 0
 		if (!is_channel(nick))
 		    notify_mark(from_server, nick, 0, 0);
+#endif
 
 		break;
 	}

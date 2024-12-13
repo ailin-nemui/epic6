@@ -42,7 +42,6 @@
 #define NEED_SERVER_LIST
 #include "irc.h"
 #include "alist.h"
-#include "notify.h"
 #include "ircaux.h"
 #include "hook.h"
 #include "server.h"

@@ -68,7 +68,6 @@
 #include "vars.h"
 #include "window.h"
 #include "termx.h"
-#include "notify.h"
 #include "numbers.h"
 #include "list.h"
 #include "sedcrypt.h"
@@ -129,7 +128,6 @@ static	BuiltIns built_in[] =
 	{ "A",		alias_away 		},
 	{ "B",		alias_msg_body 		},
 	{ "C",		alias_channel 		},
-	{ "D",		alias_detected 		},
 	{ "E",		alias_idle 		},
 	{ "F",		alias_online 		},
 	{ "G",		alias_banner		},
@@ -327,7 +325,6 @@ static	char
 	*function_nametoip 	(char *),
 	*function_nochops 	(char *),
 	*function_nohighlight	(char *),
-	*function_notify	(char *),
 	*function_notifywindows	(char *),
 	*function_notw 		(char *),
 	*function_numlines	(char *),
@@ -540,9 +537,6 @@ static BuiltInFunctions	built_in_functions[] =
 	{ "FINDWS",		function_findws		},
 	{ "FIX_ARGLIST",	function_fix_arglist	},
         { "FIX_WIDTH",          function_fix_width      },
-#if 0
-	{ "FLOODINFO",		function_floodinfo	},
-#endif
 	{ "FLOOR",		function_floor		},
 	{ "FNEXIST",		function_fnexist	},
 	{ "FREWIND",		function_rewind		},
@@ -652,7 +646,6 @@ static BuiltInFunctions	built_in_functions[] =
 	{ "NAMETOIP",		function_nametoip 	},
 	{ "NOCHOPS",            function_nochops 	},
 	{ "NOHIGHLIGHT",	function_nohighlight	},
-	{ "NOTIFY",		function_notify		},
 	{ "NOTIFYWINDOWS",	function_notifywindows	},
 	{ "NOTW",               function_notw 		},
 	{ "NUMARRAYS",          function_numarrays 	},
@@ -1096,7 +1089,6 @@ static	char	*alias_line 		(void) { return malloc_strdup(get_input()); }
 static	char	*alias_buffer 		(void) { return malloc_strdup(cut_buffer); }
 static	char	*alias_time 		(void) { return malloc_strdup(get_clock()); }
 static	char	*alias_dollar 		(void) { return malloc_strdup("$"); }
-static	char	*alias_detected 	(void) { return malloc_strdup(last_notify_nick); }
 static	char	*alias_nick 		(void) { return malloc_strdup((get_window_server(0) != NOSERV) ? get_server_nickname(get_window_server(0)) : empty_string); }
 static	char	*alias_away 		(void) { return malloc_strdup(get_server_away_message(from_server)); }
 static  char    *alias_sent_nick        (void) { return malloc_strdup((get_server_sent_nick(from_server)) ? get_server_sent_nick(from_server) : empty_string); }
@@ -4246,19 +4238,6 @@ BUILT_IN_FUNCTION(function_repeat, words)
 
 	size = strlen(words) * num + 1;
 
-/* CE says it's time for this to go... */
-#if 0
-	/* 
-	 * Don't allow the return value to be > 1MB to avoid
-	 * "out of memory failure" panic
-	 */
-	if (size > 1000000)
-	{
-		num = 1000000 / strlen(words);
-		size = strlen(words) * num + 1;
-	}
-#endif
-
 	retval = (char *)new_malloc(size);
 	*retval = 0;
 
@@ -4351,35 +4330,6 @@ BUILT_IN_FUNCTION(function_numsort, words)
 	qsort((void *)wordl, wordc, sizeof(char *), num_sort_it);
 	retval = unsplitw(&wordl, wordc, DWORD_DWORDS);
 	RETURN_MSTR(retval);
-}
-
-
-BUILT_IN_FUNCTION(function_notify, words)
-{
-	int showon = -1, showserver = from_server;
-	char *firstw;
-
-	while (words && *words)
-	{
-		firstw = next_func_arg(words, &words);
-		if (!my_strnicmp(firstw, "on", 2))
-		{
-			showon = 1;
-			continue;
-		}
-		if (!my_strnicmp(firstw, "off", 3))
-		{
-			showon = 0;
-			continue;
-		}
-		if (!my_strnicmp(firstw, "serv", 4))
-		{
-			GET_INT_ARG(showserver, words);
-		}
-	}
-
-	/* dont use RETURN_STR() here. */
-	return get_notify_nicks(showserver, showon);
 }
 
 BUILT_IN_FUNCTION(function_glob, word)
@@ -8380,9 +8330,6 @@ BUILT_IN_FUNCTION(function_rgb, input)
 			char *	work_arg;
 
 			/* I would want to initialize work_r|g|b, but clang objects to that */
-#if 0
-			work_r = work_g = work_b = -1;
-#endif
 
 			/* The caller is not required to specify a bg color */
 			if (parsing_fg == 0 && (!input || !*input))
@@ -8749,7 +8696,7 @@ BUILT_IN_FUNCTION(function_token, input)
 		*free_it;
 	ssize_t	offset;
 const 	char 	*part3;
-	char 	*retval;
+	char 	*retval = NULL;
 
 	GET_FUNC_ARG(var, input);
 	upper(var);

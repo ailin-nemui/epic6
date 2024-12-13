@@ -44,8 +44,6 @@
 #include "termx.h"
 #include "timer.h"
 #include "input.h"
-#include "mail.h"
-#include "notify.h"
 #include "output.h"
 
 /************************************************************************/
@@ -206,12 +204,6 @@ struct system_timer system_timers[] = {
 	{ clock_timeref, 	 
 	  &CLOCK_INTERVAL_VAR, 	&CLOCK_VAR, 	{ 0, 0 },
 	  clock_systimer 	},
-	{ notify_timeref, 	 
-	  &NOTIFY_INTERVAL_VAR,  &NOTIFY_VAR, 	{ 0, 0 },
-	  notify_systimer	},
-	{ mail_timeref, 	 
-	  &MAIL_INTERVAL_VAR, 	&MAIL_VAR, 	{ 0, 0 },
-	  mail_systimer 	},
 	{ NULL,			 
 	  0,			0,		{ 0, 0 },
 	  NULL 			}

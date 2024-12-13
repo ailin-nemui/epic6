@@ -14,7 +14,6 @@
 
 #ifdef NEED_SERVER_LIST
 /* To get definition of Notify */
-#include "notify.h"
 #include "alist.h"
 
 typedef struct
@@ -113,7 +112,6 @@ const	AI *		next_addr;		/* The next one to try upon failure */
 
 		/* Metadata about activity */
         char *          invite_channel;
-        char *          last_notify_nick;
         char *          joined_nick;
         char *          public_nick;
         char *          recv_nick;
@@ -130,10 +128,6 @@ const	AI *		next_addr;		/* The next one to try upon failure */
 	int		userhost_max;		/* Max pending userhosts */
 	UserhostEntry *	userhost_queue;		/* Userhost queue */
 	UserhostEntry *	userhost_wait;		/* Userhost wait queue */
-
-		/* /NOTIFY */
-	alist		notify_list;		/* Notify list for this server */
-	char *		ison;
 
 		/* /LIST, /NAMES */
 	int		funny_min;		/* Funny stuff */
@@ -308,8 +302,6 @@ const char *	get_server_state_str		(int);
 
         void    set_server_invite_channel       (int, const char *);
 const char *    get_server_invite_channel       (int);
-        void    set_server_last_notify          (int, const char *);
-const char *    get_server_last_notify          (int);
         void    set_server_joined_nick          (int, const char *);
 const char *    get_server_joined_nick          (int);
         void    set_server_public_nick          (int, const char *);
@@ -324,8 +316,6 @@ const char *    get_server_sent_body            (int);
 const char *    get_server_quit_message		(int);
 	void	set_server_cookie		(int, const char *);
 const char *	get_server_cookie         	(int);
-	void	set_server_last_notify_nick	(int, const char *);
-const char *	get_server_last_notify_nick    	(int);
 	void	set_server_unique_id		(int, const char *);
 const char *	get_server_unique_id    	(int);
 	void	set_server_realname		(int, const char *);

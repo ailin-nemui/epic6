@@ -45,7 +45,6 @@
 #include "hook.h"
 #include "list.h"
 #include "sedcrypt.h"
-#include "notify.h"
 #include "vars.h"
 #include "input.h"
 #include "ircaux.h"
@@ -56,7 +55,6 @@
 #include "keys.h"
 #include "timer.h"
 #include "clock.h"
-#include "mail.h"
 #include "reg.h"
 #include "commands.h"
 #include "ifcmd.h"
@@ -444,9 +442,6 @@ void 	init_variables_stage1 (void)
 	VAR(LOGFILE,			STR,  set_logfile);
 #define DEFAULT_LOG_REWRITE NULL
 	VAR(LOG_REWRITE,		STR,  NULL);
-	VAR(MAIL,			INT,  set_mail);
-	VAR(MAIL_INTERVAL,		INT,  set_mail_interval);
-	VAR(MAIL_TYPE,			STR,  set_mail_type);
 #define DEFAULT_MANGLE_DISPLAY "NORMALIZE"
 	VAR(MANGLE_DISPLAY,		STR,  set_mangle_display);
 #define DEFAULT_MANGLE_INBOUND NULL
@@ -459,8 +454,6 @@ void 	init_variables_stage1 (void)
 	VAR(MIRC_BROKEN_DCC_RESUME,	BOOL, NULL);
 	VAR(MODE_STRIPPER,		BOOL, NULL);
 	VAR(NEW_SERVER_LASTLOG_LEVEL,	STR,  set_new_server_lastlog_mask);
-	VAR(NOTIFY,			BOOL, set_notify);
-	VAR(NOTIFY_INTERVAL,		INT,  set_notify_interval);
 	VAR(NOTIFY_LEVEL,		STR,  set_notify_mask);
 	VAR(NOTIFY_ON_TERMINATION,	BOOL, NULL);
 	VAR(NOTIFY_USERHOST_AUTOMATIC,	BOOL, NULL);

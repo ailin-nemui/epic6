@@ -57,7 +57,6 @@
 #include "lastlog.h"
 #include "log.h"
 #include "names.h"
-#include "notify.h"
 #include "numbers.h"
 #include "output.h"
 #include "parse.h"
@@ -261,7 +260,6 @@ static	IrcCommand irc_command[] =
 	{ "NICK",	e_nick		},
 	{ "NOTE",	send_comm	},
 	{ "NOTICE",	e_privmsg	},
-	{ "NOTIFY",	notify		}, /* notify.c */
 	{ "ON",		oncmd		}, /* hook.c */
 	{ "OPER",	oper		},
 	{ "PACKAGE",	packagecmd	},

@@ -52,7 +52,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3008;
+const unsigned long	commit_id = 3009;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -83,8 +83,6 @@ const char ridiculous_version_name[] = "Otiose";
 #include "commands.h"
 #include "window.h"
 #include "exec.h"
-#include "notify.h"
-#include "mail.h"
 #include "timer.h"
 #include "newio.h"
 #include "parse.h"
@@ -197,8 +195,7 @@ char		*startup_file = NULL,		/* Set when epicrc loaded */
 		*default_channel = NULL,	/* Channel to join on connect */
 		nickname[NICKNAME_LEN + 1],	/* users nickname */
 		hostname[NAME_LEN + 1],		/* name of current host */
-		*send_umode = NULL,		/* sent umode */
-		*last_notify_nick = (char *) 0;	/* last detected nickname */
+		*send_umode = NULL;		/* sent umode */
 const char	empty_string[] = "",		/* just an empty string */
 		space[] = " ",			/* just a lonely space */
 		on[] = "ON",

@@ -48,7 +48,6 @@
 #include "output.h"
 #include "names.h"
 #include "hook.h"
-#include "notify.h"
 #include "alist.h"
 #include "screen.h"
 #include "status.h"
@@ -768,7 +767,6 @@ static	int	serverinfo_to_newserv (ServerInfo *si)
 	s->line_length = IRCD_BUFFER_SIZE;
 	s->max_cached_chan_size = -1;
 	s->who_queue = NULL;
-	s->ison = NULL;
 	s->ison_len = 500;
 	s->ison_max = 1;
 	s->ison_queue = NULL;
@@ -802,7 +800,6 @@ static	int	serverinfo_to_newserv (ServerInfo *si)
 	s->end_wait_list = NULL;
 
 	s->invite_channel = NULL;
-	s->last_notify_nick = NULL;
 	s->joined_nick = NULL;
 	s->public_nick = NULL;
 	s->recv_nick = NULL;
@@ -817,7 +814,6 @@ static	int	serverinfo_to_newserv (ServerInfo *si)
 	else
 		malloc_strcpy(&s->d_nickname, nickname);
 
-	make_notify_list(i);
 	make_005(i);
 
 	set_server_state(i, SERVER_RECONNECT);
@@ -915,7 +911,6 @@ static 	void 	remove_from_server_list (int i)
 	new_free(&s->cookie);
 	new_free(&s->quit_message);
 	new_free(&s->invite_channel);
-	new_free(&s->last_notify_nick);
 	new_free(&s->joined_nick);
 	new_free(&s->public_nick);
 	new_free(&s->recv_nick);
@@ -924,8 +919,6 @@ static 	void 	remove_from_server_list (int i)
 	new_free(&s->funny_match);
 	new_free(&s->default_realname);
 	new_free(&s->remote_paddr);
-	new_free(&s->ison);
-	destroy_notify_list(i);
 	destroy_005(i);
 	reset_server_altnames(i, NULL);
 	free_bucket(&s->altnames);
@@ -3566,7 +3559,6 @@ IACCESSOR(v, stricmp_table)
 IACCESSOR(v, autoclose)
 IACCESSOR(v, accept_cert)
 SACCESSOR(chan, invite_channel, NULL)
-SACCESSOR(nick, last_notify_nick, NULL)
 SACCESSOR(nick, joined_nick, NULL)
 SACCESSOR(nick, public_nick, NULL)
 SACCESSOR(nick, recv_nick, NULL)

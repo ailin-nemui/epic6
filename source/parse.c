@@ -52,7 +52,6 @@
 #include "output.h"
 #include "numbers.h"
 #include "parse.h"
-#include "notify.h"
 #include "timer.h"
 
 #define STRING_CHANNEL 	'+'
@@ -509,9 +508,6 @@ static void	p_privmsg (const char *from, const char *comm, const char **ArgList)
 	/* Clean up and go home. */
 	pop_message_from(l);
 	set_server_doing_privmsg(from_server, 0);
-
-	/* Alas, this is not protected by protocol enforcement. :( */
-	notify_mark(from_server, from, 1, 0);
 }
 
 static void	p_quit (const char *from, const char *comm, const char **ArgList)
@@ -557,15 +553,6 @@ static void	p_quit (const char *from, const char *comm, const char **ArgList)
 			say("Signoff: %s (%s)", from, quit_message);
 		pop_message_from(l);
 	}
-
-	/*
-	 * This is purely ergonomic.  If the user is ignoring this person
-	 * then if we tell the user that this person is offline as soon as
-	 * we get the QUIT, this will leak to the user that the person was
-	 * on the channel, thus defeating the ignore.  Best to just wait 
-	 * until the top of the next minute.
-	 */
-	notify_mark(from_server, from, 0, 0);
 
 remove_quitter:
 	/* Send all data about this unperson to the memory hole. */
@@ -679,19 +666,6 @@ static void	p_join (const char *from, const char *comm, const char **ArgList)
 			from, FromUserHost, 
 			check_channel_type(channel), extra);
 	pop_message_from(l);
-
-	/*
-	 * The placement of this is purely ergonomic.  The user might
-	 * be alarmed if epic thrown an /on notify_signon before it
-	 * throws the /on join that triggers it.  Plus, if the user is
-	 * ignoring this person (nothing says you can't ignore someone
-	 * who is on your notify list), then it would also not be the
-	 * best idea to throw /on notify_signon as a result of an
-	 * /on join since that would leak to the user that the person
-	 * has joined the channel -- best to just leave the notify stuff
-	 * alone until the top of the next minute.
-	 */
-	notify_mark(from_server, from, 1, 0);
 }
 
 static void 	p_invite (const char *from, const char *comm, const char **ArgList)
@@ -902,9 +876,7 @@ static void	p_nick (const char *from, const char *comm, const char **ArgList)
 	}
 
 do_rename:
-	notify_mark(from_server, from, 0, 0);
 	rename_nick(from, new_nick, from_server);
-	notify_mark(from_server, new_nick, 1, 0);
 }
 
 static void	p_mode (const char *from, const char *comm, const char **ArgList)
@@ -1386,9 +1358,6 @@ static void 	p_notice (const char *from, const char *comm, const char **ArgList)
 	/* Clean up and go home. */
 	pop_message_from(l);
 	set_server_doing_notice(from_server, 0);
-
-	/* Alas, this is not protected by protocol enforcement. :( */
-	notify_mark(from_server, from, 1, 0);
 }
 
 void	rfc1459_odd (const char *from, const char *comm, const char **ArgList)

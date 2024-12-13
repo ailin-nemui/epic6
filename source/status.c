@@ -48,7 +48,6 @@
 #include "commands.h"
 #include "window.h"
 #include "screen.h"
-#include "mail.h"
 #include "output.h"
 #include "names.h"
 #include "ircaux.h"
@@ -1486,21 +1485,7 @@ STATUS_FUNCTION(status_voice)
  */
 STATUS_FUNCTION(status_mail)
 {
-	STATUS_VARS
-	const char *	number;
-
-	/*
-	 * The order is important here.  We check to see whether or not
-	 * this is a current-type window *FIRST* because most of the time
-	 * that will be false, and check_mail() is expensive; we dont
-	 * want to do it if we're going to ignore the result.
-	 */
-	if (!get_int_var(MAIL_VAR) || !DISPLAY_ON_WINDOW || 
-				((number = check_mail()) == 0))
-		return empty_string;
-
-	PRESS(mail_format, number)
-	RETURN
+	return empty_string;
 }
 
 /*
