@@ -60,7 +60,6 @@
 #include "vars.h"
 #include "window.h"
 #include "output.h"
-#include <sys/ioctl.h>		/* XXX ugh */
 
 /* used with input_move_cursor */
 #define RIGHT 1

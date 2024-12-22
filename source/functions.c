@@ -48,12 +48,10 @@
 #include "array.h"
 #include "clock.h"
 #include "ctcp.h"
-#include "dcc.h"
 #include "debug.h"
 #include "commands.h"
 #include "exec.h"
 #include "files.h"
-#include "ignore.h"
 #include "input.h"
 #include "ircaux.h"
 #include "keys.h"
@@ -70,7 +68,6 @@
 #include "termx.h"
 #include "numbers.h"
 #include "list.h"
-#include "sedcrypt.h"
 #include "timer.h"
 #define need_static_functions
 #include "functions.h"
@@ -232,7 +229,6 @@ static	char
 	*function_curcmd	(char *),
 	*function_currchans	(char *),
 	*function_dbmctl	(char *),
-	*function_dccctl	(char *),
 	*function_deuhc		(char *),
 	*function_diff 		(char *),
 	*function_eof 		(char *),
@@ -276,7 +272,6 @@ static	char
 	*function_hookctl	(char *),
 	*function_iconvctl	(char *),
 	*function_idle		(char *),
-	*function_ignorectl	(char *),
 	*function_indextoword	(char *),
 	*function_info		(char *),
 	*function_insert 	(char *),
@@ -516,7 +511,6 @@ static BuiltInFunctions	built_in_functions[] =
 	{ "CURPOS",		function_curpos 	},
 	{ "CURRCHANS",		function_currchans	},
 	{ "DBMCTL",		function_dbmctl		},
-	{ "DCCCTL",		function_dccctl		},
 	{ "DELARRAY",           function_delarray 	},
 	{ "DELITEM",            function_delitem	},
 	{ "DELITEMS",           function_delitems	},
@@ -581,7 +575,6 @@ static BuiltInFunctions	built_in_functions[] =
 	{ "IGETITEM",           function_igetitem 	},
 	{ "IGETMATCHES",	function_igetmatches	},
 	{ "IGETRMATCHES",	function_igetrmatches	},
-	{ "IGNORECTL",		function_ignorectl	},
 	{ "INDEX",		function_index 		},
 	{ "INDEXTOITEM",        function_indextoitem 	},
 	{ "INDEXTOWORD",	function_indextoword	},
@@ -1788,6 +1781,7 @@ BUILT_IN_FUNCTION(function_qword, word)
 
 BUILT_IN_FUNCTION(function_connect, input)
 {
+#if 0
 	char *	host;
 	char *	port;
 	char *	v;
@@ -1811,10 +1805,14 @@ BUILT_IN_FUNCTION(function_connect, input)
 	}
 
 	return dcc_raw_connect(host, port, family);	/* DONT USE RETURN_STR HERE! */
+#else
+	RETURN_EMPTY;
+#endif
 }
 
 BUILT_IN_FUNCTION(function_listen, input)
 {
+#if 0
 	int	port = 0;
 	char *	v;
 	int	family = AF_INET;
@@ -1847,6 +1845,9 @@ BUILT_IN_FUNCTION(function_listen, input)
 	}
 
 	return dcc_raw_listen(family, port);	/* DONT USE RETURN_STR HERE! */
+#else
+	RETURN_EMPTY;
+#endif
 }
 
 BUILT_IN_FUNCTION(function_toupper, input)
@@ -7112,11 +7113,6 @@ BUILT_IN_FUNCTION(function_timerctl, input)
 	return timerctl(input);
 }
 
-BUILT_IN_FUNCTION(function_dccctl, input)
-{
-	return dccctl(input);
-}
-
 BUILT_IN_FUNCTION(function_outputinfo, input)
 {
 	if (get_who_from())
@@ -7164,11 +7160,6 @@ BUILT_IN_FUNCTION(function_serverwin, input)
 		RETURN_INT(window);
 	else
 		RETURN_INT(get_window_user_refnum(window));
-}
-
-BUILT_IN_FUNCTION(function_ignorectl, input)
-{
-        return ignorectl(input);
 }
 
 BUILT_IN_FUNCTION(function_metric_time, input)

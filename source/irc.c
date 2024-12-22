@@ -52,7 +52,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3009;
+const unsigned long	commit_id = 3010;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -65,7 +65,6 @@ const char ridiculous_version_name[] = "Otiose";
 #define __need_putchar_x__
 #include "status.h"
 #include "clock.h"
-#include "dcc.h"
 #include "names.h"
 #include "vars.h"
 #include "input.h"
@@ -262,8 +261,6 @@ void	irc_exit (int really_quit, const char *format, ...)
 	if (really_quit == 0)	/* Don't clean up if we're crashing */
 		goto die_now;
 
-	close_all_dcc(); /* Need to do this before we close the server */
-
 	if (format)
 	{
 		va_list arglist;
@@ -438,7 +435,6 @@ static SIGNAL_HANDLER(nothing)
 static SIGNAL_HANDLER(sig_user1)
 {
 	say("Got SIGUSR1, closing DCC connections and EXECed processes");
-	close_all_dcc();
 	clean_up_processes();
 }
 

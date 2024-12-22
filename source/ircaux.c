@@ -55,7 +55,6 @@
 #include "ctcp.h"
 #include "server.h"
 #include "list.h"
-#include "sedcrypt.h"
 #include "elf.h"
 
 /*
@@ -5447,8 +5446,6 @@ struct Transformer default_transformers[] = {
 {	0,	"CTCP",		0, 2, 8,  ctcp_encoder,	  ctcp_decoder	 },
 {	0,	"NONE",		0, 1, 8,  null_encoder,	  null_encoder	 },
 {	0,	"SHA256",	0, 0, 65, sha256_encoder, sha256_encoder },
-{	0,	"AES",		1, 1, 8,  aes_encoder,	    aes_decoder	     },
-{	0,	"AESSHA",	1, 1, 8,  aessha_encoder,   aessha_decoder   },
 {	0,	"ICONV",	1, 4, 16, iconv_recoder,  iconv_recoder },
 {	0,	"ALL",		0, 0, 256, all_encoder,	  all_encoder	},
 {	-1,	NULL,		0, 0, 0,   NULL,	  NULL		}

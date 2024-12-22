@@ -35,6 +35,7 @@
 #include "vars.h"
 #include "newio.h"
 #include "output.h"
+/* We might need FIONBIO [but i hope not] */
 #include <sys/ioctl.h>
 
 static int	Connect 	 (int, SSu *);

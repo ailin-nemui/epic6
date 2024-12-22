@@ -65,7 +65,6 @@
 #  include <sys/termios.h>
 # endif
 #endif
-#include <sys/ioctl.h>
 
 volatile sig_atomic_t	need_redraw;
 static	int		tty_des;		/* descriptor for the tty */
@@ -1225,46 +1224,36 @@ int	term_resize (void)
 {
 	static	int	old_li = -1,
 			old_co = -1;
+	struct winsize window;
 
-#	if defined (TIOCGWINSZ)
-	{
-		struct winsize window;
+	/*
+	 * This hack is required by a race condition within screen;
+	 * if you have a "caption always" bar, when you reattach to
+	 * a session, it will send us a SIGWINCH, before it has 
+	 * accounted for the "caption bar" stealing a line from the
+	 * screen.  So we race screen, and if we ask for the size of
+	 * the screen before it accounts for the caption bar, then
+	 * we lose, because we'll get the wrong number of lines, and
+	 * that will screw up the status bar.  So we do this small 
+	 * sleep to increase the chances of us losing the race, 
+	 * which means we win.  Got it?
+	 *
+	 * P.S. -- GNU Screen is all kinds of icky.
+	 */
+	my_sleep(0.05);
 
-		/*
-		 * This hack is required by a race condition within screen;
-		 * if you have a "caption always" bar, when you reattach to
-		 * a session, it will send us a SIGWINCH, before it has 
-		 * accounted for the "caption bar" stealing a line from the
-		 * screen.  So we race screen, and if we ask for the size of
-		 * the screen before it accounts for the caption bar, then
-		 * we lose, because we'll get the wrong number of lines, and
-		 * that will screw up the status bar.  So we do this small 
-		 * sleep to increase the chances of us losing the race, 
-		 * which means we win.  Got it?
-		 *
-		 * P.S. -- GNU Screen is all kinds of icky.
-		 */
-		my_sleep(0.05);
-
-		if (ioctl(tty_des, TIOCGWINSZ, &window) < 0)
-		{
-			current_term->TI_lines = li;
-			current_term->TI_cols = co;
-		}
-		else
-		{
-			if ((current_term->TI_lines = window.ws_row) == 0)
-				current_term->TI_lines = li;
-			if ((current_term->TI_cols = window.ws_col) == 0)
-				current_term->TI_cols = co;
-		}
-	}
-#	else
+	if (tcgetwinsize(tty_des, &window) < 0)
 	{
 		current_term->TI_lines = li;
 		current_term->TI_cols = co;
 	}
-#	endif
+	else
+	{
+		if ((current_term->TI_lines = window.ws_row) == 0)
+			current_term->TI_lines = li;
+		if ((current_term->TI_cols = window.ws_col) == 0)
+			current_term->TI_cols = co;
+	}
 
 	term_establish_last_column();
 	if ((old_li != current_term->TI_lines) || (old_co != current_term->TI_cols))

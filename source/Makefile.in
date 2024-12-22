@@ -14,8 +14,8 @@ DEFS	= @DEFS@
 RM	= rm -f
 
 OBJECTS = alias.o alist.o array.o cJSON.o clock.o commands.o \
-	crypt.o crypto.o ctcp.o dcc.o debug.o elf.o exec.o files.o \
-	functions.o hook.o if.o ignore.o input.o irc.o \
+	ctcp.o debug.o elf.o exec.o files.o \
+	functions.o hook.o if.o input.o irc.o \
 	ircaux.o ircsig.o keys.o lastlog.o levels.o list.o log.o logfiles.o \
 	names.o network.o newio.o numbers.o output.o parse.o \
 	@PERLDOTOH@ @PYTHON_O@ recode.o reg.o @RUBYDOTOH@ screen.o \
@@ -137,11 +137,11 @@ commands.o: commands.c ../include/irc.h ../include/defs.h \
   ../include/config.h ../include/irc_std.h \
   ../include/debug.h ../include/alias.h ../include/ircaux.h \
   ../include/network.h ../include/words.h \
-  ../include/vars.h ../include/alist.h ../include/sedcrypt.h \
-  ../include/ctcp.h ../include/dcc.h ../include/commands.h \
+  ../include/vars.h ../include/alist.h \
+  ../include/ctcp.h ../include/commands.h \
   ../include/exec.h ../include/files.h ../include/hook.h \
   ../include/server.h ../include/who.h ../include/ifcmd.h \
-  ../include/ignore.h ../include/levels.h ../include/input.h \
+  ../include/levels.h ../include/input.h \
   ../include/keys.h ../include/lastlog.h ../include/log.h \
   ../include/names.h ../include/numbers.h \
   ../include/output.h ../include/parse.h \
@@ -149,38 +149,16 @@ commands.o: commands.c ../include/irc.h ../include/defs.h \
    ../include/stack.h ../include/termx.h \
   ../include/timer.h ../include/newio.h ../include/reg.h \
   ../include/extlang.h ../include/elf.h debuglog.c
-crypt.o: crypt.c ../include/irc.h ../include/defs.h ../include/config.h \
-  ../include/irc_std.h ../include/debug.h \
-  ../include/sedcrypt.h ../include/ctcp.h ../include/ircaux.h \
-  ../include/network.h ../include/words.h \
-  ../include/list.h ../include/output.h ../include/vars.h \
-  ../include/server.h ../include/who.h
-crypto.o: crypto.c ../include/irc.h ../include/defs.h ../include/config.h \
-  ../include/irc_std.h ../include/debug.h \
-  ../include/sedcrypt.h ../include/ctcp.h ../include/ircaux.h \
-  ../include/network.h ../include/words.h \
-  ../include/list.h ../include/output.h ../include/vars.h
 ctcp.o: ctcp.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h \
-  ../include/sedcrypt.h ../include/ctcp.h ../include/dcc.h \
-  ../include/commands.h ../include/hook.h ../include/ignore.h \
+  ../include/ctcp.h \
+  ../include/commands.h ../include/hook.h \
   ../include/levels.h ../include/ircaux.h \
   ../include/network.h ../include/words.h ../include/lastlog.h \
   ../include/names.h ../include/output.h ../include/parse.h \
   ../include/server.h ../include/who.h ../include/status.h \
   ../include/vars.h ../include/window.h ../include/ifcmd.h \
   ../include/functions.h
-dcc.o: dcc.c ../include/irc.h ../include/defs.h ../include/config.h \
-  ../include/irc_std.h ../include/debug.h \
-  ../include/sedcrypt.h ../include/ctcp.h ../include/dcc.h \
-  ../include/functions.h ../include/hook.h ../include/ircaux.h \
-  ../include/network.h ../include/words.h \
-  ../include/lastlog.h ../include/levels.h ../include/newio.h \
-  ../include/output.h ../include/parse.h ../include/server.h \
-  ../include/who.h ../include/status.h ../include/vars.h \
-  ../include/window.h ../include/termx.h ../include/screen.h \
-   ../include/reg.h ../include/alias.h \
-  ../include/timer.h
 debug.o: debug.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h \
   ../include/ircaux.h ../include/network.h \
@@ -194,7 +172,7 @@ elf.o: elf.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/output.h
 exec.o: exec.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h \
-  ../include/dcc.h ../include/exec.h ../include/vars.h \
+  ../include/exec.h ../include/vars.h \
   ../include/ircaux.h ../include/network.h \
   ../include/words.h ../include/commands.h ../include/window.h \
   ../include/lastlog.h ../include/levels.h ../include/status.h \
@@ -217,14 +195,14 @@ functions.o: functions.c ../include/irc.h ../include/defs.h \
   ../include/network.h ../include/words.h \
   ../include/vars.h ../include/alist.h ../include/array.h \
   ../include/clock.h ../include/keys.h ../include/ctcp.h \
-  ../include/dcc.h ../include/commands.h ../include/exec.h \
+  ../include/commands.h ../include/exec.h \
   ../include/files.h ../include/levels.h \
-  ../include/ignore.h ../include/input.h ../include/log.h \
+  ../include/input.h ../include/log.h \
   ../include/names.h ../include/output.h ../include/parse.h \
   ../include/screen.h ../include/window.h ../include/lastlog.h \
   ../include/status.h  ../include/server.h \
   ../include/who.h ../include/termx.h \
-  ../include/numbers.h ../include/sedcrypt.h ../include/timer.h \
+  ../include/numbers.h ../include/timer.h \
   ../include/functions.h ../include/options.h ../include/reg.h \
   ../include/ifcmd.h ../include/ssl.h ../include/extlang.h \
   ../include/cJSON.h ../include/hook.h
@@ -243,14 +221,6 @@ if.o: if.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/ifcmd.h ../include/output.h ../include/parse.h \
   ../include/commands.h ../include/window.h ../include/lastlog.h \
   ../include/levels.h ../include/status.h ../include/reg.h
-ignore.o: ignore.c ../include/irc.h ../include/defs.h ../include/config.h \
-  ../include/irc_std.h ../include/debug.h \
-  ../include/ignore.h ../include/levels.h ../include/ircaux.h \
-  ../include/network.h ../include/words.h \
-  ../include/list.h ../include/vars.h ../include/output.h \
-  ../include/parse.h ../include/timer.h ../include/functions.h \
-  ../include/window.h ../include/lastlog.h ../include/status.h \
-  ../include/reg.h
 input.o: input.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h \
   ../include/alias.h ../include/ircaux.h \
@@ -264,7 +234,7 @@ input.o: input.c ../include/irc.h ../include/defs.h ../include/config.h \
 irc.o: irc.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h \
   ../include/status.h ../include/clock.h ../include/keys.h \
-  ../include/dcc.h ../include/names.h ../include/vars.h \
+  ../include/names.h ../include/vars.h \
   ../include/input.h ../include/alias.h ../include/ircaux.h \
   ../include/network.h ../include/words.h \
   ../include/output.h ../include/termx.h ../include/screen.h \
@@ -283,7 +253,7 @@ ircaux.o: ircaux.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/words.h ../include/output.h ../include/termx.h \
   ../include/vars.h ../include/alias.h ../include/ifcmd.h \
   ../include/ctcp.h ../include/server.h ../include/who.h \
-  ../include/sedcrypt.h ../include/elf.h 
+  ../include/elf.h 
 ircsig.o: ircsig.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h
 keys.o: keys.c ../include/irc.h ../include/defs.h ../include/config.h \
@@ -372,9 +342,9 @@ parse.o: parse.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h \
   ../include/server.h ../include/who.h ../include/names.h \
   ../include/vars.h ../include/ctcp.h ../include/hook.h \
-  ../include/commands.h ../include/ignore.h ../include/levels.h \
+  ../include/commands.h ../include/levels.h \
   ../include/lastlog.h ../include/ircaux.h \
-  ../include/network.h ../include/words.h ../include/sedcrypt.h \
+  ../include/network.h ../include/words.h \
   ../include/termx.h ../include/screen.h ../include/window.h \
   ../include/status.h  \
   ../include/output.h ../include/numbers.h ../include/parse.h \
@@ -419,7 +389,7 @@ screen.o: screen.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/levels.h ../include/status.h  \
   ../include/output.h ../include/server.h ../include/who.h \
   ../include/list.h ../include/termx.h ../include/names.h \
-  ../include/input.h ../include/log.h ../include/hook.h ../include/dcc.h \
+  ../include/input.h ../include/log.h ../include/hook.h \
   ../include/commands.h ../include/parse.h ../include/newio.h
 sdbm.o: sdbm.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h \
@@ -443,7 +413,7 @@ ssl.o: ssl.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/output.h ../include/hook.h ../include/newio.h
 status.o: status.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h \
-  ../include/dcc.h ../include/termx.h ../include/screen.h \
+  ../include/termx.h ../include/screen.h \
   ../include/window.h ../include/lastlog.h ../include/levels.h \
   ../include/status.h  ../include/server.h \
   ../include/who.h ../include/vars.h ../include/hook.h \
@@ -466,17 +436,17 @@ timer.o: timer.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/levels.h ../include/status.h ../include/timer.h \
   ../include/hook.h ../include/output.h ../include/commands.h \
   ../include/server.h ../include/who.h ../include/screen.h \
-   ../include/functions.h
+  ../include/functions.h
 vars.o: vars.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h \
   ../include/alist.h ../include/ircaux.h \
   ../include/network.h ../include/words.h ../include/alias.h \
   ../include/vars.h ../include/status.h ../include/window.h \
   ../include/lastlog.h ../include/levels.h ../include/log.h \
-  ../include/hook.h ../include/sedcrypt.h \
+  ../include/hook.h \
   ../include/input.h ../include/termx.h ../include/screen.h \
-   ../include/output.h ../include/stack.h \
-  ../include/dcc.h ../include/keys.h ../include/timer.h \
+  ../include/output.h ../include/stack.h \
+  ../include/keys.h ../include/timer.h \
   ../include/clock.h ../include/reg.h \
   ../include/commands.h ../include/ifcmd.h ../include/ssl.h
 wcwidth.o: wcwidth.c ../include/irc.h ../include/defs.h \

@@ -36,7 +36,6 @@
 
 #define __need_putchar_x__
 #include "irc.h"
-#include "dcc.h"
 #include "termx.h"
 #include "status.h"
 #include "server.h"
@@ -83,8 +82,6 @@ STATUS_FUNCTION(status_overwrite_mode);
 STATUS_FUNCTION(status_away);
 STATUS_FUNCTION(status_oper);
 STATUS_FUNCTION(status_user);
-STATUS_FUNCTION(status_dcc);
-STATUS_FUNCTION(status_dcc_all);
 STATUS_FUNCTION(status_hold);
 STATUS_FUNCTION(status_holdmode);
 STATUS_FUNCTION(status_version);
@@ -149,7 +146,6 @@ struct status_formats status_expandos[] = {
 { 0, 'A', status_away,          NULL, 			NULL },
 { 0, 'B', status_hold_lines,    &hold_lines_format,	&STATUS_HOLD_LINES_VAR},
 { 0, 'C', status_channel,       &channel_format,	&STATUS_CHANNEL_VAR },
-{ 0, 'D', status_dcc, 	        NULL, 			NULL },
 { 0, 'E', status_activity,	NULL,			NULL },
 { 0, 'F', status_notify_windows,&notify_format,		&STATUS_NOTIFY_VAR },
 { 0, 'G', status_network,	NULL,			NULL },
@@ -199,7 +195,6 @@ struct status_formats status_expandos[] = {
 { 1, '7', status_user,		NULL, 			NULL },
 { 1, '8', status_user,		NULL, 			NULL },
 { 1, '9', status_user,		NULL, 			NULL },
-{ 1, 'D', status_dcc_all,	NULL, 			NULL },
 { 1, 'F', status_notify_windows,&notify_format,		&STATUS_NOTIFY_VAR },
 { 1, 'H', status_holdmode,	NULL,			NULL },
 { 1, 'K', status_scroll_info,	NULL,			NULL },
@@ -1694,33 +1689,6 @@ STATUS_FUNCTION(status_version)
 STATUS_FUNCTION(status_null_function)
 {
 	return empty_string;
-}
-
-/*
- * This displays the DCC "Progress Meter", which goes to the window that
- * has level DCC.  OR, if "current_window_level" includes DCC, then this
- * goes to the current window.
- */
-STATUS_FUNCTION(status_dcc)
-{
-	Mask	mask;
-
-	get_window_mask(window_, &mask);
-
-	if ((mask_isset(&current_window_mask, LEVEL_DCC) && 
-				IS_CURRENT_WINDOW) ||
-	    (mask_isset(&mask, LEVEL_DCC)))
-		return DCC_get_current_transfer();
-
-	return empty_string;
-}
-
-/*
- * As above, but always return the indicator.
- */
-STATUS_FUNCTION(status_dcc_all)
-{
-	return DCC_get_current_transfer();
 }
 
 /*

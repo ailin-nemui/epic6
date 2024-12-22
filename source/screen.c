@@ -60,12 +60,10 @@
 #include "input.h"
 #include "log.h"
 #include "hook.h"
-#include "dcc.h"
 #include "status.h"
 #include "commands.h"
 #include "parse.h"
 #include "newio.h"
-#include <sys/ioctl.h>
 
 #define CURRENT_WSERV_VERSION	4
 

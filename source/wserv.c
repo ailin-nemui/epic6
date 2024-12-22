@@ -43,7 +43,6 @@
 #include "defs.h"
 #include "config.h"
 #include "irc_std.h"
-#include <sys/ioctl.h>
 #ifdef HAVE_TERMIOS_H
 # include <termios.h>
 #else
@@ -290,11 +289,7 @@ static void 	term_resize (void)
 			old_co = -1;
 	struct winsize window;
 
-#if !defined (TIOCGWINSZ)
-	return;
-#endif
-
-	if (ioctl(tty_des, TIOCGWINSZ, &window) < 0)
+	if (tcgetwinsize(tty_des, &window) < 0)
 		return;		/* *Shrug* What can we do? */
 
 	if (window.ws_row == 0 || window.ws_col == 0)

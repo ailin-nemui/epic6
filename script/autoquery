@@ -20,9 +20,4 @@ on #-msg -29 "*" {
   _autoquery $0;
 };
 
-on #-encrypted_privmsg -29 "*" {
-  if ([$0] == [$1]) {
-    _autoquery $0;
-  };
-};
 #weirdo'2k6

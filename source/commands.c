@@ -41,16 +41,13 @@
 #include "alias.h"
 #include "alist.h"
 #include "list.h"
-#include "sedcrypt.h"
 #include "ctcp.h"
-#include "dcc.h"
 #include "commands.h"
 #include "exec.h"
 #include "files.h"
 #include "hook.h"
 #include "server.h"
 #include "ifcmd.h"
-#include "ignore.h"
 #include "input.h"
 #include "ircaux.h"
 #include "keys.h"
@@ -209,7 +206,6 @@ static	IrcCommand irc_command[] =
 	{ "CONNECT",	send_comm	},
 	{ "CONTINUE",	continuecmd	},
 	{ "CTCP",	ctcp		},
-	{ "DCC",	dcc_cmd		}, /* dcc.c */
 	{ "DEBUGLOG",	debuglogcmd	}, /* debuglog.c */
 	{ "DEFER",	defercmd	},
 	{ "DEOP",	deop		},
@@ -220,7 +216,6 @@ static	IrcCommand irc_command[] =
         { "DUMP",       dumpcmd		}, /* alias.c */
 	{ "ECHO",	echocmd		},
 	{ "ENCODING",	encoding	}, /* recode.c */
-	{ "ENCRYPT",	encrypt_cmd	}, /* crypt.c */
 	{ "EVAL",	evalcmd		},
 	{ "EXEC",	execcmd		}, /* exec.c */
 	{ "EXIT",	e_quit		},
@@ -232,7 +227,6 @@ static	IrcCommand irc_command[] =
 	{ "HOOK",	hookcmd		},
 	{ "HOSTNAME",	e_hostname	},
 	{ "IF",		ifcmd		}, /* if.c */
-	{ "IGNORE",	ignore		}, /* ignore.c */
 	{ "INFO",	info		},
 	{ "INPUT",	inputcmd	},
 	{ "INPUT_CHAR",	inputcmd	},
@@ -2455,7 +2449,7 @@ BUILT_IN_COMMAND(redirect)
 
 	if ((who = next_arg(args, &args)) == NULL)
 	{
-		say("%s", "Usage: /REDIRECT <nick|channel|=dcc|%process|/command|@filedescriptor|\"|0> <cmd>");
+		say("%s", "Usage: /REDIRECT <nick|channel|%process|/command|@filedescriptor|\"|0> <cmd>");
 		return;
 	}
 
@@ -2474,17 +2468,6 @@ BUILT_IN_COMMAND(redirect)
 	if (is_me(from_server, who))
 	{
 		say("You may not redirect output to yourself");
-		return;
-	}
-
-	/*
-	 * Added by Chaos: Fixes the problem with /redirect when 
-	 * redirecting to a dcc chat sessions that isn't active or 
-	 * doesn't exist.
-	 */
-	if ((*who == '=') && !is_number(who + 1) && !dcc_chat_active(who + 1)) 
-	{
-		say("You don't have an active DCC CHAT to %s",who + 1);
 		return;
 	}
 
@@ -2914,11 +2897,6 @@ BUILT_IN_COMMAND(waitcmd)
 			}
 		}
 	}
-	else if (ctl_arg && *ctl_arg == '=')
-	{
-		ctl_arg++;
-		wait_for_dcc(ctl_arg);
-	}
 	else if (ctl_arg)
 		yell("Unknown argument to /WAIT");
 	else
@@ -3135,12 +3113,10 @@ struct target_type
 /* SENDTEXT -- Don't delete this, I search for it! */
 void 	send_text (int server, const char *nick_list, const char *text, const char *command, int hook, int already_encoded)
 {
-	int 	i, 
-		old_server;
+	int 	i;
 	char 	*current_nick,
 		*next_nick,
 		*line;
-	List	*key;
 	int	old_window_display;
 	int	old_from_server;
 static	int	recursion = 0;
@@ -3262,32 +3238,6 @@ struct target_type target[4] =
 		parse_statement(line, 0, empty_string);
 		new_free(&line);
 	    }
-	    else if (*current_nick == '=')
-	    {
-		if (!is_number(current_nick + 1) &&
-			!dcc_chat_active(current_nick + 1))
-		{
-			yell("No DCC CHAT connection open to %s", 
-				current_nick + 1);
-			new_free(&extra);
-			continue;
-		}
-
-		if ((key = is_crypted(current_nick, -1, NULL)) != 0)
-		{
-			char *breakage = LOCAL_COPY(recode_text);
-			line = crypt_msg(breakage, key);
-		}
-		else
-			line = malloc_strdup(recode_text);
-
-		old_server = from_server;
-		from_server = NOSERV;
-		dcc_chat_transmit(current_nick + 1, line, text, command, hook);
-		from_server = old_server;
-		set_server_sent_nick(from_server, current_nick);
-		new_free(&line);
-	    }
 	    else if (*current_nick == '-' && strchr(current_nick + 1, '/'))
 	    {
 		int	servref;
@@ -3312,8 +3262,6 @@ struct target_type target[4] =
 	    }
 	    else
 	    {
-		char *	copy = NULL;
-
 		/* XXX Should we check for invalid from_server here? */
 
 		if (get_server_doing_notice(from_server) > 0)
@@ -3328,25 +3276,7 @@ struct target_type target[4] =
 				(command && !strcmp(command, "NOTICE")))
 			i += 2;
 
-		if ((key = is_crypted(current_nick, from_server, NULL)))
-		{
-			int	l;
-
-			l = message_from(current_nick, target[i].mask);
-			if (hook && do_hook(target[i].hook_type, "%s %s", 
-						current_nick, text))
-				put_it(target[i].format, current_nick, text);
-
-			copy = LOCAL_COPY(recode_text);
-			line = crypt_msg(copy, key);
-			send_to_server_with_payload(line, "%s %s", 
-					target[i].command, current_nick);
-
-			set_server_sent_nick(from_server, current_nick);
-			new_free(&line);
-			pop_message_from(l);
-		}
-		else if (extra)		/* Message was transcoded */
+		if (extra)		/* Message was transcoded */
 		{
 			int	l;
 

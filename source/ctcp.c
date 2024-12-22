@@ -36,12 +36,9 @@
 
 #include "irc.h"
 #include "list.h"
-#include "sedcrypt.h"
 #include "ctcp.h"
-#include "dcc.h"
 #include "commands.h"
 #include "hook.h"
-#include "ignore.h"
 #include "ircaux.h"
 #include "lastlog.h"
 #include "names.h"
@@ -182,104 +179,6 @@ static	void	add_ctcp (const char *name, int flag, const char *desc, CTCP_Handler
 
 /**************************** CTCP PARSERS ****************************/
 
-/********** INLINE EXPANSION CTCPS ***************/
-/*
- * do_crypt: Generalized decryption for /CRYPT targets
- *
- * Notes:
- *	This supports encryption over DCC CHAT (`from' will start with "=")
- *      If the CTCP was sent to a channel, then the peer is the "target".
- *      If the CTCP was not sent to a channel, then the peer is the sender.
- *
- * It will look up to see if you have a /crypt for the peer for the kind of
- * encryption.  If you do have a /crypt, it will decrypt the message.
- * If you do not have a /crypt, it will return "[ENCRYPTED MESSAGE]".
- */
-CTCP_HANDLER(do_crypto)
-{
-	List	*key = NULL;
-	const char	*crypt_who;
-	char 	*tofrom = NULL;
-	char	*ret = NULL;
-	char 	*extra = NULL;
-
-	if (*from == '=')		/* DCC CHAT message */
-		crypt_who = from;
-	else if (is_me(from_server, to))
-		crypt_who = from;
-	else
-		crypt_who = to;
-
-	malloc_sprintf(&tofrom, "%s,%s!%s", nonull(to), nonull(from), nonull(FromUserHost));
-
-	if ((key = is_crypted(tofrom, from_server, cmd)) ||
-	    (key = is_crypted(crypt_who, from_server, cmd)))
-		ret = decrypt_msg(args, key);
-
-	new_free(&tofrom);
-
-	/*
-	 * Key would be NULL if someone sent us a rogue encrypted
-	 * message (ie, we don't have a password).  Ret should never
-	 * be NULL (but we can be defensive against the future).
-	 * In either case, something went seriously wrong.
-	 */
-	if (!key || !ret) 
-	{
-		if (ret)
-			new_free(&ret);
-
-		malloc_strcpy(&ret, "[ENCRYPTED MESSAGE]");
-		return ret;
-	} 
-
-
-	/*
-	 * NOW WE HANDLE THE DECRYPTED MESSAGE....
-	 */
-
-	/*
-	 * CTCP messages can be recursive (ie, a decrypted msg
-	 * might yield another CTCP message), and so we must not
-	 * recode until we have removed any sub-ctcps!
-	 */
-	if (get_server_doing_privmsg(from_server) > 0)
-		extra = malloc_strdup(do_ctcp(1, from, to, ret));
-	else if (get_server_doing_notice(from_server) > 0)
-		extra = malloc_strdup(do_ctcp(0, from, to, ret));
-	else
-	{
-		extra = ret;
-		ret = NULL;
-	}
-
-	new_free(&ret);
-	ret = extra;
-	extra = NULL;
-
-	/*
-	 * What we're left with is just the plain part of the CTCP.
-	 * In rfc1459_any_to_utf8(), CTCP messages are specifically
-	 * detected and ignored [because recoding binary data will
-	 * corrupt the data].  But that does not mean the message
-	 * doesn't need decoding -- it just needs to be done after
-	 * the message is decrypted.
-	 */
-	inbound_recode(from, from_server, to, ret, &extra);
-
-	/*
-	 * If a recoding actually occurred, free the source string
-	 * and then use the decoded string going forward.
-	 */
-	if (extra)
-	{
-		new_free(&ret);
-		ret = extra;
-	}
-
-	return ret;
-}
-
 /*
  * CTCP ACTION - Creates a special "ACTION" level message
  * 		Does not reply.
@@ -288,15 +187,8 @@ CTCP_HANDLER(do_crypto)
 CTCP_HANDLER(do_atmosphere)
 {
 	int	l;
-	int	ignore;
 
 	if (!args || !*args)
-		return NULL;
-
-	/* Xavier mentioned that we should allow /ignore #chan action */
-	ignore = check_ignore_channel(from, FromUserHost, to, LEVEL_ACTION);
-
-	if (ignore == IGNORED)
 		return NULL;
 
 	if (is_channel(to))
@@ -320,62 +212,6 @@ CTCP_HANDLER(do_atmosphere)
 	pop_message_from(l);
 	return NULL;
 }
-
-/*
- * CTCP DCC - Direct Client Connections (file transfers and private chats)
- *		Does not reply.
- *		Only user->user CTCP DCCs are acceptable.
- */
-CTCP_HANDLER(do_dcc)
-{
-	char	*type;
-	char	*description;
-	char	*inetaddr;
-	char	*port;
-	char	*size;
-	char	*extra_flags;
-
-	if (!is_me(from_server, to) && *from != '=')
-		return NULL;
-
-	if     (!(type = next_arg(args, &args)) ||
-		!(description = (get_int_var(DCC_DEQUOTE_FILENAMES_VAR)
-				? new_next_arg(args, &args)
-				: next_arg(args, &args))) ||
-		!(inetaddr = next_arg(args, &args)) ||
-		!(port = next_arg(args, &args)))
-			return NULL;
-
-	size = next_arg(args, &args);
-	extra_flags = next_arg(args, &args);
-
-	register_dcc_offer(from, type, description, inetaddr, port, size, extra_flags, args);
-	return NULL;
-}
-
-/* 
- * If we recieve a CTCP DCC REJECT in a notice, then we want to remove
- * the offending DCC request
- */
-CTCP_HANDLER(do_dcc_reply)
-{
-	char *subargs = NULL;
-	char *type = NULL;
-
-	if (is_channel(to))
-		return NULL;
-
-	if (args && *args)
-		subargs = next_arg(args, &args);
-	if (args && *args)
-		type = next_arg(args, &args);
-
-	if (subargs && type && !strcmp(subargs, "REJECT"))
-		dcc_reject(from, type, args);
-
-	return NULL;
-}
-
 
 /************************************************************************/
 /*
@@ -444,7 +280,6 @@ static int split_CTCP (char *raw_message, char *ctcp_dest, char *after_ctcp)
  */
 char *	do_ctcp (int request, const char *from, const char *to, char *str)
 {
-	int 	flag;
 	char 	local_ctcp_buffer [BIG_BUFFER_SIZE + 1],
 		the_ctcp          [IRCD_BUFFER_SIZE + 1],
 		after             [IRCD_BUFFER_SIZE + 1];
@@ -469,19 +304,6 @@ char *	do_ctcp (int request, const char *from, const char *to, char *str)
 	if (delim_char > 8)
 		dont_process_more = 1;	/* Historical limit of 4 CTCPs */
 
-
-	/*
-	 * Ignored CTCP messages, or requests during a flood, are 
-	 * removed, but not processed.
-	 * Although all CTCPs are subject to IGNORE, and requests are subject
-	 * to flood control; we must apply these restrictions on the inside
-	 * of the loop, for each CTCP we see.
-	 */
-	flag = check_ignore_channel(from, FromUserHost, to, LEVEL_CTCP);
-
-	/* /IGNOREd messages are removed but not processed */
-	if (flag == IGNORED)
-		dont_process_more = 1;
 
 	/* Messages sent to global targets are removed but not processed */
 	if (*to == '$' || (*to == '#' && !im_on_channel(to, from_server)))
@@ -1027,18 +849,6 @@ int	init_ctcp (void)
 	add_ctcp("ACTION", 		CTCP_SPECIAL, 
 				"contains action descriptions for atmosphere", 
 				do_atmosphere, 	do_atmosphere, NULL, NULL);
-	add_ctcp("DCC", 		CTCP_SPECIAL, 
-				"requests a direct_client_connection", 
-				do_dcc, 	do_dcc_reply, NULL, NULL);
-
-	/* Strong Crypto CTCPs */
-	add_ctcp("AESSHA256-CBC", 	CTCP_ORDINARY | CTCP_RAW | CTCP_RESTARTABLE,
-				"transmit aes256-cbc ciphertext using a sha256 key",
-				do_crypto, 	do_crypto, NULL, NULL );
-	add_ctcp("AES256-CBC", 		CTCP_ORDINARY | CTCP_RAW | CTCP_RESTARTABLE,
-				"transmit aes256-cbc ciphertext",
-				do_crypto, 	do_crypto, NULL, NULL );
-
 	return 0;
 }
 

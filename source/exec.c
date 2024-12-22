@@ -34,7 +34,6 @@
  */
 
 #include "irc.h"
-#include "dcc.h"
 #include "exec.h"
 #include "vars.h"
 #include "ircaux.h"
@@ -51,7 +50,6 @@
 #include "functions.h"
 
 #include <sys/wait.h>
-#include <sys/ioctl.h>
 #ifdef HAVE_SYS_FILIO_H
 #include <sys/filio.h>
 #endif

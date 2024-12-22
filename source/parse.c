@@ -41,11 +41,9 @@
 #include "ctcp.h"
 #include "hook.h"
 #include "commands.h"
-#include "ignore.h"
 #include "lastlog.h"
 #include "ircaux.h"
 #include "list.h"
-#include "sedcrypt.h"
 #include "termx.h"
 #include "window.h"
 #include "screen.h"
@@ -272,10 +270,6 @@ static void	p_topic (const char *from, const char *comm, const char **ArgList)
 	if (!(new_topic = ArgList[1])) 
 		{ rfc1459_odd(from, comm, ArgList); return; }
 
-	if (check_ignore_channel(from, FromUserHost, 
-				channel, LEVEL_TOPIC) == IGNORED)
-		return;
-
 	l = message_from(channel, LEVEL_TOPIC);
 	if (do_hook(TOPIC_LIST, "%s %s %s", from, channel, new_topic))
 		say("%s has changed the topic on channel %s to %s",
@@ -299,10 +293,6 @@ static void	p_wallops (const char *from, const char *comm, const char **ArgList)
 	{
 		int	retval;
 
-		/* Check for ignores... */
-		if (check_ignore(from, FromUserHost, LEVEL_OPERWALL) == IGNORED)
-			return;
-
 		l = message_from(NULL, LEVEL_OPERWALL);
 		retval = do_hook(OPERWALL_LIST, "%s %s", from, message + 11);
 		pop_message_from(l);
@@ -314,10 +304,6 @@ static void	p_wallops (const char *from, const char *comm, const char **ArgList)
 	 * If it's not an operwall, ,or if the user didn't catch it,
 	 * treat it as a wallop.
 	 */
-
-	/* Check for ignores... */
-	if (check_ignore(from, FromUserHost, LEVEL_WALLOP) == IGNORED)
-		return;
 
 	l = message_from(NULL, LEVEL_WALLOP);
 	if (do_hook(WALLOP_LIST, "%s %c %s", 
@@ -468,13 +454,6 @@ static void	p_privmsg (const char *from, const char *comm, const char **ArgList)
 	if (!target || !*target)
 		target = from;		/* Target is actually sender here */
 
-	if (check_ignore_channel(from, FromUserHost, target, level) == IGNORED
-         || (check_ignore_channel(from, FromUserHost, real_target, level) == IGNORED))
-	{
-		set_server_doing_privmsg(from_server, 0);
-		return;
-	}
-
 	/* Control the "last public/private nickname" variables */
 	if (hook_type == PUBLIC_LIST || 
 	    hook_type == PUBLIC_MSG_LIST || 
@@ -520,25 +499,8 @@ static void	p_quit (const char *from, const char *comm, const char **ArgList)
 	if (!(quit_message = ArgList[0]))
 		{ rfc1459_odd(from, comm, ArgList); return; }
 
-	/*
-	 * Normally, we do not throw the user a hook until after we
-	 * have taken care of administrative details.  But in this case,
-	 * someone has QUIT but the user may want their user@host info
-	 * so we cannot remove them from the channel until after we have
-	 * thrown the hook.  That is the only reason this is out of order.
-	 */
-	if (check_ignore(from, FromUserHost, LEVEL_QUIT) == IGNORED)
-		goto remove_quitter;
-
 	for (chan = walk_channels(1, from); chan; chan = walk_channels(0, from))
 	{
-	    if (check_ignore_channel(from, FromUserHost, 
-					chan, LEVEL_QUIT) == IGNORED)
-	    {
-		one_prints = 0;
-		continue;
-	    }
-
 	    l = message_from(chan, LEVEL_QUIT);
 	    if (!do_hook(CHANNEL_SIGNOFF_LIST, "%s %s %s", chan, from, 
 							quit_message))
@@ -554,7 +516,6 @@ static void	p_quit (const char *from, const char *comm, const char **ArgList)
 		pop_message_from(l);
 	}
 
-remove_quitter:
 	/* Send all data about this unperson to the memory hole. */
 	remove_from_channel(NULL, from, from_server);
 }
@@ -585,9 +546,6 @@ static void	p_pong (const char *from, const char *comm, const char **ArgList)
 		if (check_server_wait(from_server, pong_message))
 			return;
 	}
-
-	if (check_ignore(from, FromUserHost, LEVEL_OTHER) == IGNORED)
-		return;
 
 	if (do_hook(PONG_LIST, "%s %s %s", from, pong_server, pong_message))
 	    if (server_pong)
@@ -647,10 +605,6 @@ static void	p_join (const char *from, const char *comm, const char **ArgList)
 		add_userhost_to_channel(channel, from, from_server, FromUserHost);
 	}
 
-	if (check_ignore_channel(from, FromUserHost, 
-				channel, LEVEL_JOIN) == IGNORED)
-		return;
-
 	set_server_joined_nick(from_server, from);
 
 	*extra = 0;
@@ -677,10 +631,6 @@ static void 	p_invite (const char *from, const char *comm, const char **ArgList)
 		{ rfc1459_odd(from, comm, ArgList); return; }
 	if (!(invited_to = ArgList[1]))
 		{ rfc1459_odd(from, comm, ArgList); return; }
-
-	if (check_ignore_channel(from, FromUserHost, 
-				invited_to, LEVEL_INVITE) == IGNORED)
-		return;
 
 	set_server_invite_channel(from_server, invited_to);
 	set_server_recv_nick(from_server, from);
@@ -828,7 +778,6 @@ static void	p_nick (const char *from, const char *comm, const char **ArgList)
 	int		been_hooked = 0,
 			its_me = 0;
 	const char	*chan;
-	int		ignored = 0;
 	int		l;
 
 	if (!(new_nick = ArgList[0]))
@@ -843,25 +792,15 @@ static void	p_nick (const char *from, const char *comm, const char **ArgList)
 		accept_server_nickname(from_server, new_nick);
 	}
 
-	if (check_ignore(from, FromUserHost, LEVEL_NICK) == IGNORED)
-		goto do_rename;
-
 	for (chan = walk_channels(1, from); chan; chan = walk_channels(0, from))
 	{
-		if (check_ignore_channel(from, FromUserHost, chan, 
-						LEVEL_NICK) == IGNORED)
-		{
-			ignored = 1;
-			continue;
-		}
-
 		l = message_from(chan, LEVEL_NICK);
 		if (!do_hook(CHANNEL_NICK_LIST, "%s %s %s", chan, from, new_nick))
 			been_hooked = 1;
 		pop_message_from(l);
 	}
 
-	if (!been_hooked && !ignored)
+	if (!been_hooked /* && !ignored */)
 	{
 		if (its_me)
 			l = message_from(NULL, LEVEL_NICK);
@@ -875,7 +814,6 @@ static void	p_nick (const char *from, const char *comm, const char **ArgList)
 		pop_message_from(l);
 	}
 
-do_rename:
 	rename_nick(from, new_nick, from_server);
 }
 
@@ -909,15 +847,11 @@ static void	p_mode (const char *from, const char *comm, const char **ArgList)
 		type = "for user";
 	}
 
-	if (check_ignore_channel(from, FromUserHost, target, LEVEL_MODE) == IGNORED)
-		goto do_update_mode;
-
 	l = message_from(m_target, LEVEL_MODE);
 	if (do_hook(MODE_LIST, "%s %s %s", from, target, changes))
 	    say("Mode change \"%s\" %s %s by %s", changes, type, target, from);
 	pop_message_from(l);
 
-do_update_mode:
 	if (is_channel(target))
 		update_channel_mode(target, changes);
 	else
@@ -1063,16 +997,6 @@ static void	p_kick (const char *from, const char *comm, const char **ArgList)
 		return;
 	}
 
-	if (check_ignore_channel(from, FromUserHost, 
-				channel, LEVEL_KICK) == IGNORED)
-		goto do_remove_nick;
-
-	if (check_ignore_channel(victim, fetch_userhost(from_server, NULL, 
-							victim), 
-					channel, LEVEL_KICK) == IGNORED)
-		goto do_remove_nick;
-
-
 	l = message_from(channel, LEVEL_KICK);
 	if (do_hook(KICK_LIST, "%s %s %s %s", 
 			victim, from, channel, comment))
@@ -1080,7 +1004,6 @@ static void	p_kick (const char *from, const char *comm, const char **ArgList)
 			victim, check_channel_type(channel), from, comment);
 	pop_message_from(l);
 
-do_remove_nick:
 	/*
 	 * The placement of this is purely ergonomic.  When someone is
 	 * kicked, the user may want to know what their userhost was so 
@@ -1103,8 +1026,6 @@ static void	p_part (const char *from, const char *comm, const char **ArgList)
 		{ rfc1459_odd(from, comm, ArgList); return; }
 	if (!(reason = ArgList[1])) { }
 
-	if (check_ignore_channel(from, FromUserHost, 
-				channel, LEVEL_PART) != IGNORED)
 	{
 		l = message_from(channel, LEVEL_PART);
 		if (reason)		/* Dalnet part messages */
@@ -1328,14 +1249,6 @@ static void 	p_notice (const char *from, const char *comm, const char **ArgList)
 	{
 		hook_type = NOTICE_LIST;
 		target = from;
-	}
-
-	/* Check for /ignore's */
-	if (check_ignore_channel(from, FromUserHost, 
-				target, LEVEL_NOTICE) == IGNORED)
-	{
-		set_server_doing_notice(from_server, 0);
-		return;
 	}
 
 	/* Go ahead and throw it to the user */
