@@ -17,7 +17,7 @@ Things to remove
 *our SHA2	  - We can get this from openssl
 our sdbm (dbmctl) - Use a modern key-value store (sqlite)
 *ruby		  - Incomplete/unloved
-perl		  - Incomplete/unloved
+*perl		  - Incomplete/unloved
 *All encryption but AES - Obsolete/insecure
 
 Things to remove, but bring back
@@ -105,12 +105,13 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Rename 'sed_type' to 'cipher_type'
 * GC any remaining code pertaining to sunset encryption types
 * Implement $token() for fusion
-* Sunset mail checking, /set mail* and everything else
-* Sunset /notify, $D, and everything else
+* Sunset mail checking, /set mail* and everything else,
+* Sunset /notify, $D, and everything else,  
 * Sunset #include <sys/ioctl.h>, we don't use ioctl!
-* Sunset e2e encryption (/crypt) for now.
+* Sunset e2e encryption (/crypt) for now.  
 * Sunset openssl evp encryption ($xform(AES256)) for now.
-* Sunset /ignore, $ignorectl() and everything else
-* Sunset /dcc, $dccctl() and everything else
+* Sunset /ignore, $ignorectl() and everything else, 
+* Sunset /dcc, $dccctl() and everything else  
 * Don't use GLOB_BRACE, it's nonstadnard (rb Kitambi)
-* Sunset ruby support
+* Sunset ruby support,  RIP - 2006-2025
+* Sunset perl support.  RIP - 2001-2025

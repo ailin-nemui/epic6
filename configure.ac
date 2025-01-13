@@ -84,17 +84,6 @@ dnl ----------------------------------------------------------
 
 AC_CHECK_LIB([cext], [setenv], [LIBS="$LIBS -lcext"],)
 
-dnl
-dnl Checking for Macintosh OS X (Written by Zach)
-dnl Please note -- MAC OS X perl support only works with macports!
-dnl
-AC_MSG_CHECKING([for Macintosh OS X])
-( $CC --version 2>&1 | grep 'apple-darwin' > /dev/null ) && \
-       apple_compiler="yes" \
-       perl_arch_flags="$(perl -MExtUtils::Embed -e 'ccopts;print "\n"; ldopts' | grep -o -- '-arch [-_0-9a-zA-Z]*' | sort -u)" \
-       CFLAGS="$CFLAGS $perl_arch_flags"
-AC_MSG_RESULT([ok])
-
 dnl ----------------------------------------------------------
 dnl   Where does this belong?
 AC_DEFINE([USE_SELECT], 1, [Define this if you want to use select as the multiplexer])
@@ -715,104 +704,6 @@ fi
 
 dnl ----------------------------------------------------------
 dnl
-dnl Perl support?
-dnl
-AC_ARG_WITH([perl], 
-[  --with-perl=[PATH_TO_PERL_EXE]    Compile with perl support.],
-	[], [with_perl=maybe])
-if test "x$with_perl" = "xno" ; then
-	AC_MSG_CHECKING(whether to support Perl)
-	AC_MSG_RESULT(no)
-else
-	with_perl_errormsg="You specified --with-perl=$with_perl but I could not find a working perl. Please run ./configure with --without-perl or specify a path to a working perl executable."
-	if test "x$with_perl" = "xyes" -o "x$with_perl" = "xmaybe" ; then
-		perlexe=perl
-	else
-		perlexe="$with_perl"
-	fi
-	dnl Allow a full path to be specified in --with-perl
-	if test -x "$perlexe" ; then
-		PERLPROG=yes
-	else
-		AC_CHECK_PROG(PERLPROG, $perlexe, "yes", "no")
-	fi
-	AC_MSG_CHECKING([whether to support Perl])
-	if test $PERLPROG != "yes" ; then
-		if test "x$with_perl" != "xmaybe" ; then
-			AC_MSG_ERROR([$with_perl_errormsg])
-		fi
-		AC_MSG_RESULT(no)
-	else
-		AC_MSG_RESULT(yes)
-		PERLCFLAGS=`$perlexe -MExtUtils::Embed -e ccopts`
-		PERLLIBS=`$perlexe -MExtUtils::Embed -e ldopts`
-
-		AC_MSG_CHECKING(whether embedded perl works the way I expect)
-		have_embedded_perl="no"
-		old_CFLAGS="$CFLAGS"
-		old_LIBS="$LIBS"
-		CFLAGS="$CFLAGS $PERLCFLAGS"
-		LIBS="$LIBS $PERLLIBS"
-		AC_RUN_IFELSE([AC_LANG_SOURCE([[
-#include <EXTERN.h>
-#include <perl.h>
-#include <XSUB.h>
-int dummy_retval = -1;
-
-/* I "borrowed" this from the perlembed(1) man page */
-PerlInterpreter *my_perl;
-int startup_perl(int argc, char **argv, char **env)
-{
-	char *embedding[] = {"", "-e", "0" };
-
-	my_perl = perl_alloc();
-	perl_construct(my_perl);
-	PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
-	perl_parse(my_perl, NULL, 3, embedding, NULL);
-	if (SvTRUE(ERRSV))
-	   (void)SvPV_nolen(ERRSV);
-	perl_run(my_perl);
-	if (SvTRUE(ERRSV))
-	   (void)SvPV_nolen(ERRSV);
-	perl_destruct(my_perl);
-	perl_free(my_perl);
-	PERL_SYS_TERM();
-	dummy_retval = 0;
-	return 0;
-}
-
-int main (int argc, char **argv, char **environ)
-{
-	startup_perl(argc, argv, environ);
-	return dummy_retval;
-}
-]])], 
-have_embedded_perl="yes",
-have_embedded_perl="no",:)
-
-		CFLAGS="$old_CFLAGS"
-		LIBS="$old_LIBS"
-		if test $have_embedded_perl = "yes" ; then
-			AC_MSG_RESULT(yes)
-			AC_DEFINE([HAVE_PERL], 1, [Define this if you have perl])
-			AC_DEFINE([PERLCFLAGS], 1, [Add this to CLFAGS for perl support])
-			AC_DEFINE([PERLLIBS], 1, [Add this to LDFLAGS for perl support])
-			PERLDOTOH="perl.o"
-		else
-			if test "x$with_perl" != "xmaybe"; then
-				AC_MSG_ERROR([$with_perl_errormsg])
-			fi
-			PERLCFLAGS=""
-			PERLLIBS=""
-			AC_MSG_RESULT(no, sorry)
-			PERLCFLAGS=""
-			PERLLIBS=""
-		fi
-	fi
-fi
-
-dnl ----------------------------------------------------------
-dnl
 dnl Python support?
 dnl
 AC_ARG_WITH([python],
@@ -937,8 +828,6 @@ dnl
 
 if test -z "$CFLAGS"; then CFLAGS="-g -O"; fi
 if test -z "$LDFLAGS"; then LDFLAGS= ; fi
-if test -z "$PERLDOTOH"; then PERLDOTOH= ; fi
-if test -z "$RUBYDOTOH"; then RUBYDOTOH= ; fi
 if test -z "$PYTHON_O"; then PYTHON_OH= ; fi
 if test -z "$WSERV_BIN"; then WSERV_BIN= ; fi
 if test -z "$WSERV_INSTALL"; then WSERV_INSTALL= ; fi
@@ -959,17 +848,6 @@ dnl AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]],[[ return 0; ]])],
 dnl	[AC_MSG_RESULT(yes)],
 dnl     [AC_MSG_RESULT(no)
 dnl	CFLAGS="$old_cflags"])
-
-AC_MSG_CHECKING(whether your compiler supports -Wno-compound-token-split-by-macro)
-old_cflags="$CFLAGS"
-CFLAGS="$CFLAGS -Wno-compound-token-split-by-macro -Werror"
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]],[[ return 0; ]])],
-	[AC_MSG_RESULT(yes)
-	 PERL_EXTRA_CFLAGS="-Wno-compound-token-split-by-macro"
-	 AC_DEFINE([PERL_EXTRA_CFLAGS], 1, [Add this to CLFAGS for perl support])
-	 CFLAGS="$old_cflags"],
-        [AC_MSG_RESULT(no)
-	 CFLAGS="$old_cflags"])
 
 AC_MSG_CHECKING(whether your compiler supports -fno-strict-aliasing)
 old_cflags="$CFLAGS"
@@ -1057,13 +935,6 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]],[[ return 0; ]])],
 
 AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
-AC_SUBST(RUBYDOTOH)
-AC_SUBST(RUBYCFLAGS)
-AC_SUBST(RUBYLIBS)
-AC_SUBST(PERLDOTOH)
-AC_SUBST(PERLCFLAGS)
-AC_SUBST(PERL_EXTRA_CFLAGS)
-AC_SUBST(PERLLIBS)
 AC_SUBST(PYTHON_O)
 AC_SUBST(PYTHON_CFLAGS)
 AC_SUBST(PYTHON_LDFLAGS)

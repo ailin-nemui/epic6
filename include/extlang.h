@@ -31,13 +31,6 @@
 #ifndef __EXTLANG_H__
 #define __EXTLANG_H__
 
-#ifdef HAVE_PERL
-	void	perlstartstop (int);
-	char *	perlcall (char *, char *, char *, long, char *);
-	char *	perleval (char *);
-	BUILT_IN_COMMAND(perlcmd);
-#endif
-
 #ifdef HAVE_PYTHON
 	char *	python_eval_expression (char *);
 	void	python_eval_statement (char *);

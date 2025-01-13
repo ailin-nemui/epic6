@@ -18,7 +18,7 @@ OBJECTS = alias.o alist.o array.o cJSON.o clock.o commands.o \
 	functions.o hook.o if.o input.o irc.o \
 	ircaux.o ircsig.o keys.o lastlog.o levels.o list.o log.o logfiles.o \
 	names.o network.o newio.o numbers.o output.o parse.o \
-	@PERLDOTOH@ @PYTHON_O@ recode.o reg.o screen.o \
+	@PYTHON_O@ recode.o reg.o screen.o \
 	sdbm.o server.o ssl.o status.o term.o timer.o \
 	vars.o wcwidth.o who.o window.o words.o 
 
@@ -41,7 +41,7 @@ all: epic6
 epic6: $(OBJECTS) stringify
 	sh info.c.sh
 	$(CC) $(CFLAGS) $(INCLUDES) -c info.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -o epic6 $(OBJECTS) info.o @PERLLIBS@ @RUBYLIBS@ @PYTHON_LDFLAGS@ $(LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o epic6 $(OBJECTS) info.o @PYTHON_LDFLAGS@ $(LIBS)
 	$(RM) info.c info.o
 clean::
 	$(RM) epic6 $(OBJECTS)
@@ -78,9 +78,6 @@ vars.o: Makefile ../Makefile
 	$(CC) $(CFLAGS) $(ANSIFLAGS) $(INCLUDES) -c @srcdir@/vars.c   \
 	-DWSERV_PATH=\"$(INSTALL_WSERV)\"
 
-perl.o: perl.c Makefile ../Makefile
-	$(CC) $(CFLAGS) $(ansiflags) $(INCLUDES) -c @srcdir@/perl.c @PERLCFLAGS@ @PERL_EXTRA_CFLAGS@
-
 python.o: python.c Makefile ../Makefile
 	$(CC) $(CFLAGS) $(ansiflags) $(INCLUDES) -c @srcdir@/python.c @PYTHON_CFLAGS@
 
@@ -92,7 +89,7 @@ depend:
 	echo 'Making dependencies.  This takes a while'
 	sed -n '1,/^# Dont even THINK of deleting this line$$/p' < Makefile.in > tmp
 	for i in *.c ; do 				\
-		cpp -MM -I../include @RUBYCFLAGS@ @PERLCFLAGS@ $(CFLAGS) $$i >> tmp ;	\
+		cpp -MM -I../include $(CFLAGS) $$i >> tmp ;	\
 	done
 	mv -f tmp Makefile.in
 	(cd ..;./config.status)
@@ -346,13 +343,6 @@ parse.o: parse.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/status.h  \
   ../include/output.h ../include/numbers.h ../include/parse.h \
   ../include/alist.h ../include/timer.h
-perl.o: perl.c ../include/irc.h \
-  ../include/defs.h ../include/config.h ../include/irc_std.h \
-  ../include/debug.h ../include/extlang.h \
-  ../include/ircaux.h ../include/network.h \
-  ../include/words.h ../include/array.h ../include/alias.h \
-  ../include/vars.h ../include/commands.h ../include/functions.h \
-  ../include/output.h ../include/ifcmd.h
 python.o: python.c ../include/irc.h \
   ../include/defs.h ../include/config.h ../include/irc_std.h \
   ../include/debug.h ../include/ircaux.h \

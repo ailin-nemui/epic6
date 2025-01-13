@@ -259,9 +259,6 @@ static	IrcCommand irc_command[] =
 	{ "PARSEKEY",	parsekeycmd	},
 	{ "PART",	send_2comm	},
 	{ "PAUSE",	e_pause		},
-#ifdef HAVE_PERL
-	{ "PERL",	perlcmd		}, /* perl.c */
-#endif
 	{ "PING",	pingcmd		},
 	{ "POP",	pop_cmd		},
 	{ "PRETEND",	pretend_cmd	},
@@ -1405,48 +1402,10 @@ BUILT_IN_COMMAND(info)
 		say("Versions 2.2pre8 through 2.8.2 by Matthew Green");
 		say("\tCopyright 1992-1995 Matthew Green");
 		say("All EPIC versions by EPIC Software Labs");
-		say("\tCopyright 1993-2013 EPIC Software Labs");
+		say("\tCopyright 1993-2025 EPIC Software Labs");
 		say(" ");
 		say("	    Contact the EPIC project (%s)", EMAIL_CONTACT);
 		say("	    for problems with this or any other EPIC client");
-		say(" ");
-		say("EPIC Software Labs (in alphabetical order):");
-		say("       \tBrian Hauber         <bhauber@epicsol.org>");
-		say("       \tChip Norkus          <wd@epicsol.org>");
-		say("       \tCrazyEddy            <crazyed@epicsol.org>");
-		say("	    \tDennis Moore         <nimh@epicsol.org>");
-                say("       \tErlend B. Mikkelsen  <howl@epicsol.org>");
-		say("       \tJason Brand          <kitambi@epicsol.org>");
-		say("	    \tJeremy Nelson        <jnelson@epicsol.org>");
-		say("       \tStanislaw Halik      <sthalik@epicsol.org>");
-		say("       \tWilliam Rockwood     <wjr@epicsol.org>");
-                say("       \tXavier               <jak@epicsol.org>");
-		say(" ");
-		say("The EPIC Project:");
-		say("There are far too many people in the EPIC project to ");
-		say("thank them properly here, so we set up a web page:");
-		say("\t\thttp://www.epicsol.org/?page=credits");
-		say(" ");
-		say("A special thank you to all who rabidly use and support");
-		say("the EPIC client and what it stands for");
-		say(" ");
-		say("        In memory of Jeffrey Zabek, 1973 - 2000        ");
-		say("        In memory of Matthew Lumberto, 2013            ");
-		say(" ");
-		say("ircii contributors");
-		say(" ");
-		say("       \tMichael Sandrof       Mark T. Dameu");
-		say("       \tStellan Klebom        Carl v. Loesch");
-		say("       \tTroy Rollo            Martin  Friedrich");
-		say("       \tMichael Weber         Bill Wisner");
-		say("       \tRiccardo Facchetti    Stephen van den Berg");
-		say("       \tVolker Paulsen        Kare Pettersson");
-		say("       \tIan Frechette         Charles Hannum");
-		say("       \tMatthew Green         Christopher Williams");
-		say("       \tJonathan Lemon        Brian Koehmstedt");
-		say("       \tNicolas Pioch         Brian Fehdrau");
-		say("       \tDarren Reed           Jeff Grills");
-		say("	    \tChris Williams");
 	}
 	send_to_server("INFO %s", args?args:empty_string);
 }

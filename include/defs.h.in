@@ -115,9 +115,6 @@
 /* Define if you have newlocale() */
 #undef HAVE_NEWLOCALE
 
-/* Define this if you have perl */
-#undef HAVE_PERL
-
 /* Define if you have pledge() */
 #undef HAVE_PLEDGE
 
@@ -317,15 +314,6 @@
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
-
-/* Add this to CLFAGS for perl support */
-#undef PERLCFLAGS
-
-/* Add this to LDFLAGS for perl support */
-#undef PERLLIBS
-
-/* Add this to CLFAGS for perl support */
-#undef PERL_EXTRA_CFLAGS
 
 /* Stuff to add to CFLAGS to support python */
 #undef PYTHON_CFLAGS

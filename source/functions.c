@@ -333,11 +333,6 @@ static	char
 	*function_pattern 	(char *),
 	*function_pass		(char *),
 	*function_pbkdf2	(char *),
-#ifdef HAVE_PERL
-	*function_perl		(char *),
-	*function_perlcall	(char *),
-	*function_perlxcall	(char *),
-#endif
 	*function_pledge	(char *),
 #ifdef HAVE_PYTHON
 	*function_pydirect	(char *),
@@ -651,11 +646,6 @@ static BuiltInFunctions	built_in_functions[] =
 	{ "PASS",		function_pass		},
 	{ "PATTERN",		function_pattern	},
 	{ "PBKDF2",		function_pbkdf2		},
-#ifdef HAVE_PERL
-	{ "PERL",		function_perl		},
-	{ "PERLCALL",		function_perlcall	},
-	{ "PERLXCALL",		function_perlxcall	},
-#endif
 	{ "PLEDGE",		function_pledge		},
 #ifdef HAVE_PYTHON
 	{ "PYDIRECT",		function_pydirect	},
@@ -6878,35 +6868,6 @@ BUILT_IN_FUNCTION(function_atan, word)
 
 	MATH_RETVAL(num)
 }
-
-#ifdef HAVE_PERL
-
-BUILT_IN_FUNCTION(function_perl, input)
-{
-	return perleval ( input );
-}
-
-BUILT_IN_FUNCTION(function_perlcall, input)
-{
-	char *sub=NULL;
-
-	GET_DWORD_ARG(sub, input);
-	return perlcall ( sub, NULL, NULL, -1, input );
-}
-
-BUILT_IN_FUNCTION(function_perlxcall, input)
-{
-	long item=0;
-	char *sub=NULL, *in=NULL, *out=NULL;
-
-	GET_DWORD_ARG(sub, input);
-	if (input && *input) GET_DWORD_ARG(in, input);
-	if (input && *input) GET_DWORD_ARG(out, input);
-	if (input && *input) GET_INT_ARG(item, input);
-	return perlcall ( sub, in, out, item, input );
-}
-
-#endif
 
 BUILT_IN_FUNCTION(function_unsplit, input)
 {
