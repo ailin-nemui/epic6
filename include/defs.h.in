@@ -130,9 +130,6 @@
 /* Define to 1 if you have the <regex.h> header file. */
 #undef HAVE_REGEX_H
 
-/* Define this if you want to suppor ruby */
-#undef HAVE_RUBY
-
 /* Define this if your struct sockaddr has a sa_len field */
 #undef HAVE_SA_LEN
 
@@ -338,12 +335,6 @@
 
 /* Define this add stuff.... */
 #undef PYTHON_O
-
-/* Stuff to add to CFLAGS to support ruby */
-#undef RUBYCFLAGS
-
-/* Stuff to add to LDFLAGS to support ruby */
-#undef RUBYLIBS
 
 /* If using the C implementation of alloca, define if you know the
    direction of stack growth for your system; otherwise it will be

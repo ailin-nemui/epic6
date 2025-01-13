@@ -18,7 +18,7 @@ OBJECTS = alias.o alist.o array.o cJSON.o clock.o commands.o \
 	functions.o hook.o if.o input.o irc.o \
 	ircaux.o ircsig.o keys.o lastlog.o levels.o list.o log.o logfiles.o \
 	names.o network.o newio.o numbers.o output.o parse.o \
-	@PERLDOTOH@ @PYTHON_O@ recode.o reg.o @RUBYDOTOH@ screen.o \
+	@PERLDOTOH@ @PYTHON_O@ recode.o reg.o screen.o \
 	sdbm.o server.o ssl.o status.o term.o timer.o \
 	vars.o wcwidth.o who.o window.o words.o 
 
@@ -80,9 +80,6 @@ vars.o: Makefile ../Makefile
 
 perl.o: perl.c Makefile ../Makefile
 	$(CC) $(CFLAGS) $(ansiflags) $(INCLUDES) -c @srcdir@/perl.c @PERLCFLAGS@ @PERL_EXTRA_CFLAGS@
-
-ruby.o: ruby.c Makefile ../Makefile
-	$(CC) $(CFLAGS) $(ansiflags) $(INCLUDES) -c @srcdir@/ruby.c @RUBYCFLAGS@
 
 python.o: python.c Makefile ../Makefile
 	$(CC) $(CFLAGS) $(ansiflags) $(INCLUDES) -c @srcdir@/python.c @PYTHON_CFLAGS@
@@ -374,12 +371,6 @@ reg.o: reg.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h \
   ../include/ircaux.h ../include/network.h \
   ../include/words.h ../include/output.h ../include/reg.h
-ruby.o: ruby.c ../include/irc.h ../include/defs.h ../include/config.h \
-  ../include/irc_std.h ../include/debug.h \
-  ../include/ircaux.h ../include/network.h \
-  ../include/words.h ../include/array.h ../include/alias.h \
-  ../include/vars.h ../include/commands.h ../include/functions.h \
-  ../include/output.h ../include/ifcmd.h ../include/extlang.h 
 screen.o: screen.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h \
   ../include/alias.h ../include/ircaux.h \

@@ -371,9 +371,6 @@ static	char
 	*function_rmdir 	(char *),
 	*function_rpattern 	(char *),
 	*function_rsubstr	(char *),
-#ifdef HAVE_RUBY
-	*function_ruby		(char *),
-#endif
 	*function_sar 		(char *),
 	*function_seek		(char *),
 	*function_sequence_point (char *),
@@ -700,9 +697,6 @@ static BuiltInFunctions	built_in_functions[] =
 	{ "RMDIR",		function_rmdir 		},
 	{ "RPATTERN",           function_rpattern 	},
 	{ "RSUBSTR",		function_rsubstr	},
-#ifdef HAVE_RUBY
-	{ "RUBY",		function_ruby		},
-#endif
 	{ "SAR",		function_sar 		},
 	{ "SEQUENCE_POINT",	function_sequence_point	},
 	{ "SERVERCTL",		function_serverctl	},
@@ -4359,7 +4353,7 @@ BUILT_IN_FUNCTION(function_glob, word)
 		}
 		expand_twiddle(path, path2);
 
-		if ((numglobs = glob(path2, GLOB_MARK | GLOB_BRACE, NULL, &globbers)) < 0)
+		if ((numglobs = glob(path2, GLOB_MARK, NULL, &globbers)) < 0)
 			RETURN_INT(numglobs);
 
 		for (i = 0; i < globbers.gl_pathc; i++)
@@ -7496,14 +7490,6 @@ BUILT_IN_FUNCTION(function_xform, input)
 	RETURN_MSTR(srcbuf);
 }
 
-#ifdef HAVE_RUBY
-
-BUILT_IN_FUNCTION(function_ruby, input)
-{
-	return rubyeval ( input );
-}
-
-#endif
 
 BUILT_IN_FUNCTION(function_curcmd, unused) {
 	RETURN_STR(current_command);

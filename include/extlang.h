@@ -38,12 +38,6 @@
 	BUILT_IN_COMMAND(perlcmd);
 #endif
 
-#ifdef HAVE_RUBY
-	void	ruby_startstop (int);
-	char *	rubyeval (char *);
-	BUILT_IN_COMMAND(rubycmd);
-#endif
-
 #ifdef HAVE_PYTHON
 	char *	python_eval_expression (char *);
 	void	python_eval_statement (char *);

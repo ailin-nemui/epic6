@@ -52,7 +52,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3010;
+const unsigned long	commit_id = 3011;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -279,9 +279,6 @@ void	irc_exit (int really_quit, const char *format, ...)
 	do_hook(EXIT_LIST, "%s", buffer);
 #ifdef HAVE_PERL
 	perlstartstop(0);  /* In case there's perl code in the exit hook. */
-#endif
-#ifdef HAVE_RUBY
-	ruby_startstop(0);
 #endif
 
 	close_all_servers(quit_message);

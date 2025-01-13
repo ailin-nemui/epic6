@@ -6230,12 +6230,21 @@ int	check_xdigit (char digit)
 }
 
 
+/*
+ * How do you convert a signal (SIGHUP, aka 1) 
+ *      to a string like kill(8) uses? ("HUP") ?
+ * 
+ * 4.4BSD has 'const char * const sys_signame[]'.
+ * NetBSD has 'strsignal()'
+ * Solaris has 'sig2str()'
+ * Linux has 'sigabbrev_np()'
+ *
+ * This is madness.  Regretably, we will have to build our own lookup table.
+ * Often, programs build this as a static table at compile time, but that brings
+ * in dependencies, so we generate it at boot-time.
+ */
 static  char *          signal_name[NSIG + 1];
 
-/*
- * This is required because musl linux does not implement sys_siglist[],
- * and stock ircII does not require it, so we should not either.
- */
 void	init_signal_names (void)
 {
 	int	i;
@@ -6245,7 +6254,7 @@ void	init_signal_names (void)
 		signal_name[i] = NULL;
 
 /* XXX because clang objects to #x + 3 */
-#define SIGH(x) if (i == x) malloc_strcpy(&signal_name[i], & #x [3]);
+#define SIGH(x) if (i == x && i <= NSIG) malloc_strcpy(&signal_name[i], & #x [3]);
 
 #ifdef SIGABRT
 		SIGH(SIGABRT)

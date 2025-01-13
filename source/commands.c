@@ -137,7 +137,6 @@ static	void	query		(const char *, char *, const char *);
 static	void	quotecmd	(const char *, char *, const char *);
 static	void	redirect 	(const char *, char *, const char *);
 static	void	returncmd	(const char *, char *, const char *);
-extern	void	rubycmd		(const char *, char *, const char *);
 static	void	send_2comm 	(const char *, char *, const char *);
 static	void	send_comm 	(const char *, char *, const char *);
 static	void	send_invite 	(const char *, char *, const char *);
@@ -282,9 +281,6 @@ static	IrcCommand irc_command[] =
 	{ "RESTART",	send_comm	},
 	{ "RETURN",	returncmd	},
 	{ "RPING",	send_comm	},
-#ifdef HAVE_RUBY
-	{ "RUBY",	rubycmd		}, /* ruby.c */
-#endif
 	{ "SAY",	send_to_channel_first	},
 	{ "SEND",	send_to_query_first	},
 	{ "SENDLINE",	sendlinecmd	},

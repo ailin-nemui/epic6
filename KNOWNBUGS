@@ -16,7 +16,7 @@ Things to remove
 *pthreads, etc	  - Just use select
 *our SHA2	  - We can get this from openssl
 our sdbm (dbmctl) - Use a modern key-value store (sqlite)
-ruby		  - Incomplete/unloved
+*ruby		  - Incomplete/unloved
 perl		  - Incomplete/unloved
 *All encryption but AES - Obsolete/insecure
 
@@ -44,7 +44,12 @@ Arena allocation
 Actual bugs
 ================
 * /SET NEW_SERVER_LASTLOG_LEVEL does not work properly because it doesn't check window servers.
-
+* 
+[ 4:05PM] <fusion> fecho Users on $rgb(#2C4267)\[$rgb(#82E8E8)$1$rgb(#2C4267)\]$chr(3): 
+[ 4:05PM] <fusion> this consumes the # from $1 (the channel in on 366) 
+[ 4:09PM] <fusion> /eval echo $rgb(#2C4267)#derp -> "derp" 
+[ 4:13PM] <fusion> actually 
+[ 4:23PM] <fusion> it looks like ircnet might allow numbers to start nicknames so $rgb() happily parses $2 from on 333 as well? 
 
 THE CHANGELOG SINCE THE LAST RELEASE:
 -------------------------------------
@@ -107,3 +112,5 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Sunset openssl evp encryption ($xform(AES256)) for now.
 * Sunset /ignore, $ignorectl() and everything else
 * Sunset /dcc, $dccctl() and everything else
+* Don't use GLOB_BRACE, it's nonstadnard (rb Kitambi)
+* Sunset ruby support
