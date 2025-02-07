@@ -3,12 +3,6 @@
 /* Define to 1 if using 'alloca.c'. */
 #undef C_ALLOCA
 
-/* Define if <term.h> should be avoided */
-#undef DONT_USE_TERM_H
-
-/* Define this if ipv6 was forbidden by user */
-#undef DO_NOT_USE_IPV6
-
 /* Define this if your getaddrinfo() does not support AF_UNIX */
 #undef GETADDRINFO_DOES_NOT_DO_AF_UNIX
 
@@ -27,42 +21,17 @@
 /* Define if you have clock_gettime() */
 #undef HAVE_CLOCK_GETTIME
 
-/* Define if you have crypt() */
-#undef HAVE_CRYPT
-
-/* Define to 1 if you have the <dirent.h> header file, and it defines 'DIR'.
-   */
-#undef HAVE_DIRENT_H
-
-/* Define if you have fchdir() */
-#undef HAVE_FCHDIR
-
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
-
-/* Define if you have finite() */
-#undef HAVE_FINITE
 
 /* Define if you have fpathconf() */
 #undef HAVE_FPATHCONF
 
-/* Define if you have getaddrinfo() */
-#undef HAVE_GETADDRINFO
-
 /* Define if you have getlogin() */
 #undef HAVE_GETLOGIN
 
-/* Define if you have getnameinfo() */
-#undef HAVE_GETNAMEINFO
-
-/* Define if you have getpass() */
-#undef HAVE_GETPASS
-
 /* Define if you have getpgid() */
 #undef HAVE_GETPGID
-
-/* Define if you have getservbyport() */
-#undef HAVE_GETSERVBYPORT
 
 /* Define if you have gettimeofday() */
 #undef HAVE_GETTIMEOFDAY
@@ -79,9 +48,6 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
-/* Define if you have isfinite() */
-#undef HAVE_ISFINITE
-
 /* Define if you have killpg() */
 #undef HAVE_KILLPG
 
@@ -97,17 +63,8 @@
 /* Define to 1 if you have the <math.h> header file. */
 #undef HAVE_MATH_H
 
-/* Define if you have have_memmove() */
-#undef HAVE_MEMMOVE
-
-/* Define if you have nanosleep() */
-#undef HAVE_NANOSLEEP
-
 /* Define to 1 if you have the <ndbm.h> header file. */
 #undef HAVE_NDBM_H
-
-/* Define to 1 if you have the <ndir.h> header file, and it defines 'DIR'. */
-#undef HAVE_NDIR_H
 
 /* Define to 1 if you have the <netdb.h> header file. */
 #undef HAVE_NETDB_H
@@ -121,29 +78,14 @@
 /* Define this to support python */
 #undef HAVE_PYTHON
 
-/* Define if you have realpath() */
-#undef HAVE_REALPATH
-
 /* Define to 1 if you have the <regex.h> header file. */
 #undef HAVE_REGEX_H
 
 /* Define this if your struct sockaddr has a sa_len field */
 #undef HAVE_SA_LEN
 
-/* Define if you have setenv() */
-#undef HAVE_SETENV
-
-/* Define if you have setsid() */
-#undef HAVE_SETSID
-
-/* Define if you have snprintf() */
-#undef HAVE_SNPRINTF
-
 /* Define if you have socklen_t */
 #undef HAVE_SOCKLEN_T
-
-/* Define this if you have SO_SNDLOWAT */
-#undef HAVE_SO_SNDLOWAT
 
 /* Define this if you have a working ssl */
 #undef HAVE_SSL
@@ -163,26 +105,14 @@
 /* Define to 1 if you have the <stdlib.h> header file. */
 #undef HAVE_STDLIB_H
 
-/* Define if you have strerror() */
-#undef HAVE_STRERROR
-
 /* Define to 1 if you have the <strings.h> header file. */
 #undef HAVE_STRINGS_H
 
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
 
-/* Define if you have strlcat() */
-#undef HAVE_STRLCAT
-
-/* Define if you have strlcpy() */
-#undef HAVE_STRLCPY
-
 /* Define if you have strptime() */
 #undef HAVE_STRPTIME
-
-/* Define if you have strtoul() */
-#undef HAVE_STRTOUL
 
 /* Define if you have struct addrinfo */
 #undef HAVE_STRUCT_ADDRINFO
@@ -199,28 +129,17 @@
 /* Define to 1 if you have the <sys/cdefs.h> header file. */
 #undef HAVE_SYS_CDEFS_H
 
-/* Define to 1 if you have the <sys/dir.h> header file, and it defines 'DIR'.
-   */
-#undef HAVE_SYS_DIR_H
-
 /* Define to 1 if you have the <sys/file.h> header file. */
 #undef HAVE_SYS_FILE_H
 
 /* Define to 1 if you have the <sys/filio.h> header file. */
 #undef HAVE_SYS_FILIO_H
 
-/* Define to 1 if you have the <sys/ndir.h> header file, and it defines 'DIR'.
-   */
-#undef HAVE_SYS_NDIR_H
-
 /* Define to 1 if you have the <sys/param.h> header file. */
 #undef HAVE_SYS_PARAM_H
 
 /* Define to 1 if you have the <sys/select.h> header file. */
 #undef HAVE_SYS_SELECT_H
-
-/* Define if you have sys_siglist */
-#undef HAVE_SYS_SIGLIST
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H
@@ -240,35 +159,17 @@
 /* Define to 1 if you have the <sys/un.h> header file. */
 #undef HAVE_SYS_UN_H
 
-/* Define if you have tcsetpgrp() */
-#undef HAVE_TCSETPGRP
-
-/* Define to 1 if you have the <termcap.h> header file. */
-#undef HAVE_TERMCAP_H
-
-/* Define if you have terminfo() */
-#undef HAVE_TERMINFO
-
 /* Define to 1 if you have the <termios.h> header file. */
 #undef HAVE_TERMIOS_H
 
 /* Define to 1 if you have the <term.h> header file. */
 #undef HAVE_TERM_H
 
-/* Define if you have tparm() */
-#undef HAVE_TPARM
-
 /* Define to 1 if the system has the type 'uintmax_t'. */
 #undef HAVE_UINTMAX_T
 
-/* Define if you have uname() */
-#undef HAVE_UNAME
-
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
-
-/* Define if you have unsetenv() */
-#undef HAVE_UNSETENV
 
 /* Define to 1 if the system has the type 'unsigned long long int'. */
 #undef HAVE_UNSIGNED_LONG_LONG_INT
@@ -278,9 +179,6 @@
 
 /* Define to 1 if you have the <valgrind/memcheck.h> header file. */
 #undef HAVE_VALGRIND_MEMCHECK_H
-
-/* Define if you have vsnprintf() */
-#undef HAVE_VSNPRINTF
 
 /* Define to 1 if you have the <xlocale.h> header file. */
 #undef HAVE_XLOCALE_H
@@ -336,12 +234,6 @@
    required in a freestanding environment). This macro is provided for
    backward compatibility; new code need not use it. */
 #undef STDC_HEADERS
-
-/* Define if <term.h> requires <curses.h> to be included first */
-#undef TERM_H_REQUIRES_CURSES_H
-
-/* Define this if you want to use select as the multiplexer */
-#undef USE_SELECT
 
 /* Define for Solaris 2.5.1 so the uint32_t typedef from <sys/synch.h>,
    <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the

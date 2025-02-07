@@ -115,3 +115,8 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Don't use GLOB_BRACE, it's nonstadnard (rb Kitambi)
 * Sunset ruby support,  RIP - 2006-2025
 * Sunset perl support.  RIP - 2001-2025
+* Clean up configure.ac -- remove things we don't support any more
+* Also, remove things we don't tolerate being absent any more
+* Refactor expand_twiddle() to use getpwnam_r()
+* Sunset the commented out SHIFT-JIS stuff
+* At this point, terminfo support is mandatory. Come on -- it's 2025.

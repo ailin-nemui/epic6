@@ -1706,16 +1706,19 @@ int	expand_twiddle (const char *str, Filename result)
 {
 	Filename buffer;
 	char	*rest;
-	struct	passwd *entry;
+struct	passwd 	scratch,
+		*entry = NULL;
+	char	*passwd_buffer;
+	size_t	passwd_buffer_size;
 
-	/* Handle filenames without twiddles to expand */
+	/* CASE 1 - Absolute or relative filenames */
 	if (*str != '~')
 	{
 		strlcpy(result, str, sizeof(Filename));
 		return 0;
 	}
 
-	/* Handle filenames that are just ~ or ~/... */
+	/* CASE 2 - References to my own homedir */
 	str++;
 	if (!*str || *str == '/')
 	{
@@ -1726,23 +1729,43 @@ int	expand_twiddle (const char *str, Filename result)
 		return 0;
 	}
 
-	/* Handle filenames that are ~user or ~user/... */
+	/* CASE 3 - References to someone else's homedir */
 	if ((rest = strchr(str, '/')))
 		*rest++ = 0;
-	if ((entry = getpwnam(str)))
-	{
-		strlcpy(buffer, entry->pw_dir, sizeof(buffer));
-		if (rest)
-		{
-			strlcat(buffer, "/", sizeof(buffer));
-			strlcat(buffer, rest, sizeof(buffer));
-		}
 
-		strlcpy(result, buffer, sizeof(Filename));
-		return 0;
+	/*
+	 * Apparently 'getpwnam' is a legacy function, and all
+	 * of this silliness is required to Do It Right(tm).
+	 * Very well, then.
+	 * 
+	 * 'passwd_buffer' is used as a scratch space for the
+	 * strings that are contained in 'entry'.  That is why
+	 * i use alloca here.
+	 */
+	passwd_buffer_size = 16384;	/* XXX Whatever */
+	passwd_buffer = alloca(passwd_buffer_size);
+	memset(passwd_buffer, 0, passwd_buffer_size);
+	memset(&scratch, 0, sizeof(scratch));
+
+	/* 
+	 * An error means something went wrong.
+	 * 'entry == NULL' means the user was not found
+	 * We traditionally hard fail on something going wrong.
+	 */
+	if (getpwnam_r(str, &scratch, passwd_buffer, passwd_buffer_size, &entry) 
+	                    || !entry)
+		return -1;
+
+	/* We have a homedir -- go on our way. */
+	strlcpy(buffer, entry->pw_dir, sizeof(buffer));
+	if (rest)
+	{
+		strlcat(buffer, "/", sizeof(buffer));
+		strlcat(buffer, rest, sizeof(buffer));
 	}
 
-	return -1;
+	strlcpy(result, buffer, sizeof(Filename));
+	return 0;
 }
 
 /* islegal: true if c is a legal nickname char anywhere but first char */
@@ -2782,24 +2805,6 @@ int	isdir (const char *filename)
 	return 0;
 }
 
-int	isdir2 (const char *directory, const void * const ent)
-{
-	Filename	f;
-	const struct dirent * const d = (struct dirent *)ent;
-
-#if defined(DT_DIR)
-	/* if dirent.h supports d_type and it is a directory or regular file, return */
-	if (d->d_type == DT_DIR)
-		return 1;
-	if (d->d_type == DT_REG) 
-		return 0;
-#endif
-
-	snprintf(f, sizeof f, "%s/%s", directory, d->d_name);
-	return isdir(f);
-}
-
-
 struct metric_time	timeval_to_metric (const Timeval *tv)
 {
 	struct metric_time retval;
@@ -3302,13 +3307,7 @@ int 	check_val (const char *sub)
 	sval = strtod(sub, &endptr);
 
 	/* Numbers that cause exceptional conditions in strtod() are true */
-        if (errno == ERANGE
-#if defined(HAVE_ISFINITE)
-                                || isfinite(sval) == 0
-#elif defined(HAVE_FINITE)
-                                || finite(sval) == 0
-#endif
-                                                        )
+        if (errno == ERANGE || isfinite(sval) == 0)
 		return 1;
 
 	/* 
@@ -6142,69 +6141,6 @@ int	invalid_utf8str (char *utf8str)
 }
 
 /*
- * is_iso2022_jp - Test whether a string is encoded in iso2022_jp.
- *
- * Arguments:
- *	buffer - A string to be tested for iso2022-ness
- *
- * Return Value:
- *	1 	At least one ISO2022-JP escape sequence was found
- *	0	No ISO2022-JP escape sequences were found.
- *
- * Notes:
- *	Ideally we could do this test by running it through iconv().
- * 	I would like to support other ISO2022's as well, but I don't
- *		have anyone to test them.
- * 	I would like to support other non-ISO2022's, but again, I don't
- *		have anyone to test them.
- */
-int	is_iso2022_jp (const char *buffer)
-{
-	const char *x;
-	int	found_one = 0;
-
-	/* ISO-2022-JP has no 8 bit chars. */
-	for (x = buffer; *x; x++)
-		if ((unsigned char)*x & 0x80)
-			return 0;
-
-	/* ISO-2022-JP has to have a 2022 <escape> sequence somewhere */
-	for (x = buffer; *x; x++)
-	{
-	    if (*x == 0x1B)	/* Escape */
-	    {
-		if (x[1] == '$')
-		{
-			if (x[2] == '@')
-				found_one++;
-			else if (x[2] == 'B')
-				found_one++;
-			else if (x[2] == '(')
-			{
-				if (x[3] == 'D')
-					found_one++;
-			}
-		}
-		else if (x[1] == '(')
-		{
-			if (x[2] == 'B')
-				found_one++;
-			else if (x[2] == 'I')
-				found_one++;
-			else if (x[2] == 'J')
-				found_one++;
-		}
-	    }
-	}
-
-	/* I could run the string through iconv() to see if it converts.. */
-	if (found_one)
-		return 1;
-
-	return 0;
-}
-
-/*
  * check_xdigit - Test whether a character is a valid hexadecimal digit.
  *
  * Arguments:
@@ -6496,9 +6432,14 @@ static  uint32_t       cp437map[256] = {
  * cp437_to_ucs - Convert a CP437 byte to a unicode code point.
  *
  * Arguments:
- *      key     - A unicode code point
- *      utf8str - Where to put the code point in the user's encoding
- *      utf8strsiz - How big utf8str is.
+ *	cp437_byte - A single character, hopefully encoded in CP437.
+ *
+ * Return value:
+ *	The unicode code point corresponding to that CP437 character.
+ *
+ * Note:
+ *	This is a helper function for the function below, which 
+ *	converts into UTF8, which is probably what you want.
  */
 static uint32_t       cp437_to_ucs (unsigned char cp437_byte)
 {

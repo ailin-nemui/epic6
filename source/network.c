@@ -791,14 +791,28 @@ int	family (SSu *sockaddr_)
 }
 
 /* set's socket options */
+/*
+ * Socket -- Create a new socket and set baseline preferences
+ * 
+ * Arguments:
+ *	domain	- The domain passed to socket(2), usually AF_INET
+ *	type	- The type passed to socket(2), usually SOCK_STREAM
+ *	protocol - The protocol passed to socket(2), usually 0
+ *
+ * Return value:
+ *	The fd of a new socket
+ *
+ * Notes:
+ *	All sockets come with:
+ *	- lingering off (close(2) won't block if jammed)
+ *	- reuseaddr on (let someone re-use our port after we close(2))
+ *	- keepalive on (fail the socket if TCP ping/pongs fail)
+ */
 int	Socket (int domain, int type, int protocol)
 {
-        int     opt = 1;
+        int     opt;
         int     optlen = sizeof(opt);
 	int	s;
-#ifndef NO_STRUCT_LINGER
-        struct linger   lin;
-#endif
 
 	if ((s = socket(domain, type, protocol)) < 0)
 	{
@@ -808,10 +822,16 @@ int	Socket (int domain, int type, int protocol)
 	}
 
 #ifndef NO_STRUCT_LINGER
-        lin.l_onoff = lin.l_linger = 0;
-        setsockopt(s, SOL_SOCKET, SO_LINGER, (char *)&lin, optlen);
+	{
+		struct linger   lin;
+
+		/* Turning of "lingering" ordinarily makes close(2) non-blocking if the socket is jammed */
+		lin.l_onoff = lin.l_linger = 0;
+		setsockopt(s, SOL_SOCKET, SO_LINGER, (char *)&lin, optlen);
+	}
 #endif
 
+	opt = 1;
         setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, optlen);
         opt = 1;
         setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (char *)&opt, optlen);

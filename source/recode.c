@@ -958,7 +958,7 @@ const char *	inbound_recode (const char *from, int server, const char *to, const
 
 	/* The easiest thing is to accept it if it's valid UTF-8 */
 	msg = LOCAL_COPY(message);
-	if (!is_iso2022_jp(msg) && !invalid_utf8str(msg))
+	if (!invalid_utf8str(msg))
 	{
 		if (x_debug & DEBUG_RECODE)
 			yell("ib: This message is valid UTF-8, so it's fine.");

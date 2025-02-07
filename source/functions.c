@@ -86,9 +86,7 @@
 #ifdef HAVE_REGEX_H
 # include <regex.h>
 #endif
-#ifdef HAVE_UNAME
-# include <sys/utsname.h>
-#endif
+#include <sys/utsname.h>
 #include <math.h>
 
 static	char	
@@ -5432,9 +5430,6 @@ char *	function_cparse (char *input)
  */
 BUILT_IN_FUNCTION(function_uname, input)
 {
-#ifndef HAVE_UNAME
-	RETURN_STR("unknown");
-#else
 	struct utsname un;
 	size_t	size = BIG_BUFFER_SIZE;
 	char 	tmp[BIG_BUFFER_SIZE + 1];
@@ -5482,7 +5477,6 @@ BUILT_IN_FUNCTION(function_uname, input)
 	*ptr = 0;
 
 	RETURN_FSTR(tmp);
-#endif
 }
 
 BUILT_IN_FUNCTION(function_querywin, args)

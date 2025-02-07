@@ -971,7 +971,6 @@ static	int	is_fd_valid (int fd)
 /*
  * Implementation of select() front-end to synchronous unix system calls
  */
-#ifdef USE_SELECT
 fd_set	readables, writables;
 
 static void kinit (void)
@@ -1121,5 +1120,4 @@ static	int	kwritable (int vfd, double timeout)
 	return select(CHANNEL(vfd) + 1, NULL, &fd_read, NULL, &interval);
 }
 
-#endif
 

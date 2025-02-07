@@ -72,57 +72,11 @@ static	struct	termios	oldb, newb;
 	char		my_PC;
 
 /*
- * XXX -- Supporting this correctly is a hack, but it's not my fault.
- * 
- * Configure has already determined if <term.h> can be used to get
- * prototypes for these functions.  It has also determined whether it is 
- * X/OPEN curses, and therefore requires us to include <termio.h> and 
- * <curses.h> before including <term.h>.
- *
- * For those systems that do not have a usable <term.h>, we will set forth
- * some empty decl prototypes for the functions, just to establish the 
- * return value.  All systems have either the terminfo functions or the 
- * termcap functions, but not all systems have tparm(), so to avoid clashing
- * with the my_tparm() decl in "compat.h", we only decl tparm() if we are
- * using the system's (and not our) tparm().
- */
-#if defined(HAVE_TERM_H) && !defined(DONT_USE_TERM_H)
-/*
-# if defined(TERM_H_REQUIRES_CURSES_H)
-#  include <termio.h>
-#  include <curses.h>
-# endif
-# include <term.h>
-*/
-#else
-# ifdef HAVE_TERMINFO
-	extern  int     setupterm();
-	extern  char *  tigetstr();
-	extern  int     tigetnum();
-	extern  int     tigetflag();
-# else
-	extern  int     tgetent();
-	extern  char *  tgetstr();
-	extern  int     tgetnum();
-	extern  int     tgetflag();
-# endif
-# ifdef HAVE_TPARM
-	extern  char *  tparm();
-# endif
-#endif
-
-/*
  * We use macro wrappers to hide the difference between terminfo and termcap.
  */
-#ifdef HAVE_TERMINFO
 # define Tgetstr(x, y)	tigetstr(x.iname)
 # define Tgetnum(x)	tigetnum(x.iname);
 # define Tgetflag(x)	tigetflag(x.iname);
-#else
-# define Tgetstr(x, y)	tgetstr(x.tname, &y)
-# define Tgetnum(x)	tgetnum(x.tname)
-# define Tgetflag(x)	tgetflag(x.tname)
-#endif
 
 /*
  * And for the final inanity, X/OPEN curses uses
@@ -818,7 +772,6 @@ int 	term_init (void)
 	else
 		printf("Using terminal type [%s]\n", term);
 
-#ifdef HAVE_TERMINFO
 	setupterm(NULL, 1, &i);
 	if (i != 1)
 	{
@@ -826,15 +779,6 @@ int 	term_init (void)
 		fprintf(stderr, "So we'll be running in dumb mode...\n");
 		return -1;
 	}
-#else
-	if (tgetent(termcap, term) < 1)
-	{
-		fprintf(stderr, "\n");
-		fprintf(stderr, "Your current TERM setting (%s) does not have a termcap entry.\n", term);
-		fprintf(stderr, "So we'll be running in dumb mode...\n");
-		return -1;
-	}
-#endif
 
 	for (i = 0; i < numcaps; i++)
 	{

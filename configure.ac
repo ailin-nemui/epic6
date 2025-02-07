@@ -23,80 +23,54 @@ AC_PROG_CC
 AC_PROG_CPP
 
 dnl ----------------------------------------------------------
+trydirs="/usr/local /usr/pkg /opt"
 AC_MSG_CHECKING([for an extra library directory])
 AC_ARG_WITH([localdir],
-[  --with-localdir=/usr/local      An extra directory to look for stuff.],[
-   if test "x$withval" = "x" ; then
-      if test -d /usr/local/lib ; then
-	withval="/usr/local"
-      elif test -d /usr/pkg/lib ; then
-	withval="/usr/pkg"
-      elif test -d /opt/lib ; then
-	withval="/opt"
-      fi
-   fi
-
-   if test "x$withval" != "x" && \
-      test -d "$withval"; then
-      with_extra_libdir="yes"
+[  --with-localdir=/usr/local      An extra directory to look for stuff.],
+[ if test "x$withval" = "xno"; then
+      trydirs=""
+   elif test "x$withval" = "x" || test "x$withval" = "xyes"; then
+      true;
    else
-      with_extra_libdir="no"
+      trydirs="$withval"
    fi
+],[ ])
 
-   if test "x$with_extra_libdir" = "xyes" ; then
-      LIBS="-L$withval/lib $LIBS"
-      CFLAGS="-I$withval/include/ $CFLAGS"
-      localdir=$withdir
-   fi
-],[
-   if test "x$withval" = "x" ; then
-      if test -d /usr/local/lib ; then
-	withval="/usr/local"
-      elif test -d /usr/pkg/lib ; then
-	withval="/usr/pkg"
-      elif test -d /opt/lib ; then
-	withval="/opt"
-      fi
-   fi
+with_extra_libdir=""
+for dir in $trydirs; do
+    if test -d $dir ; then
+       with_extra_libdir=$dir
+       break
+    fi
+done
 
-   if test "x$withval" != "x" && \
-      test -d "$withval"; then
-      with_extra_libdir="yes"
-   else
-      with_extra_libdir="no"
-   fi
-
-   if test "x$with_extra_libdir" = "xyes" ; then
-      LIBS="-L$withval/lib $LIBS"
-      CFLAGS="-I$withval/include/ $CFLAGS"
-      localdir=$withdir
-   fi
-])
-AC_MSG_RESULT([$with_extra_libdir, $withval])
+if test "x$with_extra_libdir" != "x" ; then
+      localdir=$with_extra_libdir
+      LIBS="-L$localdir/lib $LIBS"
+      CFLAGS="-I$localdir/include/ $CFLAGS"
+      AC_MSG_RESULT([$localdir])
+else
+      AC_MSG_RESULT([not found])
+fi
 
 dnl ----------------------------------------------------------
 dnl ----------------------------------------------------------
 dnl
 dnl System specific checks
 dnl
+dnl You'll notice there are far fewer than there used to be.
+dnl This is intentional.  I no longer go out of my way to keep
+dnl support for systems that nobody uses any more.  If I have 
+dnl over-reached and unsupported a platform you are using, please
+dnl reach out to me so I can re-support it!
+dnl
 dnl ----------------------------------------------------------
 dnl ----------------------------------------------------------
-
-AC_CHECK_LIB([cext], [setenv], [LIBS="$LIBS -lcext"],)
-
-dnl ----------------------------------------------------------
-dnl   Where does this belong?
-AC_DEFINE([USE_SELECT], 1, [Define this if you want to use select as the multiplexer])
-
 
 dnl ----------------------------------------------------------
 dnl
 dnl Check for libraries before we check for functions!
 dnl
-
-if test -z "$libsocket"; then
-	AC_CHECK_LIB(socket, socket, LIBS="$LIBS -lsocket",)
-fi
 
 dnl Check to see if libarchive actually works
 dnl XXX I don't understand why this is even necessary.
@@ -216,34 +190,12 @@ else
 	fi
 fi
 
-AC_CHECK_LIB(sun, getpwnam, LIBS="$LIBS -lsun",)
-AC_CHECK_LIB(dgc, inet_addr, LIBS="$LIBS -ldgc",)
-AC_CHECK_LIB(resolv, gethostbyname, LIBS="$LIBS -lresolv",)
-AC_CHECK_LIB(crypt, crypt, LIBS="$LIBS -lcrypt",)
+dnl Look for common libraries that have common functions
 AC_CHECK_LIB(m, pow, LIBS="$LIBS -lm",)
 AC_CHECK_LIB(rt, clock_gettime, LIBS="$LIBS -lrt",)
 AC_CHECK_LIB(sqlite, sqlite_open, LIBS="$LIBS -lsqlite",)
 AC_CHECK_LIB(regex, regcomp, LIBS="$LIBS -lregex",)
-
-termcap=0;
-warn_again=0;
-AC_MSG_CHECKING(whether you want to use termcap instead of terminfo/ncurses)
-AC_ARG_WITH(termcap,
-[  --with-termcap                  Force use of termcap even if terminfo/ncurses is available ],
-[   AC_MSG_RESULT(yes)
-    AC_CHECK_LIB(termcap, tgetent, termcap=1;LIBS="-ltermcap $LIBS",
-      AC_CHECK_LIB(termlib, tgetent, termcap=1;LIBS="-ltermlib $LIBS",
-        AC_CHECK_LIB(curses,  tgetent, termcap=1;LIBS="-lcurses $LIBS",
-          AC_MSG_WARN(I cant find tgetent.  Youll have to help me.))))],
-[   AC_MSG_RESULT(no)
-    AC_CHECK_LIB(ncurses, setupterm, LIBS="-lncurses $LIBS",
-      AC_CHECK_LIB(tinfo,   setupterm, LIBS="-ltinfo $LIBS",
-	  AC_CHECK_LIB(curses, setupterm, LIBS="-lcurses $LIBS",
-	    AC_CHECK_LIB(curses, tgetent, termcap=1;LIBS="-lcurses $LIBS",
-              AC_CHECK_LIB(termlib, tgetent, termcap=1;LIBS="-ltermlib $LIBS",
-                AC_CHECK_LIB(termcap, tgetent, termcap=1;LIBS="-ltermcap $LIBS",
-	          AC_MSG_WARN(I cant find tgetent.  Youll have to help me.)
-		  warn_again=1))))))])
+AC_CHECK_LIB(ncurses, setupterm, LIBS="-lncurses $LIBS",)
 
 dnl ----------------------------------------------------------
 dnl
@@ -251,59 +203,19 @@ dnl Checking for headers, functions, and a type declarations
 dnl sigh.  I used to check for sys/fcntl.h
 dnl
 
-AC_CHECK_HEADERS(fcntl.h inttypes.h locale.h math.h ndbm.h netdb.h regex.h stdargs.h stddef.h stdint.h sys/cdefs.h sys/file.h sys/filio.h sys/select.h sys/syslimits.h sys/time.h sys/un.h sys/param.h termios.h sys/termios.h xlocale.h,)
-if test $termcap -eq 0 ; then
-	AC_CHECK_HEADERS(term.h,)
-else
-	AC_CHECK_HEADERS(termcap.h,)
-fi
+AC_CHECK_HEADERS(fcntl.h inttypes.h locale.h math.h ndbm.h netdb.h regex.h stdargs.h stddef.h stdint.h sys/cdefs.h sys/file.h sys/filio.h sys/select.h sys/syslimits.h sys/time.h sys/un.h sys/param.h term.h termios.h sys/termios.h xlocale.h,)
 
 AC_CHECK_FUNC(clock_gettime, AC_DEFINE([HAVE_CLOCK_GETTIME], 1, [Define if you have clock_gettime()]),)
-AC_CHECK_FUNC(crypt, AC_DEFINE([HAVE_CRYPT], 1, [Define if you have crypt()]),)
-AC_CHECK_FUNC(fchdir, AC_DEFINE([HAVE_FCHDIR], 1, [Define if you have fchdir()]),)
+AC_CHECK_FUNC(gettimeofday, AC_DEFINE([HAVE_GETTIMEOFDAY], 1, [Define if you have gettimeofday()]),)
 AC_CHECK_FUNC(fpathconf, AC_DEFINE([HAVE_FPATHCONF], 1, [Define if you have fpathconf()] ),)
 AC_CHECK_FUNC(getlogin, AC_DEFINE([HAVE_GETLOGIN], 1, [Define if you have getlogin()]),)
-AC_CHECK_FUNC(getaddrinfo, AC_DEFINE([HAVE_GETADDRINFO], 1, [Define if you have getaddrinfo()]),)
-AC_CHECK_FUNC(getnameinfo, AC_DEFINE([HAVE_GETNAMEINFO], 1, [Define if you have getnameinfo()]),)
-AC_CHECK_FUNC(getpass, AC_DEFINE([HAVE_GETPASS], 1, [Define if you have getpass()]),)
 AC_CHECK_FUNC(getpgid, AC_DEFINE([HAVE_GETPGID], 1, [Define if you have getpgid()]),)
-AC_CHECK_FUNC(getservbyport, AC_DEFINE([HAVE_GETSERVBYPORT], 1, [Define if you have getservbyport()]),)
-AC_CHECK_FUNC(gettimeofday, AC_DEFINE([HAVE_GETTIMEOFDAY], 1, [Define if you have gettimeofday()]),)
 AC_CHECK_FUNC(killpg, AC_DEFINE([HAVE_KILLPG], 1, [Define if you have killpg()]),)
-AC_CHECK_FUNC(memmove, AC_DEFINE([HAVE_MEMMOVE], 1, [Define if you have have_memmove()]),)
-AC_CHECK_FUNC(nanosleep, AC_DEFINE([HAVE_NANOSLEEP], 1, [Define if you have nanosleep()]),)
-AC_CHECK_FUNC(uname, AC_DEFINE([HAVE_UNAME], 1, [Define if you have uname()]),)
-AC_CHECK_FUNC(realpath, AC_DEFINE([HAVE_REALPATH], 1, [Define if you have realpath()]),)
-AC_CHECK_FUNC(setenv, AC_DEFINE([HAVE_SETENV], 1, [Define if you have setenv()]),)
-AC_CHECK_FUNC(setsid, AC_DEFINE([HAVE_SETSID], 1, [Define if you have setsid()]),) 
-AC_CHECK_FUNC(tcsetpgrp, AC_DEFINE([HAVE_TCSETPGRP], 1, [Define if you have tcsetpgrp()]),)
-if test $termcap -eq 0 ; then
-	AC_CHECK_FUNC(setupterm, AC_DEFINE([HAVE_TERMINFO], 1, [Define if you have terminfo()]),)
-fi
-AC_CHECK_FUNC(snprintf, AC_DEFINE([HAVE_SNPRINTF], 1, [Define if you have snprintf()]),)
-AC_CHECK_FUNC(strerror, AC_DEFINE([HAVE_STRERROR], 1, [Define if you have strerror()]),)
-AC_CHECK_FUNC(strlcat, AC_DEFINE([HAVE_STRLCAT], 1, [Define if you have strlcat()]),)
-AC_CHECK_FUNC(strlcpy, AC_DEFINE([HAVE_STRLCPY], 1, [Define if you have strlcpy()]),)
 AC_CHECK_FUNC(strptime, AC_DEFINE([HAVE_STRPTIME], 1, [Define if you have strptime()]),)
-AC_CHECK_FUNC(strtoul, AC_DEFINE([HAVE_STRTOUL], 1, [Define if you have strtoul()]),)
 AC_CHECK_FUNC(sysconf, AC_DEFINE([HAVE_SYSCONF], 1, [Define if you have sysconf()]),)
-AC_CHECK_FUNC(unsetenv, AC_DEFINE([HAVE_UNSETENV], 1, [Define if you have unsetenv()]),)
-AC_CHECK_FUNC(vsnprintf, AC_DEFINE([HAVE_VSNPRINTF], 1, [Define if you have vsnprintf()]),)
-AC_MSG_CHECKING(for isfinite)
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-	#include <math.h>
-]],[[
-	int x = isfinite(0.0);
-	return 0;
-]])],
-   [ AC_MSG_RESULT(yes)
-     AC_DEFINE([HAVE_ISFINITE], 1, [Define if you have isfinite()]) ],
-   [ AC_MSG_RESULT(no) ])
-AC_CHECK_FUNC(finite, AC_DEFINE([HAVE_FINITE], 1, [Define if you have finite()]),)
-AC_CHECK_FUNC(tparm, AC_DEFINE([HAVE_TPARM], 1, [Define if you have tparm()]),)
-AC_CHECK_FUNC(newlocale, AC_DEFINE([HAVE_NEWLOCALE], 1, [Define if you have newlocale()]),)
 AC_CHECK_FUNC(unveil, AC_DEFINE([HAVE_UNVEIL], 1, [Define if you have unveil()]),)
 AC_CHECK_FUNC(pledge, AC_DEFINE([HAVE_PLEDGE], 1, [Define if you have pledge()]),)
+AC_CHECK_FUNC(newlocale, AC_DEFINE([HAVE_NEWLOCALE], 1, [Define if you have newlocale()]),)
 
 dnl -- Because someone is trying to use CentOS 5.11...
 AC_MSG_CHECKING(whether you are using a gnu libc that is so old it needs a hack to use newlocale)
@@ -349,89 +261,13 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
      ]
 )
 
-dnl -- Oh why does this have to be so painful? --
-AC_MSG_CHECKING(whether term.h works by itself)
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-	#include <term.h>
-	#include <stdlib.h>
-]],[[
-       return 0;
-]])],
-	[ AC_MSG_RESULT(yes) ],
-	[ AC_MSG_RESULT(no)
-	  AC_MSG_CHECKING(whether term.h requires termio.h and curses.h)
-	  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-		#include <termio.h>
-		#include <curses.h>
-		#include <term.h>
-		#include <stdlib.h>
-	  ]],[[
-	       return 0;
-	  ]])],
-  	  [ AC_MSG_RESULT(yes) 
-  	    AC_DEFINE([TERM_H_REQUIRES_CURSES_H], 1, [Define if <term.h> requires <curses.h> to be included first]) ],
-  	  [ AC_MSG_RESULT(no, ugh)
-  	    AC_DEFINE([DONT_USE_TERM_H], 1, [Define if <term.h> should be avoided]) ], :), ] :)
-
-dnl -- oh autoconf, never change -- AC_HEADER_TIME
-AC_HEADER_DIRENT
+AC_FUNC_ALLOCA
 AC_TYPE_MODE_T
 AC_TYPE_OFF_T
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
 AC_TYPE_UID_T
-AC_FUNC_ALLOCA
-
-dnl ---------------------------------------------------------
-dnl
-dnl Check for a useful SO_SNDLOWAT.
-dnl Some systems (eg, linux) can be bothered to #define SO_SNDLOWAT
-dnl but can't be bothered to implement it, instead returning an error.
-dnl How completely bogus.  Don't #define it if you don't support it!
-dnl
-AC_MSG_CHECKING(for useful SO_SNDLOWAT)
-AC_RUN_IFELSE([AC_LANG_PROGRAM([[
-	#include <sys/types.h>
-	#include <sys/socket.h>
-	#include <stdlib.h>
-]],[[
-	#ifndef SO_SNDLOWAT
-		return 1;
-	#else
-		int d = socket(AF_INET, SOCK_STREAM, 0);
-		int size = 256;
-		if (setsockopt(d, SOL_SOCKET, SO_SNDLOWAT, &size, sizeof(size)) < 0)
-			return 1;
-		return 0;
-	#endif
-]])],
-  AC_MSG_RESULT(yes, your SO_SNDLOWAT is useful)
-  AC_DEFINE([HAVE_SO_SNDLOWAT], 1, [Define this if you have SO_SNDLOWAT]),
-  AC_MSG_RESULT(no, your SO_SNDLOWAT is broken and/or worthless), :)
-
-dnl ----------------------------------------------------------
-dnl
-dnl Check for sys_siglist declaration
-dnl
-
-AC_MSG_CHECKING(for sys_siglist declaration)
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-	#include <sys/types.h>
-	#include <sys/signal.h>
-	#include <signal.h>
-	#include <unistd.h>
-	#include <stdlib.h>
-]],[[
-	char *s = sys_siglist[0];
-	return 0;
-]])],
-	[ AC_MSG_RESULT(yes) 
-  	  AC_DEFINE([HAVE_SYS_SIGLIST], 1, [Define if you have sys_siglist]) ],
-  	[ AC_MSG_RESULT(no) ], :)
-
-dnl ------------------------------------------------------------------
-
 AC_TYPE_INT8_T
 AC_TYPE_UINT8_T
 AC_TYPE_INT16_T
@@ -473,7 +309,6 @@ dnl
 dnl so check for that here.
 dnl
 dnl -----------------------------------------------------------
-
 AC_MSG_CHECKING([to see if your struct sockaddr includes a length field])
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 	#include <sys/types.h>
@@ -489,21 +324,6 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
   	[ AC_MSG_RESULT([no]) ], :)
 
 dnl ----------------------------------------------------------
-dnl
-dnl checks for ipv6-related things
-dnl
-
-AC_MSG_CHECKING([whether to support ipv6])
-AC_ARG_WITH(ipv6,
-[  --without-ipv6                  Refuse to support IPv6],[
-	if test "x$withval" = "xno" ; then
-		AC_MSG_RESULT([no])
-		AC_DEFINE([DO_NOT_USE_IPV6], 1, [Define this if ipv6 was forbidden by user])
-	else
-		AC_MSG_RESULT([yes])
-	fi
-],[AC_MSG_RESULT([yes])])
-
 AC_CHECK_TYPE([struct sockaddr_storage], 
 	[AC_DEFINE([HAVE_STRUCT_SOCKADDR_STORAGE], 1, [Define if you have struct sockaddr_storage])], ,
 	[[ #include <sys/socket.h> ]])
@@ -644,24 +464,12 @@ fi
 dnl #sigh#
 dnl AC_CHECK_FUNC(iconv_open, AC_DEFINE([HAVE_ICONV], 1, [Define this if you have a useful iconv())],)
 
-AC_MSG_CHECKING(whether to include wserv support)
-include_wserv="yes"
-AC_ARG_WITH(wserv,
-[  --without-wserv                 Refuse to support wserv (for multiple screens)],[
-	if test -z "$withval"; then
-		include_wserv="yes"
-	else
-		include_wserv="$withval"
-	fi
-])
-if test "x$no_job_control" = "x1" ; then
-	include_wserv="no"
-fi
-AC_MSG_RESULT($include_wserv)
-if test "x$include_wserv" = "xyes" ; then
-	WSERV_BIN="wserv4"
-	WSERV_INSTALL="installwserv4"
-fi
+dnl ---------------------------------------------------------
+dnl
+dnl I am sorry, but I'm not going to let you turn off wserv
+dnl
+WSERV_BIN="wserv4"
+WSERV_INSTALL="installwserv4"
 
 dnl ----------------------------------------------------------
 dnl
@@ -841,14 +649,6 @@ if test "$program_prefix" = "NONE" ; then
 	program_prefix=
 fi
 
-dnl AC_MSG_CHECKING(whether your compiler supports -Wno-pointer-sign)
-dnl old_cflags="$CFLAGS"
-dnl CFLAGS="$CFLAGS -Wno-pointer-sign"
-dnl AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]],[[ return 0; ]])],
-dnl	[AC_MSG_RESULT(yes)],
-dnl     [AC_MSG_RESULT(no)
-dnl	CFLAGS="$old_cflags"])
-
 AC_MSG_CHECKING(whether your compiler supports -fno-strict-aliasing)
 old_cflags="$CFLAGS"
 CFLAGS="$CFLAGS -fno-strict-aliasing"
@@ -961,23 +761,10 @@ dnl Commencement
 dnl
 
 echo
-echo "There you go.  Look at include/config.h for any options that "
-echo "you might want to change before you 'make'.  Don't forget to "
-echo "do a 'make install' before you're done."
+echo "If your build fails, make sure you have all the necessary "
+echo "'*-devel' type packages installed.  This is particularly "
+echo "important for ncurses-devel"
+echo
+echo "You may now do 'make' and 'make install'"
 echo 
-
-if test "x$warn_again" != "x0" ; then
-   echo '@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'
-   echo '@@@              IMPORTANT WARNING!                 @@@'
-   echo '@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'
-   echo ''
-   echo 'I was unable to find tgetent() which means the build will fail.'
-   echo 'If you are using linux, you _MUST_ install the ncurses-dev'
-   echo 'or ncurses-devel package and then "make distclean" and '
-   echo 'then run configure again.'
-   echo ''
-   echo '@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'
-   echo '@@@              IMPORTANT WARNING!                 @@@'
-   echo '@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'
-fi
 

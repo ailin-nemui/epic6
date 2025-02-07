@@ -69,18 +69,8 @@
 /*
  * Some systems define tputs, etc in this header
  */
-#ifdef HAVE_TERMCAP_H
-# include <termcap.h>
-#else
-# if defined(__need_term_h__)
-#  if defined(HAVE_TERM_H) && !defined(DONT_USE_TERM_H)
-#   if defined(TERM_H_REQUIRES_CURSES_H)
-#    include <termio.h>
-#    include <curses.h>
-#   endif
-#   include <term.h>
-#  endif
-# endif
+#ifdef HAVE_TERM_H
+# include <term.h>
 #endif
 
 #ifdef HAVE_ICONV
@@ -173,16 +163,6 @@ char *alloca();
 # define MAX(a,b) (((a)>(b))?(a):(b))
 #endif
 
-
-/*
- * Deal with brokenness with sys_errlist.
- */
-#ifndef HAVE_STRERROR
-# ifndef SYS_ERRLIST_DECLARED
-extern	char	*sys_errlist[];
-# endif
-#define strerror(x) sys_errlist[x]
-#endif
 
 /*
  * Deal with brokenness with realpath.
@@ -278,22 +258,6 @@ typedef char Filename[PATH_MAX + 1];
 #include <sys/select.h>
 #endif
 
-/*
- * Now we deal with systems that dont have correct select()
- * support (like aix 3.2.5, and older linux systems.)
- */
-#ifndef NBBY
-# define NBBY	8		/* number of bits in a byte */
-#endif /* NBBY */
-
-#ifndef NFDBITS
-# define NFDBITS	(sizeof(long) * NBBY)	/* bits per mask */
-#endif /* NFDBITS */
-
-#ifndef FD_SETSIZE
-#define FD_SETSIZE      256
-#endif
-
 #ifndef howmany
 #define howmany(x, y)   (((x) + ((y) - 1)) / (y))
 #endif
@@ -335,9 +299,7 @@ typedef union SSu {
 
 typedef struct addrinfo		AI;
 
-#ifndef __no_timeval_stuff__
 typedef struct timeval		Timeval;
-#endif
 typedef struct stat		Stat;
 
 /*

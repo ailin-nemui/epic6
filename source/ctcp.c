@@ -53,9 +53,6 @@
 #include "functions.h"
 
 #include <pwd.h>
-#ifdef HAVE_UNAME
-# include <sys/utsname.h>
-#endif
 
 /* CTCP BITFLAGS */
 #define CTCP_SPECIAL	1	/* Special handlers handle everything and don't return anything */

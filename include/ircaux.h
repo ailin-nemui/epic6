@@ -79,7 +79,9 @@ struct 	epic_loadfile *	uzfopen 	(char **, const char *, int, struct stat *);
 	off_t	file_size		(const char *);
 	int	file_exists		(const char *);
 	int	isdir			(const char *);
+#if 0
 	int	isdir2			(const char *, const void * const);
+#endif
 
 	/* - - - - - - */
 #define my_isspace(x) isspace(x)
