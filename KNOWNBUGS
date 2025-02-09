@@ -120,3 +120,7 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Refactor expand_twiddle() to use getpwnam_r()
 * Sunset the commented out SHIFT-JIS stuff
 * At this point, terminfo support is mandatory. Come on -- it's 2025.
+* Permit ^X RGB codes (ONLY (for now)!) to be surrounded by {}s
+  - eg, ^X{#aabbcc,ddeeff}
+* Change $rgb() to use the new syntax.
+
