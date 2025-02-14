@@ -66,6 +66,7 @@
 #define LEFT 0
 
 static int	input_move_cursor (int dir, int refresh);
+static void	input_expand (void);
 
 /*
  * This is how close you have to be to the edge of the screen before the
@@ -82,14 +83,19 @@ static int	input_move_cursor (int dir, int refresh);
 
 typedef struct InputLine
 {
+	int		input_buffer_size;
+
         /* The current UTF8 input line (plain old c string */
-        char            input_buffer[INPUT_BUFFER_SIZE+1];
+        /* char            input_buffer[INPUT_BUFFER_SIZE+1]; */
+        char            *input_buffer;
 
         /* The offset into input_buffer where each logical char starts */
-        int             logical_chars[INPUT_BUFFER_SIZE + 1];
+        /* int             logical_chars[INPUT_BUFFER_SIZE + 1]; */
+        int             *logical_chars;
 
         /* The logical column in which each logical char lives */
-        int             logical_columns[INPUT_BUFFER_SIZE + 1];
+        /* int             logical_columns[INPUT_BUFFER_SIZE + 1]; */
+        int             *logical_columns;
 
         /* Upon which logical char does the cursor sit? */
         int             logical_cursor;
@@ -152,6 +158,7 @@ typedef struct InputLine
  */
 #define INPUT_LINE		((InputLine *)get_screen_input_line(last_input_screen))
 #define INPUT_BUFFER 		INPUT_LINE->input_buffer
+#define INPUT_BUFFER_SIZE	INPUT_LINE->input_buffer_size
 
 /*
  * A "LOGICAL CHARACTER" is one or more unicode code points that represent
@@ -239,7 +246,7 @@ typedef struct InputLine
  * AFTER YOU CALL ADD_TO_INPUT() YOU _MUST_ CALL retokenize_input().
  * AND YOU _MUST_ CALL update_input()!
  */
-#define ADD_TO_INPUT(x) 	strlcat(INPUT_BUFFER, (x), sizeof INPUT_BUFFER);
+#define ADD_TO_INPUT(x) 	strlcat(INPUT_BUFFER, (x), INPUT_BUFFER_SIZE);
 
 /*
  * Moving the cursor is as easy as changing the logical cursor.
@@ -1078,7 +1085,7 @@ void	init_input (void)
 	*INPUT_BUFFER = 0;
         START = 0;
         LOGICAL_CURSOR = 0;
-        memset(INPUT_BUFFER, 0, sizeof(INPUT_BUFFER));
+        memset(INPUT_BUFFER, 0, INPUT_BUFFER_SIZE);
 	retokenize_input(LOGICAL_CURSOR);
 }
 
@@ -1327,8 +1334,8 @@ BUILT_IN_KEYBINDING(input_add_character)
 	utf8strlen = ucs_to_utf8(key, utf8str, sizeof(utf8str));
 
 	/* Don't permit the input buffer to get too big. */
-	if (strlen(INPUT_BUFFER) + utf8strlen  >= INPUT_BUFFER_SIZE)
-		return;
+	if ((int)(strlen(INPUT_BUFFER) + utf8strlen)  >= INPUT_BUFFER_SIZE)
+		input_expand();		/* We must go deeper! */
 
 	/*
 	 * If we are NOT at the end of the line, and we're inserting
@@ -1393,7 +1400,7 @@ BUILT_IN_KEYBINDING(input_clear_line)
 	if (*INPUT_BUFFER)
 		cut_input(0, 999);
 
-        memset(INPUT_BUFFER, 0, sizeof(INPUT_BUFFER));
+        memset(INPUT_BUFFER, 0, INPUT_BUFFER_SIZE);
 	LOGICAL_CURSOR = 0;
         update_input(last_input_screen, UPDATE_ALL);
 }
@@ -1409,7 +1416,7 @@ BUILT_IN_KEYBINDING(input_reset_line)
 	*INPUT_BUFFER = 0;
 	START = 0;
         LOGICAL_CURSOR=0;
-        memset(INPUT_BUFFER, 0, sizeof(INPUT_BUFFER));
+        memset(INPUT_BUFFER, 0, INPUT_BUFFER_SIZE);
         update_input(last_input_screen, UPDATE_FROM_CURSOR);
 
         if (!string)
@@ -1476,7 +1483,7 @@ BUILT_IN_KEYBINDING(send_line)
 	*INPUT_BUFFER = 0;
         START = 0;
         LOGICAL_CURSOR = 0;
-        memset(INPUT_BUFFER, 0, sizeof(INPUT_BUFFER));
+        memset(INPUT_BUFFER, 0, INPUT_BUFFER_SIZE);
 
 	update_input(last_input_screen, UPDATE_ALL);
 
@@ -1656,9 +1663,20 @@ BUILT_IN_FUNCTION(function_inputctl, input)
 void *	new_input_line (const char *prompt, int echo)
 {
 	InputLine *	my_input_line;
+	int	i;
 
         my_input_line = (InputLine *)new_malloc(sizeof(InputLine));
+	my_input_line->input_buffer_size = _INPUT_BUFFER_SIZE;		/* Whatever, for now */
+	my_input_line->input_buffer = new_malloc(my_input_line->input_buffer_size + 1);
         my_input_line->input_buffer[0] = '\0';
+
+	my_input_line->logical_chars = new_malloc(sizeof(int) * (my_input_line->input_buffer_size + 1));
+	for (i = 0; i < my_input_line->input_buffer_size; i++)
+		my_input_line->logical_chars[i] = 0;
+	my_input_line->logical_columns = new_malloc(sizeof(int) * (my_input_line->input_buffer_size + 1));
+	for (i = 0; i < my_input_line->input_buffer_size; i++)
+		my_input_line->logical_columns[i] = 0;
+
         my_input_line->first_display_char = 0;
         my_input_line->number_of_logical_chars = 0;
 	if (prompt)
@@ -1681,6 +1699,7 @@ void	destroy_input_line (void *p)
 {
 	InputLine *	my_input_line = (InputLine *)p;
 
+	/* XXX TODO XXX */
         new_free(&my_input_line->ind_right);
         new_free(&my_input_line->ind_left);
         new_free(&my_input_line->input_prompt);
@@ -1689,3 +1708,31 @@ void	destroy_input_line (void *p)
 }
  
 
+static void	input_expand (void)
+{
+	int	old_input_buffer_size;
+	char *	old_input_buffer;
+	int *	old_logical_chars;
+	int *	old_logical_columns;
+
+	old_input_buffer_size = INPUT_BUFFER_SIZE;
+	old_input_buffer = INPUT_BUFFER;
+	old_logical_chars = LOGICAL_CHARS;
+	old_logical_columns = LOGICAL_COLUMN;
+
+	INPUT_BUFFER_SIZE *= 2;
+
+	INPUT_BUFFER = new_malloc(sizeof(char) * (INPUT_BUFFER_SIZE + 1));
+	memset(INPUT_BUFFER, 0, sizeof(char) * (INPUT_BUFFER_SIZE + 1));
+	memcpy(INPUT_BUFFER, old_input_buffer, sizeof(char) * old_input_buffer_size);
+
+	LOGICAL_CHARS = new_malloc(sizeof(int) * (INPUT_BUFFER_SIZE + 1));
+	memset(LOGICAL_CHARS, 0, sizeof(int) * (INPUT_BUFFER_SIZE + 1));
+	memcpy(LOGICAL_CHARS, old_logical_chars, sizeof(int) * old_input_buffer_size);
+
+	LOGICAL_COLUMN = new_malloc(sizeof(int) * (INPUT_BUFFER_SIZE + 1));
+	memset(LOGICAL_COLUMN, 0, sizeof(int) * (INPUT_BUFFER_SIZE + 1));
+	memcpy(LOGICAL_COLUMN, old_logical_columns, sizeof(int) * old_input_buffer_size);
+
+	return;
+}

@@ -52,7 +52,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3014;
+const unsigned long	commit_id = 3015;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -603,51 +603,6 @@ static	void	parse_args (int argc, char **argv)
 
 	if ((cptr = getenv("IRCHOST")) && *cptr)
 		tmp_hostname = cptr;
-
-	/* The -S-option  / shebang tokeniser */
-	if (argc > 1 && ((argv[1][0] == '-' && argv[1][1] == 'S')
-			|| strchr(argv[1], ' ') != NULL 
-			|| strchr(argv[1], '\t') != NULL))
-	{
-		int 	argn;
-
-		altargv = new_malloc(sizeof(char *));
-		altargv[0] = malloc_strdup(argv[0]);
-		altargc = 1;
-		
-		for (argn = 1; argn < argc; argn++)
-		{
-		    const char *s;
-		    char *	dest;
-		    size_t	destlen;
-		    char *	d;
-
-		    s = argv[argn];
-		    destlen = strlen(s) + 1;
-		    d = dest = alloca(destlen + 1);
-
-		    while (*s && ((ssize_t)(d - dest) < (ssize_t)destlen))
-		    {
-			if (*s == '\0' || *s == ' ' || *s == '\t')
-			{
-			    if (d - dest > 0)
-			    {
-				*d = 0;
-				RESIZE(altargv, char *, altargc + 1);
-				altargv[altargc++] = malloc_strdup(dest);
-				d = dest;
-			    }
-		        }
-			else
-				*d++ = *s++;
-		    }
-		}
-
-		RESIZE(altargv, char *, altargc + 1);
-		altargv[altargc] = NULL;
-		argc = altargc;
-		argv = altargv;
-	}
 
 	/*
 	 * Parse the command line arguments.

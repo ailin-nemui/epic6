@@ -214,7 +214,7 @@ struct system_timer system_timers[] = {
  * of the system timers.  
  * It calculates how long until the callback should be called again:
  *	If it is off, then the next round /SET *_INTERVAL seconds
- *	  where * is "CLOCK", "NOTIFY" or "MAIL".
+ *	  where * is "CLOCK" (used to be other options)(
  * Then it calls the processing callback ("callback") to do the work.
  */
 static int	system_timer (void *entry)

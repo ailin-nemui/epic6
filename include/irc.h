@@ -75,8 +75,8 @@
  * Otherwise, your privmsg may get truncated...
  * This should be fixed by doing it dynamically.
  */
-#ifndef INPUT_BUFFER_SIZE
-#define INPUT_BUFFER_SIZE	(IRCD_BUFFER_SIZE - 20)
+#ifndef _INPUT_BUFFER_SIZE
+#define _INPUT_BUFFER_SIZE	(IRCD_BUFFER_SIZE - 20)
 #endif
 
 #define NICKNAME_LEN 30

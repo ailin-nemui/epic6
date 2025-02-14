@@ -181,7 +181,6 @@ Hookables hook_function_templates[] =
 	{ "KICK",		NULL,	3,	0,	0,	NULL, 0 },
 	{ "KILL",		NULL,	5,	0,	0,	NULL, 0 },
 	{ "LIST",		NULL,	3,	0,	0,	NULL, 0 },
-	{ "MAIL",		NULL,	2,	0,	0,	NULL, 0 },
 	{ "MODE",		NULL,	3,	0,	0,	NULL, 0 },
 	{ "MODE_STRIPPED",	NULL,	3,	0,	0,	NULL, 0 },
 	{ "MSG",		NULL,	2,	0,	0,	NULL, 0 },

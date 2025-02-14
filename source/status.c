@@ -113,7 +113,6 @@ static	char	*query_format 		= (char *) 0;
 static	char	*clock_format 		= (char *) 0;
 static	char	*hold_lines_format 	= (char *) 0;
 static	char	*channel_format 	= (char *) 0;
-static	char	*mail_format 		= (char *) 0;
 static	char	*nick_format		= (char *) 0;
 static	char	*server_format 		= (char *) 0;
 static	char	*sp_format 		= (char *) 0;
@@ -152,7 +151,6 @@ struct status_formats status_expandos[] = {
 { 0, 'H', status_hold,		NULL,			NULL },
 { 0, 'I', status_insert_mode,   NULL,			NULL },
 { 0, 'K', status_scrollback,	NULL,			NULL },
-{ 0, 'M', status_mail,		&mail_format,		&STATUS_MAIL_VAR },
 { 0, 'N', status_nickname,	&nick_format,		&STATUS_NICKNAME_VAR },
 { 0, 'O', status_overwrite_mode,NULL,			NULL },
 { 0, 'P', status_position,      NULL,			NULL },

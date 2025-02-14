@@ -3039,7 +3039,6 @@ struct target_type
 	int  mask;
 };
 
-
 /*
  * The whole shebang.
  *
@@ -3066,9 +3065,50 @@ struct target_type
  * make sure that YOU dont send anything to the screen without checking first!
  */
 /* SENDTEXT -- Don't delete this, I search for it! */
-void 	send_text (int server, const char *nick_list, const char *text, const char *command, int hook, int already_encoded)
+static int	chonk_message (const char *text, size_t *chonk)
 {
-	int 	i;
+	size_t	text_len;
+
+	/* Ensure that *chonk is valid and within bounds */
+	if (!chonk)
+		return 0;
+	text_len = strlen(text);
+	if (text_len <= *chonk)
+		return 0;
+
+
+	/* Now our chonks will be 480 bytes. */
+#define DEFAULT_CHONK	480
+
+	/* If the message is < 480 bytes, then we're done! */
+	if (text_len - *chonk < DEFAULT_CHONK)
+	{
+		*chonk = text_len;
+		return 1;
+	}
+
+	/* Otherwise, the message must be chonked.  Go to the chonking point and find a delimiter */
+	else
+	{
+		int	    i;
+
+		for (i = 0; i < 24; i++)
+		{
+			/* Go up to 24 chars back to find the last space */
+			if (isspace(*(text + *chonk + DEFAULT_CHONK - i)))
+			{
+				*chonk += DEFAULT_CHONK - i;
+				return 1;
+			}
+		}
+
+		*chonk += DEFAULT_CHONK;
+		return 1;
+	}
+}
+
+void	send_text (int server, const char *nick_list, const char *text, const char *command, int hook, int already_encoded)
+{
 	char 	*current_nick,
 		*next_nick,
 		*line;
@@ -3179,8 +3219,7 @@ struct target_type target[4] =
 	    {
 		/* XXX this is probably cheating. */
 		char *ptr = NULL;
-		malloc_sprintf(&ptr, "-W %s %s",
-				current_nick + 2, text);
+		malloc_sprintf(&ptr, "-W %s %s", current_nick + 2, text);
 		xechocmd("XECHO", ptr, NULL);
 		new_free(&ptr);
 	    }
@@ -3212,82 +3251,42 @@ struct target_type target[4] =
 
 		/* XXX -- Recursion is a hack. (but it works) */
 		send_text(servref, msgtarget, text, command, hook ? -1 : 0, already_encoded);
-		new_free(&extra);
-		continue;
 	    }
-	    else
+	    else 	/* It's an IRC message */
 	    {
-		/* XXX Should we check for invalid from_server here? */
+		int	i, l;
 
-		if (get_server_doing_notice(from_server) > 0)
-		{
-			say("You cannot send a message from within ON NOTICE");
-			new_free(&extra);
-			continue;
-		}
-
-		i = is_channel(current_nick);
-		if (get_server_doing_privmsg(from_server) || 
-				(command && !strcmp(command, "NOTICE")))
+		if (is_channel(current_nick))
+			i = 1;
+		else
+			i = 0;
+		if (!my_stricmp(command, "NOTICE"))
 			i += 2;
 
-		if (extra)		/* Message was transcoded */
+		l = message_from(current_nick, target[i].mask);
+
+		/*
+		 * TEXT is the original UTF8 string.
+		 * Recode_text is converted FOR IRC USE ONLY.
+		 */
+		if (hook && do_hook(target[i].hook_type, "%s %s", current_nick, text))
+			put_it(target[i].format, current_nick, text);
+
+		size_t chonk = 0;
+		while (chonk_message(recode_text, &chonk))
 		{
-			int	l;
-
-			l = message_from(current_nick, target[i].mask);
-
-			/*
-			 * TEXT is the original UTF8 string.
-			 * Recode_text is converted FOR IRC USE ONLY.
-			 */
-			if (hook && do_hook(target[i].hook_type, "%s %s", 
-						current_nick, text))
-				put_it(target[i].format, current_nick, text);
-
-			send_to_server_with_payload(recode_text, "%s %s", 
-					target[i].command, current_nick);
-			set_server_sent_nick(from_server, current_nick);
-
-			pop_message_from(l);
+			char *s = malloc_strext(recode_text, chonk);
+			send_to_server_with_payload(s, "%s %s", target[i].command, current_nick);
+			recode_text += chonk;
+			chonk = 0;
+			new_free(&s);
 		}
-		else
-		{
-			if (i == 0)
-				set_server_sent_nick(from_server, current_nick);
-			if (target[i].nick_list)
-				malloc_strcat(&target[i].nick_list, ",");
-			malloc_strcat(&target[i].nick_list, current_nick);
-			if (!target[i].message)
-				target[i].message = text;
-		}
+		set_server_sent_nick(from_server, current_nick);
+
+		pop_message_from(l);
 	    }
 
 	    new_free(&extra);
-	}
-
-	for (i = 0; i < 4; i++)
-	{
-		int	l;
-
-		if (!target[i].message)
-			continue;
-
-		l = message_from(target[i].nick_list, target[i].mask);
-		if (hook && do_hook(target[i].hook_type, "%s %s", 
-				    target[i].nick_list, target[i].message))
-		    put_it(target[i].format, target[i].nick_list, 
-				target[i].message);
-
-		send_to_server_with_payload(target[i].message,
-				"%s %s", 
-				target[i].command, 
-				target[i].nick_list);
-
-		new_free(&target[i].nick_list);
-		target[i].message = NULL;
-
-		pop_message_from(l);
 	}
 
 	swap_window_display(old_window_display);

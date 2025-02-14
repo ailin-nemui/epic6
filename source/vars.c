@@ -404,13 +404,6 @@ void 	init_variables_stage1 (void)
 	VAR(COMMENT_HACK, 		BOOL, NULL);
 	VAR(CONTINUED_LINE, 		STR,  NULL);
 	VAR(CURRENT_WINDOW_LEVEL, 	STR,  set_current_window_mask);
-	VAR(DCC_AUTO_SEND_REJECTS, 	BOOL, NULL);
-	VAR(DCC_CONNECT_TIMEOUT,	INT,  NULL);
-	VAR(DCC_DEQUOTE_FILENAMES, 	BOOL, NULL);
-	VAR(DCC_LONG_PATHNAMES, 	BOOL, NULL);
-	VAR(DCC_SLIDING_WINDOW, 	INT,  NULL);
-	VAR(DCC_STORE_PATH, 		STR,  NULL);
-	VAR(DCC_USE_GATEWAY_ADDR, 	BOOL, NULL)
 #define DEFAULT_DEBUG 0
 	VAR(DEBUG, 			INT,  NULL);
 #define DEFAULT_DEFAULT_REALNAME NULL
@@ -419,7 +412,6 @@ void 	init_variables_stage1 (void)
 	VAR(DEFAULT_USERNAME, 		STR,  NULL);
 	VAR(DISPATCH_UNKNOWN_COMMANDS,	BOOL, NULL);
 	VAR(DISPLAY, 			BOOL, NULL);
-	VAR(DO_NOTIFY_IMMEDIATELY, 	BOOL, NULL);
 	VAR(FIRST_LINE,			STR,  NULL);
 	VAR(FLOATING_POINT_MATH, 	BOOL, NULL);
 	VAR(FLOATING_POINT_PRECISION,	INT,  NULL);
@@ -454,7 +446,6 @@ void 	init_variables_stage1 (void)
 	VAR(NEW_SERVER_LASTLOG_LEVEL,	STR,  set_new_server_lastlog_mask);
 	VAR(NOTIFY_LEVEL,		STR,  set_notify_mask);
 	VAR(NOTIFY_ON_TERMINATION,	BOOL, NULL);
-	VAR(NOTIFY_USERHOST_AUTOMATIC,	BOOL, NULL);
 	VAR(NO_CONTROL_LOG,		BOOL, NULL);	/* XXX /set mangle_logfile */
 	VAR(NO_FAIL_DISCONNECT,         BOOL, NULL);
 	VAR(OLD_SERVER_LASTLOG_LEVEL,   STR,  set_old_server_lastlog_mask);
@@ -478,7 +469,6 @@ void 	init_variables_stage1 (void)
 	VAR(STATUS_CHANNEL,             STR,  build_status);
 	VAR(STATUS_CHANOP,              STR,  build_status);
 	VAR(STATUS_CLOCK,               STR,  build_status);
-	VAR(STATUS_CPU_SAVER,           STR,  build_status);
 #define DEFAULT_STATUS_DOES_EXPANDOS 0
 	VAR(STATUS_DOES_EXPANDOS,       BOOL, NULL);
 	VAR(STATUS_FORMAT,              STR,  build_status);
@@ -489,7 +479,6 @@ void 	init_variables_stage1 (void)
 	VAR(STATUS_HOLD_LINES,          STR,  build_status);
 	VAR(STATUS_HOLDMODE,            STR,  build_status);
 	VAR(STATUS_INSERT,              STR,  build_status);
-	VAR(STATUS_MAIL,                STR,  build_status);
 	VAR(STATUS_MODE,                STR,  build_status);
 	VAR(STATUS_NICKNAME,            STR,  build_status);
 	VAR(STATUS_NOSWAP,              STR,  build_status);

@@ -189,14 +189,18 @@ static 	RuntimeStack *call_stack = NULL;
  * Specifically, if you create a global variable and then want to delete it,
  * try using a local variable so it is reaped automatically.
  */
+#if 0
 extern	void    add_var_alias      (Char *name, Char *stuff, int noisy);
 extern  void    add_local_alias    (Char *name, Char *stuff, int noisy);
-extern  void    add_cmd_alias      (Char *name, ArgList *arglist, Char *stuff);
+#endif
+static	void    add_cmd_alias      (Char *name, ArgList *arglist, Char *stuff);
+#if 0
 extern  void    add_var_stub_alias (Char *name, Char *stuff);
 extern  void    add_cmd_stub_alias (Char *name, Char *stuff);
 extern	void	add_builtin_cmd_alias  (Char *, void (*)(Char *, char *, Char *));
 extern	void	add_builtin_func_alias (Char *, char *(*)(char *));
 extern	void	add_builtin_expando    (Char *, char *(*)(void));
+#endif
 
 static	void	delete_var_alias   (Char *name, int noisy);
 static	void	delete_cmd_alias   (Char *name, int noisy);
@@ -214,12 +218,14 @@ static	void 	destroy_builtin_functions   (alist *);
 static	void 	destroy_builtin_variables   (alist *);
 static	void 	destroy_builtin_expandos    (alist *);
 
+#if 0
 extern	char *  get_variable       (Char *name);
 extern	char ** glob_cmd_alias          (Char *name, int *howmany, int maxret, int start, int rev);
 extern	char ** glob_assign_alias	(Char *name, int *howmany, int maxret, int start, int rev);
 extern	const char *  get_cmd_alias     (Char *name, void **args, 
 					 void (**func) (const char *, char *, const char *));
 extern	char ** get_subarray_elements   (Char *root, int *howmany, int type);
+#endif
 
 
 static	char *	get_variable_with_args (Char *str, Char *args);
@@ -1221,7 +1227,7 @@ void	add_local_alias	(const char *orig_name, const char *stuff, int noisy)
 }
 
 /* * * */
-void	add_cmd_alias	(const char *orig_name, ArgList *arglist, const char *stuff)
+static void	add_cmd_alias	(const char *orig_name, ArgList *arglist, const char *stuff)
 {
 	Symbol *tmp = NULL;
 	char *name;

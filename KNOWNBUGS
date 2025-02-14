@@ -123,4 +123,9 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Permit ^X RGB codes (ONLY (for now)!) to be surrounded by {}s
   - eg, ^X{#aabbcc,ddeeff}
 * Change $rgb() to use the new syntax.
-
+* Sunset ability to run epic as a shell script (ie, #!/usr/local/bin/epic -S)
+* Sunset some /set's that setted sunsetted features.
+* Sunset default values for /sets that are removed
+* Send every message one at a time (no bunching)
+* Chonk messages sent to irc approximately every 480 bytes
+* Input line is now unlimited (it auto-expands as you type)
