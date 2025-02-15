@@ -66,6 +66,10 @@
 # endif
 #endif
 
+#ifdef HAVE_SYS_IOCTL_H
+#include <sys/ioctl.h>
+#endif
+
 volatile sig_atomic_t	need_redraw;
 static	int		tty_des;		/* descriptor for the tty */
 static	struct	termios	oldb, newb;

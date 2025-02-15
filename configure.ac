@@ -203,7 +203,7 @@ dnl Checking for headers, functions, and a type declarations
 dnl sigh.  I used to check for sys/fcntl.h
 dnl
 
-AC_CHECK_HEADERS(fcntl.h inttypes.h locale.h math.h ndbm.h netdb.h regex.h stdargs.h stddef.h stdint.h sys/cdefs.h sys/file.h sys/filio.h sys/select.h sys/syslimits.h sys/time.h sys/un.h sys/param.h term.h termios.h sys/termios.h xlocale.h,)
+AC_CHECK_HEADERS(fcntl.h inttypes.h locale.h math.h ndbm.h netdb.h regex.h stdargs.h stddef.h stdint.h sys/cdefs.h sys/file.h sys/filio.h sys/ioctl.h sys/select.h sys/syslimits.h sys/time.h sys/un.h sys/param.h term.h termios.h sys/termios.h xlocale.h,)
 
 AC_CHECK_FUNC(clock_gettime, AC_DEFINE([HAVE_CLOCK_GETTIME], 1, [Define if you have clock_gettime()]),)
 AC_CHECK_FUNC(gettimeofday, AC_DEFINE([HAVE_GETTIMEOFDAY], 1, [Define if you have gettimeofday()]),)

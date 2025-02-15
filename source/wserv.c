@@ -50,7 +50,9 @@
 #  include <sys/termios.h>
 # endif
 #endif
-
+#ifdef HAVE_SYS_IOCTL_H
+#include <sys/ioctl.h>
+#endif
 
 static 	int 	data = -1;
 static	int	cmd = -1;
@@ -289,7 +291,15 @@ static void 	term_resize (void)
 			old_co = -1;
 	struct winsize window;
 
+#ifdef HAVE_TCGETWINSIZE
 	if (tcgetwinsize(tty_des, &window) < 0)
+#else
+# if defined(TIOCGWINSZ)
+	if (ioctl(tty_des, TIOCGWISZ, &window) < 0)
+# else
+	if (1)
+# endif
+#endif
 		return;		/* *Shrug* What can we do? */
 
 	if (window.ws_row == 0 || window.ws_col == 0)
