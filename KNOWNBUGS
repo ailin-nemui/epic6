@@ -32,7 +32,7 @@ Things to support
 =================
 CAP/SASL/ZNC
 Emojis (incl ZWJ)
-Unlimited input line
+*Unlimited input line
 Mouse support
 *PBKDF
 CHACHA20
@@ -129,3 +129,4 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Send every message one at a time (no bunching)
 * Chonk messages sent to irc approximately every 480 bytes
 * Input line is now unlimited (it auto-expands as you type)
+* Apparently linux doesn't have tcgetwinsize() [Sigh] (rb fusion)

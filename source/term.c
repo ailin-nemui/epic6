@@ -1186,7 +1186,15 @@ int	term_resize (void)
 	 */
 	my_sleep(0.05);
 
+#ifdef HAVE_TCGETWINSIZE
 	if (tcgetwinsize(tty_des, &window) < 0)
+#else 
+# if defined(TIOCGWINSZ)
+	if (ioctl(tty_des, TIOCGWINSZ, &window) < 0)
+# else
+	if (1)
+# endif
+#endif
 	{
 		current_term->TI_lines = li;
 		current_term->TI_cols = co;

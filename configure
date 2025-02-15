@@ -4562,6 +4562,14 @@ printf "%s\n" "#define HAVE_NEWLOCALE 1" >>confdefs.h
 
 fi
 
+ac_fn_c_check_func "$LINENO" "tcgetwinsize" "ac_cv_func_tcgetwinsize"
+if test "x$ac_cv_func_tcgetwinsize" = xyes
+then :
+
+printf "%s\n" "#define HAVE_TCGETWINSIZE 1" >>confdefs.h
+
+fi
+
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether you are using a gnu libc that is so old it needs a hack to use newlocale" >&5
 printf %s "checking whether you are using a gnu libc that is so old it needs a hack to use newlocale... " >&6; }

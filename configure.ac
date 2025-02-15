@@ -216,6 +216,7 @@ AC_CHECK_FUNC(sysconf, AC_DEFINE([HAVE_SYSCONF], 1, [Define if you have sysconf(
 AC_CHECK_FUNC(unveil, AC_DEFINE([HAVE_UNVEIL], 1, [Define if you have unveil()]),)
 AC_CHECK_FUNC(pledge, AC_DEFINE([HAVE_PLEDGE], 1, [Define if you have pledge()]),)
 AC_CHECK_FUNC(newlocale, AC_DEFINE([HAVE_NEWLOCALE], 1, [Define if you have newlocale()]),)
+AC_CHECK_FUNC(tcgetwinsize, AC_DEFINE([HAVE_TCGETWINSIZE], 1, [Define if you have tcgetwinsize()]),)
 
 dnl -- Because someone is trying to use CentOS 5.11...
 AC_MSG_CHECKING(whether you are using a gnu libc that is so old it needs a hack to use newlocale)
