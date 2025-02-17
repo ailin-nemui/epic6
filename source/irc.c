@@ -52,7 +52,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3017;
+const unsigned long	commit_id = 3018;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -377,33 +377,6 @@ The program will now terminate.						\n", irc_version, commit_id, internal_versi
         else
                 irc_exit(1, "Hmmm. %s (%lu) has another bug.  Go figure...",
 			irc_version, commit_id);
-}
-
-/*
- * quit_response: Used by irc_io when called from irc_quit to see if we got
- * the right response to our question.  If the response was affirmative, the
- * user gets booted from irc.  Otherwise, life goes on. 
- */
-static void	quit_response (char *dummy, const char *ptr)
-{
-	int	len;
-
-	if ((len = strlen(ptr)) != 0)
-		if (!my_strnicmp(ptr, "yes", len))
-			irc_exit(1, NULL);
-}
-
-/* irc_quit: prompts the user if they wish to exit, then does the right thing */
-BUILT_IN_KEYBINDING(irc_quit)
-{
-	static	int in_it = 0;
-
-	if (in_it)
-		return;
-	in_it = 1;
-	add_wait_prompt("Do you really want to quit? ", 
-			quit_response, empty_string, WAIT_PROMPT_LINE, 1);
-	in_it = 0;
 }
 
 /*
@@ -883,7 +856,7 @@ static	int		level = 0,
 			get_time(&now);
 			if (cntl_c_hit)		/* SIGINT is useful */
 			{
-				translate_user_input('\003');
+				user_input_byte('\003');
 				cntl_c_hit = 0;
 			}
 			else if (errno != EINTR) /* Deal with EINTR */

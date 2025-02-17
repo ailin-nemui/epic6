@@ -131,3 +131,7 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Input line is now unlimited (it auto-expands as you type)
 * Apparently linux doesn't have tcgetwinsize() [Sigh] (rb fusion)
 * More fixes for linux not having tcgetwinsize() (rb fusion)
+* Sunset the QUIT_IRC keybinding
+* Implement multiple keymap sets
+* Add /bind <X> KEYMAP <keymap>  -- for now, only HEAD and MOUSE work.
+* Add /set mouse, turn on mouse click to focus and scrollwheel.

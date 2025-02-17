@@ -2935,7 +2935,7 @@ BUILT_IN_COMMAND(typecmd)
                                 break;
                 }
 
-		translate_user_input(key);
+		user_input_byte(key);
         }
 }
 

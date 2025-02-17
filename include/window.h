@@ -59,6 +59,8 @@ extern	unsigned 	current_window_priority;
 	void		redraw_all_windows		(void);
 	void		recalculate_windows		(int);
 	void		update_all_windows		(void);
+	int     	get_window_by_screen_row 	(int, int);
+
 
 	BUILT_IN_KEYBINDING(swap_last_window);
 	BUILT_IN_KEYBINDING(next_window);
@@ -109,6 +111,8 @@ extern	unsigned 	current_window_priority;
 
 	void		make_window_current_by_refnum		(int);
 	int		make_window_current_informally		(int);
+	void    	make_visible_window_current 		(int window_);
+
 	int		windowcmd_query				(int, char **);
 	int		windowcmd_rejoin			(int, char **);
 	void		window_check_channels			(void);

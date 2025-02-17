@@ -30,6 +30,8 @@
  * SUCH DAMAGE.
  */
 
+#define __need_putchar_x__
+#define __need_term_flush__
 #include "irc.h"
 #include "config.h"
 #include "commands.h"
@@ -49,18 +51,16 @@
 #include "timer.h"
 #include "reg.h"
 #include "server.h"
+#include "alist.h"
 
+/********************************************************/
 /* 
  * This typedef must match the definition of "BUILT_IN_KEYBINDING" 
  * in irc_std.h!  
  * This is a pointer to a function that may be used as a /BINDing.  
  * The functions themselves live in input.c (and a few other places).
  */
-#if 0
-typedef void (*BindFunction) (unsigned int, char *);
-#else
 typedef BUILT_IN_KEYBINDING((*BindFunction));
-#endif
 
 
 /*
@@ -83,13 +83,6 @@ typedef BUILT_IN_KEYBINDING((*BindFunction));
  */
 struct Binding 
 {
-#if 0
-    List	l;
-#endif
-#if 0
-    struct Binding *next;	/* linked-list stuff. :) */
-    char *	name;		/* the name of this binding */
-#endif
     BindFunction func;		/* function to use ... */
     char *	alias;		/* OR alias to call.  one or the other. */
     char *	filename;	/* the package which added this binding */
@@ -101,6 +94,7 @@ typedef struct Binding Binding;
 	static	List *	binding_list; 
 
 
+/********************************************************/
 #define KEYMAP_SIZE 128
 struct Key 
 {
@@ -114,12 +108,30 @@ struct Key
 };
 typedef struct Key Key;
 
-	static	Key *	head_keymap = NULL; 
+	static	Key *	_head_keymap = NULL; 
 
+/********************************************************/
+static	alist	keyspaces = { NULL, 0, 0, my_strnicmp, HASH_INSENSITIVE };
+static	Key *	_current_keymap = NULL;
+static	Key *	head_keymap (void)
+{
+	int	cnt, loc;
+	return find_alist_item(&keyspaces, "HEAD", &cnt, &loc);
+}
+static	Key *	current_keymap (void)
+{
+	int	cnt, loc;
+	return find_alist_item(&keyspaces, "CURRENT", &cnt, &loc);
+}
+
+static void	switch_keymap (const char *new_keymap_str);
+static BUILT_IN_KEYBINDING(switch_keymap_kb);
+static BUILT_IN_KEYBINDING(mousemachine);
+static void	init_mousemachine (void);
+
+/********************************************************/
 /* this is set when we're post-init to keep track of changed keybindings. */
 	static	int	bind_post_init = 0;
-
-
 
 /* ************************ */
 static List *	add_binding 		(const char *, BindFunction, char *);
@@ -136,8 +148,8 @@ static Key *	construct_keymap 	(Key *);
 static int	clean_keymap 		(Key *);
 static char *	bind_string_compress 	(const char *, int *);
 static char *	bind_string_decompress 	(char *, const char *, int);
-static int	bind_string 		(const char *, const char *, char *);
-static int	bind_compressed_string 	(char *, int, const char *, char *);
+static int	bind_string 		(Key *, const char *, const char *, char *);
+static int	bind_compressed_string 	(Key *, char *, int, const char *, char *);
 static Key *	find_sequence 		(Key *, const char *, int);
 
 static void	remove_bindings_recurse (Key **);
@@ -148,6 +160,7 @@ static void	show_key 		(Key *, const char *, int, int);
 static void	show_all_rbindings 	(Key *, const char *, int, List *);
 static void	bindctl_getmap 		(Key *, const char *, int, char **);
 
+static	void	init_mousemachine 	(void);
 
 
 /* This file is split into two pieces.  The first piece represents bindings.
@@ -239,7 +252,7 @@ static void	remove_binding (char *name)
 	if ((bp = remove_from_list(&binding_list, name)))
 	{
 		/* be sure to remove any keys bound to this binding first */
-		remove_bound_keys(head_keymap, bp);
+		remove_bound_keys(current_keymap(), bp);
 
 		new_free(&bp->name);
 		if (BINDING(bp)->alias)
@@ -324,10 +337,10 @@ void 	init_binds (void)
     ADDBIND("FORWARD_WORD",		    input_forward_word		    );
     ADDBIND("HIGHLIGHT_OFF",		    highlight_off		    );
     ADDBIND("ITALIC",			    insert_italic		    );
+    ADDBIND("KEYMAP",			    switch_keymap_kb		    );
     ADDBIND("NEXT_WINDOW",		    next_window			    );
     ADDBIND("PARSE_COMMAND",		    parse_text			    );
     ADDBIND("PREVIOUS_WINDOW",		    previous_window		    );
-    ADDBIND("QUIT_IRC",			    irc_quit			    );
     ADDBIND("QUOTE_CHARACTER",		    quote_char			    );
     ADDBIND("REFRESH_INPUTLINE",	    refresh_inputline		    );
     ADDBIND("REFRESH_SCREEN",		    refresh_screen   		    );
@@ -489,7 +502,7 @@ static void	key_exec_bt (Key *key)
 				return;		/* Very bad -- bail */
 
 			if (nstr == kstr) /* beginning of string */
-				kp = &head_keymap[(unsigned char)*nstr];
+				kp = &(current_keymap()[(unsigned char)*nstr]);
 			else if (kp->map != NULL)
 				kp = &kp->map[(unsigned char)*nstr];
 			else
@@ -557,7 +570,7 @@ static void	key_exec_bt (Key *key)
 /*
  * HOW KEYBINDINGS WORK:
  *
- * "head_keymap" is a pointer to an array that contains the current
+ * "current_keymap" is a pointer to an array that contains the current
  * keybinding space.  In theory, we could switch what head_keymap
  * points to, in order to implement alternate keyspaces (ie, by
  * screen, by window, by server, whatever).
@@ -629,7 +642,7 @@ void *	handle_keypress (void *lastp, Timeval pressed, uint32_t keyx, int quote_o
 	 * mapless!) 
 	 */
 	if (last == NULL)
-		kp = &head_keymap[key];
+		kp = &(current_keymap()[key]);
 	else if (last->map != NULL)
 		kp = &last->map[key];
 	else 
@@ -757,7 +770,7 @@ static int	do_input_timeouts (void *ignored)
 			continue;
 
 		/* Ignore screens without ambiguous sequences */
-		if (!get_screen_last_key(s) || get_screen_last_key(s) == head_keymap)
+		if (!get_screen_last_key(s) || get_screen_last_key(s) == current_keymap())
 			continue;
 
 		/* Set up context and check the sequence */
@@ -1081,7 +1094,7 @@ static char *	bind_string_decompress (char *dst, const char *src, int srclen)
  * Notes:
  *	This function is only used by start-up stuff.
  */
-static	int	bind_string (const char *sequence, const char *bindstr, char *args) 
+static	int	bind_string (Key *keymap, const char *sequence, const char *bindstr, char *args) 
 {
 	char *	cs;
 	int	slen, 
@@ -1093,7 +1106,7 @@ static	int	bind_string (const char *sequence, const char *bindstr, char *args)
 		return 0;
 	}
 
-	retval = bind_compressed_string(cs, slen, bindstr, args);
+	retval = bind_compressed_string(keymap, cs, slen, bindstr, args);
 	new_free(&cs);
 	return retval;
 }
@@ -1118,7 +1131,7 @@ static	int	bind_string (const char *sequence, const char *bindstr, char *args)
  *		* 'bindstr' is not a valid bind action.
  *	1	The key sequence was bound to the action
  */ 
-static int	bind_compressed_string (char *keyseq, int slen, const char *bindstr, char *args) 
+static int	bind_compressed_string (Key *map_, char *keyseq, int slen, const char *bindstr, char *args) 
 {
 	char *s;
 	Key *node;
@@ -1143,7 +1156,7 @@ static int	bind_compressed_string (char *keyseq, int slen, const char *bindstr, 
 		return 0;
 	}
 
-	for (s = keyseq, map = head_keymap; slen > 0; slen--, s++)
+	for (s = keyseq, map = map_; slen > 0; slen--, s++)
 	{
 		if ((unsigned char)*s >= 128)
 		{
@@ -1194,7 +1207,7 @@ static int	bind_compressed_string (char *keyseq, int slen, const char *bindstr, 
 	 * may have resulted in one or more key nodes being empty)
 	 */
 	if (bind_post_init)
-		clean_keymap(head_keymap);
+		clean_keymap(map_);
 
 	/* Success! */
 	return 1;
@@ -1248,12 +1261,15 @@ static Key *	find_sequence (Key *top, const char *seq, int slen)
  */
 void	init_keys (void)
 {
-	int c;
-	char s[2];
+	int 	c;
+	char 	s[2];
 
-	head_keymap = construct_keymap(NULL);
+	_head_keymap = construct_keymap(NULL);
+	add_to_alist(&keyspaces, "HEAD", _head_keymap);
+	add_to_alist(&keyspaces, "CURRENT", _head_keymap);
+	_current_keymap = _head_keymap;
 
-#define BIND(x, y) bind_string(x, y, NULL);
+#define BIND(x, y) bind_string(_head_keymap, x, y, NULL);
 	/* bind characters 32 - 255 to SELF_INSERT. */
 	s[1] = '\0';
 	for (c = 32;c <= KEYMAP_SIZE - 1;c++) 
@@ -1335,6 +1351,8 @@ void	init_keys (void)
 	BIND("^[O6~", "SCROLL_FORWARD");
 	BIND("^[[6~", "SCROLL_FORWARD");
 
+	init_mousemachine();
+
 	bind_post_init = 1; /* we're post init, now (except for init_termkeys,
 			   but see below for special handling) */
 #undef BIND
@@ -1352,7 +1370,7 @@ void	init_termkeys (void)
 #define TBIND(x, y) {                                                     \
 	const char *l;							  \
 	if ((l = get_term_capability(#x, 0, 1)))			  \
-		bind_string(l, #y, NULL);                                 \
+		bind_string(_head_keymap, l, #y, NULL);                                 \
 }
 	bind_post_init = 0;
 	TBIND(key_ppage, SCROLL_BACKWARD);
@@ -1376,7 +1394,7 @@ void	remove_bindings (void)
 	while (binding_list != NULL)
 		remove_binding(binding_list->name);
 
-	remove_bindings_recurse(&head_keymap);
+	remove_bindings_recurse(&_current_keymap);
 }
 
 /*
@@ -1431,10 +1449,10 @@ void	unload_bindings (const char *pkg)
 	/*
 	 * Then, delete all the keybindings created by the package.
 	 */
-	unload_bindings_recurse(pkg, head_keymap);
+	unload_bindings_recurse(pkg, current_keymap());
 
 	/* Clean up the mess */
-	clean_keymap(head_keymap);
+	clean_keymap(current_keymap());
 }
 
 /*
@@ -1532,7 +1550,7 @@ void	do_stack_bind (int type, char *arg)
 			return; /* yikes! */
 
 		/* find the key represented by the sequence .. */
-		key = find_sequence(head_keymap, cs, slen);
+		key = find_sequence(current_keymap(), cs, slen);
 
 		/* key is now.. something.  if it is NULL, assume there was nothing
 		* bound.  we still push an empty record on to the stack. */
@@ -1582,7 +1600,7 @@ void	do_stack_bind (int type, char *arg)
 		* replicate bind_string since bind_string has some undesirable
 		* effects.  */
 		s = compstr;
-		map = head_keymap;
+		map = current_keymap();
 		while (slen) 
 		{
 			if ((unsigned char)*s >= 128)
@@ -1659,7 +1677,7 @@ BUILT_IN_COMMAND(bindcmd)
 
 	if ((seq = new_next_arg(args, &args)) == NULL) 
 	{
-		show_all_bindings(head_keymap, "", 0);
+		show_all_bindings(current_keymap(), "", 0);
 		return;
 	}
 
@@ -1692,7 +1710,7 @@ BUILT_IN_COMMAND(bindcmd)
 			recurse = 1;
 			if ((seq = new_next_arg(args, &args)) == NULL) 
 			{
-				show_all_bindings(head_keymap, "", 0);
+				show_all_bindings(current_keymap(), "", 0);
 				return;
 			}
 		}
@@ -1712,7 +1730,7 @@ BUILT_IN_COMMAND(bindcmd)
 	}
 
 	/* bind_string() will check any errors for us. */
-	retval = bind_compressed_string(cs, slen, function, *args ? args : NULL);
+	retval = bind_compressed_string(current_keymap(), cs, slen, function, *args ? args : NULL);
 	if (retval) 
 	{
 		if (!my_strnicmp(function, "meta", 4))
@@ -1760,10 +1778,10 @@ static void	show_key (Key *key, const char *str, int slen, int recurse)
 
 	if (key == NULL) 
 	{
-		if (!(key = find_sequence(head_keymap, str, slen)))
+		if (!(key = find_sequence(current_keymap(), str, slen)))
 		{
 			yell("Can't find key sequence in show_key");	
-			key = head_keymap;
+			key = current_keymap();
 		}
 	}
 
@@ -1807,7 +1825,7 @@ BUILT_IN_COMMAND(rbindcmd)
 		return;
 	}
 
-	show_all_rbindings(head_keymap, "", 0, bp);
+	show_all_rbindings(current_keymap(), "", 0, bp);
 }
 
 static void	show_all_rbindings (Key *map, const char *str, int len, List *binding) 
@@ -1985,11 +2003,11 @@ char *	bindctl (char *input)
 	if (!my_stricmp(listc, "SET")) {
 	    GET_FUNC_ARG(listc, input);
 
-	    RETURN_INT(bind_string(seq, listc, (*input ? input : NULL)));
+	    RETURN_INT(bind_string(current_keymap(), seq, listc, (*input ? input : NULL)));
 	}
 	if (!(seq = bind_string_compress(seq, &slen)))
 		RETURN_EMPTY;
-	key = find_sequence(head_keymap, seq, slen);
+	key = find_sequence(current_keymap(), seq, slen);
 	new_free(&seq);
 	if (!my_stricmp(listc, "GET")) {
 	    if (key == NULL || key->bound == NULL)
@@ -2018,11 +2036,11 @@ char *	bindctl (char *input)
 
 	seq = new_next_arg(input, &input);
 	if (seq == NULL) {
-	    bindctl_getmap(head_keymap, "", 0, &retval);
+	    bindctl_getmap(current_keymap(), "", 0, &retval);
 	    RETURN_STR(retval);
 	}
 	seq = bind_string_compress(seq, &slen);
-	key = find_sequence(head_keymap, seq, slen);
+	key = find_sequence(current_keymap(), seq, slen);
 
 	listc = new_next_arg(input, &input);
 	if (listc == NULL) {
@@ -2082,4 +2100,148 @@ void    help_topics_bind (FILE *f)
 	}
 }                                                                               
 #endif
+
+static void	switch_keymap (const char *new_keymap_str)
+{
+	int	cnt, loc;
+	Key *	new_keymap = NULL;
+	char *	new_km_str = LOCAL_COPY(new_keymap_str);
+
+	upper(new_km_str);
+	if (new_keymap_str)
+		new_keymap = find_alist_item(&keyspaces, new_km_str, &cnt, &loc);
+	if (!new_keymap)
+	{
+#if 0
+		yell("Keymap %s not found", new_km_str ? new_km_str : empty_string);
+#endif
+		new_keymap = find_alist_item(&keyspaces, "HEAD", &cnt, &loc);
+	}
+
+	add_to_alist(&keyspaces, "CURRENT", new_keymap);
+}
+
+static BUILT_IN_KEYBINDING(switch_keymap_kb)
+{
+	switch_keymap(string);
+}
+
+/************************************************************/
+static	char 	mousekeys[64];
+static	int	mousekey_pos = 0;
+
+static	void	handle_mouse_sequence (char *seq)
+{
+	long	button, column, row;
+	char	op;
+
+	button = strtoul(seq, &seq, 10);
+	if (seq && *seq && (*seq == ':' || *seq == ';'))
+	{
+		seq++;
+		column = strtoul(seq, &seq, 10);
+		if (seq && *seq && (*seq == ':' || *seq == ';'))
+		{
+			seq++;
+			row = strtoul(seq, &seq, 10);
+			if (seq && *seq && (*seq == 'm' || *seq == 'M'))
+			{
+				int	winref;
+
+				op = *seq;
+				winref = get_window_by_screen_row(last_input_screen, row);
+#if 0
+				yell("Button: %ld, column: %ld, row: %ld, char: %c, window: %d",
+					button, column, row, op, winref);
+#endif
+
+				if (button == 64) {
+					scrollback_backwards(0, NULL);
+				} else if (button == 65) {
+					scrollback_forwards(0, NULL);
+				} else if (button == 0 && op == 'M') {
+#if 0
+					yell("Making %d current", winref);
+#endif
+					make_visible_window_current(winref);
+				} else {
+					(void) 0;
+#if 0
+					yell("What is this?");
+#endif
+				}
+			}
+		}
+	}
+}
+
+
+static BUILT_IN_KEYBINDING(mousemachine)
+{
+	if (mousekey_pos >= 63)
+	{
+		mousekey_pos = 0;
+		switch_keymap("HEAD");
+	}
+	if (key)
+	{
+		mousekeys[mousekey_pos++] = (char)key;
+		mousekeys[mousekey_pos] = 0;
+		
+		if (key == 'm' || key == 'M')
+		{
+#if 0
+			yell("Accumulated %s", mousekeys);
+#endif
+			handle_mouse_sequence(mousekeys);
+			mousekey_pos = 0;
+			switch_keymap("HEAD");
+		}
+	}
+}
+
+
+static void	init_mousemachine (void)
+{
+	Key *mouse_keymap = construct_keymap(NULL);
+	add_to_alist(&keyspaces, "MOUSE", mouse_keymap);
+
+#define ADDBIND(x, y) add_binding(x, y, NULL);
+	ADDBIND("MOUSEMACHINE",	mousemachine);
+#undef ADDBIND
+
+	{
+#define BIND(x, y) bind_string(mouse_keymap, x, y, NULL);
+		int	c;
+		char	s[2];
+
+		/* bind characters 32 - 255 to SELF_INSERT. */
+		s[1] = '\0';
+		for (c = 32;c <= KEYMAP_SIZE - 1;c++) 
+		{
+			s[0] = (char )c;
+			BIND(s, "MOUSEMACHINE");
+		}
+	}
+#undef BIND
+}
+
+void    set_mouse_support (void *stuff)
+{       
+        VARIABLE *v;                    
+        int	value;
+        
+        v = (VARIABLE *)stuff;
+        value = v->integer;
+        
+	if (value) {
+		bind_string(head_keymap(), "^[[<", "KEYMAP", "MOUSE");
+		tputs_x("\e[?1000;1006;1015h");
+		term_flush();
+	} else {
+		bind_string(head_keymap(), "^[[<", "NOTHING", NULL);
+		tputs_x("\e[?1000;1006;1015l");
+		term_flush();
+	}
+}       
 

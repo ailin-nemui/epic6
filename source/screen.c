@@ -172,7 +172,7 @@ static	int		rite			(int, const char *);
 static	void		scroll_window		(int);
 static	void		add_to_window		(int, const char *);
 static	int		ok_to_output		(int);
-static	void		edit_codepoint		(uint32_t);
+static	void		user_input_codepoint 	(uint32_t key);
 static	ssize_t		read_esc_seq		(const char *, void *, int *);
 static	ssize_t		read_color_seq_new	(const char *, void *);
 static	ssize_t		read_color256_seq	(const char *, void *);
@@ -4042,7 +4042,7 @@ int	get_screen_bottom_window (int screen_)
  *  3. If this is the data fd for a screen,
  *	a. Establish the context for input (screen/window/server)
  *	b. Read all the bytes
- *	c. Publish the bytes one at a time through edit_char() which will 
+ *	c. Publish the bytes one at a time through user_input_byte() which will 
  *	   assemble them into codepoints (using iconv) and inject them.
  */
 static void 	do_screens (int fd)
@@ -4161,7 +4161,7 @@ static void 	do_screens (int fd)
 		else if ((n = dgets(screen->fdin, buffer, BIG_BUFFER_SIZE, -1)) > 0)
 		{
 			for (i = 0; i < n; i++)
-				translate_user_input((unsigned char)buffer[i]);
+				user_input_byte((unsigned char)buffer[i]);
 		}
 
 		/* An EOF/error error on a wserv screen kills that screen */
@@ -4180,13 +4180,25 @@ static void 	do_screens (int fd)
 } 
 
 /*
- * Each byte received by user input goes through this function.
- * This function needs to decide what to do -- do we accumulate
- * a UTF8 string, convert it to UCS32, and send it to edit_char()?
- * or do we translate it based on /set translation and send that
- * to edit_char()?  Perhaps we have to apply /set'ings, etc.
+ * user_input_byte - assemble bytes from the user into codepoints
+ *
+ * Arguments:
+ *	byte	- A byte of data received from the user
+ *
+ * Notes:
+ *	This function is the primary front end for receiving bytes
+ *	from the user.  If you are simulating user input, you need
+ *	to pass every byte through this function.
+ *
+ * 	This function transforms whatever the user is typing into
+ *	unicode codepoints and then injects them into the keystream
+ *
+ *	There are two common use cases:
+ *	  1. UTF8 - we accumulate it and convert it to a code point
+ *	  2. Codepages - we iconv() it from an 8 bit char to a code point
+ *	Then we send that code point on to user_codepoint().
  */
-void	translate_user_input (unsigned char byte)
+void	user_input_byte (unsigned char byte)
 {
 static	unsigned char	workbuf[32];
 static	size_t		workbuf_idx = 0;
@@ -4287,19 +4299,21 @@ static	int		never_warn_again = 0;
 		/* Clear the buffer BEFORE dispatching the results */
 		workbuf_idx = 0;
 		workbuf[0] = 0;
-		edit_codepoint(codepoint);
+		user_input_codepoint(codepoint);
 	}
 }
 
 /*
- * This should be called once for each codepoint we receive.
- * This means a utf8 string converted into UCS32.  We don't support
- * that quite yet, so this is just a placeholder.
+ * user_codepoint - Inject one unicode codepoint into the keybinding system
+ * 
+ * Arguments:
+ *	key 	- The unicode codepoint for the key the user just pressed
  *
- * edit_char: handles each character for an input stream.  Not too difficult
- * to work out.
+ * Whatever the user is typing, you must convert it to a unicode codepoint
+ * and then hand it to this function.  It will route it to the appropriate
+ * place.
  */
-static	void	edit_codepoint (uint32_t key)
+static	void	user_input_codepoint (uint32_t key)
 {
 	int	old_quote_hit;
 
@@ -4332,10 +4346,13 @@ static	void	edit_codepoint (uint32_t key)
 	 */
 	old_quote_hit = get_screen_quote_hit(last_input_screen);
 
-	set_screen_last_key(last_input_screen, handle_keypress(
-		get_screen_last_key(last_input_screen),
-		get_screen_last_press(last_input_screen), key,
-		get_screen_quote_hit(last_input_screen)));
+	set_screen_last_key(
+		last_input_screen, 
+		handle_keypress( get_screen_last_key(last_input_screen),
+				 get_screen_last_press(last_input_screen), 
+				 key,
+				 get_screen_quote_hit(last_input_screen) )
+	);
 	set_screen_last_press(last_input_screen, get_time(NULL));
 
 	if (old_quote_hit)

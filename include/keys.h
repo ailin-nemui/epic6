@@ -23,4 +23,6 @@ BUILT_IN_COMMAND(parsekeycmd);
 
 	char *	bindctl			(char *);
 
+	void    set_mouse_support 	(void *stuff);
+
 #endif /* __keys_h_ */

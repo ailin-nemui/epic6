@@ -441,8 +441,8 @@ void 	init_variables_stage1 (void)
 #define DEFAULT_MANGLE_OUTBOUND NULL
 	VAR(MANGLE_OUTBOUND,		STR,  set_mangle_outbound);
 	VAR(METRIC_TIME,		BOOL, reset_clock);
-	VAR(MIRC_BROKEN_DCC_RESUME,	BOOL, NULL);
 	VAR(MODE_STRIPPER,		BOOL, NULL);
+	VAR(MOUSE,			BOOL, set_mouse_support);
 	VAR(NEW_SERVER_LASTLOG_LEVEL,	STR,  set_new_server_lastlog_mask);
 	VAR(NOTIFY_LEVEL,		STR,  set_notify_mask);
 	VAR(NOTIFY_ON_TERMINATION,	BOOL, NULL);

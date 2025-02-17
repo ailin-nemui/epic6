@@ -1351,6 +1351,24 @@ static void 	remove_window_from_screen (int window_, int hide, int recalc)
 
 
 /* * * * * * * * * * * * SIZE AND LOCATION PRIMITIVES * * * * * * * * * * * */
+int	get_window_by_screen_row (int screen_, int row)
+{
+	int	window_ = 0;
+
+	if (screen_ < 0)
+		return -1;		/* Window is invisible.  Dont bother */
+
+	while (traverse_all_windows_on_screen2(&window_, screen_))
+	{
+		Window	*w = NULL;
+
+		w = get_window_by_refnum_direct(window_);
+		if (w->top < row && w->bottom > row)
+			return w->refnum;
+	}
+	return -1;
+}
+
 /*
  * recalculate_window_positions: This runs through the window list and
  * re-adjusts the top and bottom fields of the windows according to their
@@ -2821,7 +2839,15 @@ static void 	show_window (int window_)
 	set_screens_current_window(s_, window_);
 }
 
+/* This belongs somewhere else, but i put it here in a hurry */
+void	make_visible_window_current (int window_)
+{
+	int	s_;
 
+	s_ = get_window_screennum(window_);
+	make_window_current_by_refnum(window_);
+	set_screens_current_window(s_, window_);
+}
 
 
 /* * * * * * * * * * * * * GETTING WINDOWS AND WINDOW INFORMATION * * * * */

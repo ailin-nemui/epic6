@@ -23,7 +23,7 @@
 	void		fire_wait_prompt		(uint32_t);
 	void		fire_normal_prompt		(const char *);
 	void		add_to_screen			(const char *);
-	void		translate_user_input		(unsigned char byte);
+	void    	user_input_byte			(unsigned char byte);
 	void		create_new_screen		(void);
 	void		kill_screen			(int);
 

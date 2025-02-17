@@ -41,9 +41,6 @@
 static	void	check_alist_size (alist *list);
 	void 	move_alist_items (alist *list, int start, int end, int dir);
 
-alist **all_alists = NULL;
-int	all_alists_size = 0;
-
 /*
  * Returns an entry that has been displaced, if any.
  * XXX 'item' shall be replaced with 'char *name' and 'void *data'
