@@ -33,7 +33,7 @@ Things to support
 CAP/SASL/ZNC
 Emojis (incl ZWJ)
 *Unlimited input line
-Mouse support
+*Mouse support
 *PBKDF
 CHACHA20
 *Auto-ssl for ssl ports
@@ -44,12 +44,6 @@ Arena allocation
 Actual bugs
 ================
 * /SET NEW_SERVER_LASTLOG_LEVEL does not work properly because it doesn't check window servers.
-* 
-[ 4:05PM] <fusion> fecho Users on $rgb(#2C4267)\[$rgb(#82E8E8)$1$rgb(#2C4267)\]$chr(3): 
-[ 4:05PM] <fusion> this consumes the # from $1 (the channel in on 366) 
-[ 4:09PM] <fusion> /eval echo $rgb(#2C4267)#derp -> "derp" 
-[ 4:13PM] <fusion> actually 
-[ 4:23PM] <fusion> it looks like ircnet might allow numbers to start nicknames so $rgb() happily parses $2 from on 333 as well? 
 
 THE CHANGELOG SINCE THE LAST RELEASE:
 -------------------------------------
@@ -135,3 +129,5 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Implement multiple keymap sets
 * Add /bind <X> KEYMAP <keymap>  -- for now, only HEAD and MOUSE work.
 * Add /set mouse, turn on mouse click to focus and scrollwheel.
+* Create an "on exit" internal api to shadow /on exit
+* Register an "on exit" callback to turn off mouse mode

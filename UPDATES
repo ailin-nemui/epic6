@@ -1,5 +1,15 @@
 EPIC6-0.2
 
+*** News 02/17/2024 [3018] -- Mouse support (click-to-focus, scrolling)
+	If you /SET MOUSE ON and if your terminal emulator cooperates,
+	EPIC will support:
+	  1. Clicking on a window will switch to that window
+	  2. Using the scrollwheel will scroll the _current input window_
+	When mouse support is turned on, other things you do with your 
+	mouse -- like selecting text -- will probably not work.  Some 
+	emulators will let you do that if you're holding the shift key.
+	I haven't tested this at all with multiple screens.
+
 *** News 12/12/2024 [3008] -- New function $token(<lval> <string>) 
 	By special request of fusion!
 

@@ -52,7 +52,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3018;
+const unsigned long	commit_id = 3019;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -231,6 +231,18 @@ static		char	switch_help[] =
 
 
 
+typedef void (*AtExitFunction) (void);
+AtExitFunction	at_exit_functions[128];
+int	next_at_exit_function_refnum = 0;
+
+void	at_irc_exit (AtExitFunction f)
+{
+	if (next_at_exit_function_refnum >= 127)
+		return;
+
+	at_exit_functions[next_at_exit_function_refnum++] = f;
+}
+
 static SIGNAL_HANDLER(sig_irc_exit)
 {
 	irc_exit (1, NULL);
@@ -307,6 +319,9 @@ void	irc_exit (int really_quit, const char *format, ...)
 	flush_all_symbols();
 	swap_window_display(old_window_display);
 
+	for (int i = 0; i < next_at_exit_function_refnum; i++)
+		at_exit_functions[i]();
+		
 	printf("\r");
 	fflush(stdout);
 

@@ -153,6 +153,10 @@ extern const	char	compile_cflags[];
 extern const	char	compile_libs[];
 extern const	char	git_commit[];
 
+	typedef void (*AtExitFunction) (void);
+#define AT_EXIT_FUNCTION(x) void x (void)
+	void	at_irc_exit		(AtExitFunction);
+
 /* irc.c's extern functions */
 	void	io 			(const char *);
 	void	irc_exit 		(int, const char *, ...) /*__A(2)*/ __N;

@@ -148,8 +148,8 @@ static Key *	construct_keymap 	(Key *);
 static int	clean_keymap 		(Key *);
 static char *	bind_string_compress 	(const char *, int *);
 static char *	bind_string_decompress 	(char *, const char *, int);
-static int	bind_string 		(Key *, const char *, const char *, char *);
-static int	bind_compressed_string 	(Key *, char *, int, const char *, char *);
+static int	bind_string 		(Key *, const char *, const char *, const char *);
+static int	bind_compressed_string 	(Key *, char *, int, const char *, const char *);
 static Key *	find_sequence 		(Key *, const char *, int);
 
 static void	remove_bindings_recurse (Key **);
@@ -1094,7 +1094,7 @@ static char *	bind_string_decompress (char *dst, const char *src, int srclen)
  * Notes:
  *	This function is only used by start-up stuff.
  */
-static	int	bind_string (Key *keymap, const char *sequence, const char *bindstr, char *args) 
+static	int	bind_string (Key *keymap, const char *sequence, const char *bindstr, const char *args) 
 {
 	char *	cs;
 	int	slen, 
@@ -1131,7 +1131,7 @@ static	int	bind_string (Key *keymap, const char *sequence, const char *bindstr, 
  *		* 'bindstr' is not a valid bind action.
  *	1	The key sequence was bound to the action
  */ 
-static int	bind_compressed_string (Key *map_, char *keyseq, int slen, const char *bindstr, char *args) 
+static int	bind_compressed_string (Key *map_, char *keyseq, int slen, const char *bindstr, const char *args) 
 {
 	char *s;
 	Key *node;
@@ -2140,6 +2140,7 @@ static	void	handle_mouse_sequence (char *seq)
 	{
 		seq++;
 		column = strtoul(seq, &seq, 10);
+		(void)column;		/* Be quiet, clang */
 		if (seq && *seq && (*seq == ':' || *seq == ';'))
 		{
 			seq++;
@@ -2200,6 +2201,11 @@ static BUILT_IN_KEYBINDING(mousemachine)
 	}
 }
 
+static void	cleanup_mousemachine (void)
+{
+	tputs_x("\e[?1000;1006;1015l");
+	term_flush();
+}
 
 static void	init_mousemachine (void)
 {
@@ -2224,6 +2230,8 @@ static void	init_mousemachine (void)
 		}
 	}
 #undef BIND
+
+	at_irc_exit(cleanup_mousemachine);
 }
 
 void    set_mouse_support (void *stuff)
@@ -2244,4 +2252,5 @@ void    set_mouse_support (void *stuff)
 		term_flush();
 	}
 }       
+
 
