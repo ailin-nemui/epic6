@@ -110,6 +110,7 @@ alias mail.check {
 	    continue;
 	}
 	if (word(11 $stat) > word($i $mail.times)) {
+	    set status_user29  (Mail);
 	    echo [mail] new mail in $folder \($strftime($word(11 $stat) %d/%m/%Y %H:%M:%S)\);
 	    @mail.times = chngw($i $word(11 $stat) $mail.times);
 	};
@@ -144,4 +145,3 @@ for xx in ($mail.folders) {
     };
 };
 
-# vi:set ts=8 sts=4 sw=4 tw=79 syntax=off ai smartindent:

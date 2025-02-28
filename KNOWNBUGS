@@ -132,3 +132,5 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Create an "on exit" internal api to shadow /on exit
 * Register an "on exit" callback to turn off mouse mode
 * (<- 2156) Fix/rewrite $uname() [rb sob]
+* Check for/use libsodium in configure.
+* Add the overlooked $serverctl(GET|SET <ref> SERVER_STATUS) (rb fusion)

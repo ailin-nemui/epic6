@@ -194,6 +194,7 @@ dnl Look for common libraries that have common functions
 AC_CHECK_LIB(m, pow, LIBS="$LIBS -lm",)
 AC_CHECK_LIB(rt, clock_gettime, LIBS="$LIBS -lrt",)
 AC_CHECK_LIB(sqlite, sqlite_open, LIBS="$LIBS -lsqlite",)
+AC_CHECK_LIB(sodium, sodium_init, LIBS="$LIBS -lsodium",)
 AC_CHECK_LIB(regex, regcomp, LIBS="$LIBS -lregex",)
 AC_CHECK_LIB(ncurses, setupterm, LIBS="-lncurses $LIBS",)
 

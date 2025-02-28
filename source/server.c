@@ -4659,6 +4659,9 @@ char 	*serverctl 	(char *input)
 		if (!my_strnicmp(listc, "AWAY", len)) {
 			ret = get_server_away_message(refnum);
 			RETURN_STR(ret);
+		} else if (!my_strnicmp(listc, "AWAY_STATUS", len)) {
+			num = get_server_away_status(refnum);
+			RETURN_INT(num);
 		} else if (!my_strnicmp(listc, "MAXCACHESIZE", len)) {
 			num = get_server_max_cached_chan_size(refnum);
 			RETURN_INT(num);
@@ -4825,6 +4828,11 @@ char 	*serverctl 	(char *input)
 		len = strlen(listc);
 		if (!my_strnicmp(listc, "AWAY", len)) {
 			set_server_away_message(refnum, input);
+			RETURN_INT(1);
+		} else if (!my_strnicmp(listc, "AWAY_STATUS", len)) {
+			int	value;
+			GET_INT_ARG(value, input);
+			set_server_away_status(refnum, value);
 			RETURN_INT(1);
 		} else if (!my_strnicmp(listc, "MAXCACHESIZE", len)) {
 			int	size;
