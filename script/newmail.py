@@ -102,7 +102,7 @@ def set_mail_on(args):
     # Look for maildir...
     try:
         maildir = None
-        if os.environ["MAILDIR"] and os.path.isdir(os.environ["MAILDIR"]):
+        if "MAILDIR" in os.environ and os.environ["MAILDIR"] and os.path.isdir(os.environ["MAILDIR"]):
            for sd in ["new", "cur"]:
                d = "%s/%s" % (os.environ["MAILDIR"], sd)
                if not os.path.isdir(d):
@@ -116,11 +116,11 @@ def set_mail_on(args):
     # Look for mbox...
     try:
         mbox = None
-        if os.environ["MAIL"] and os.path.isfile(os.environ["MAIL"]):
+        if "MAIL" in os.environ and os.environ["MAIL"] and os.path.isfile(os.environ["MAIL"]):
             if os.path.isfile(os.environ["MAIL"]):
                 mbox = os.environ["MAIL"]
 
-        if mbox is None and os.environ["LOGNAME"] is not None:
+        if mbox is None and LOGNAME in "os.environ" and os.environ["LOGNAME"] is not None:
             for m in ["/var/spool/mail", "/usr/spool/mail", "/var/mail", "/usr/mail"]:
                 f = "%s/%s" % (m, os.environ["LOGNAME"])
                 if os.path.isfile(f):
