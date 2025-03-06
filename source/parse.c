@@ -536,13 +536,11 @@ static void	p_pong (const char *from, const char *comm, const char **ArgList)
 
 	/*
 	 * In theory, we could try to use PING/PONG messages to 
-	 * do /redirect and /wait, but we don't.  When the day comes
+	 * do /wait, but we don't.  When the day comes
 	 * that we do, this code will do that for us.
 	 */
 	if (!my_stricmp(from, get_server_itsname(from_server)))
 	{
-		if (check_server_redirect(from_server, pong_message))
-			return;
 		if (check_server_wait(from_server, pong_message))
 			return;
 	}

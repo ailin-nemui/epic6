@@ -76,7 +76,7 @@
  * CTCP Handlers (whether in C or ircII take 4 arguments:
  *	$0 - The sender of the CTCP
  *	$1 - The receiver of the CTCP (ie, you, or a channel)
- *	$2 - The kind of CTCP (ie, ACTION or VERSION or DCC)
+ *	$2 - The kind of CTCP (ie, ACTION or VERSION)
  *	$3 - Arguments to the CTCP (not all CTCPs have arguments - can be NULL)
  */
 typedef char *(*CTCP_Handler) (const char *, const char *, const char *, char *);
@@ -215,7 +215,7 @@ CTCP_HANDLER(do_atmosphere)
  * split_CTCP - Extract a CTCP out of a message body
  *
  * Arguments:
- *	raw_message -- A message, either a PRIVMSG, NOTICE, or DCC CHAT.
+ *	raw_message -- A message, either a PRIVMSG, NOTICE, or raw socket
  *			- If the message contains a CTCP, then the string
  *			  will be truncated to the part before the CTCP.
  *			- If the message does not contain a CTCP, it is
@@ -263,8 +263,8 @@ static int split_CTCP (char *raw_message, char *ctcp_dest, char *after_ctcp)
  *
  * Arguments:
  *	request - Am i processing a request or a response?
- *		   1 = This is a PRIVMSG or DCC CHAT (a request)
- *		   0 = This is a NOTICE (a response)
+ *		   1 = This is a PRIVMSG or a request
+ *		   0 = This is a NOTICE or a response
  *	from	- Who sent the CTCP
  *	to	- Who received the CTCP (nick, channel, wall)
  *	str	- The message we received. (may be modified)
@@ -481,7 +481,7 @@ char *	do_ctcp (int request, const char *from, const char *to, char *str)
 			}
 
 			/*
-			 * A CTCP that does not return a value but is "special" (/me, /dcc)
+			 * A CTCP that does not return a value but is "special" (ie, /me)
 			 * is considered "handled"
 			 */
 			if (CTCP(i)->flag & CTCP_SPECIAL)
@@ -553,7 +553,7 @@ char *	do_ctcp (int request, const char *from, const char *to, char *str)
  *
  * Notes:
  *	Because we use send_text(), the following things happen automatically:
- *	  - We can CTCP any target, including DCC CHATs
+ *	  - We can CTCP any target, including raw sockets
  *	  - All encryption is honored
  *	We also honor all appropriate /encode-ings
  *
@@ -674,8 +674,8 @@ static	time_t	last_ctcp_reply = 0;
  * 
  *   $ctcpctl(SET <ctcp-name> SPECIAL 1|0)
  *	A CTCP can be "special", meaning it is entirely self-contained and acts 
- *	as a sink of data.  The two special CTCPs are CTCP ACTION (/me) and 
- *	CTCP DCC (/dcc).  You can make your own special DCCs, but be careful.
+ *	as a sink of data.  The special CTCPs are CTCP ACTION (/me)
+ *	You can make your own special CTCPs, but be careful.
  *
  *   $ctcpctl(SET <ctcp-name> REPLACE_ARGS 1|0)
  *      A CTCP handler that returns a value is either a "replacer" or a "rewriter".

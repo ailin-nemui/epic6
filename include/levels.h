@@ -19,7 +19,6 @@ extern int	LEVEL_WALLOP;
 extern int	LEVEL_OPNOTE;
 extern int	LEVEL_SNOTE;
 extern int	LEVEL_ACTION;
-extern int	LEVEL_DCC;
 extern int	LEVEL_CTCP;
 extern int	LEVEL_INVITE;
 extern int	LEVEL_JOIN;

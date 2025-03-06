@@ -7103,9 +7103,6 @@ BUILT_IN_FUNCTION(function_levelwindow, input)
 	while (traverse_all_windows2(&window))
 	{
 	    get_window_mask(window, &window_mask);
-	    if (mask_isset(&mask, LEVEL_DCC) && mask_isset(&window_mask, LEVEL_DCC))
-		RETURN_INT(get_window_user_refnum(window));
-
 	    if (get_window_server(window) != server)
 		continue;
 
@@ -7795,7 +7792,6 @@ void	help_topics_functions(FILE *);
 void	help_topics_scripts(FILE *);
 void	help_topics_bind(FILE *);
 void	help_topics_ctcp(FILE *);
-void	help_topics_dcc(FILE *);
 void	help_topics_on(FILE *);
 void	help_topics_set(FILE *);
 void	help_topics_window(FILE *);
@@ -7846,7 +7842,6 @@ BUILT_IN_FUNCTION(function_help_topics, word)
 	help_topics_scripts(f);
 	help_topics_bind(f);
 	help_topics_ctcp(f);
-	help_topics_dcc(f);
 	help_topics_on(f);
 	help_topics_set(f);
 	help_topics_window(f);

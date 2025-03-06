@@ -3055,8 +3055,7 @@ size_t 	output_with_count (const char *str1, int clreol, int output)
 
 /*
  * add_to_screen: This adds the given null terminated buffer to the screen.
- * That is, it routes the line to the appropriate window.  It also handles
- * /redirect handling.
+ * That is, it routes the line to the appropriate window. 
  */
 void 	add_to_screen (const char *buffer)
 {
@@ -3137,7 +3136,7 @@ void 	add_to_screen (const char *buffer)
 		while (traverse_all_windows2(&w))
 		{
 		    /* Must be for our server */
-		    if (get_who_level() != LEVEL_DCC && (get_window_server(w) != from_server))
+		    if (get_window_server(w) != from_server)
 			continue;
 
 		    /* Must be on the nick list */
@@ -3173,12 +3172,6 @@ void 	add_to_screen (const char *buffer)
 		/*
 		 * Check for /WINDOW LEVELs that apply
 		 */
-		if (get_who_level() == LEVEL_DCC && 
-			mask_isset(&window_mask, get_who_level()))
-		{
-			add_to_window(w, buffer);
-			return;
-		}
 		if ((from_server == get_window_server(w) || from_server == NOSERV)
 			&& mask_isset(&window_mask, get_who_level()))
 		{
@@ -3244,12 +3237,6 @@ static void 	add_to_window (int window_, const char *str)
 	intmax_t	refnum;
 	const char *	rewriter = NULL;
 	int		mangler = 0;
-
-	if (get_server_redirect(get_window_server(window_)))
-		if (redirect_text(get_window_server(window_),
-			          get_server_redirect(get_window_server(window_)),
-				  str, NULL, 1))
-			return;
 
 	if (!privileged_output)
 	{

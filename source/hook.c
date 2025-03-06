@@ -151,14 +151,6 @@ Hookables hook_function_templates[] =
 	{ "CTCP",		NULL,	4,	0,	0,	NULL, 0 },
 	{ "CTCP_REPLY",		NULL,	4,	0,	0,	NULL, 0 },
 	{ "CTCP_REQUEST",	NULL,	4,	0,	0,	NULL, 0 },
-	{ "DCC_ACTIVITY",	NULL,	1,	0,	0,	NULL, 0 },
-	{ "DCC_CHAT",		NULL,	2,	0,	0,	NULL, 0 },
-        { "DCC_CONNECT",        NULL,   2,      0,      0,	NULL, 0 },
-	{ "DCC_LIST",		NULL,	8,	0,	0,	NULL, 0 },
-        { "DCC_LOST",           NULL,   2,      0,      0,	NULL, 0 },
-	{ "DCC_OFFER", 		NULL,	2,	0,	0,	NULL, 0 },
-	{ "DCC_RAW",		NULL,	3,	0,	0,	NULL, 0 },
-        { "DCC_REQUEST",        NULL,   4,      0,      0,	NULL, 0 },
 	{ "DISCONNECT",		NULL,	1,	0,	0,	NULL, 0 },
         { "ENCRYPTED_NOTICE",   NULL,   3,      0,      0,	NULL, 0 },
         { "ENCRYPTED_PRIVMSG",  NULL,   3,      0,      0,	NULL, 0 },
@@ -209,7 +201,6 @@ Hookables hook_function_templates[] =
 	{ "REDIRECT",		NULL,	2,	0,	HF_NORECURSE,	NULL, 0 },
 	{ "SEND_ACTION",	NULL,	2,	0,	HF_NORECURSE,	NULL, 0 },
 	{ "SEND_CTCP",		NULL,	3,	0,	HF_NORECURSE,	NULL, 0 },
-	{ "SEND_DCC_CHAT",	NULL,	2,	0,	HF_NORECURSE,	NULL, 0 },
 	{ "SEND_EXEC",		NULL,	2,	0,	HF_NORECURSE,	NULL, 0 },
 	{ "SEND_MSG",		NULL,	2,	0,	HF_NORECURSE,	NULL, 0 },
 	{ "SEND_NOTICE",	NULL,	2,	0,	HF_NORECURSE,	NULL, 0 },
@@ -1610,7 +1601,11 @@ int hook_find_free_serial(int dir, int from, int which) {
 /* get_noise_id() returns identifer for noise chr */
 static int	get_noise_id (char *chr)
 {
-	int n;
+	int 	n;
+
+	if (!chr)
+		return -1;
+
 	n = atol(chr);
 	if (n == 0 && chr[0] != '0') 
 		for (n = 0; n < noise_level_num; n++)

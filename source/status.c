@@ -151,6 +151,7 @@ struct status_formats status_expandos[] = {
 { 0, 'H', status_hold,		NULL,			NULL },
 { 0, 'I', status_insert_mode,   NULL,			NULL },
 { 0, 'K', status_scrollback,	NULL,			NULL },
+{ 0, 'M', status_mail,		NULL,			NULL },
 { 0, 'N', status_nickname,	&nick_format,		&STATUS_NICKNAME_VAR },
 { 0, 'O', status_overwrite_mode,NULL,			NULL },
 { 0, 'P', status_position,      NULL,			NULL },
@@ -1474,14 +1475,6 @@ STATUS_FUNCTION(status_voice)
 }
 
 /*
- * Displays how much mail we think you have.
- */
-STATUS_FUNCTION(status_mail)
-{
-	return empty_string;
-}
-
-/*
  * Display if "insert mode" is ON for the input line.
  */
 STATUS_FUNCTION(status_insert_mode)
@@ -1615,6 +1608,16 @@ STATUS_FUNCTION(status_holdmode)
 	    }
 	}
 	return empty_string;
+}
+
+STATUS_FUNCTION(status_mail)
+{
+	const char *text;
+
+	if (!(text = get_string_var(STATUS_MAIL_VAR)))
+		text = empty_string;
+
+	return text;
 }
 
 STATUS_FUNCTION(status_oper)

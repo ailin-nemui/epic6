@@ -2105,12 +2105,15 @@ static void	switch_keymap (const char *new_keymap_str)
 {
 	int	cnt, loc;
 	Key *	new_keymap = NULL;
-	char *	new_km_str = LOCAL_COPY(new_keymap_str);
+	char *	new_km_str;
 
+	if (!new_keymap_str)
+		return;
+
+	new_km_str = LOCAL_COPY(new_keymap_str);
 	upper(new_km_str);
-	if (new_keymap_str)
-		new_keymap = find_alist_item(&keyspaces, new_km_str, &cnt, &loc);
-	if (!new_keymap)
+
+	if (!(new_keymap = find_alist_item(&keyspaces, new_km_str, &cnt, &loc)))
 	{
 #if 0
 		yell("Keymap %s not found", new_km_str ? new_km_str : empty_string);

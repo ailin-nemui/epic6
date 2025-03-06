@@ -3665,8 +3665,6 @@ int	renormalize_window_levels (int refnum, Mask mask)
  * makes sure that that level setting is unused by any other window. Thus
  * only one window in the system can be set to a given level.  This only
  * revamps levels for windows with servers matching the given window 
- * it also makes sure that only one window has the level `DCC', as this is
- * not dependant on a server.
  */
 static void 	revamp_window_masks (int refnum)
 {
@@ -3691,7 +3689,7 @@ static void 	revamp_window_masks (int refnum)
 		if (tmp == window)
 		    continue;
 		if (mask_isset(&tmp->window_mask, i))
-		    if (i == LEVEL_DCC || tmp->server == window->server)
+		    if (tmp->server == window->server)
 			mask_unset(&tmp->window_mask, i);
 	    }
 	}
@@ -3766,10 +3764,6 @@ static void	adjust_context_windows (int old_win, int new_win)
  */
 int	real_message_from (const char *who, int level, const char *file, int line)
 {
-	/* XXX - Ideally we wouldn't do this here. */
-	if (who && *who == '=')
-		level = LEVEL_DCC;
-
 	if (context_max < 0)
 	{
 		context_max = 32;
@@ -6126,9 +6120,7 @@ WINDOWCMD(lastlog_mask)
  * This changes the types of output that will appear in the specified window.
  * Note that for the given set of windows connected to a server, each level
  * may only appear once in that set.  When you add a level to a given window,
- * then it will be removed from whatever window currently holds it.  The
- * exception to this is the "DCC" level, which may only be set to one window
- * for the entire client.
+ * then it will be removed from whatever window currently holds it.  
  */
 WINDOWCMD(level)
 {

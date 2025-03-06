@@ -108,7 +108,6 @@ const	AI *		next_addr;		/* The next one to try upon failure */
 	char *		quit_message;		/* Where we stash a quit message */
 	int		autoclose;		/* Whether the server is closed when
 					   	   there are no windows on it */
-	char *		redirect;		/* Who we're redirecting to here */
 
 		/* Metadata about activity */
         char *          invite_channel;
@@ -264,10 +263,6 @@ const	char *	get_server_nickname		(int);
 const	char *	get_pending_nickname		(int);
 	void	accept_server_nickname		(int, const char *);
 	void   nickname_change_rejected		(int, const char *);
-
-	void	set_server_redirect		(int, const char *);
-const	char *	get_server_redirect		(int);
-	int	check_server_redirect		(int, const char *);
 
 const	char*	get_server_005			(int, const char *);
 	void	set_server_005			(int, char*, const char*);

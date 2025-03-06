@@ -274,7 +274,7 @@ int	inet_vhostsockaddr (int family, int port, const char *wanthost, SSu *storage
 	 * so we punt if there is no virtual host name.  But if port is NOT zero, 
 	 * then the caller expects us to return a sockaddr they can bind() to, 
 	 * so we need to use LocalIPv(4|6)HostName, even if it's NULL.  If you 
-	 * return *len == 0 for port != -1, then /dcc breaks.
+	 * return *len == 0 for port != -1, then listening sockets break.
 	 */
 	if ((family == AF_UNIX) 
          || (family == AF_INET && port == -1 && empty(wanthost) && LocalIPv4HostName == NULL) 

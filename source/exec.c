@@ -350,8 +350,6 @@ static void 	handle_filedesc (Process *proc, int *fd, int hook_nonl, int hook_nl
 	utf8_text = inbound_recode(logical_name, proc->server_refnum, empty_string, exec_buffer, &extra);
 
 	l = set_message_from_for_process (proc);
-	if (proc->redirect && proc->who) 
-	     redirect_text(proc->server_refnum, proc->who, utf8_text, proc->redirect, 1);
 
 	if (callback)
 	    call_lambda_command("EXEC", callback, utf8_text);
@@ -1288,7 +1286,7 @@ static int	start_process (Process *proc)
  *	-MSG target
  *		Directs all output from the process to be sent to the "target"
  *		Target is anything you can send a message to: a nick or channel on irc,
- *		a DCC Chat, a window, a logfile, or even another exec process.
+ *		a raw socket, a window, a logfile, or even another exec process.
  *		If sent over IRC, it will be sent as a PRIVMSG.
  *	-NOTICE target
  *		Directs all output from the process to be sent to the "target"

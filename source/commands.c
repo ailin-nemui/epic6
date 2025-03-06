@@ -121,7 +121,6 @@ static	void	e_quit 		(const char *, char *, const char *);
 static	void	e_topic 	(const char *, char *, const char *);
 static	void	e_wallop 	(const char *, char *, const char *);
 static	void	evalcmd 	(const char *, char *, const char *);
-static	void	flush 		(const char *, char *, const char *);
 static	void	hookcmd		(const char *, char *, const char *);
 static	void	info 		(const char *, char *, const char *);
 static	void	inputcmd 	(const char *, char *, const char *);
@@ -135,7 +134,6 @@ static	void	pretend_cmd	(const char *, char *, const char *);
 static  void    push_cmd 	(const char *, char *, const char *);
 static	void	query		(const char *, char *, const char *);
 static	void	quotecmd	(const char *, char *, const char *);
-static	void	redirect 	(const char *, char *, const char *);
 static	void	returncmd	(const char *, char *, const char *);
 static	void	send_2comm 	(const char *, char *, const char *);
 static	void	send_comm 	(const char *, char *, const char *);
@@ -220,7 +218,6 @@ static	IrcCommand irc_command[] =
 	{ "EXIT",	e_quit		},
         { "FE",         fe		}, /* if.c */
         { "FEC",        fe              }, /* if.c */
-	{ "FLUSH",	flush		},
         { "FOR",        forcmd		}, /* if.c */
 	{ "FOREACH",	foreach		}, /* if.c */
 	{ "HOOK",	hookcmd		},
@@ -272,7 +269,6 @@ static	IrcCommand irc_command[] =
 	{ "QUOTE",	quotecmd	},
 	{ "RBIND",	rbindcmd	}, /* keys.c */
 	{ "RECONNECT",  reconnectcmd    }, /* server.c */
-	{ "REDIRECT",	redirect	},
 	{ "REHASH",	send_comm	},
 	{ "REPEAT",	repeatcmd	},
 	{ "RESTART",	send_comm	},
@@ -511,7 +507,7 @@ BUILT_IN_COMMAND(ctcp)
 			return;
 		}
 		else if (get_server_doing_privmsg(from_server))
-			request = 0;		/* XXX What about dcc chat? */
+			request = 0;		/* XXX What about sockets? */
 		else
 			request = 1;
 
@@ -1258,14 +1254,6 @@ BUILT_IN_COMMAND(xevalcmd)
 BUILT_IN_COMMAND(evalcmd)
 {
 	runcmds(args, subargs);
-}
-
-/* flush: flushes all pending stuff coming from the server */
-BUILT_IN_COMMAND(flush)
-{
-	say("Standby, Flushing server output...");
-	flush_server(from_server);
-	say("Done");
 }
 
 BUILT_IN_COMMAND(funny_stuff)
@@ -2398,51 +2386,6 @@ BUILT_IN_COMMAND(quotecmd)
 		send_to_aserver(refnum, "%s", args);
 }
 
-BUILT_IN_COMMAND(redirect)
-{
-	const char	*who;
-
-	if ((who = next_arg(args, &args)) == NULL)
-	{
-		say("%s", "Usage: /REDIRECT <nick|channel|%process|/command|@filedescriptor|\"|0> <cmd>");
-		return;
-	}
-
-	if (from_server == NOSERV)
-	{
-		say("You may not use /REDIRECT here.");
-		return;
-	}
-
-	if (!strcmp(who, "*") && !(who = get_window_echannel(0)))
-	{
-		say("Must be on a channel to redirect to '*'");
-		return;
-	}
-
-	if (is_me(from_server, who))
-	{
-		say("You may not redirect output to yourself");
-		return;
-	}
-
-	/*
-	 * Turn on redirect, and do the thing.
-	 */
-	set_server_redirect(from_server, who);
-	set_server_sent(from_server, 0);
-	runcmds(args, subargs);
-
-	/*
-	 * If we've queried the server, then we wait for it to
-	 * reply, otherwise we're done.
-	 */
-	if (get_server_sent(from_server))
-		send_to_server("***%s", who);
-	else
-		set_server_redirect(from_server, NULL);
-}
-
 BUILT_IN_COMMAND(squitcmd)
 {
 	char *server = NULL;
@@ -2972,11 +2915,12 @@ BUILT_IN_COMMAND(xtypecmd)
 	return;
 }
 
+/*********************************************************************/
 /*
- * 
- * The rest of this file is the stuff that is not a command but is used
- * by the commands in this file.  These are considered to be "overhead".
- *
+ * Note to the reader:
+ * The rest of this file implements the core parts of the ircII language.
+ * Blocks, statements, arglists, sending messages -- everything that you 
+ * do is built on top of this foundation.
  */
 
 /*
@@ -3000,71 +2944,36 @@ int	command_exist (char *command)
 	return 1;
 }
 
-int	redirect_text (int to_server, const char *nick_list, const char *text, char *command, int hook)
-{
-static	int 	recursion = 0;
-	int 	old_from_server = from_server;
-	int	allow = 0;
-	int	retval;
 
-	from_server = to_server;
-	if (recursion++ == 0)
-		allow = do_hook(REDIRECT_LIST, "%s %s", nick_list, text);
-
-	/* Suppress output */
-	if (strcmp(nick_list, "0") == 0 || *nick_list == '@' || *nick_list == '/') 
-		retval = 1;
-	else
-		retval = 0;
-
-	/* 
-	 * Dont hook /ON REDIRECT if we're being called recursively
-	 */
-	if (allow)
-		send_text(from_server, nick_list, text, command, hook, 0);
-
-	recursion--;
-	from_server = old_from_server;
-	return retval;
-}
-
-
+/*********** Sending messages **************************************/
 struct target_type
 {
-	char *nick_list;
-	const char *message;
-	int  hook_type;
-	const char *command;
-	const char *format;
-	int  mask;
+	char *		nick_list;
+	const char *	message;
+	int  		hook_type;
+	const char *	command;
+	const char *	format;
+	int  		mask;
 };
 
 /*
- * The whole shebang.
+ * chonk_message - divide a large message into a smaller message
  *
- * The message targets are parsed and collected into one of 4 buckets.
- * This is not too dissimilar to what was done before, except now i 
- * feel more comfortable about how the code works.
+ * Arguments:
+ *	text	- (INPUT) A message being sent.  It is possibly very long
+ *	chonk	- (INPUT) How many bytes into 'text' to start counting.
+ *		  (OUTPUT) The last byte of the next message
+ * 
+ * Return value:
+ *	0	- You are at the end of the string - stop chonking
+ *	1	- Chonk was updated.  It now points at the start of the next 
+ *		  message
  *
- * Bucket 0 -- Unencrypted PRIVMSGs to nicknames
- * Bucket 1 -- Unencrypted PRIVMSGs to channels
- * Bucket 2 -- Unencrypted NOTICEs to nicknames
- * Bucket 3 -- Unencrypted NOTICEs to channels
- *
- * All other messages (encrypted, and DCC CHATs) are dispatched 
- * immediately, and seperately from all others.  All messages that
- * end up in one of the above mentioned buckets get sent out all
- * at once.
- *
- * XXXX --- Its super super important that you *never* call yell(),
- * put_it(), or anything like that which would end up calling add_to_window().
- * add_to_window() can get in an infinite cycle with send_text() if the
- * user is /redirect'ing.  send_text() tries to prevent the user from being
- * able to send stuff to the window by never hooking /ONs if we're already
- * recursing -- so whoever is hacking on this code, its also up to you to 
- * make sure that YOU dont send anything to the screen without checking first!
+ * Notes:
+ *   Although it looks like you would just call this without resetting chonk,
+ *   you don't really want to do that.  Instead   text += chonk, 
+ *   reset chonk to 0 and call chonk_message() until it returns 0.
  */
-/* SENDTEXT -- Don't delete this, I search for it! */
 static int	chonk_message (const char *text, size_t *chonk)
 {
 	size_t	text_len;
@@ -3107,6 +3016,26 @@ static int	chonk_message (const char *text, size_t *chonk)
 	}
 }
 
+/* SENDTEXT -- Don't delete this, I search for it! */
+/*
+ * send_text - Send a message to any other target (including irc)
+ *
+ * Arguments:
+ *	server 	     - The server whose context this message is being sent in
+ *	nick_list    - One or more comma-separated targets to send the message
+ *	text	     - The message to send -- see "already_ecoded"
+ *		       - If it is an ordinary text message, it must be in UTF-8
+ *			 and already_encoded must be 0, and this function will
+ *			 recode it for each receiver.
+ *		       - If it is binary data, or is wrapped in a binary format,
+ *			 then you must have already done the recoding and 
+ *			 already_encoded must be 1
+ *      command      - Either "PRIVMSG" or "NOTICE" (for irc targets)
+ *      hook         - Whether to throw /on send_* or not for these messages
+ *                     [we suppress /on send_* if you send a message within
+ *                      that /on, since that would create an infinite loop]
+ *      already_encoded - Do you need me to recode plain text for the receiver?
+ */
 void	send_text (int server, const char *nick_list, const char *text, const char *command, int hook, int already_encoded)
 {
 	char 	*current_nick,
@@ -3201,8 +3130,7 @@ struct target_type target[4] =
 
 	    /*
 	     * Targets that start with @ are numbers that refer to 
-	     * $open() files.  This used to be used for DCC TALK but
-	     * we haven't supported that for 5 years.
+	     * $open() files.  
 	     */
 	    else if (*current_nick == '@' && is_number(current_nick + 1))
 		target_file_write(current_nick, text);

@@ -89,9 +89,9 @@
  *   2. Processing something from the server
  *   3. Resting
  * Context is commutative.  If you do an /exec in an /on msg, then 
- * that /exec runs in the context of the /on msg.  If you do a /dcc
- * in context of a keypress, then that dcc runs in the context of the
- * server of the window in which you pressed that key.
+ * that /exec runs in the context of the /on msg.  If you do a socket
+ * thing in context of a keypress, then that socket thing runs in 
+ * the context of the server of the window in which you pressed that key.
  *
  * In all cases where the language is active, there is a "from_server"
  * that represents the server from which the action initiated.
@@ -779,7 +779,6 @@ static	int	serverinfo_to_newserv (ServerInfo *si)
 	memset(&s->local_sockname.ss, 0, sizeof(s->local_sockname.ss));
 	memset(&s->remote_sockname.ss, 0, sizeof(s->remote_sockname.ss));
 	s->remote_paddr = NULL;
-	s->redirect = NULL;
 	s->cookie = NULL;
 	s->quit_message = NULL;
 	s->umode[0] = 0;
@@ -2111,10 +2110,7 @@ void	send_to_aserver_raw (int refnum, size_t len, const char *buffer)
 
 void	flush_server (int servnum)
 {
-	if (!is_server_registered(servnum))
-		return;
-	set_server_redirect(servnum, "0");
-	send_to_aserver(servnum, "%s", "***0");
+	return;
 }
 
 
@@ -3261,7 +3257,7 @@ static void	set_server_uh_addr (int refnum)
 		return;
 	}
 
-	/* Ack!  Oh well, it's for DCC. */
+	/* Ack!  Oh well, it used to be for DCC. */
 	s->uh_addr.sa.sa_family = AF_INET;
 	if (inet_strton(host + 1, zero, &s->uh_addr, AI_ADDRCONFIG))
         {
@@ -3274,13 +3270,12 @@ static void	set_server_uh_addr (int refnum)
 		 * work is vanishingly small.
 		 *
 		 * An error message will only be output when a fake hostname
-		 * causes a /DCC to actually fail.
+		 * causes a listening socket to actually fail.
 		 */
 		yell("Ack.  The server says your userhost is [%s] and "
 		     "I can't figure out the IPv4 address of that host! "
-		     "If you use /SET DCC_USE_GATEWAY_ADDR ON (because "
-                     "you're in the DMZ behind a NAT firewall), DCC won't "
-                     "work with this server connection!", host + 1);
+		     "Listening sockets might not work with this server "
+		     "connection!", host + 1);
 	}
 }
 
@@ -3459,26 +3454,6 @@ static void 	reset_nickname (int refnum)
 	update_all_status();
 }
 
-
-/* REDIRECT STUFF */
-int	check_server_redirect (int refnum, const char *who)
-{
-	Server *s;
-
-	if (!who || !(s = get_server(refnum)) || !s->redirect)
-		return 0;
-
-	if (!strncmp(who, "***", 3) && !strcmp(who + 3, s->redirect))
-	{
-		set_server_redirect(refnum, NULL);
-		if (!strcmp(who + 3, "0"))
-			say("Server flush done.");
-		return 1;
-	}
-
-	return 0;
-}
-
 /*****************************************************************************/
 /* GETTERS AND SETTERS FOR MORE MUNDANE THINGS */
 
@@ -3564,7 +3539,6 @@ SACCESSOR(nick, public_nick, NULL)
 SACCESSOR(nick, recv_nick, NULL)
 SACCESSOR(nick, sent_nick, NULL)
 SACCESSOR(text, sent_body, NULL)
-SACCESSOR(nick, redirect, NULL)
 SACCESSOR(message, quit_message, get_string_var(QUIT_MESSAGE_VAR))
 SACCESSOR(cookie, cookie, NULL)
 SACCESSOR(ver, version_string, NULL)
@@ -4975,7 +4949,7 @@ char 	*serverctl 	(char *input)
  *
  * When you connect to a server, we ask do a USERHOST for ourselves, so we
  * know what our public IP address is.  This is needed for 
- * for /SET DCC_USE_GATEWAY_ADDR ON, CTCP FINGER, the $X expando, and 
+ * for CTCP FINGER, the $X expando, and 
  * (in the future) for determining how long protocol messages can be.
  * 
  * XXX I suppose this doesn't belong here.  But where else shall it go?

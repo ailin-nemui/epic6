@@ -742,15 +742,8 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
         /* ":%s 401 %s %s :No such nick/channel" */
 	case 401:		/* #define ERR_NOSUCHNICK       401 */
 	{
-		const char	*nick;
-
-		if (!(nick = ArgList[0]))
+		if (!ArgList[0])
 			{ rfc1459_odd(from, comm, ArgList); goto END; }
-
-#if 0
-		if (!is_channel(nick))
-		    notify_mark(from_server, nick, 0, 0);
-#endif
 
 		break;
 	}
@@ -831,8 +824,6 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 		if (!(token = ArgList[0]))
 			{ rfc1459_odd(from, comm, ArgList); goto END; }
 
-		if (check_server_redirect(from_server, token))
-			goto END;
 		if (check_server_wait(from_server, token))
 			goto END;
 

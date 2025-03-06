@@ -479,6 +479,7 @@ void 	init_variables_stage1 (void)
 	VAR(STATUS_HOLD_LINES,          STR,  build_status);
 	VAR(STATUS_HOLDMODE,            STR,  build_status);
 	VAR(STATUS_INSERT,              STR,  build_status);
+	VAR(STATUS_MAIL,		STR,  build_status);
 	VAR(STATUS_MODE,                STR,  build_status);
 	VAR(STATUS_NICKNAME,            STR,  build_status);
 	VAR(STATUS_NOSWAP,              STR,  build_status);

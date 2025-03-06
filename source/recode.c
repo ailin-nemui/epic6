@@ -60,7 +60,7 @@
  *	2. Scripts you /load
  *	3. Stuff you get from IRC
  *	4. Stuff you get from /EXEC
- *	5. Stuff you get from /DCC CHAT
+ *	5. Stuff you get from sockets
  *
  * In an ideal world, everything would be in UTF-8, but we have to handle
  * data that is not in UTF-8 and we don't know what the encoding is. 
@@ -942,7 +942,7 @@ const char *	outbound_recode (const char *to, int server, const char *message, c
  */
 const char *	inbound_recode (const char *from, int server, const char *to, const char *message, char **extra)
 {
-	iconv_t	i;
+	iconv_t	i = (iconv_t) -1;
 	char *	msg;
 	char *	new_buffer;
 	size_t	new_buffer_len;

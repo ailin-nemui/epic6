@@ -52,7 +52,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3021;
+const unsigned long	commit_id = 3022;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -416,7 +416,7 @@ static SIGNAL_HANDLER(nothing)
 
 static SIGNAL_HANDLER(sig_user1)
 {
-	say("Got SIGUSR1, closing DCC connections and EXECed processes");
+	say("Got SIGUSR1, closing EXECed processes");
 	clean_up_processes();
 }
 
@@ -466,8 +466,6 @@ static	void	parse_args (int argc, char **argv)
 	const char *	cptr = NULL;
 	const char *	tmp_hostname = NULL;
 	char *		the_path = NULL;
-	int		altargc = 0;
-	char **		altargv;
 
 	/* 
 	 * https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/unistd.h.html
@@ -753,14 +751,6 @@ static	void	parse_args (int argc, char **argv)
 		}
 	}
 
-	if (altargc > 0)
-	{
-		int argn;
-		for (argn = 0; argn < altargc; argn++)
-			new_free(&(altargv[altargc]));
-		new_free(&altargv);
-	}
-	
 	return;
 }
 
@@ -787,7 +777,7 @@ static void	do_signals(void)
  * io() is a ONE TIME THROUGH loop!  It simply does ONE check on the
  * file descriptors, and if there is nothing waiting, it will time
  * out and drop out.  It does everything as far as checking for exec,
- * dcc, ttys, notify, the whole ball o wax, but it does NOT iterate!
+ * sockets, ttys, notify, the whole ball o wax, but it does NOT iterate!
  * 
  * You should usually NOT call io() unless you are specifically waiting
  * for something from a file descriptor.  There are no known re-entrancy
