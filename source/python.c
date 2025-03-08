@@ -1434,7 +1434,6 @@ BUILT_IN_COMMAND(pydirect_cmd)
 void	output_traceback (void)
 {
 	say("The python evaluation threw an exception.");
-#if 0
 	PyObject *ptype, *pvalue, *ptraceback;
 	PyObject *ptype_repr;
 	char *ptype_str;
@@ -1458,19 +1457,16 @@ void	output_traceback (void)
 	}
 	if (ptraceback != NULL)
 	{
-#if 0
 		PyObject *ptraceback_repr;
 		char *ptraceback_str;
 
 		ptraceback_repr = PyObject_Repr(ptraceback);
 		ptraceback_str = PyUnicode_AsUTF8(ptraceback_repr);
 		say("Traceback: %s", ptraceback_str);
-#endif
 	}
 	Py_XDECREF(ptype);
 	Py_XDECREF(pvalue);
 	Py_XDECREF(ptraceback);
-#endif
 	return;
 }
 

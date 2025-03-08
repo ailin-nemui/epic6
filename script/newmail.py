@@ -36,120 +36,183 @@ import os
 import epic
 import traceback
 
+####
+class MAIL_subfactory(object):
+    def __init__(self):
+        pass
+    def set_on(self, args):
+        pass
+    def set_off(self, args):
+        pass
+    def check(self):
+        return []
 
-#######
-def mbox_emails(file):
-    try:
-        m = mailbox.mbox(file)
-        r = [hashlib.sha256(d["message-id"].encode("ISO-8859-1")).hexdigest() for d in m]
-    except Exception as e:
-        logging.error("Exception: %s" % (e,))
-        logging.error(traceback.format_exc())
-    return r
+class MBOX_factory(MAIL_subfactory):
+    def __init__(self):
+        self.valid = False
 
-def maildir_emails(path):
-    try:
-        m = mailbox.Maildir(path)
-        r = [key for key,msg in m.iteritems() if "S" not in msg.get_flags()]
-    except Exception as e:
-        logging.error("Exception: %s" % (e,))
-        logging.error(traceback.format_exc())
-    return r
+    def set_on(self, args):
+        self.mbox = None
 
-prev = []
-@epic.alias('check_mail')
-def check_mail(args):
-    global prev
+        # Look for mbox...
+        if "MAIL" in os.environ and os.environ["MAIL"] and os.path.isfile(os.environ["MAIL"]):
+            if os.path.isfile(os.environ["MAIL"]):
+                self.mbox = os.environ["MAIL"]
+                self.valid = True
 
-    try:
-        if args is None: 
-            return
+        if self.mbox is None and LOGNAME in "os.environ" and os.environ["LOGNAME"] is not None:
+            for m in ["/var/spool/mail", "/usr/spool/mail", "/var/mail", "/usr/mail"]:
+                f = "%s/%s" % (m, os.environ["LOGNAME"])
+                if os.path.isfile(f):
+                    self.mbox = f
+                    self.valid = True
 
-        schema = args.split()[0]
-        file = args.split()[1]
+    def set_off(self, args):
+        self.valid = False
 
-        if schema is None or file is None:
-            return
+    def check(self):
+        r = []
+        if self.valid == True:
+            m = mailbox.mbox(self.mbox)
+            r = [hashlib.sha256(d["message-id"].encode("ISO-8859-1")).hexdigest() for d in m]
+        return r
 
-        if schema == "mbox":
-            curr = mbox_emails(file)
-        elif schema == "maildir":
-            curr = maildir_emails(file)
-        else:
-            curr = []             # I don't support this schema yet.
-        curr_count = len(curr)
+class MAILDIR_factory(MAIL_subfactory):
+    def __init__(self):
+        self.valid = False
 
-        if curr_count == 0:
-            epic.eval("^set -status_mail")
-        else:
-            epic.eval("^set status_mail  (Mail: %d) " % (curr_count,))
-            new_count = 0
-            for c in curr: 
-                if c not in prev:
-                    new_count = new_count + 1
+    def set_on(self, args):
+        self.maildir = None
 
-            prev = curr
-            if (new_count > 0):
-                epic.xecho('There are %d new email(s), %d total' % (new_count, curr_count))
-
-    except Exception as e:
-        logging.error("Exception: %s" % (e,))
-        logging.error(traceback.format_exc())
-
-########
-@epic.alias('set_mail_on')
-def set_mail_on(args):
-    # Look for maildir...
-    try:
-        maildir = None
+        # Look for maildir...
         if "MAILDIR" in os.environ and os.environ["MAILDIR"] and os.path.isdir(os.environ["MAILDIR"]):
            for sd in ["new", "cur"]:
                d = "%s/%s" % (os.environ["MAILDIR"], sd)
                if not os.path.isdir(d):
                    epic.xecho("The environment variable MAILDIR (%s) is not a directory with 'new' in it" % (os.environ["MAILDIR"],))
-                   return
-           maildir = os.environ["MAILDIR"]
+                   return 
+           self.maildir = os.environ["MAILDIR"]
+           self.valid = True
+
+    def set_off(self, args):
+        self.valid = False
+
+    def check(self):
+        r = []
+        if self.valid == True:
+            m = mailbox.Maildir(self.maildir)
+            r = [key for key,msg in m.iteritems() if "S" not in msg.get_flags()]
+        return r
+
+class MAIL_factory(MAIL_subfactory):
+    def __init__(self):
+        self.valid = False
+        self.prev = []
+        self.factories = []
+
+    def add_factory(self, factory):
+        try:
+            self.factories.append(factory)
+        except Exception as e:
+            logging.error("Exception: %s" % (e,))
+            logging.error(traceback.format_exc())
+
+    def set_on(self, args):
+        try:
+            for factory in self.factories:
+                factory.set_on(args)
+            interval = epic.expression("MAIL_INTERVAL")
+            epic.eval("timer -refnum check_mail -repeat -1 -snap %s check_mail" % (interval,))
+        except Exception as e:
+            logging.error("Exception: %s" % (e,))
+            logging.error(traceback.format_exc())
+
+    def set_off(self, args):
+        try:
+            for factory in self.factories:
+                factory.set_off(args)
+            epic.eval("timer -delete check_mail")
+        except Exception as e:
+            logging.error("Exception: %s" % (e,))
+            logging.error(traceback.format_exc())
+
+    def check(self):
+        try:
+            curr = []
+            for factory in self.factories:
+                curr = curr + list(factory.check())
+
+            curr_count = len(curr)
+            if curr_count == 0:
+                epic.eval("^set -status_mail")
+            else:
+                new_count = 0
+                for c in curr: 
+                    if c not in self.prev:
+                        new_count = new_count + 1
+
+                self.prev = curr
+                if (new_count > 0):
+                    epic.xecho('There are %d new email(s), %d total' % (new_count, curr_count))
+
+                strx = epic.expression("MAIL_STATUS_FORMAT")
+                x = {"new": new_count, "cur": curr_count}
+                final = strx.format(**x)
+                epic.eval("^set status_mail %s " % (final,))
+        except Exception as e:
+            logging.error("Exception: %s" % (e,))
+            logging.error(traceback.format_exc())
+
+####
+mail_factory = None
+
+def establish_mail_factory():
+    global mail_factory
+
+    try:
+        if mail_factory is None:
+            mail_factory = MAIL_factory()
+            mail_factory.add_factory(MAILDIR_factory())
+            mail_factory.add_factory(MBOX_factory())
     except Exception as e:
         logging.error("Exception: %s" % (e,))
         logging.error(traceback.format_exc())
 
-    # Look for mbox...
-    try:
-        mbox = None
-        if "MAIL" in os.environ and os.environ["MAIL"] and os.path.isfile(os.environ["MAIL"]):
-            if os.path.isfile(os.environ["MAIL"]):
-                mbox = os.environ["MAIL"]
+@epic.alias('check_mail')
+def check_mail(args):
+    global mail_factory
 
-        if mbox is None and LOGNAME in "os.environ" and os.environ["LOGNAME"] is not None:
-            for m in ["/var/spool/mail", "/usr/spool/mail", "/var/mail", "/usr/mail"]:
-                f = "%s/%s" % (m, os.environ["LOGNAME"])
-                if os.path.isfile(f):
-                    mbox = f
+    try:
+        establish_mail_factory()
+        mail_factory.check()
     except Exception as e:
         logging.error("Exception: %s" % (e,))
         logging.error(traceback.format_exc())
 
+@epic.alias('set_mail')
+def set_mail(args):
+    global mail_factory
+
     try:
-        # Check maildir if possible, and mbox if necessary
-        if maildir is not None:
-            check_mail("maildir %s" % (maildir,))
-            epic.eval("^timer -refnum check_mail -repeat -1 -snap 60 check_mail maildir %s" % (maildir,))
-        elif mbox is not None:
-            check_mail("mbox %s" % (mbox,))
-            epic.eval("^timer -refnum check_mail -repeat -1 -snap 60 check_mail mbox %s" % (mbox,))
+        establish_mail_factory()
+
+        if args is None: 
+            return
+
+        value = args.split()[0]
+        if value == "ON":
+           mail_factory.set_on(args)
+           check_mail(args)
         else:
-            epic.xecho("I cannot find your mailbox.  Set the MAIL or MAILDIR env variable and try again.")
+           mail_factory.set_off(args)
     except Exception as e:
         logging.error("Exception: %s" % (e,))
         logging.error(traceback.format_exc())
 
-
-@epic.alias('set_mail_off')
-def set_mail_off(args):
-    try:
-        epic.eval("^timer -delete -name check_mail")
-    except Exception as e:
-        logging.error("Exception: %s" % (e,))
-        logging.error(traceback.format_exc())
-
-
+########
+epic.eval("^addset mail bool {set_mail $*}")
+epic.eval("^addset mail_interval int {set mail off;set mail on}")
+epic.eval("^addset mail_status_format str")
+epic.eval("^set mail_status_format (Mail: {cur})")
+epic.eval("^set mail_interval 60")
+epic.eval("^set mail on")

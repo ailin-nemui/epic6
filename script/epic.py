@@ -534,13 +534,12 @@ def alias(name):
     def decorator(f):
         module = f.__module__
         function = f.__name__
-        command("alias %s {pydirect %s.%s $*}" % (name, module, function))
+        eval("^alias %s {pydirect %s.%s $*}" % (name, module, function))
         expression("symbolctl(SET %s 0 ALIAS PACKAGE %s.py)" % (function,
             module))
         return f
 
     return decorator
-
 
 def on(event_type, wildcard_pattern='*', noise_indicator=NOISE_SILENT,
     exclude_match=False, delete=False, serial_number='-',

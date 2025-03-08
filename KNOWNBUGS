@@ -139,3 +139,8 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Sunset /redirect and /flush
 * Add a new /pyload newmail   mail checker.
 * Add back /set status_mail and %M for now.
+* Improve newmail by modularizing the mail checker so it can be extended
+* Also, create a consolidated mail checker to add mbox + Maildir together.
+* So now /set mail_status_format can support {cur} and {new} counts 
+* For now, always show the python stack trace to help me debug.
+
