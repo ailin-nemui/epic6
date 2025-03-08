@@ -25,8 +25,8 @@ Things to remove, but bring back
 *e2e encryption	  - Targeting
 *ignore		  - Targeting
 *flood control	  - Incomplete/unloved
-*mail checking     - Scriptable
-*notify		  - Scriptable/unloved
+**mail checking   - Scriptable (brought back)
+**notify	  - Scriptable/unloved (brought back)
 
 Things to support
 =================
@@ -143,4 +143,5 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Also, create a consolidated mail checker to add mbox + Maildir together.
 * So now /set mail_status_format can support {cur} and {new} counts 
 * For now, always show the python stack trace to help me debug.
-
+* Add /load notify, to implement /notify on top of MONITOR
+* Now /load notify and /load mail are loaded in 'builtins'

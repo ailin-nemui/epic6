@@ -216,3 +216,5 @@ epic.eval("^addset mail_status_format str")
 epic.eval("^set mail_status_format (Mail: {cur})")
 epic.eval("^set mail_interval 60")
 epic.eval("^set mail on")
+
+#hop'2k25
