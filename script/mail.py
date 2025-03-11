@@ -60,7 +60,7 @@ class MBOX_factory(MAIL_subfactory):
                 self.mbox = os.environ["MAIL"]
                 self.valid = True
 
-        if self.mbox is None and LOGNAME in "os.environ" and os.environ["LOGNAME"] is not None:
+        if self.mbox is None and "LOGNAME" in "os.environ" and os.environ["LOGNAME"] is not None:
             for m in ["/var/spool/mail", "/usr/spool/mail", "/var/mail", "/usr/mail"]:
                 f = "%s/%s" % (m, os.environ["LOGNAME"])
                 if os.path.isfile(f):
