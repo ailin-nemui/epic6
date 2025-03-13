@@ -102,4 +102,7 @@ char *		real_extract2 		(Char *, int, int, int);
 
 int		count_words		(Char *str, int extended, Char *quotes);
 
+int     word_in_wordlist (const char *word, const char *word_list_);
+
 #endif
+

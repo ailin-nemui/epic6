@@ -324,6 +324,7 @@ enum LEX {
 	SHLEFT,		SHRIGHT,
 	LES,		LEQ,		GRE,		GEQ,
 	MATCH,		NOMATCH,
+	IN,		NOTIN,
 	DEQ,		NEQ,		LITEQ,		NOTLITEQ,
 	AND,
 	XOR,
@@ -372,6 +373,7 @@ static	int	prec[TOKCOUNT] =
 	5,		5,		5,
 	6,		6,
 	7,		7,		7,		7,
+	8,		8,
 	8,		8,
 	9,		9,		9,		9,
 	10,
@@ -426,6 +428,7 @@ static 	int 	assoc[TOKCOUNT] =
 	LR,		LR,		LR,
 	LR,		LR,
 	LR,		LR,		LR,		LR,
+	LR,		LR,
 	LR,		LR,
 	LR,		LR,		LR,		LR,
 	LR,
@@ -1577,6 +1580,32 @@ static void	reduce (expr_info *cx, int what)
 			break;
 		}
 
+		case IN:
+		{
+			pop_2_strings(cx, &s, &t);
+			CHECK_NOEVAL
+			c = word_in_wordlist(s, t) ? 1 : 0;
+			
+			if (x_debug & DEBUG_NEW_MATH_DEBUG)
+				yell("O: %s IN %s -> %d", s, t, c);
+
+			push_boolean(cx, c);
+			break;
+		}
+		case NOTIN:
+		{
+			pop_2_strings(cx, &s, &t);
+			CHECK_NOEVAL
+			c = word_in_wordlist(s, t) ? 0 : 1;
+			
+			if (x_debug & DEBUG_NEW_MATH_DEBUG)
+				yell("O: %s NOTIN %s -> %d", s, t, c);
+
+			push_boolean(cx, c);
+			break;
+		}
+
+
 		case LES:	COMPARE(a < b,  my_stricmp(s, t) < 0)
 		case LEQ:	COMPARE(a <= b, my_stricmp(s, t) <= 0)
 		case GRE:	COMPARE(a > b,  my_stricmp(s, t) > 0)
@@ -2052,6 +2081,30 @@ static int	zzlex (expr_info *c)
 
 			c->operand = 1;
 			return COMMA;
+
+		case 'i': case 'I':
+			/* Same song, third verse. */
+			if (c->operand)
+				goto handle_expando;
+
+			if (toupper(*c->ptr) == 'N')
+				OPERATOR("IN", 1, IN)
+			else
+				goto handle_expando;
+
+		case 'n': case 'N':
+			/* Same song, fourth verse. */
+			if (c->operand)
+				goto handle_expando;
+
+			if ((toupper(c->ptr[0]) == 'O') &&
+			    (toupper(c->ptr[1]) == 'T') &&
+			    (toupper(c->ptr[2]) == ' ') &&
+			    (toupper(c->ptr[3]) == 'I') &&
+			    (toupper(c->ptr[4]) == 'N'))
+				OPERATOR("NOT IN", 5, NOTIN)
+			else
+				goto handle_expando;
 
 		case '\0':
 			check_implied_arg(c);

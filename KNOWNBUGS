@@ -145,3 +145,9 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * For now, always show the python stack trace to help me debug.
 * Add /load notify, to implement /notify on top of MONITOR
 * Now /load notify and /load mail are loaded in 'builtins'
+* Fix bogon in mail.py (rb wcarson)
+* Fix another bogon for mails w/o message-id's [bah!]
+* Add is_word_in_wordlist() for "in" and "not in" operators
+* Add "in" and "not in" operators -- ie, if ([x] in var) {...}
+* Adjust some ofo the sasl scripts to use it instead of expando ons
+

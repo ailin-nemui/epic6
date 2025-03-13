@@ -882,3 +882,23 @@ char *	real_extract (char *start, int firstword, int lastword, int extended)
 
 	return booya;
 }
+
+/* 
+ * I do not believe this belongs here!
+ */
+
+int	word_in_wordlist (const char *word, const char *word_list_)
+{
+	char *word_list = LOCAL_COPY(word_list_);
+	char *this_word;
+
+        while (word_list && *word_list)
+        {
+                this_word = next_arg(word_list, &word_list);
+                if (!my_stricmp(this_word, word))
+                        return 1;
+        }
+
+	return 0;
+}
+

@@ -74,7 +74,7 @@ class MBOX_factory(MAIL_subfactory):
         r = []
         if self.valid == True:
             m = mailbox.mbox(self.mbox)
-            r = [hashlib.sha256(d["message-id"].encode("ISO-8859-1")).hexdigest() for d in m]
+            r = [hashlib.sha256(d["From"].encode("ISO-8859-1")).hexdigest() for d in m]
         return r
 
 class MAILDIR_factory(MAIL_subfactory):

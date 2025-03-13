@@ -9,6 +9,23 @@ if (word(2 $loadinfo()) != [pf]) { load -pf $word(1 $loadinfo()); return; };
 #
 # These are bare wrappers on top of MONITOR.
 #
+# wcarson asked for WATCH.
+# WATCH works like this:
+#   WATCH +nick
+#   WATCH -nick
+# I need to figure out how to interpret what it returns
+#  WATCH +hoponpop
+#  :lair.nl.eu.dal.net 604 hOponpop hOponpop jnelson b1b2-e743-e08d-4672-e0b3.epicsol.org 1741576499 :is online
+#  WATCH -hoponpop
+#  :lair.nl.eu.dal.net 602 hOponpop hOponpop jnelson b1b2-e743-e08d-4672-e0b3.epicsol.org 1741576523 :stopped watching
+#  WATCH
+#  :lair.nl.eu.dal.net 607 hOponpop :End of WATCH l
+#  WATCH +hoponpop
+#  :lair.nl.eu.dal.net 604 hOponpop hOponpop jnelson b1b2-e743-e08d-4672-e0b3.epicsol.org 1741576553 :is online
+#  NICK hop4
+#  :hOponpop!jnelson@b1b2-e743-e08d-4672-e0b3.epicsol.org NICK :hop4
+#  :lair.nl.eu.dal.net 601 hOponpop hOponpop jnelson b1b2-e743-e08d-4672-e0b3.epicsol.org 1741576557 :logged offline
+#
 
 alias monitor { quote monitor $* };
 

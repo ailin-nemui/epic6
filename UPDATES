@@ -1,6 +1,46 @@
-EPIC6-0.2
+EPIC6-0.0.1
 
-*** News 02/17/2024 [3018] -- Mouse support (click-to-focus, scrolling)
+*** News 03/08/2025 -- A note about EPIC6
+	I dislike software that seems to grow new features without any
+	sense of purpose; and the bloat makes it difficult to do the
+	core things you need to do.  One cause of this problem is 
+	cognitive overload.  The more features software has, the harder
+	it is to keep everything focused.
+
+	For each new generation of EPIC, features get sunset whose
+	utility served us well 30 years ago, but are not so useful now.
+	By removing such features, it is possible to add new features 
+	without things getting "bloated"
+
+	In EPIC6, the following features have been removed and are not 
+	expected to reteurn.  If you strongly disagree with the retirement 
+	of these features, please contact us and we can talk about it!
+		C90-only environs	Shebang support
+		/REDIRECT and /FLUSH	/QUEUE
+		CPU Saver		Flood Control
+		Pthreads/poll/kqueue/etc
+		Ruby			Perl 		
+		External cryptography	Blowfish, FiSH, SED, CAST5
+		ircII's original math parser
+		Shift-JIS		termcap-only
+
+	Also, some features were hardcoded (written in C) but are now
+	implemented as a script:
+		Mail checking		/NOTIFY
+
+	Some features were hardcoded but are coming back in the future
+		E2E encryption		ignore
+		$dbmctl() 		/DCC
+
+	Because of these removals, EPIC6 has already sprouted these
+	exciting new features!
+		Unlimited input line (with message breaking)
+		Mouse support (click-to-focus, scrollwheel)
+		SQLite support
+
+	Even more things are coming down the pipeline!
+
+*** News 02/17/2025 [3018] -- Mouse support (click-to-focus, scrolling)
 	If you /SET MOUSE ON and if your terminal emulator cooperates,
 	EPIC will support:
 	  1. Clicking on a window will switch to that window
