@@ -149,5 +149,5 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Fix another bogon for mails w/o message-id's [bah!]
 * Add is_word_in_wordlist() for "in" and "not in" operators
 * Add "in" and "not in" operators -- ie, if ([x] in var) {...}
-* Adjust some ofo the sasl scripts to use it instead of expando ons
-
+* Adjust some of the sasl scripts to use it instead of expando ons
+* Revert the changes I just made to the sasl scripts
