@@ -658,7 +658,7 @@ int	ssl_read (int vfd, int quiet)
 
 	/*
 	 * So SSL_read() might read stuff from the socket (thus defeating
-	 * a further select/poll) and buffer it internally.  We need to make
+	 * a further poll()) and buffer it internally.  We need to make
 	 * sure we don't leave any data on the table and flush out any data
 	 * that could be left over if the above read didn't do the job.
 	 */

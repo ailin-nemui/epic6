@@ -44,13 +44,9 @@
 /* #define VIRTUAL_FILEDESCRIPTORS */
 
 #if defined(HAVE_SYSCONF) && defined(_SC_OPEN_MAX)
-#  define IO_ARRAYLEN 	sysconf(_SC_OPEN_MAX)
+# define IO_ARRAYLEN 	sysconf(_SC_OPEN_MAX)
 #else
-# if defined(FD_SETSIZE)
-#  define IO_ARRAYLEN 	FD_SETSIZE
-# else
-#  define IO_ARRAYLEN 	NFDBITS
-# endif
+# define IO_ARRAYLEN 1024		/* I can't assume any more */
 #endif
 
 #define MAX_SEGMENTS 16
@@ -641,7 +637,7 @@ int 	new_open_failure_callback (int channel, void (*failure_callback) (int, int)
 /*
  * This isn't really new, but what the hey..
  *
- * Remove the fd from the select fd sets so
+ * Remove the fd from the poll fd sets so
  * that it won't bother us until we unhold it.
  *
  * Note that this is meant to be a read/write

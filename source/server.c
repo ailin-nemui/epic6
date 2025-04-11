@@ -3055,12 +3055,12 @@ void  server_is_registered (int refnum, const char *itsname, const char *ourname
 	 * reassembling a fractured packet (ie, the initial packet from 
 	 * the server with the 001 and stuff), the kernel will refuse to 
 	 * flag the socket as read()able ever again.  I've confirmed this
-	 * with select(), poll(), kqueue(), and even a blocking read().
-	 * Wireshark shows that the packet(s) do come in, bu the kernel
+	 * with poll(), and everything else.
+	 * Wireshark shows that the packet(s) do come in, but the kernel
 	 * refuses to give them to me.  This tiny sleep eliminates the 
 	 * race condition that consistently causes this problem.
 	 *
-	 * P.S. -- Yes, I tried different nic cards using different drvivers.
+	 * P.S. -- Yes, I tried different nic cards using different drivers.
 	 * Yes, I've tried multiple versions of freebsd.
 	 */
 	my_sleep(0.005);

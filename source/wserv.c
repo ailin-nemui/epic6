@@ -53,6 +53,7 @@
 #ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
 #endif
+#include <poll.h>
 
 static 	int 	data = -1;
 static	int	cmd = -1;
@@ -72,12 +73,12 @@ static	int	connectory (const char *, const char *);
 
 int	main (int argc, char **argv)
 {
-	fd_set	reads;
 	int	nread;
 	char * 	port;
 	char *	host;
 	char *	tmp;
 	char	stuff[100];
+	struct pollfd	fds[2];
 
 	my_signal(SIGHUP, SIG_IGN);
 	my_signal(SIGQUIT, SIG_IGN);
@@ -148,13 +149,23 @@ int	main (int argc, char **argv)
 	 * and pipes the output from out to the other..  nice and simple.
 	 * The command pipe is write-only.  The parent client does not
 	 * send anything to us over the command pipe.
+	 *
+	 * XXX This should use poll(); but since the fds will be < 1024,
+	 * I will do the refactor later.
 	 */
+	fds[0].fd = 0;
+	fds[0].events = POLLIN;
+	fds[1].fd = data;
+	fds[1].events = POLLIN;
 	for (;;)
 	{
-		FD_ZERO(&reads);
-		FD_SET(0, &reads);
-		FD_SET(data, &reads);
-		if (select(data + 1, &reads, NULL, NULL, NULL) <= 0)
+		int	poll_result;
+
+		fds[0].revents = 0;
+		fds[1].revents = 0;
+
+		poll_result = poll(fds, 2, INFTIM);
+		if (poll_result < 0)
 		{
 			if (errno == EINTR && got_sigwinch)
 			{
@@ -164,7 +175,7 @@ int	main (int argc, char **argv)
 			continue;
 		}
 
-		if (FD_ISSET(0, &reads))
+		if (fds[0].revents & POLLIN)
 		{
 			if ((nread = read(0, buffer, sizeof(buffer))) > 0)
 			{
@@ -174,7 +185,7 @@ int	main (int argc, char **argv)
 			else
 				my_exit(3);
 		}
-		if (FD_ISSET(data, &reads))
+		else if (fds[1].revents & POLLIN)
 		{
 			if ((nread = read(data, buffer, sizeof(buffer))) > 0)
 			{

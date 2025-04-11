@@ -254,9 +254,7 @@ typedef char Filename[PATH_MAX + 1];
 #endif
 #define Char const char
 
-#if defined(HAVE_SYS_SELECT_H) 
-#include <sys/select.h>
-#endif
+#include <poll.h>
 
 #ifndef howmany
 #define howmany(x, y)   (((x) + ((y) - 1)) / (y))

@@ -2286,27 +2286,23 @@ int 	end_strcmp (const char *val1, const char *val2, size_t bytes)
  *
  * Potential Bugs:
  *   - If the program in question locks up for any reason, so will epic.
- *     This can be fixed with an appropriate timeout in the select call.
+ *     This could be fixed with an appropriate timeout in the poll call.
  *   - If the program in question outputs enough data, epic will run out
  *     of memory and dump core.
  *   - Although input and the return values are char*'s, they are only
  *     treated as blocks of data, the size of *len.
  *
  * Special Note: stdin and stdout are not expected to be textual.
+ *
+ * XXX This entire thing is heinous.
  */
 char *	exec_pipe (const char *executable, char *input, size_t *len, char * const *args)
 {
-#ifdef NO_JOB_CONTROL
-	yell("Your system does not support job control");
-	return NULL;
-#else
 	int 	pipe0[2] = {-1, -1};
 	int 	pipe1[2] = {-1, -1};
 	pid_t	pid;
 	char *	ret = NULL;
 	size_t	retlen = 0, rdpos = 0, wrpos = 0;
-	fd_set	rdfds, wrfds;
-	int	fdmax;
 
 	if (pipe(pipe0) || pipe(pipe1))
 	{
@@ -2321,7 +2317,7 @@ char *	exec_pipe (const char *executable, char *input, size_t *len, char * const
 
 	switch (pid = fork())
 	{
-	case -1:
+	    case -1:
 		yell("Cannot fork for %s: %s", 
 				executable, strerror(errno));
 		close(pipe0[0]);
@@ -2329,7 +2325,8 @@ char *	exec_pipe (const char *executable, char *input, size_t *len, char * const
 		close(pipe1[0]);
 		close(pipe1[1]);
 		return ret;
-	case 0:
+
+	    case 0:
 		dup2(pipe0[0], 0);
 		dup2(pipe1[1], 1);
 		close(pipe0[1]);
@@ -2341,55 +2338,77 @@ char *	exec_pipe (const char *executable, char *input, size_t *len, char * const
 			exit(0);
 		execvp(executable, args);
 		_exit(0);
-	default :
+
+	    default :
+	    {
+		struct pollfd fds[2];
+
+		fds[0].fd = pipe1[0];
+		fds[0].events = POLLIN;
+		fds[0].revents = 0;
+		fds[1].fd = pipe0[1];
+		fds[1].events = POLLOUT;
+		fds[1].revents = 0;
+
 		close(pipe0[0]);
 		close(pipe1[1]);
-		FD_ZERO(&rdfds);
-		FD_ZERO(&wrfds);
-		FD_SET(pipe1[0], &rdfds);
-		FD_SET(pipe0[1], &wrfds);
-		fdmax = 1 + MAX(pipe1[0], pipe0[1]);
-		for (;;) {
-			fd_set RDFDS = rdfds;
-			fd_set WRFDS = wrfds;
-			int foo;
-			foo = select(fdmax, &RDFDS, &WRFDS, NULL, NULL);
-			if (-1 == foo) {
-				yell("Broken select call: %s", strerror(errno));
-				if (EINTR == errno)
+
+		for (;;) 
+		{
+			int	poll_result;
+
+			poll_result = poll(fds, 2, INFTIM);
+			if (poll_result < 0)
+			{
+				yell("Broken poll call: %s", strerror(errno));
+				if (errno == EINTR)
 					continue;
 				break;
-			} else if (0 == foo) {
+			} 
+			else if (poll_result == 0)
 				break;
-			}
-			if (FD_ISSET(pipe1[0], &RDFDS)) {
+
+			if (fds[0].revents & POLLIN)
+			{
+				int	read_result;
+
 				retlen = rdpos + 4096;
-				new_realloc((void**)&ret, retlen);
-				foo = read(pipe1[0], ret+rdpos, retlen-rdpos);
-				if (0 == foo)
+				new_realloc((void **) &ret, retlen);
+				read_result = read(pipe1[0], ret + rdpos, retlen - rdpos);
+				if (read_result > 0)
+					rdpos += read_result;
+				else 
 					break;
-				else if (0 < foo)
-					rdpos += foo;
-			} else if (FD_ISSET(pipe0[1], &WRFDS)) {
+			}
+			else if (fds[1].revents & POLLOUT)
+			{
 				if (input && wrpos < *len)
-					foo = write(pipe0[1], input+wrpos, MIN(512, *len-wrpos));
-				else {
-					FD_CLR(pipe0[1], &wrfds);
+				{
+					int	write_result;
+
+					if ((write_result = write(pipe0[1], input + wrpos, MIN(512, *len-wrpos))) > 0)
+						wrpos += write_result;
+					else
+						break;
+				}
+				else 
+				{
+					fds[1].events = 0;
 					close(pipe0[1]);
 				}
-				if (0 < foo)
-					wrpos += foo;
+
 			}
 		}
 		close(pipe0[1]);
 		close(pipe1[0]);
 		waitpid(pid, NULL, WNOHANG);
-		new_realloc((void**)&ret, rdpos);
+		new_realloc((void **) &ret, rdpos);
 		break;
+	    }
 	}
+
 	*len = rdpos;
 	return ret;
-#endif
 }
 
 /*

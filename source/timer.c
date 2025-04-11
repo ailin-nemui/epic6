@@ -1036,7 +1036,7 @@ char *add_timer (int update, const char *refnum_want, double interval, long even
 
 /*
  * TimerTimeout:  Called from irc_io to help create the timeout
- * part of the call to select.
+ * part of the call to poll().
  */
 Timeval	TimerTimeout (void)
 {

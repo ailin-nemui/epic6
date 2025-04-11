@@ -613,7 +613,7 @@ int	set_blocking (int fd)
 
 /****************************************************************************/
 /*
- * It is possible for a race condition to exist; such that select()
+ * It is possible for a race condition to exist; such that poll()
  * indicates that a listen()ing socket is able to recieve a new connection
  * and that a later accept() call will still block because the connection
  * has been closed in the interim.  This wrapper for accept() attempts to

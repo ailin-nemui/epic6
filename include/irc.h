@@ -136,8 +136,6 @@ extern		int	do_window_notifies;
 
 extern 		char *	LocalIPv4HostName;
 extern 		char *	LocalIPv6HostName;
-extern		fd_set  readables, held_readables;
-extern		fd_set  writables, held_writables;
 extern struct timeval 	start_time;
 extern struct timeval	idle_time;
 extern struct timeval	now;

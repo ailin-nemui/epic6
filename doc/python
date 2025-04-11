@@ -130,7 +130,7 @@ Then, you can use any of these python functions:
 					 If you block while handling the fd, epic will block
 			CallableObject - A python method that takes one integer argument.
 					 It will be called if the fd is found to be unusable.
-					 (ie, select(2) returns EBADF).  This would be 
+					 (ie, poll(2) returns EBADF).  This would be 
 					 caused by something close()ing the fd, but 
 					 _epic.cancel_callback() [see below] didn't get called.
 			int - Flags -- None have been defined yet; pass in a 0.
@@ -150,7 +150,7 @@ Then, you can use any of these python functions:
 					 handling the fd, epic will block.
 			CallableObject - A python method that takes one integer argument.
 					 It will be called if the fd is found to be unusable.
-					 (ie, select(2) returns EBADF).  This would be 
+					 (ie, poll(2) returns EBADF).  This would be 
 					 caused by something close()ing the fd, but 
 					 _epic.cancel_callback() [see below] didn't get called.
 			int - Flags -- None have been defined yet; pass in a 0.

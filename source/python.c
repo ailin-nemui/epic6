@@ -695,11 +695,7 @@ typedef struct {
 #if defined(HAVE_SYSCONF) && defined(_SC_OPEN_MAX)
 #  define IO_ARRAYLEN   sysconf(_SC_OPEN_MAX)
 #else
-# if defined(FD_SETSIZE)
-#  define IO_ARRAYLEN   FD_SETSIZE
-# else
-#  define IO_ARRAYLEN   NFDBITS
-# endif
+#  define IO_ARRAYLEN 1024
 #endif
 
 PythonFDCallback **python_vfd_callback = NULL;
