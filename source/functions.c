@@ -878,13 +878,12 @@ static int	func_exist (char *command)
  */
 int	parse_kwargs (struct kwargs *kwargs, const char *input)
 {
-	cJSON *json = cJSON_Parse(input);
+	cJSON *	json;
+	size_t	error_length = 0;
 
-	if (json == NULL)
+	if (!(json = cJSON_Parse(input, 0, &error_length)))
 	{
-		const char *error_ptr = cJSON_GetErrorPtr();
-		if (error_ptr != NULL)
-			yell("Error before: %s\n", error_ptr);
+		yell("Error before: %s\n", input + error_length);
 		return -1;
 	}
 
@@ -1054,7 +1053,7 @@ int	parse_kwargs (struct kwargs *kwargs, const char *input)
 
 		kwargs++;
 	}
-	cJSON_Delete(json);
+	cJSON_DeleteItem(&json);
 	return 0;
 }
 
@@ -7918,42 +7917,33 @@ BUILT_IN_FUNCTION(function_json_error, input)
  *
  * Returns an empty string on failure or 1 on success.
  */
-static void explode_json_object(const char *var, cJSON *item)
+static void explode_json_object (const char *var, cJSON *item)
 {
-	int n;
-	cJSON *subitem;
-	char *subvar = NULL;
-	char *subitem_name = NULL;
-
-	switch (item->type)
-	{
-		case cJSON_False:
+	if (cJSON_IsFalse(item))
 		add_var_alias(var, "0", 0);
-		break;
-
-		case cJSON_True:
+	else if (cJSON_IsFalse(item))
 		add_var_alias(var, "1", 0);
-		break;
-
-		case cJSON_NULL:
+	else if (cJSON_IsNull(item))
 		add_var_alias(var, NULL, 0);
-		break;
-
-		case cJSON_Number:
+	else if (cJSON_IsNumber(item))
+		/* XXXX Do not look behind the curtain */
 		add_var_alias(var, ftoa(item->valuedouble), 0);
-		break;
-
-		case cJSON_String:
+	else if (cJSON_IsString(item))
+		/* XXXX Do not look behind the curtain */
 		add_var_alias(var, item->valuestring, 0);
-		break;
+	else if (cJSON_IsArray(item) || cJSON_IsObject(item))
+	{
+		int	n;
+		cJSON *	subitem;
+		char *	subvar = NULL;
+		char *	subitem_name = NULL;
 
-		case cJSON_Array:
-		case cJSON_Object:
 		for (subitem = item->child, n = 0; subitem; subitem = subitem->next, n++)
 		{
-			if (subitem->string)
+			/* XXXX Do not look behind the curtain */
+			if (subitem->name)
 			{
-				char *ptr = malloc_strcpy(&subitem_name, subitem->string);
+				char *ptr = malloc_strcpy(&subitem_name, subitem->name);
 		
 				/* The name must be mangled to be suitable as an ASSIGN */
 				while (*ptr)
@@ -7972,32 +7962,30 @@ static void explode_json_object(const char *var, cJSON *item)
 
 			explode_json_object(subvar, subitem);
 		}
-		break;
 
-		default:
-		yell("Odd cJSON type in $json_explode");
+		new_free(&subitem_name);
+		new_free(&subvar);
 	}
-	new_free(&subitem_name);
-	new_free(&subvar);
+	else
+		yell("Odd cJSON type in $json_explode");
 }	
 
 BUILT_IN_FUNCTION(function_json_explode, input)
 {
-	const char *var;
-	cJSON *root;
+	const char *	var;
+	cJSON *		root;
+	size_t		error = 0;
 
 	GET_FUNC_ARG(var, input);
-	root = cJSON_Parse(input);
-
-	if (!root)
+	if (!(root = cJSON_Parse(input, 0, &error)))
 	{
-		malloc_sprintf(&json_last_error, "JSON parse error at position %u", (unsigned)(cJSON_GetErrorPtr() - input));
+		malloc_sprintf(&json_last_error, "JSON parse error at position %u", (unsigned)error);
 		RETURN_EMPTY;
 	}
 
 	new_free(&json_last_error);
 	explode_json_object(var, root);
-	cJSON_Delete(root);
+	cJSON_DeleteItem(&root);
 	RETURN_INT(1);
 }
 
@@ -8056,16 +8044,15 @@ static int implode_struct_var(char *var, cJSON *parent)
 
 BUILT_IN_FUNCTION(function_json_implode, input)
 {
-	const char *var = NULL;
-	const char *canon_var;
-	cJSON *root;
-	char **sublist;
-	int count;
-	int i;
-	char *json = NULL;
-	char *retval;
-	int err = 0;
-	int	compact = 0;
+	const char *	var = NULL;
+	const char *	canon_var;
+	cJSON *		root;
+	char **		sublist;
+	int		count;
+	int 		i;
+	char *		json = NULL;
+	int 		err = 0;
+	int		compact = 1;
 
 	struct kwargs kwargs[] = {
 		{ "root", KWARG_TYPE_STRING, &var, 1 },
@@ -8098,23 +8085,18 @@ BUILT_IN_FUNCTION(function_json_implode, input)
 		if (err == 0)
 		{
 			if (compact)
-				json = cJSON_PrintUnformatted(root);
+				json = cJSON_Generate(root, true_);
 			else
-				json = cJSON_Print(root);
+				json = cJSON_Generate(root, false_);
 		}
-		cJSON_Delete(root);
+		cJSON_DeleteItem(&root);
 	}
 
 	for (i = 0; i < count; i++)
 		new_free(&sublist[i]);
 	new_free(&sublist);
 
-	retval = malloc_strdup(json);
-
-	if (json)
-		cJSON_free(json);
-
-	return retval;
+	RETURN_MSTR(json);
 }
 
 BUILT_IN_FUNCTION(function_uuid4, input)

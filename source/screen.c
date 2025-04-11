@@ -99,7 +99,7 @@ struct  PromptStru *    next;
 
         char *          data;
         int             type;
-        void            (*func) (char *, const char *);
+        void            (*func) (const char *, const char *);
 
         void *          my_input_line;
         void *          saved_input_line;
@@ -4422,7 +4422,7 @@ void	fire_normal_prompt (const char *utf8str)
  *	 Suggestion: "data" should be a struct that contains window and server 
  * 	 context information.
  */
-void 	add_wait_prompt (const char *prompt, void (*func)(char *data, const char *utf8str), const char *data, int type, int echo)
+void 	add_wait_prompt (const char *prompt, void (*func)(const char *data, const char *utf8str), const char *data, int type, int echo)
 {
 	WaitPrompt *New;
 	int	s;

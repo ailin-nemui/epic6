@@ -158,7 +158,7 @@ static	void	xtypecmd 	(const char *, char *, const char *);
 static	void	allocdumpcmd	(const char *, char *, const char *);
 
 /* other */
-static	void	eval_inputlist 	(char *, const char *);
+static	void	eval_inputlist 	(const char *, const char *);
 static void	parse_block (const char *, const char *, int interactive);
 
 typedef void (*CmdFunc) (const char *, char *, const char *);
@@ -697,7 +697,7 @@ BUILT_IN_COMMAND(e_nick)
  * and the key is accepted.  Thats probably not right, ill work on that.
  */
 static	int	e_pause_cb_throw = 0;
-static	void	e_pause_cb (char *u1, const char *u2) { e_pause_cb_throw--; }
+static	void	e_pause_cb (const char *u1, const char *u2) { e_pause_cb_throw--; }
 static int e_pause_callback (void *ignored) { return 0; }
 BUILT_IN_COMMAND(e_pause)
 {
@@ -1402,10 +1402,16 @@ BUILT_IN_COMMAND(info)
  * eval_inputlist:  Cute little wrapper that calls runcmds() when we
  * get an input prompt ..
  */
-static void	eval_inputlist (char *args, const char *line)
+static void	eval_inputlist (const char *args_, const char *line)
 {
         char *tmp;
-	if (args[0]=='(') {
+	char *args;
+
+	if (!args_)
+		return;
+
+	args = LOCAL_COPY(args_);
+	if (*args == '(') {
                 if (!(tmp = next_expr(&args, '('))) {
 			yell("INPUT: syntax error with arglist");
 			return;
@@ -2237,7 +2243,7 @@ BUILT_IN_COMMAND(mecmd)
 		say("Usage: /ME <action description>");
 }
 
-static 	void	oper_password_received (char *data, const char *line)
+static 	void	oper_password_received (const char *data, const char *line)
 {
 	send_to_server("OPER %s %s", data, line);
 }

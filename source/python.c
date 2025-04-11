@@ -1436,7 +1436,7 @@ void	output_traceback (void)
 	say("The python evaluation threw an exception.");
 	PyObject *ptype, *pvalue, *ptraceback;
 	PyObject *ptype_repr;
-	char *ptype_str;
+	const char *ptype_str;
 
 	PyErr_Print();
 	PyErr_Fetch(&ptype, &pvalue, &ptraceback);
@@ -1449,7 +1449,7 @@ void	output_traceback (void)
 	if (pvalue != NULL)
 	{
 		PyObject *pvalue_repr;
-		char *pvalue_str;
+		const char *pvalue_str;
 
 		pvalue_repr = PyObject_Repr(pvalue);
 		pvalue_str = PyUnicode_AsUTF8(pvalue_repr);
@@ -1458,7 +1458,7 @@ void	output_traceback (void)
 	if (ptraceback != NULL)
 	{
 		PyObject *ptraceback_repr;
-		char *ptraceback_str;
+		const char *ptraceback_str;
 
 		ptraceback_repr = PyObject_Repr(ptraceback);
 		ptraceback_str = PyUnicode_AsUTF8(ptraceback_repr);

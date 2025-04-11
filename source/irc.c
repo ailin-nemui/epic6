@@ -52,7 +52,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3029;
+const unsigned long	commit_id = 3030;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -710,7 +710,6 @@ static	void	parse_args (int argc, char **argv)
 	 */
 	if ((cptr = getenv("IRCSERVER")))
 	{
-		/* add_servers() will modify ptr - don't pass in an env var */
 		ptr = malloc_strdup(cptr);
 		add_servers(ptr, NULL);
 		new_free(&ptr);

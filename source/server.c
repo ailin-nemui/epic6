@@ -85,7 +85,7 @@
  * The "from_server" represents the server on whose behalf we are 
  * currently working.  If you think of the client as always doing 
  * one of three things:
- *   1. Processing a keystrong
+ *   1. Processing a keystroke
  *   2. Processing something from the server
  *   3. Resting
  * Context is commutative.  If you do an /exec in an /on msg, then 
@@ -135,6 +135,7 @@ static 	void 	remove_from_server_list (int i);
 static	char *	shortname (const char *oname);
 static void	set_server_uh_addr (int refnum);
 static void	discard_dns_results (int refnum);
+static	int	grab_server_address (int server);
 
 static	void	set_server_vhost (int servref, const char * param );
 static	void	set_server_itsname (int servref, const char * param );
@@ -149,6 +150,72 @@ static	void	set_server_accept_cert (int refnum, int val);
 static	char *  get_my_fallback_userhost (void);
 static	void	set_server_server_type (int servref, const char * param );
 
+
+/*
+ * A "server", a "serverinfo" and a "server description" (serverdesc)
+ * all refer to the same basic data object -- a (Server) object, which
+ * is stored in the "Server List" via a refnum.
+ *
+ * The user deals in serverdescs in three ways:
+ *	1. To specify an entirely new server
+ *	2. To specify an existing server plus some changes
+ *	3. To specify parts of a server for lookup purposes
+ * Internally the client only deals with canonical preserved SIs.
+ *
+ * Because of the different representations, the API must support
+ * the same operation with the different kinds of inputs.
+ *
+ * To make my life eaiser, I will refer to Serverinfo objects as "SI" below.
+ */
+/*
+ * Here is the serverinfo API 
+ *
+ * CREATE
+ *  When you create an SI, you need to initialize it to "blank".
+ * 	clear_serverinfo
+ *
+ * UPDATE
+ *   Convert/merge a serverdesc into an SI
+ *	str_to_serverinfo	-
+ *   Merge a Query SI into another SI
+ *	update_serverinfo	-
+ *   Preserve an SI so it has no dangling pointers after you make changes.
+ *	preserve_serverinfo	-
+ *   After you preserve_serverinfo, SI->fulldesc contains the servdesc.
+ *   (There is no function for this)
+ *
+ * DELETE
+ *  You need to delete every SI object since it will have malloc()ed memory
+ *  when you called preserve_serverinfo().
+ *	free_serverinfo		- 
+ */
+/*
+ * The serverinfo API interacts with the server list
+ *
+ * LOOKUP
+ *   Match one Query SI to one particular server
+ *	serverinfo_matches_servref
+ *   Lookup a Query SI and return the servref it refers to
+ *	serverinfo_to_servref
+ *   Lookup a serverdesc and return the servref it refers to
+ *	str_to_servref
+ *
+ * CREATE
+ *   If you want to create a new server from a complete SI
+ *	serverinfo_to_newserv
+ *   If you want to create a new server from a serverdesc
+ *	str_to_newserv
+ *
+ * UPDATE
+ *   If you want to merge a Query SI into an existing server
+ *	update_refnum_serverinfo
+ *   If you want to merge a serverdesc into an existing server
+ *	update_server_from_raw_desc
+ *   if you want to update a server from a serverdesc
+ *	str_to_servref_with_update
+ */ 
+
+/*************************************************************************/
 /*
  * clear_serverinfo: Initialize/Reset a ServerInfo object
  *
@@ -936,14 +1003,16 @@ static 	void 	remove_from_server_list (int i)
  *	If the server description does not set a group, use the provided group.
  *  This function modifies "servers".
  */
-void	add_servers (char *servers, const char *group)
+void	add_servers (const char *servers_, const char *group)
 {
 	char	*host;
 	ServerInfo si;
 	int	refnum;
+	char *	servers;
 
-	if (!servers)
+	if (!servers_)
 		return;
+	servers = LOCAL_COPY(servers_);
 
 	while ((host = next_arg(servers, &servers)))
 	{
@@ -1155,16 +1224,17 @@ static	char    wait_nick[] = "***W***";
  * 
  * There are three quiescent states (ie, states that do not automatically advance)
  *	RECONNECT	A server in RECONNECT will stay there until a window is associated with the server
- *			Once a window is associated with a server, it advances to DNS
+ *			Once a window is associated with a server, it advances to POLICY (was DNS)
  *	ACTIVE		A server in ACTIVE will stay there until the protocol session ends, because of
  *			1. The user requests disconnection,
  *			2. The server tells us we're being rejected,
  *			3. An EOF occurs on the underying network socket
  *	CLOSED		A server in CLOSED will stay there until the user moves it back to RECONNECT
  */
-const char *server_states[13] = {
+const char *server_states[14] = {
 	"CREATED",		/* A server in CREATED is being built and can't be used yet. */
 	"RECONNECT",		/* A server in RECONNECT can be connected to (but isn't).  Quiescent until a window points at it */
+	"POLICY",		/* A server in POLICY invites scripts to modify the server description to be used */
 	"DNS",			/* A server in DNS is fetching IP addresses (but doesn't have them). */
 	"CONNECTING",		/* A server in CONNECTING is doing a non-blocking connect. */
 	"SSL_CONNECTING",	/* A server in SSL_CONNECTING is establishing SSL on top of the socket */
@@ -1446,7 +1516,7 @@ void	do_server (int fd)
 		 * s->des points to a socket connected to the dns helper
 		 * which feeds us Getaddrinfo() responses.  We then use
 		 * those reponses, to establish nonblocking connect()s
-		 * [the call to connect_to_server() below], which replaces
+		 * [the call to connect_to_server_next_addr() below], which replaces
 		 * s->des with a new socket connecting to the server.
 		 */
 		if (s->state == SERVER_DNS)
@@ -1513,7 +1583,7 @@ void	do_server (int fd)
 			 * "unmarshall" the response (converting a (char *) 
 			 * buffer into a linked list of (struct addrinfo *)'s, 
 			 * which we can then use to connect to the server 
-			 * [via connect_to_server()].
+			 * [via connect_to_server_next_addr()].
 			 */
 			else
 			{
@@ -1556,7 +1626,7 @@ void	do_server (int fd)
 
 				    s->next_addr = s->addrs;
 				    s->addr_counter = 0;
-				    connect_to_server(i);	/* This function advances us to SERVER_CONNECTING */
+				    connect_to_server_next_addr(i);	/* This function advances us to SERVER_CONNECTING */
 				}
 			}
 		}
@@ -2116,23 +2186,47 @@ void	flush_server (int servnum)
 
 /* CONNECTION/RECONNECTION STRATEGIES */
 /*
+ * bootstrap_server_connection - Bring a server connected to a window out of RECONNECT
+ *
+ * Arguments:
+ *	server - A server in RECONNECT state
+ *		 In the future, a server not being in RECONNECT may become an error
+ *
+ * Notes:
+ * 	This function technically is the _only_ entry point for a server 
+ * 	connection "from scratch".  It is only called by window_check_servers()
+ * 	when a window observes it is associated with a server in the RECONNECT state.
+ *
+ *	Thus, to reconnect to a server, you put a server in a RECONNECT state.
+ *	When a window notices this, it will kick off the reconnect (here)
+ *
+ * Return Value:
+ *	-1	An error of some kind occured.
+ */
+
+int	bootstrap_server_connection (int server)
+{
+	if (x_debug & DEBUG_SERVER_CONNECT)
+		yell("Bootstrapping server connection for server [%d]", server);
+
+	if (x_debug & DEBUG_SERVER_CONNECT)
+		yell("Inviting scripts to implement policy for server [%d]", server);
+	set_server_state(server, SERVER_POLICY);
+
+	/* Let's go ahead and get this party started! */
+	return grab_server_address(server);
+}
+
+/*
  * Grab_server_address -- look up all of the addresses for a hostname and
  *	save them in the Server data for later use.  Someone must free
  * 	the results when they're done using the data (usually when we 
  *	successfully connect, or when we run out of addrs)
  *
- * XXX IMPORTANT XXX
- * 	This function technically is the entry point for a server connection "from scratch".
- *	It is only called by window_check_servers() when a window observes it
- * 	is associated with a server in the RECONNECT state.
- *
- *	Thus, to reconnect to a server, you put a server in a RECONNECT state.
- *	When a window notices this, it will kick off the reconnect (here)
- *
  *	After the server addresses are grabbed, do_server() will automatically
- * 	kick off connect_to_server(), the next function in the chain.
+ * 	kick off connect_to_server_next_addr(), the next function in the chain.
  */
-int	grab_server_address (int server)
+static	int	grab_server_address (int server)
 {
 	Server *s;
 	AI	hints;
@@ -2201,7 +2295,7 @@ int	grab_server_address (int server)
  * through getaddrinfo() results, possibly on multiple asynchronous
  * occasions.  So what we do is restart from where we left off before.
  */
-static int	connect_next_server_address (int server)
+static int	connect_next_server_address_internal (int server)
 {
 	Server *s;
 	int	fd = -1;
@@ -2213,15 +2307,16 @@ static int	connect_next_server_address (int server)
 
 	if (!(s = get_server(server)))
 	{
-		syserr(-1, "connect_next_server_address: Server %d doesn't exist", 
-						server);
+		syserr(-1, "connect_next_server_address_internal: "
+				"Server %d doesn't exist", server);
 		return -1;
 	}
 
 	if (!s->addrs)
 	{
-		syserr(server, "connect_next_server_address: There are no more "
-			"addresses available for server %d", server);
+		syserr(server, "connect_next_server_address_internal: "
+				"There are no more addresses available "
+				"for server %d", server);
 		return -1;
 	}
 
@@ -2239,8 +2334,9 @@ static int	connect_next_server_address (int server)
 	    if ((inet_vhostsockaddr(ai->ai_family, -1, s->info->vhost,
 						&localaddr, &locallen)) < 0)
 	    {
-		    syserr(server, "connect_next_server_address: Can't use address [%d] "
-				" because I can't get vhost for protocol [%d]",
+		    syserr(server, "connect_next_server_address_internal: "
+				"Can't use address [%d]  because I can't get "
+				"vhost for protocol [%d]",
 					 s->addr_counter, ai->ai_family);
 		    continue;
 	    }
@@ -2249,7 +2345,7 @@ static int	connect_next_server_address (int server)
 	    /* Remember, network_client() is unconditionally nonblocking! */
 	    if ((fd = network_client(&localaddr, locallen, (SSu *)(ai->ai_addr), ai->ai_addrlen)) < 0)
 	    {
-		syserr(server, "connect_next_server_address: "
+		syserr(server, "connect_next_server_address_internal: "
 			"network_client() failed for server %d address [%d].", 
 					server, s->addr_counter);
 		continue;
@@ -2268,14 +2364,13 @@ static int	connect_next_server_address (int server)
 	    return fd;
 	}
 
-	say("I'm out of addresses for server %d so I have to stop.", 
-			server);
+	say("I'm out of addresses for server %d so I have to stop.", server);
 	discard_dns_results(server);
 	return -1;
 }
 
 /*
- * connect_to_server:  Supervision of a new network connection to server
+ * connect_to_server_next_addr:  Supervision of a new network connection to server
  * 
  * Arguments:
  * 	new_server - A server refnum which has previously successfully completed a DNS lookup
@@ -2298,7 +2393,7 @@ static int	connect_next_server_address (int server)
  * If for any reason this function cannot succeed to produce a nonblocking connection,
  * we recommend the user do a /RECONNECT,
  */
-int 	connect_to_server (int new_server)
+int 	connect_to_server_next_addr (int new_server)
 {
 	int 		des;
 	socklen_t	len;
@@ -2339,7 +2434,7 @@ int 	connect_to_server (int new_server)
 	/*
 	 * Get a nonblocking connect going
 	 */
-	if ((des = connect_next_server_address(new_server)) < 0)
+	if ((des = connect_next_server_address_internal(new_server)) < 0)
 	{
 		if (x_debug & DEBUG_SERVER_CONNECT)
 			say("new_des is %d", des);
@@ -2482,7 +2577,7 @@ void	close_server (int refnum, const char *message)
 	 * XXX Previously here, we discarded the extra IP addresses.
 	 * but it was decided to do that only when we switched to
 	 * ACTIVE rather than when we switched to CLOSED.  This permits 
-	 * you to call close_server() and then connect_to_server()
+	 * you to call close_server() and then connect_to_server_next_addr()
 	 */
 
 	s->uh_addr_set = 0;
@@ -2883,7 +2978,7 @@ static void	set_server_password (int refnum, const char *password)
  * hitting of the return key, etc 
  * -- Callback function
  */
-void 	password_sendline (char *data, const char *line)
+void 	password_sendline (const char *data, const char *line)
 {
 	int	new_server;
 
@@ -3106,8 +3201,8 @@ BUILT_IN_COMMAND(disconnectcmd)
 		say("Reconnecting to server %s", get_server_itsname(i));
 
 		/* 
-		 * Now, why do we call "connect_to_server()" instead of 
-		 * setting the server state to SERVER_RECONNECT?
+		 * Now, why do we call "connect_to_server_next_addr()" 
+		 * instead of setting the server state to SERVER_RECONNECT?
 		 * connect_to_server() is the entry point for after we have
 		 * done DNS lookups.  This shortcut here is how we iterate
 		 * through all the DNS lookups.  However, if that fails
@@ -3115,7 +3210,7 @@ BUILT_IN_COMMAND(disconnectcmd)
 		 * ahead and reset to SERVER_RECONNECT which does a dns 
 		 * lookup and restarts the process.
 		 */
-		if (connect_to_server(i) < 0)
+		if (connect_to_server_next_addr(i) < 0)
 			set_server_state(i, SERVER_RECONNECT);
 	}
 	else

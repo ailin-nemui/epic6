@@ -1,5 +1,34 @@
 EPIC6-0.0.1
 
+*** News 04/10/2025 -- $json_implode() now defaults to "compact:true"
+	The $json_implode() function takes an assign tree root
+	and converts everything underneath it into a json doc.
+	Previously, the default was "compact:false" which gave you 
+	a multi-string line.  That's wonderful for /echo but kind of
+	stinks if you want to write it to a file.  The default is
+	now to return it in one line -- suitable for /msg'ing or
+	writing or whatever.  
+
+	You can still use kwargs to turn compact:false if you want.
+		/echo $json_implode({"root":"q", "compact":false})
+
+*** News 04/10/2025 -- New server state, POLICY
+	There is a new server state POLICY between "RECONNECT" and "DNS".
+	Just for completeness, here are the states in order
+		CREATED		RECONNECT	POLICY
+		DNS		CONNECTING	SSL_CONNECTING
+		REGISTERING	SYNCING		ACTIVE
+		EOF		ERROR		CLOSING
+		CLOSED		DELETED
+	These states reflect the progress of a connection to the server
+	from the moment it is born through a connection until it is closed
+
+	The POLICY state is where you would want to modify a server's 
+	description information _after_ the user asks to connect to it
+	but _before_ anything happens.  This could be useful for things
+	like changing the hostname, or changing the port or IRC-SSL things,
+	or supplying a password, you know, I haven't decided what-all yet.
+
 *** News 03/08/2025 -- A note about EPIC6
 	I dislike software that seems to grow new features without any
 	sense of purpose; and the bloat makes it difficult to do the

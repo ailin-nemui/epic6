@@ -151,3 +151,11 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Add "in" and "not in" operators -- ie, if ([x] in var) {...}
 * Adjust some of the sasl scripts to use it instead of expando ons
 * Revert the changes I just made to the sasl scripts
+* Complete refactor of cJSON.c, updated to latest upstream commit
+* Add /slurp_file and /filter file to /load files
+* Create /load json, to work with json files
+* Split connect_to_server() out into  bootstrap_server_connection()
+* This allows support for the "POLICY" server state (see UPDATES)
+*  This will be used for CAP/SASL soon enough...
+* Change callbacks to add_wait_prompt() to take two (const char *s)
+* Change the default for $json_implode() to "compact"

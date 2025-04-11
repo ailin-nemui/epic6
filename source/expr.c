@@ -39,7 +39,7 @@
 /* Function decls */
 static	void	TruncateAndEscape (char **, const char *, ssize_t, const char *);
 static	char *	alias_special_char (char **, char *, const char *, char *);
-static	void	do_alias_string (char *, const char *);
+static	void	do_alias_string (const char *, const char *);
 
 char *alias_string = NULL;
 
@@ -739,7 +739,7 @@ static	void	TruncateAndEscape (char **buff, const char *add, ssize_t length, con
 	return;
 }
 
-static void	do_alias_string (char *unused, const char *input)
+static void	do_alias_string (const char *unused, const char *input)
 {
 	malloc_strcpy(&alias_string, input);
 }

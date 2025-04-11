@@ -10,6 +10,22 @@ if (word(2 $loadinfo()) != [pf]) { load -pf $word(1 $loadinfo()); return; };
  */
 };
 
+alias slurp_file {
+	@ fd = open($0 R);
+	while (!eof($fd)) { 
+		@ function_return #= read($fd);
+	};
+	@ close($fd)
+};
+
+alias filter_file {
+	@ fd = open($0 R);
+	while (!eof($fd)) { 
+		eval { $1- $read($fd) };
+	};
+	@ close($fd)
+};
+
 # dump a file out to the screen w/o using /exec 
 alias cat {
 	@ fd = open($0 R);

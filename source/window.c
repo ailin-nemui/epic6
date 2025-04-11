@@ -3562,8 +3562,12 @@ void 	window_check_servers (void)
 		    yell("window_check_servers() is bringing up server %d", i);
 
 		/* This bootstraps the reconnect process */
+		bootstrap_server_connection(i);
+
+#if 0
 		/* XXX - I should create a shim with a better name */
 		grab_server_address(i);
+#endif
 	    }
 	    else if (status == SERVER_ACTIVE)
 	    {
@@ -3574,7 +3578,7 @@ void 	window_check_servers (void)
 	    {
 		if (x_debug & DEBUG_SERVER_CONNECT)
 		    yell("window_check_servers() is restarting server %d", i);
-		connect_to_server(i);
+		connect_to_server_next_addr(i);
 	    }
 
 	    pop_message_from(l);

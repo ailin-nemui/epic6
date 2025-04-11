@@ -19,7 +19,7 @@
 
 	void		repaint_window_body		(int);
 	int		create_additional_screen 	(void);
-	void		add_wait_prompt 		(const char *, void (*)(char *, const char *), const char *, int, int);
+	void		add_wait_prompt 		(const char *, void (*)(const char *, const char *), const char *, int, int);
 	void		fire_wait_prompt		(uint32_t);
 	void		fire_normal_prompt		(const char *);
 	void		add_to_screen			(const char *);

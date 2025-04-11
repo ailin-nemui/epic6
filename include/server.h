@@ -177,17 +177,18 @@ const	AI *		next_addr;		/* The next one to try upon failure */
 
 #define SERVER_CREATED		0
 #define SERVER_RECONNECT	1
-#define SERVER_DNS		2
-#define SERVER_CONNECTING	3
-#define SERVER_SSL_CONNECTING	4
-#define SERVER_REGISTERING	5
-#define SERVER_SYNCING		6
-#define SERVER_ACTIVE		7
-#define SERVER_EOF		8
-#define SERVER_ERROR		9
-#define SERVER_CLOSING		10
-#define SERVER_CLOSED		11
-#define SERVER_DELETED		12
+#define SERVER_POLICY		2
+#define SERVER_DNS		3
+#define SERVER_CONNECTING	4
+#define SERVER_SSL_CONNECTING	5
+#define SERVER_REGISTERING	6
+#define SERVER_SYNCING		7
+#define SERVER_ACTIVE		8
+#define SERVER_EOF		9
+#define SERVER_ERROR		10
+#define SERVER_CLOSING		11
+#define SERVER_CLOSED		12
+#define SERVER_DELETED		13
 
 
 	BUILT_IN_COMMAND(servercmd);
@@ -198,7 +199,7 @@ const	AI *		next_addr;		/* The next one to try upon failure */
 	int	str_to_servref_with_update	(const char *desc);
 	int	str_to_newserv			(const char *);
 	void	destroy_server_list		(void);
-	void	add_servers			(char *, const char *);
+	void	add_servers			(const char *, const char *);
 	int	read_default_server_file 	(void);
 	void	display_server_list		(void);
 	char *	create_server_list		(void);	/* MALLOC */
@@ -211,8 +212,11 @@ const	AI *		next_addr;		/* The next one to try upon failure */
 	void	send_to_server_with_payload	(const char *, const char *, ...) __A(2);
 	void	send_to_aserver_with_payload	(int, const char *, const char *, ...) __A(3);
 	void	send_to_aserver_raw		(int, size_t len, const char *buffer);
+#if 0
 	int	grab_server_address		(int);
-	int	connect_to_server		(int);
+#endif
+	int	bootstrap_server_connection	(int);
+	int	connect_to_server_next_addr	(int);
 	int	close_all_servers		(const char *);
 	void	close_server			(int, const char *);
 
@@ -240,7 +244,7 @@ const 	char *	get_server_version_string	(int);
 const	char *	get_server_ssl_cipher		(int);
  
 	void	register_server			(int, const char *);
-	void	password_sendline		(char *, const char *);
+	void	password_sendline		(const char *, const char *);
 	int	is_server_open			(int);
 	int	is_server_registered		(int);
 	void	server_is_registered		(int, const char *, const char *);
