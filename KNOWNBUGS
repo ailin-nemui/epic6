@@ -159,3 +159,4 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 *  This will be used for CAP/SASL soon enough...
 * Change callbacks to add_wait_prompt() to take two (const char *s)
 * Change the default for $json_implode() to "compact"
+* Switch from select() to poll() for multiplexing.
