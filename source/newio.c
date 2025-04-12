@@ -417,6 +417,9 @@ int 	do_wait (Timeval *timeout)
 static	int	polls = 0;
 	int	vfd;
 
+	if (!timeout)
+		panic(1, "do_wait: timeout is NULL.");
+
 	/*
 	 * Sanity Check -- A polling loop is caused when the
 	 * timeout is 0, and occurs whenever timer needs to go off.  The
@@ -677,7 +680,7 @@ int	new_close_with_option (int vfd, int virtual)
 {
 	MyIO *	ioe;
 
-	if (vfd == -1)
+	if (vfd < 0)
 		return -1;		/* Oh well. */
 
 	if (vfd >= 0 && vfd <= global_max_vfd && (ioe = io_rec[vfd]))

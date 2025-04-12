@@ -1634,7 +1634,7 @@ cJSON_bool	cJSON_ReplaceItemViaPointer (cJSON *parent, cJSON *item, cJSON *repla
 	replacement->next = item->next;
 	replacement->prev = item->prev;
 
-	if (!replacement->next)
+	if (replacement->next)
 		replacement->next->prev = replacement;
 	if (parent->child == item)
 	{
@@ -1648,7 +1648,7 @@ cJSON_bool	cJSON_ReplaceItemViaPointer (cJSON *parent, cJSON *item, cJSON *repla
 		 * To find the last item in array quickly, we use prev in array.
 		 * We can't modify the last item's next pointer where this item was the parent's child
 		 */
-		if (!replacement->prev)
+		if (replacement->prev)
 			replacement->prev->next = replacement;
 		if (!replacement->next)
 			parent->child->prev = replacement;

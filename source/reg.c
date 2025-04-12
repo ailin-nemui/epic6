@@ -537,7 +537,12 @@ int wild_match (const char *p, const char *str)
 		 * We will have to null this out, but not until we've used it
 		 * XXX This seems to be a no-op.  Why bother?
 		 */
+		/*
+	 	 * gcc14 is *very* concerned this might return NULL.
+		 */
 		placeholder = ptr = strstr(pattern, "\\[");
+		if (!ptr)
+			return 0;	
 
 		/*
 		 * Look for the matching \].

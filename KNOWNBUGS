@@ -164,3 +164,4 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Add compat strlcpy()/strlcat() for legacy glibc
 * Remove remaining uses of strcpy/strcat/sprintf() in cJSON.c
 * Don't use INFTIM, that's a bsd-ism. -1 is fine for poll().
+* Various and Sundry Changes suggested by static analyzers.

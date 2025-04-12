@@ -340,6 +340,7 @@ void	yell (const char *format, ...)
                 va_list args;
                 va_start(args, format);
 		vfprintf(stderr, format, args);
+		va_end(args);
 		sleep(5);
 		my_exit(4);
         }
