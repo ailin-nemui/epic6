@@ -161,3 +161,6 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Change the default for $json_implode() to "compact"
 * Switch from select() to poll() for multiplexing.
 * Remove the rest of the remnants of select() and friends.
+* Add compat strlcpy()/strlcat() for legacy glibc
+* Remove remaining uses of strcpy/strcat/sprintf() in cJSON.c
+* Don't use INFTIM, that's a bsd-ism. -1 is fine for poll().

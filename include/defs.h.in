@@ -111,6 +111,12 @@
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
 
+/* Define if you have strlcat() */
+#undef HAVE_STRLCAT
+
+/* Define if you have strlcpy() */
+#undef HAVE_STRLCPY
+
 /* Define if you have strptime() */
 #undef HAVE_STRPTIME
 

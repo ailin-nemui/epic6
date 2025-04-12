@@ -1012,19 +1012,19 @@ static cJSON_bool	cJSON_GenerateValue (const cJSON *item, cJSON_Generator *outpu
 	    case cJSON_NULL:
 		if (!(output = ensure(output_buffer, 5)))
 			return false_;
-		strcpy(output, "null");
+		strlcpy(output, "null", 5);
 		return true_;
 
 	    case cJSON_False:
 		if (!(output = ensure(output_buffer, 6)))
 			return false_;
-		strcpy(output, "false");
+		strlcpy(output, "false", 6);
 		return true_;
 
 	    case cJSON_True:
 		if (!(output = ensure(output_buffer, 5)))
 			return false_;
-		strcpy(output, "true");
+		strlcpy(output, "true", 5);
 		return true_;
 
 	    case cJSON_Number:
@@ -1080,19 +1080,19 @@ static cJSON_bool	cJSON_GenerateNumber (const cJSON *item, cJSON_Generator *outp
 
 	/* This checks for NaN and Infinity */
 	if (isnan(d) || isinf(d))
-		length = sprintf(number_buffer, "null");
+		length = snprintf(number_buffer, sizeof(number_buffer), "null");
 	else
 	{
 		/* Try 15 decimal places of precision to avoid nonsignificant nonzero digits */
-		length = sprintf(number_buffer, "%1.15g", d);
+		length = snprintf(number_buffer, sizeof(number_buffer), "%1.15g", d);
 
 		/* Check whether the original double can be recovered */
 		/* If not, print with 17 decimal places of precision */
 		if ((sscanf(number_buffer, "%lg", &test) != 1) || !compare_double((double)test, d))
-			length = sprintf((char*)number_buffer, "%1.17g", d);
+			length = snprintf(number_buffer, sizeof(number_buffer), "%1.17g", d);
 	}
 
-	/* sprintf failed or buffer overrun occurred */
+	/* snprintf failed or buffer overrun occurred */
 	if ((length < 0) || (length > (int)(sizeof(number_buffer) - 1)))
 		return false_;
 
@@ -1138,7 +1138,7 @@ static cJSON_bool	cJSON_GenerateString_ptr (const char *input, cJSON_Generator *
 	{
 		if (!(output = ensure(output_buffer, sizeof("\"\""))))
 			return false_;
-		strcpy(output, "\"\"");
+		strlcpy(output, "\"\"", 3);
 
 		return true_;
 	}
@@ -1186,7 +1186,7 @@ static cJSON_bool	cJSON_GenerateString_ptr (const char *input, cJSON_Generator *
 	output[0] = '\"';
 	output_pointer = output + 1;
 	/* copy the string */
-	for (input_pointer = input; *input_pointer != '\0'; input_pointer++, output_pointer++)
+	for (input_pointer = input; *input_pointer; input_pointer++, output_pointer++)
 	{
 		/* normal character, copy */
 		if ((*input_pointer > 31) && (*input_pointer != '\"') && (*input_pointer != '\\'))
@@ -1220,7 +1220,8 @@ static cJSON_bool	cJSON_GenerateString_ptr (const char *input, cJSON_Generator *
 				break;
 			    default:
 				/* escape and print as unicode codepoint */
-				sprintf((char*)output_pointer, "u%04x", *input_pointer);
+				/* XXX - Is 6 verified to be correct here? */
+				snprintf(output_pointer, 6, "u%04x", *input_pointer);
 				output_pointer += 4;
 				break;
 			}

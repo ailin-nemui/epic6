@@ -255,6 +255,9 @@ typedef char Filename[PATH_MAX + 1];
 #define Char const char
 
 #include <poll.h>
+#ifndef INFTIM
+#define INFTIM (-1)
+#endif
 
 #ifndef howmany
 #define howmany(x, y)   (((x) + ((y) - 1)) / (y))

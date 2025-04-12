@@ -164,7 +164,8 @@ int	main (int argc, char **argv)
 		fds[0].revents = 0;
 		fds[1].revents = 0;
 
-		poll_result = poll(fds, 2, INFTIM);
+		/* The magic value -1 is defined by the standard */
+		poll_result = poll(fds, 2, -1);
 		if (poll_result < 0)
 		{
 			if (errno == EINTR && got_sigwinch)
