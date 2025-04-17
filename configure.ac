@@ -185,7 +185,6 @@ else
 		fi
 		AC_MSG_ERROR([I was unable to find OpenSSL.  If it is not installed, please install it.  If it is installed, please help me find it using --with-ssl=/usr/local or similar.])
 	else
-		AC_DEFINE([HAVE_SSL], 1, [Define this if you have a working ssl])
 		AC_MSG_RESULT([yes])
 	fi
 fi
@@ -206,7 +205,7 @@ dnl We no longer check for header files required by posix.
 dnl We no longer check for functions required by posix.
 dnl We no longer try to support systems that are that weird.
 dnl
-AC_CHECK_HEADERS(locale.h xlocale.h term.h sys/un.h ieeefp.h,)
+AC_CHECK_HEADERS(locale.h xlocale.h term.h ieeefp.h,)
 
 AC_CHECK_FUNC(unveil, AC_DEFINE([HAVE_UNVEIL], 1, [Define if you have unveil()]),)
 AC_CHECK_FUNC(pledge, AC_DEFINE([HAVE_PLEDGE], 1, [Define if you have pledge()]),)
@@ -260,31 +259,6 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 )
 
 AC_FUNC_ALLOCA
-AC_TYPE_MODE_T
-AC_TYPE_OFF_T
-AC_TYPE_PID_T
-AC_TYPE_SIZE_T
-AC_TYPE_SSIZE_T
-AC_TYPE_UID_T
-AC_TYPE_INT8_T
-AC_TYPE_UINT8_T
-AC_TYPE_INT16_T
-AC_TYPE_UINT16_T
-AC_TYPE_INT32_T
-AC_TYPE_UINT32_T
-AC_TYPE_INT64_T
-AC_TYPE_UINT64_T
-AC_TYPE_INTMAX_T
-AC_TYPE_UINTMAX_T
-AC_TYPE_INTPTR_T
-
-AC_CHECK_TYPE([socklen_t], 
-	[AC_DEFINE([HAVE_SOCKLEN_T], 1, [Define if you have socklen_t])], ,
-	[[ #include <sys/socket.h> ]])
-
-AC_CHECK_TYPE([struct linger], ,
-	[AC_DEFINE([NO_STRUCT_LINGER], 1, [Define if you do not have struct linger])],
-	[[ #include <sys/socket.h> ]])
 
 dnl ----------------------------------------------------------
 dnl
@@ -320,17 +294,6 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
   	[ AC_DEFINE([HAVE_SA_LEN], 1, [Define this if your struct sockaddr has a sa_len field])
 	  AC_MSG_RESULT([yes]) ],
   	[ AC_MSG_RESULT([no]) ], :)
-
-dnl ----------------------------------------------------------
-AC_CHECK_TYPE([struct sockaddr_storage], 
-	[AC_DEFINE([HAVE_STRUCT_SOCKADDR_STORAGE], 1, [Define if you have struct sockaddr_storage])], ,
-	[[ #include <sys/socket.h> ]])
-AC_CHECK_TYPE([struct sockaddr_in6], 
-	[AC_DEFINE([HAVE_STRUCT_SOCKADDR_IN6], 1, [Define if you have struct sockaddr_in6])], ,
-	[[ #include <netinet/in.h> ]])
-AC_CHECK_TYPE([struct addrinfo], 
-	[AC_DEFINE([HAVE_STRUCT_ADDRINFO], 1, [Define if you have struct addrinfo])], ,
-	[[ #include <netdb.h> ]])
 
 dnl ----------------------------------------------------------
 dnl
@@ -456,11 +419,7 @@ if test "x$have_iconv" = "x"; then
 	fi
 else
 	AC_MSG_RESULT(yes)
-	AC_DEFINE([HAVE_ICONV], 1, [Define this if you have a useful iconv()])
 fi
-
-dnl #sigh#
-dnl AC_CHECK_FUNC(iconv_open, AC_DEFINE([HAVE_ICONV], 1, [Define this if you have a useful iconv())],)
 
 dnl ---------------------------------------------------------
 dnl

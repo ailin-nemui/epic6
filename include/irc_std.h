@@ -52,9 +52,7 @@
 #ifndef AI_ADDRCONFIG
 # define AI_ADDRCONFIG 0
 #endif
-#ifdef HAVE_SYS_UN_H
 #include <sys/un.h>
-#endif
 
 /*
  * Some systems define tputs, etc in this header
@@ -191,26 +189,6 @@ typedef char Filename[PATH_MAX + 1];
 #endif
 
 /*
- * Define an RFC2553 compatable "struct sockaddr_storage" if we do not
- * already have one.
- */
-#ifndef HAVE_STRUCT_SOCKADDR_STORAGE
-struct sockaddr_storage {
-#ifdef HAVE_SA_LEN
-	unsigned char ss_len;
-	unsigned char ss_family;
-#else
-	unsigned short ss_family;
-#endif
-	unsigned char padding[128 - 2];
-};
-#endif
-
-#ifndef HAVE_SOCKLEN_T
-typedef int socklen_t;
-#endif
-
-/*
  * C99 requires that type-punned aliases must be accessed through a union.
  * So, that's why we do this.  Always write to 'ss' and then read back
  * through whatever type you need.
@@ -220,9 +198,7 @@ typedef union SSu {
 	struct sockaddr_storage	ss;
 	struct sockaddr_in	si;
 	struct sockaddr_in6	si6;
-#ifdef HAVE_SYS_UN_H
 	struct sockaddr_un	su;
-#endif
 } SSu;
 
 typedef struct addrinfo		AI;

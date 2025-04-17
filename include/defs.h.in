@@ -18,17 +18,8 @@
 /* Define if you can use __attribute__((may_alias)) */
 #undef HAVE_ATTRIBUTE_MAY_ALIAS
 
-/* Define this if you have a useful iconv() */
-#undef HAVE_ICONV
-
 /* Define to 1 if you have the <ieeefp.h> header file. */
 #undef HAVE_IEEEFP_H
-
-/* Define to 1 if the system has the type 'intmax_t'. */
-#undef HAVE_INTMAX_T
-
-/* Define to 1 if the system has the type 'intptr_t'. */
-#undef HAVE_INTPTR_T
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
@@ -38,9 +29,6 @@
 
 /* Define to 1 if you have the <locale.h> header file. */
 #undef HAVE_LOCALE_H
-
-/* Define to 1 if the system has the type 'long long int'. */
-#undef HAVE_LONG_LONG_INT
 
 /* Define if you have newlocale() */
 #undef HAVE_NEWLOCALE
@@ -53,12 +41,6 @@
 
 /* Define this if your struct sockaddr has a sa_len field */
 #undef HAVE_SA_LEN
-
-/* Define if you have socklen_t */
-#undef HAVE_SOCKLEN_T
-
-/* Define this if you have a working ssl */
-#undef HAVE_SSL
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
@@ -81,23 +63,11 @@
 /* Define if you have strlcpy() */
 #undef HAVE_STRLCPY
 
-/* Define if you have struct addrinfo */
-#undef HAVE_STRUCT_ADDRINFO
-
-/* Define if you have struct sockaddr_in6 */
-#undef HAVE_STRUCT_SOCKADDR_IN6
-
-/* Define if you have struct sockaddr_storage */
-#undef HAVE_STRUCT_SOCKADDR_STORAGE
-
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
-
-/* Define to 1 if you have the <sys/un.h> header file. */
-#undef HAVE_SYS_UN_H
 
 /* Define if you have tcgetwinsize() */
 #undef HAVE_TCGETWINSIZE
@@ -105,14 +75,8 @@
 /* Define to 1 if you have the <term.h> header file. */
 #undef HAVE_TERM_H
 
-/* Define to 1 if the system has the type 'uintmax_t'. */
-#undef HAVE_UINTMAX_T
-
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
-
-/* Define to 1 if the system has the type 'unsigned long long int'. */
-#undef HAVE_UNSIGNED_LONG_LONG_INT
 
 /* Define if you have unveil() */
 #undef HAVE_UNVEIL
@@ -131,9 +95,6 @@
 
 /* Define this if newlocale() requires #define __XOPEN_SOURCE 700 to work */
 #undef NEWLOCALE_REQUIRES__XOPEN_SOURCE_700
-
-/* Define if you do not have struct linger */
-#undef NO_STRUCT_LINGER
 
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
@@ -175,82 +136,5 @@
    backward compatibility; new code need not use it. */
 #undef STDC_HEADERS
 
-/* Define for Solaris 2.5.1 so the uint32_t typedef from <sys/synch.h>,
-   <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the
-   #define below would cause a syntax error. */
-#undef _UINT32_T
-
-/* Define for Solaris 2.5.1 so the uint64_t typedef from <sys/synch.h>,
-   <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the
-   #define below would cause a syntax error. */
-#undef _UINT64_T
-
-/* Define for Solaris 2.5.1 so the uint8_t typedef from <sys/synch.h>,
-   <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the
-   #define below would cause a syntax error. */
-#undef _UINT8_T
-
-/* Define as 'int' if <sys/types.h> doesn't define. */
-#undef gid_t
-
-/* Define to the type of a signed integer type of width exactly 16 bits if
-   such a type exists and the standard includes do not define it. */
-#undef int16_t
-
-/* Define to the type of a signed integer type of width exactly 32 bits if
-   such a type exists and the standard includes do not define it. */
-#undef int32_t
-
-/* Define to the type of a signed integer type of width exactly 64 bits if
-   such a type exists and the standard includes do not define it. */
-#undef int64_t
-
-/* Define to the type of a signed integer type of width exactly 8 bits if such
-   a type exists and the standard includes do not define it. */
-#undef int8_t
-
-/* Define to the widest signed integer type if <stdint.h> and <inttypes.h> do
-   not define. */
-#undef intmax_t
-
-/* Define to the type of a signed integer type wide enough to hold a pointer,
-   if such a type exists, and if the system does not define it. */
-#undef intptr_t
-
-/* Define to 'int' if <sys/types.h> does not define. */
-#undef mode_t
-
-/* Define to 'long int' if <sys/types.h> does not define. */
-#undef off_t
-
-/* Define as a signed integer type capable of holding a process identifier. */
-#undef pid_t
-
 /* Define as 'unsigned int' if <stddef.h> doesn't define. */
 #undef size_t
-
-/* Define as 'int' if <sys/types.h> doesn't define. */
-#undef ssize_t
-
-/* Define as 'int' if <sys/types.h> doesn't define. */
-#undef uid_t
-
-/* Define to the type of an unsigned integer type of width exactly 16 bits if
-   such a type exists and the standard includes do not define it. */
-#undef uint16_t
-
-/* Define to the type of an unsigned integer type of width exactly 32 bits if
-   such a type exists and the standard includes do not define it. */
-#undef uint32_t
-
-/* Define to the type of an unsigned integer type of width exactly 64 bits if
-   such a type exists and the standard includes do not define it. */
-#undef uint64_t
-
-/* Define to the type of an unsigned integer type of width exactly 8 bits if
-   such a type exists and the standard includes do not define it. */
-#undef uint8_t
-
-/* Define to the widest unsigned integer type if <stdint.h> and <inttypes.h>
-   do not define. */
-#undef uintmax_t
