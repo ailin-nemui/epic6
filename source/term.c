@@ -48,6 +48,7 @@
 #include "screen.h"
 #include "output.h"
 #include "newio.h"
+#include <termios.h>
 
 /*
  * If "HAVE_TERMINFO" is #define'd then we will use terminfo type function
@@ -58,17 +59,6 @@
  */
 
 
-#ifdef HAVE_TERMIOS_H
-# include <termios.h>
-#else
-# ifdef HAVE_SYS_TERMIOS_H
-#  include <sys/termios.h>
-# endif
-#endif
-
-#ifdef HAVE_SYS_IOCTL_H
-#include <sys/ioctl.h>
-#endif
 
 volatile sig_atomic_t	need_redraw;
 static	int		tty_des;		/* descriptor for the tty */
@@ -1095,14 +1085,6 @@ int 	term_init (void)
 	 * So we have to actually turn off all of the signal-generating
 	 * keys *except* ^C by hand:  QUIT (^\), DSUSP (^Y), and SUSP (^Z).
 	 */
-#       if !defined(_POSIX_VDISABLE)
-#               if defined(HAVE_FPATHCONF)
-#                       define _POSIX_VDISABLE fpathconf(tty_des, _PC_VDISABLE)
-#               else
-#                       define _POSIX_VDISABLE 0
-#               endif
-#       endif
-
 	newb.c_cc[VQUIT] = _POSIX_VDISABLE;
 #	ifdef VDSUSP
 		newb.c_cc[VDSUSP] = _POSIX_VDISABLE;

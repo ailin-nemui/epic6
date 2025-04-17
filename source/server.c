@@ -2160,7 +2160,7 @@ void	send_to_aserver_raw (int refnum, size_t len, const char *buffer)
 
 	if ((des = s->des) != -1 && buffer)
 	{
-	    if (is_fd_ssl_enabled(des) == TRUE)
+	    if (is_fd_ssl_enabled(des) == 1)
 		err = ssl_write(des, buffer, len);
 	    else
 		err = write(des, buffer, len);
@@ -2852,7 +2852,7 @@ int	get_server_ssl_enabled (int refnum)
 	if (!(s = get_server(refnum)))
 		return 0;
 
-	return (is_fd_ssl_enabled(s->des) == TRUE ? 1 : 0);
+	return is_fd_ssl_enabled(s->des);
 }
 
 const char	*get_server_ssl_cipher (int refnum)
@@ -3354,7 +3354,8 @@ static void	set_server_uh_addr (int refnum)
 
 	/* Ack!  Oh well, it used to be for DCC. */
 	s->uh_addr.sa.sa_family = AF_INET;
-	if (inet_strton(host + 1, zero, &s->uh_addr, AI_ADDRCONFIG))
+#if 0
+	if (inet_any_to_ssu(host + 1, zero, &s->uh_addr, AI_ADDRCONFIG))
         {
 		/* 
 		 * Once upon a time this warning was relevant to people
@@ -3372,6 +3373,7 @@ static void	set_server_uh_addr (int refnum)
 		     "Listening sockets might not work with this server "
 		     "connection!", host + 1);
 	}
+#endif
 }
 
 /*

@@ -197,23 +197,17 @@ AC_CHECK_LIB(sqlite, sqlite_open, LIBS="$LIBS -lsqlite",)
 AC_CHECK_LIB(sodium, sodium_init, LIBS="$LIBS -lsodium",)
 AC_CHECK_LIB(regex, regcomp, LIBS="$LIBS -lregex",)
 AC_CHECK_LIB(ncurses, setupterm, LIBS="-lncurses $LIBS",)
+AC_CHECK_LIB(cares, ares_library_init, LIBS="$LIBS -lcares",)
 
 dnl ----------------------------------------------------------
 dnl
 dnl Checking for headers, functions, and a type declarations
-dnl sigh.  I used to check for sys/fcntl.h
+dnl We no longer check for header files required by posix.  
+dnl We no longer check for functions required by posix.
+dnl We no longer try to support systems that are that weird.
 dnl
+AC_CHECK_HEADERS(locale.h xlocale.h term.h sys/un.h ieeefp.h,)
 
-AC_CHECK_HEADERS(fcntl.h inttypes.h locale.h math.h ndbm.h netdb.h regex.h stdargs.h stddef.h stdint.h sys/cdefs.h sys/file.h sys/filio.h sys/ioctl.h sys/syslimits.h sys/time.h sys/un.h sys/param.h term.h termios.h sys/termios.h xlocale.h,)
-
-AC_CHECK_FUNC(clock_gettime, AC_DEFINE([HAVE_CLOCK_GETTIME], 1, [Define if you have clock_gettime()]),)
-AC_CHECK_FUNC(gettimeofday, AC_DEFINE([HAVE_GETTIMEOFDAY], 1, [Define if you have gettimeofday()]),)
-AC_CHECK_FUNC(fpathconf, AC_DEFINE([HAVE_FPATHCONF], 1, [Define if you have fpathconf()] ),)
-AC_CHECK_FUNC(getlogin, AC_DEFINE([HAVE_GETLOGIN], 1, [Define if you have getlogin()]),)
-AC_CHECK_FUNC(getpgid, AC_DEFINE([HAVE_GETPGID], 1, [Define if you have getpgid()]),)
-AC_CHECK_FUNC(killpg, AC_DEFINE([HAVE_KILLPG], 1, [Define if you have killpg()]),)
-AC_CHECK_FUNC(strptime, AC_DEFINE([HAVE_STRPTIME], 1, [Define if you have strptime()]),)
-AC_CHECK_FUNC(sysconf, AC_DEFINE([HAVE_SYSCONF], 1, [Define if you have sysconf()]),)
 AC_CHECK_FUNC(unveil, AC_DEFINE([HAVE_UNVEIL], 1, [Define if you have unveil()]),)
 AC_CHECK_FUNC(pledge, AC_DEFINE([HAVE_PLEDGE], 1, [Define if you have pledge()]),)
 AC_CHECK_FUNC(newlocale, AC_DEFINE([HAVE_NEWLOCALE], 1, [Define if you have newlocale()]),)

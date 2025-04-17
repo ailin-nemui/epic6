@@ -199,7 +199,7 @@ static void 	clear_channel (Channel *chan)
 static void 	destroy_channel (Channel *chan)
 {
 	int	is_current_now;
-	Char *	new_current_channel;
+	const char *	new_current_channel;
 
 	is_current_now = is_current_channel(chan->channel, chan->server);
 
@@ -1156,7 +1156,7 @@ void 	list_channels (void)
 BUILT_IN_KEYBINDING(switch_channels)
 {
 	int	lowcount = current_channel_counter;
-	Char *	winner = NULL;
+	const char *	winner = NULL;
 	int	highcount = -1;
 	int	current;
 	int	server;
@@ -1406,8 +1406,8 @@ void 	set_channel_window (const char *channel, int server, int window_, int as_c
 	Channel *tmp;
 	int	is_current_now;
 	int	old_window;
-	Char *	old_window_new_curchan;
-	Char *	new_window_old_curchan;
+	const char *	old_window_new_curchan;
+	const char *	new_window_old_curchan;
 	int	window = get_window_refnum(window_);
 	int	l;
 

@@ -82,10 +82,7 @@
 #include "cJSON.h"
 
 #include <glob.h>
-
-#ifdef HAVE_REGEX_H
-# include <regex.h>
-#endif
+#include <regex.h>
 #include <sys/utsname.h>
 #include <math.h>
 
@@ -4834,7 +4831,6 @@ BUILT_IN_FUNCTION(function_cexist, input)
  *		my problem (tm).  It returns the FALSE value.
  */
 
-#ifdef HAVE_REGEX_H
 static int last_regex_error = 0; 		/* XXX */
 
 BUILT_IN_FUNCTION(function_regcomp_cs, input)
@@ -4989,13 +4985,6 @@ BUILT_IN_FUNCTION(function_regfree, input)
 	regfree(&preg);
 	RETURN_EMPTY;
 }
-
-#else
-BUILT_IN_FUNCTION(function_regexec, input)  { RETURN_EMPTY; }
-BUILT_IN_FUNCTION(function_regcomp, input)  { RETURN_EMPTY; }
-BUILT_IN_FUNCTION(function_regerror, input) { RETURN_STR("no regex support"); }
-BUILT_IN_FUNCTION(function_regfree, input)  { RETURN_EMPTY; }
-#endif
 
 BUILT_IN_FUNCTION(function_getenv, input)
 {
@@ -5740,12 +5729,11 @@ BUILT_IN_FUNCTION(function_getgid, input)
 
 BUILT_IN_FUNCTION(function_getlogin, input)
 {
-#ifdef HAVE_GETLOGIN
-	char *retval = getlogin();
-#else
-	char *retval = getenv("LOGNAME");
-#endif
-	RETURN_STR(retval);
+	char	login_name[256];
+
+	if (getlogin_r(login_name, sizeof(login_name)))
+		RETURN_EMPTY;
+	RETURN_FSTR(login_name);
 }
 
 BUILT_IN_FUNCTION(function_getpgrp, input)
@@ -6743,23 +6731,23 @@ BUILT_IN_FUNCTION(function_wordtoindex, input)
 
 BUILT_IN_FUNCTION(function_iptolong, word)
 {
-	SSu	addr;
-	char *	dotted_quad;
+	SSu     addr;
+	char *  dotted_quad;
 
 	addr.si.sin_family = AF_INET;
 	GET_FUNC_ARG(dotted_quad, word);
 	if (inet_strton(dotted_quad, NULL, &addr, AI_NUMERICHOST))
 		RETURN_EMPTY;
-	
+
 	return malloc_sprintf(NULL, UINTMAX_FORMAT, 
 				(uintmax_t)ntohl(addr.si.sin_addr.s_addr));
 }
 
 BUILT_IN_FUNCTION(function_longtoip, word)
 {
-	char *	ip32;
-	SSu	addr;
-	char	retval[256];
+	char *  ip32;
+	SSu     addr;
+	char    retval[256];
 
 	GET_FUNC_ARG(ip32, word);
 	addr.si.sin_family = AF_INET;
@@ -7529,7 +7517,6 @@ BUILT_IN_FUNCTION(function_strptime, input)
 	char *		format;
 	time_t		the_time;
 
-#ifdef HAVE_STRPTIME
 	GET_DWORD_ARG(format, input);
 
 	if (!(strptime(input, format, &timeptr)))
@@ -7537,9 +7524,6 @@ BUILT_IN_FUNCTION(function_strptime, input)
 
 	the_time = mktime(&timeptr);
 	RETURN_INT(the_time);
-#else
-	RETURN_EMPTY;
-#endif
 }
 
 /*

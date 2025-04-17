@@ -45,8 +45,8 @@
 #define DWORD_DWORDS	3		/* Support only if /xdebug dword */
 
 ptrdiff_t       search_for 		(char *start, char *mark, const char *chars, int how, int *found);
-ssize_t		move_word_rel		(Char *, Char **, int, int, Char *);
-const char *	real_move_to_abs_word 	(Char *, Char **, int, int, Char *);
+ssize_t		move_word_rel		(const char *, const char **, int, int, const char *);
+const char *	real_move_to_abs_word 	(const char *, const char **, int, int, const char *);
 #define move_to_abs_word(a, b, c)	real_move_to_abs_word(a, b, c, DWORD_YES, "\"");
 
 /*
@@ -68,7 +68,7 @@ char *		real_extract 		(char *, int, int, int);
  * 	secondword	The final word to extract (negative counts from end)
  *	extended	The type of words in this list
  */
-char *		real_extract2 		(Char *, int, int, int);
+char *		real_extract2 		(const char *, int, int, int);
 
 /*
  * Macros to extract UWORDS (double quoted words never supported)
@@ -100,7 +100,7 @@ char *		real_extract2 		(Char *, int, int, int);
 #define extractfw2(a, b, c)	real_extract2(a, b, c, DWORD_DWORDS)
 #define next_func_arg(a, b)	universal_next_arg_count((a),(b),1,DWORD_DWORDS,-1,"\"")
 
-int		count_words		(Char *str, int extended, Char *quotes);
+int		count_words		(const char *str, int extended, const char *quotes);
 
 int     word_in_wordlist (const char *word, const char *word_list_);
 

@@ -3258,9 +3258,7 @@ char *  call_lambda_function (const char *name, const char *what, const char *ar
 	 * we just use the cast to hide that.  This is absolutely safe.
 	 */
 	return parse_line_alias_special(name, what, (char *)
-#ifdef HAVE_INTPTR_T
 	 					    (intptr_t)
-#endif
 							args, NULL, 1);
 }
 
@@ -3271,9 +3269,7 @@ char *  call_lambda_function (const char *name, const char *what, const char *ar
 void	call_lambda_command (const char *name, const char *what, const char *args)
 {
 	parse_line_alias_special(name, what, (char *)
-#ifdef HAVE_INTPTR_T
 	 					    (intptr_t)
-#endif
 							args, NULL, 0);
 }
 

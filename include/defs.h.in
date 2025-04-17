@@ -18,26 +18,11 @@
 /* Define if you can use __attribute__((may_alias)) */
 #undef HAVE_ATTRIBUTE_MAY_ALIAS
 
-/* Define if you have clock_gettime() */
-#undef HAVE_CLOCK_GETTIME
-
-/* Define to 1 if you have the <fcntl.h> header file. */
-#undef HAVE_FCNTL_H
-
-/* Define if you have fpathconf() */
-#undef HAVE_FPATHCONF
-
-/* Define if you have getlogin() */
-#undef HAVE_GETLOGIN
-
-/* Define if you have getpgid() */
-#undef HAVE_GETPGID
-
-/* Define if you have gettimeofday() */
-#undef HAVE_GETTIMEOFDAY
-
 /* Define this if you have a useful iconv() */
 #undef HAVE_ICONV
+
+/* Define to 1 if you have the <ieeefp.h> header file. */
+#undef HAVE_IEEEFP_H
 
 /* Define to 1 if the system has the type 'intmax_t'. */
 #undef HAVE_INTMAX_T
@@ -48,9 +33,6 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
-/* Define if you have killpg() */
-#undef HAVE_KILLPG
-
 /* Define this if you have a working libarchive */
 #undef HAVE_LIBARCHIVE
 
@@ -59,15 +41,6 @@
 
 /* Define to 1 if the system has the type 'long long int'. */
 #undef HAVE_LONG_LONG_INT
-
-/* Define to 1 if you have the <math.h> header file. */
-#undef HAVE_MATH_H
-
-/* Define to 1 if you have the <ndbm.h> header file. */
-#undef HAVE_NDBM_H
-
-/* Define to 1 if you have the <netdb.h> header file. */
-#undef HAVE_NETDB_H
 
 /* Define if you have newlocale() */
 #undef HAVE_NEWLOCALE
@@ -78,9 +51,6 @@
 /* Define this to support python */
 #undef HAVE_PYTHON
 
-/* Define to 1 if you have the <regex.h> header file. */
-#undef HAVE_REGEX_H
-
 /* Define this if your struct sockaddr has a sa_len field */
 #undef HAVE_SA_LEN
 
@@ -89,12 +59,6 @@
 
 /* Define this if you have a working ssl */
 #undef HAVE_SSL
-
-/* Define to 1 if you have the <stdargs.h> header file. */
-#undef HAVE_STDARGS_H
-
-/* Define to 1 if you have the <stddef.h> header file. */
-#undef HAVE_STDDEF_H
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
@@ -117,9 +81,6 @@
 /* Define if you have strlcpy() */
 #undef HAVE_STRLCPY
 
-/* Define if you have strptime() */
-#undef HAVE_STRPTIME
-
 /* Define if you have struct addrinfo */
 #undef HAVE_STRUCT_ADDRINFO
 
@@ -129,35 +90,8 @@
 /* Define if you have struct sockaddr_storage */
 #undef HAVE_STRUCT_SOCKADDR_STORAGE
 
-/* Define if you have sysconf() */
-#undef HAVE_SYSCONF
-
-/* Define to 1 if you have the <sys/cdefs.h> header file. */
-#undef HAVE_SYS_CDEFS_H
-
-/* Define to 1 if you have the <sys/file.h> header file. */
-#undef HAVE_SYS_FILE_H
-
-/* Define to 1 if you have the <sys/filio.h> header file. */
-#undef HAVE_SYS_FILIO_H
-
-/* Define to 1 if you have the <sys/ioctl.h> header file. */
-#undef HAVE_SYS_IOCTL_H
-
-/* Define to 1 if you have the <sys/param.h> header file. */
-#undef HAVE_SYS_PARAM_H
-
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H
-
-/* Define to 1 if you have the <sys/syslimits.h> header file. */
-#undef HAVE_SYS_SYSLIMITS_H
-
-/* Define to 1 if you have the <sys/termios.h> header file. */
-#undef HAVE_SYS_TERMIOS_H
-
-/* Define to 1 if you have the <sys/time.h> header file. */
-#undef HAVE_SYS_TIME_H
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
@@ -167,9 +101,6 @@
 
 /* Define if you have tcgetwinsize() */
 #undef HAVE_TCGETWINSIZE
-
-/* Define to 1 if you have the <termios.h> header file. */
-#undef HAVE_TERMIOS_H
 
 /* Define to 1 if you have the <term.h> header file. */
 #undef HAVE_TERM_H

@@ -37,10 +37,10 @@ extern	double	output_expires_after;
 	void	truncate_lastlog		(int);
 
 	void	move_all_lastlog		(int, int);
-	void	move_lastlog_item_by_string	(int, int, Char *);
-	void	move_lastlog_item_by_target	(int, int, Char *);
+	void	move_lastlog_item_by_string	(int, int, const char *);
+	void	move_lastlog_item_by_target	(int, int, const char *);
 	void	move_lastlog_item_by_level	(int, int, Mask *);
-	void	move_lastlog_item_by_regex	(int, int, Char *);
+	void	move_lastlog_item_by_regex	(int, int, const char *);
 
 	void    clear_level_from_lastlog 	(int, Mask *);
 	void    clear_regex_from_lastlog 	(int, const char *);

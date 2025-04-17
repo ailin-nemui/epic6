@@ -50,9 +50,6 @@
 #include "functions.h"
 
 #include <sys/wait.h>
-#ifdef HAVE_SYS_FILIO_H
-#include <sys/filio.h>
-#endif
 
 typedef struct WaitCmdStru
 {
@@ -837,18 +834,8 @@ static void 	kill_process (Process *proc, int sig)
 		return;
 	}
 
-#ifdef HAVE_GETPGID
-	pgid = getpgid(proc->pid);
-#else
-	pgid = proc->pid;	/* Oh well.... */
-#endif
-
-#ifndef HAVE_KILLPG
-# define killpg(pg, sig) kill(-(pg), (sig))
-#endif
-
 	/* The exec'd process shouldn't be in our process group */
-	if (pgid == getpid())
+	if ((pgid = getpgid(proc->pid)) == getpid())
 	{
 		yell("--- exec'd process is in my job control session!  Something is hosed ---");
 		return;

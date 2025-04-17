@@ -54,16 +54,11 @@
 #include "clock.h"
 #include "functions.h"
 
-#ifdef Char
-#undef Char
-#endif
-#define Char const char
-
 /*
  * Maximum number of "%" expressions in a status line format.  If you change
  * this number, you must manually change the snprintf() in make_status 
  */
-#define STATUS_FUNCTION(x) Char * x (int window_, short map, char key)
+#define STATUS_FUNCTION(x) const char * x (int window_, short map, char key)
 #define MAX_FUNCTIONS 40
 #define MAX_STATUS_USER 39
 
@@ -137,7 +132,7 @@ static	int	defered_status_updates = 0;
 struct status_formats {
 	short	map;
 	char 	key;
-	Char	*(*callback_function)(int, short, char);
+	const char	*(*callback_function)(int, short, char);
 	char	**format_var;
 	int	*format_set;
 };
@@ -303,7 +298,7 @@ static void	build_status_format (Status *s, int k)
 	short	map;
 	char	key;
 	unsigned	i;
-	Char	*raw = s->line[k].raw;
+	const char	*raw = s->line[k].raw;
 	char	*format = buffer;
 
 	debuglog("build_status_format for status line %d", k);

@@ -43,16 +43,7 @@
 #include "defs.h"
 #include "config.h"
 #include "irc_std.h"
-#ifdef HAVE_TERMIOS_H
-# include <termios.h>
-#else
-# ifdef HAVE_SYS_TERMIOS_H
-#  include <sys/termios.h>
-# endif
-#endif
-#ifdef HAVE_SYS_IOCTL_H
-#include <sys/ioctl.h>
-#endif
+#include <termios.h>
 #include <poll.h>
 
 static 	int 	data = -1;
@@ -106,11 +97,7 @@ int	main (int argc, char **argv)
 	 * functions and some systems do not have snprintf!  This use of
 	 * sprintf is demonstrably safe.
 	 */
-#ifdef HAVE_SNPRINTF
 	snprintf(stuff, sizeof(stuff), "version=%d\n", CURRENT_WSERV_VERSION);
-#else
-	sprintf(stuff, "version=%d\n", CURRENT_WSERV_VERSION);
-#endif
 	if (!write(cmd, stuff, strlen(stuff))) 
 		(void) 0;
 
@@ -133,11 +120,7 @@ int	main (int argc, char **argv)
 	tmp = ttyname(0);
 	if (strlen(tmp) > 90)
 		my_exit(90);
-#ifdef HAVE_SNPRINTF
 	snprintf(stuff, sizeof(stuff), "tty=%s\n", tmp);
-#else
-	sprintf(stuff, "tty=%s\n", tmp);
-#endif
 	if (!write(cmd, stuff, strlen(stuff))) 
 		(void) 0;
 
@@ -270,14 +253,6 @@ static int 	term_init (void)
 	newb.c_cc[VMIN] = 1;	          /* read() satified after 1 char */
 	newb.c_cc[VTIME] = 0;	          /* No timer */
 
-#       if !defined(_POSIX_VDISABLE)
-#               if defined(HAVE_FPATHCONF)
-#                       define _POSIX_VDISABLE fpathconf(tty_des, _PC_VDISABLE)
-#               else
-#                       define _POSIX_VDISABLE 0
-#               endif
-#       endif
-
 	newb.c_cc[VQUIT] = _POSIX_VDISABLE;
 #	ifdef VDSUSP
 		newb.c_cc[VDSUSP] = _POSIX_VDISABLE;
@@ -323,11 +298,7 @@ static void 	term_resize (void)
 	{
 		old_li = window.ws_row;
 		old_co = window.ws_col;
-#ifdef HAVE_SNPRINTF
 		snprintf(buffer, sizeof(buffer), "geom=%d %d\n", old_li, old_co);
-#else
-		sprintf(buffer, "geom=%d %d\n", old_li, old_co);
-#endif
 		if (!write(cmd, buffer, strlen(buffer))) 
 			(void) 0;
 	}

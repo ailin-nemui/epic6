@@ -23,12 +23,12 @@ extern	int	need_defered_commands;
 
 	void	init_commands		(void);
 
-        char *  call_lambda_function    (Char *, Char *, Char *);
-        void    call_lambda_command     (Char *, Char *, Char *);
-        char *  call_user_function      (Char *, Char *, char *, void *);
-        void    call_user_command       (Char *, Char *, char *, void *);
-	void	runcmds			(Char *, Char *);
-        void    runcmds_with_arglist    (Char *, char *, const char *);
+        char *  call_lambda_function    (const char *, const char *, const char *);
+        void    call_lambda_command     (const char *, const char *, const char *);
+        char *  call_user_function      (const char *, const char *, char *, void *);
+        void    call_user_command       (const char *, const char *, char *, void *);
+	void	runcmds			(const char *, const char *);
+        void    runcmds_with_arglist    (const char *, char *, const char *);
 
 	int     parse_statement 	(const char *, int, const char *);
 

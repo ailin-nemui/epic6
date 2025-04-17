@@ -35,8 +35,6 @@
 #include "vars.h"
 #include "newio.h"
 #include "output.h"
-/* We might need FIONBIO [but i hope not] */
-#include <sys/ioctl.h>
 
 static int	Connect 	 (int, SSu *);
 static socklen_t socklen  	 (SSu *);
@@ -537,77 +535,41 @@ int	one_to_another (int family, const char *what, char *retval, int size)
 /****************************************************************************/
 int	set_non_blocking (int fd)
 {
-	int	flag, rval;
+	int	rval;
 
-#if defined(O_NONBLOCK)
-	flag = O_NONBLOCK;
-#elif defined(O_NDELAY)
-	flag = O_NDELAY;
-#elif defined(FIONBIO)
-	flag = 1;
-#else
-	yell("Sorry!  Can't set nonblocking on this system!");
-#endif
-
-#if defined(O_NONBLOCK) || defined(O_NDELAY)
 	if ((rval = fcntl(fd, F_GETFL, 0)) == -1)
 	{
 		syserr(-1, "set_non_blocking: fcntl(%d, F_GETFL) failed: %s",
 				fd, strerror(errno));
 		return -1;
 	}
-	if (fcntl(fd, F_SETFL, rval | flag) == -1)
+	rval |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, rval) == -1)
 	{
 		syserr(-1, "set_non_blocking: fcntl(%d, F_SETFL) failed: %s",
 				fd, strerror(errno));
 		return -1;
 	}
-#else
-	if (ioctl(fd, FIONBIO, &flag) < 0)
-	{
-		syserr(-1, "set_non_blocking: ioctl(%d, FIONBIO) failed: %s",
-				fd, strerror(errno));
-		return -1;
-	}
-#endif
 	return 0;
 }
 
 int	set_blocking (int fd)
 {
-	int	flag, rval;
+	int	rval;
 
-#if defined(O_NONBLOCK)
-	flag = O_NONBLOCK;
-#elif defined(O_NDELAY)
-	flag = O_NDELAY;
-#elif defined(FIONBIO)
-	flag = 0;
-#else
-	yell("Sorry!  Can't set nonblocking on this system!");
-#endif
-
-#if defined(O_NONBLOCK) || defined(O_NDELAY)
 	if ((rval = fcntl(fd, F_GETFL, 0)) == -1)
 	{
 		syserr(-1, "set_blocking: fcntl(%d, F_GETFL) failed: %s",
 				fd, strerror(errno));
 		return -1;
 	}
-	if (fcntl(fd, F_SETFL, rval & ~flag) == -1)
+	rval &= (~(O_NONBLOCK));
+	if (fcntl(fd, F_SETFL, rval) == -1)
 	{
 		syserr(-1, "set_blocking: fcntl(%d, F_SETFL) failed: %s",
 				fd, strerror(errno));
 		return -1;
 	}
-#else
-	if (ioctl(fd, FIONBIO, &flag) < 0)
-	{
-		syserr(-1, "set_blocking: ioctl(%d, FIONBIO) failed: %s",
-				fd, strerror(errno));
-		return -1;
-	}
-#endif
 	return 0;
 }
 

@@ -21,15 +21,9 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdarg.h>
-#ifdef HAVE_STDINT_H
 #include <stdint.h>
-#endif
-#ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
-#endif
-#ifdef HAVE_STDDEF_H
 #include <stddef.h>
-#endif
 #include <setjmp.h>
 #include <glob.h>
 
@@ -40,15 +34,13 @@
 #include <unistd.h>
 #include <signal.h>
 #include <limits.h>
-#ifdef HAVE_SYS_PARAM_H
-#include <sys/param.h>
-#endif
 #include <errno.h>
 #include <sys/stat.h>
-/* I used to #include <locale.h>, but centos 5.11 required special handling */
-#ifdef HAVE_REGEX_H
 #include <regex.h>
-#endif
+/* I used to #include <locale.h>, but centos 5.11 required special handling */
+#include <iconv.h>
+#include <time.h>
+#include <fcntl.h>
 
 /*
  * Everybody needs these INET headers...
@@ -56,9 +48,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#ifdef HAVE_NETDB_H
 #include <netdb.h>
-#endif
 #ifndef AI_ADDRCONFIG
 # define AI_ADDRCONFIG 0
 #endif
@@ -73,54 +63,6 @@
 # include <term.h>
 #endif
 
-#ifdef HAVE_ICONV
-# include <iconv.h>
-#endif
-
-/*
- * Deal with brokenness in <time.h> and <sys/time.h>
- */
-#ifdef TIME_WITH_SYS_TIME
-# include <sys/time.h>
-# include <time.h>
-#else
-# ifdef HAVE_SYS_TIME_H
-#  include <sys/time.h>
-# else
-#  include <time.h>
-# endif
-#endif
-
-/*
- * Deal with brokenness in <fcntl.h> and <sys/fcntl.h>
- */
-#ifdef HAVE_SYS_FCNTL_H
-# include <sys/fcntl.h>
-#else
-# ifdef HAVE_FCNTL_H
-#  include <fcntl.h>
-# endif
-#endif
-
-/*
- * Deal with brokenness figuring out struct direct
- */
-#if HAVE_DIRENT_H
-# include <dirent.h>
-# define NAMLEN(dirent) strlen((dirent)->d_name)
-#else
-# define dirent direct
-# define NAMLEN(dirent) (dirent)->d_namlen
-# if HAVE_SYS_NDIR_H
-#  include <sys/ndir.h>
-# endif
-# if HAVE_SYS_DIR_H
-#  include <sys/dir.h>
-# endif
-# if HAVE_NDIR_H
-#  include <ndir.h>
-# endif
-#endif
 
 #define __A(x) __attribute__((format (printf, x, x + 1)))
 #define __N    __attribute__((noreturn))
@@ -172,14 +114,6 @@ char *alloca();
 #endif
 
 /*
- * Make sure there is TRUE and FALSE
- */
-#ifndef TRUE
-#define TRUE 1
-#define FALSE 0
-#endif
-
-/*
  * Can you believe some systems done #define this?
  * I was told that hurd doesn't, so this helps us on hurd.
  */
@@ -209,22 +143,20 @@ char *alloca();
 /*
  * Define generic macros for signal handlers and built in commands.
  */
-typedef void sigfunc (int);
-int	block_signal (int);
-int	unblock_signal (int);
-sigfunc *my_signal (int, sigfunc *);
-#define SIGNAL_HANDLER(x) void x (int unused)
-sigfunc *init_signals (void);
-void	init_signal_names (void);
-const char *get_signal_name (int);
-int	get_signal_by_name (const char *);	/* Returns -1 on error */
+typedef void 		sigfunc 	(int);
+	int		block_signal 	(int);
+	int		unblock_signal 	(int);
+	sigfunc *	my_signal 	(int, sigfunc *);
+#define SIGNAL_HANDLER(x) void x 	(int unused)
+	sigfunc *	init_signals	(void);
+	void		init_signal_names (void);
+	const char *	get_signal_name (int);
+	int		get_signal_by_name (const char *);	/* Returns -1 on error */
 
 extern	volatile sig_atomic_t	signals_caught[NSIG];
 
-#define BUILT_IN_COMMAND(x) \
-	void x (const char *command, char *args, const char *subargs)
-
-#define BUILT_IN_KEYBINDING(x) void x (unsigned int key, char *string)
+#define BUILT_IN_COMMAND(x)	void x (const char *command, char *args, const char *subargs)
+#define BUILT_IN_KEYBINDING(x)	void x (unsigned int key, char *string)
 
 typedef char Filename[PATH_MAX + 1];
 
@@ -233,8 +165,8 @@ typedef char Filename[PATH_MAX + 1];
  * argument list of a function call, because bad things can happen.  Always
  * do your LOCAL_COPY as a separate step before you call a function.
  */
-#define LOCAL_COPY(y) strcpy((char *)alloca(strlen((y)) + 1), y)
-#define SAFE(x) (((x) && *(x)) ? (x) : empty_string)
+#define LOCAL_COPY(y)	strcpy((char *)alloca(strlen((y)) + 1), y)
+#define SAFE(x) 	(((x) && *(x)) ? (x) : empty_string)
 
 /*
  * Figure out our intmax_t
@@ -248,11 +180,6 @@ typedef char Filename[PATH_MAX + 1];
 # define UINTMAX_FORMAT "%ju"
 # define UINTMAX_HEX_FORMAT "%jx"
 #endif
-
-#ifdef Char
-#undef Char
-#endif
-#define Char const char
 
 #include <poll.h>
 #ifndef INFTIM
@@ -337,5 +264,8 @@ typedef struct stat		Stat;
 #include <openssl/err.h>
 #include <openssl/opensslconf.h>
 #include <openssl/rand.h>
+
+/* Everytbody needs these c-ares headers */
+#include <ares.h>
 
 #endif /* __irc_std_h */

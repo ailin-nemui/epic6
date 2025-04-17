@@ -138,9 +138,7 @@ const char *	PasteArgs (const char **arg_list, int paste_point)
 		 * laundering away of const is reasonable safe, and proper.
 		 */
 		ptr = (char *)
-#ifdef HAVE_INTPTR_T
 				(intptr_t)
-#endif
 					   arg_list[i];
 
 		/*
@@ -399,9 +397,7 @@ static void	p_privmsg (const char *from, const char *comm, const char **ArgList)
 	 * message, which keeps things going to the wrong window.
 	 */
 	message = do_ctcp(1, from, target, (char *)
-#ifdef HAVE_INTPTR_T
 					(intptr_t)
-#endif
 						message);
 	if (!*message) {
 		set_server_doing_privmsg(from_server, 0);
@@ -1205,9 +1201,7 @@ static void 	p_notice (const char *from, const char *comm, const char **ArgList)
 	/* Do normal /CTCP reply handling */
 	/* XXX -- Casting "message" to (char *) is cheating. */
 	message = do_ctcp(0, from, target, (char *)
-#ifdef HAVE_INTPTR_T
 							(intptr_t)
-#endif
 								message);
 	if (!*message) {
 		set_server_doing_notice(from_server, 0);

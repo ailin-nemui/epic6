@@ -31,46 +31,61 @@
 #ifndef __NETWORK_H__
 #define __NETWORK_H__
 
-/* Used for connect_by_number */
-#define SERVICE_SERVER  0
-#define SERVICE_CLIENT  1
 
-#if 0
-/* Used from network.c */
-#define V0(x) ((struct sockaddr *)&(x))
-#define FAMILY(x) (V0(x)->sa_family)
+		/* String(any) -> SSu */
+	int     inet_strton             (const char *, const char *, SSu *, int);
 
-#define V4(x) ((struct sockaddr_in *)&(x))
-#define V4FAM(x) (V4(x)->sin_family)
-#define V4ADDR(x) (V4(x)->sin_addr)
-#define V4PORT(x) (V4(x)->sin_port)
+		/* SSu -> String (paddr or hostname) */
+	int     inet_ntostr             (SSu *, char *, int, char *, int, int);
 
-#define V6(x) ((struct sockaddr_in6 *)&(x))
-#define V6FAM(x) (V6(x)->sin6_family)
-#define V6ADDR(x) (V6(x)->sin6_addr)
-#define V6PORT(x) (V6(x)->sin6_port)
-#endif
+		/* SSu -> String (paddr) */
+	char *  inet_ssu_to_paddr	(SSu *name, int flags);
 
-int     inet_strton             (const char *, const char *, SSu *, int);
-int     inet_ntostr             (SSu *, char *, int, char *, int, int);
-char *  inet_ssu_to_paddr	(SSu *name, int flags);
-int	inet_hntop             	(int, const char *, char *, int);
-int	inet_ptohn             	(int, const char *, char *, int);
-int	one_to_another         	(int, const char *, char *, int);
-int     my_accept              	(int, SSu *, socklen_t *);
-char *	switch_hostname        	(const char *);
-int     network_client          (SSu *, socklen_t, SSu *, socklen_t);
-int     network_server          (int family, unsigned short port, SSu *storage);
-int     client_bind             (SSu *, socklen_t);
-int     inet_vhostsockaddr 	(int, int, const char *, SSu *, socklen_t *);
-int	my_getaddrinfo		(const char *, const char *, const AI *, AI **);
-void	my_freeaddrinfo		(AI *);
-pid_t	async_getaddrinfo	(const char *, const char *, const AI *, int);
-void	marshall_getaddrinfo	(int, AI *results);
-void	unmarshall_getaddrinfo	(AI *results);
-int	set_non_blocking	(int);
-int	set_blocking		(int);
-int	family			(SSu *);
+		/* String (hostname) -> String (p-addr) */
+	int	inet_hntop             	(int, const char *, char *, int);
+
+		/* String (p-addr) -> String (hostname) */
+	int	inet_ptohn             	(int, const char *, char *, int);
+
+		/* String (hostname) -> String (p-addr) 
+		   String (p-addr)   -> String (hostname */
+	int	one_to_another         	(int, const char *, char *, int);
+
+		/* Accept a connection without blocking race condition into an SSu */
+	int     my_accept              	(int, SSu *, socklen_t *);
+
+		/* This lives in ircaux.c -- probably should not */
+	char *	switch_hostname        	(const char *);
+
+		/* Create fd with SSu for both sides */
+	int     network_client          (SSu *, socklen_t, SSu *, socklen_t);
+
+		/* Create listening server using default vhost */
+	int     network_server          (int family, unsigned short port, SSu *storage);
+
+		/* Create listening socket using specified vhost */
+	int     client_bind             (SSu *, socklen_t);
+
+		/* Create socket pinned to arbitrary (or default) vhost */
+		/* Used by network_server() */
+	int     inet_vhostsockaddr 	(int, int, const char *, SSu *, socklen_t *);
+
+		
+		/* A getaddrinfo() wrapper that supports AF_UNIX reliably */
+	int	my_getaddrinfo		(const char *, const char *, const AI *, AI **);
+	void	my_freeaddrinfo		(AI *);
+
+		/* Nonblocking getaddrinfo() that writes its results to an fd */
+	pid_t	async_getaddrinfo	(const char *, const char *, const AI *, int);
+	void	marshall_getaddrinfo	(int, AI *results);
+	void	unmarshall_getaddrinfo	(AI *results);
+
+		/* Set any fd to nonblocking */
+	int	set_non_blocking	(int);
+		/* Set any fd to blocking */
+	int	set_blocking		(int);
+		/* Tell me what family (AF_INET) this SSu is for */
+	int	family			(SSu *);
 
 #define GNI_INTEGER 0x4000
 

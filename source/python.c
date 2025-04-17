@@ -692,11 +692,7 @@ typedef struct {
 } PythonFDCallback;
 
 /* This should be in a header file somewhere... */
-#if defined(HAVE_SYSCONF) && defined(_SC_OPEN_MAX)
-#  define IO_ARRAYLEN   sysconf(_SC_OPEN_MAX)
-#else
-#  define IO_ARRAYLEN 1024
-#endif
+#define IO_ARRAYLEN   sysconf(_SC_OPEN_MAX)
 
 PythonFDCallback **python_vfd_callback = NULL;
 

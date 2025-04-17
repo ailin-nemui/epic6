@@ -72,29 +72,29 @@
  *		Built in variables
  */
 
-	void 	add_var_alias      	(Char *name, Char *stuff, int noisy);
-	void 	add_local_alias    	(Char *name, Char *stuff, int noisy);
+	void 	add_var_alias      	(const char *name, const char *stuff, int noisy);
+	void 	add_local_alias    	(const char *name, const char *stuff, int noisy);
 #if 0	/* Internal now */
 	void 	add_cmd_alias 	   	(void);
 #endif
-	void	add_builtin_cmd_alias	(Char *name, void (*func) (Char *, char *, Char *));
-	void    add_builtin_func_alias  (Char *name, char *(*func) (char *));
-	void	add_builtin_variable_alias (Char *, IrcVariable *);
-	void    add_builtin_expando     (Char *name, char *(*func) (void));
+	void	add_builtin_cmd_alias	(const char *name, void (*func) (const char *, char *, const char *));
+	void    add_builtin_func_alias  (const char *name, char *(*func) (char *));
+	void	add_builtin_variable_alias (const char *, IrcVariable *);
+	void    add_builtin_expando     (const char *name, char *(*func) (void));
 
-	void 	add_var_stub_alias 	(Char *name, Char *stuff);
-	void 	add_cmd_stub_alias 	(Char *name, Char *stuff);
+	void 	add_var_stub_alias 	(const char *name, const char *stuff);
+	void 	add_cmd_stub_alias 	(const char *name, const char *stuff);
 
-	void	delete_builtin_command	(Char *);
-	void	delete_builtin_function	(Char *);
-	void	delete_builtin_expando	(Char *);
-	void	delete_builtin_variable (Char *);
+	void	delete_builtin_command	(const char *);
+	void	delete_builtin_function	(const char *);
+	void	delete_builtin_expando	(const char *);
+	void	delete_builtin_variable (const char *);
 
-	char *	get_variable		(Char *name);
-	char **	glob_cmd_alias		(Char *name, int *howmany, 
+	char *	get_variable		(const char *name);
+	char **	glob_cmd_alias		(const char *name, int *howmany, 
 					 int maxret, int start, int rev);
 
-	const char *	get_cmd_alias  	(Char *name, void **args,
+	const char *	get_cmd_alias  	(const char *name, void **args,
                                          void (**func) (const char *, char *, 
                                                         const char *));
 	const char *  get_func_alias	(const char *name, void **args, 
@@ -103,14 +103,14 @@
 					 char *(**efunc)(void), 
 					 IrcVariable **var);
 
-	char **	get_subarray_elements 	(Char *root, int *howmany, int type);
+	char **	get_subarray_elements 	(const char *root, int *howmany, int type);
 
-	char ** pmatch_cmd_alias        (Char *name, int *howmany, int maxret, int start, int rev);
-	char ** pmatch_assign_alias     (Char *name, int *howmany, int maxret, int start, int rev);
-	char ** pmatch_builtin_commands        (Char *name, int *howmany, int maxret, int start, int rev);
-	char ** pmatch_builtin_functions       (Char *name, int *howmany, int maxret, int start, int rev);
-	char ** pmatch_builtin_expandos       (Char *name, int *howmany, int maxret, int start, int rev);
-	char ** pmatch_builtin_variables       (Char *name, int *howmany, int maxret, int start, int rev);
+	char ** pmatch_cmd_alias        (const char *name, int *howmany, int maxret, int start, int rev);
+	char ** pmatch_assign_alias     (const char *name, int *howmany, int maxret, int start, int rev);
+	char ** pmatch_builtin_commands        (const char *name, int *howmany, int maxret, int start, int rev);
+	char ** pmatch_builtin_functions       (const char *name, int *howmany, int maxret, int start, int rev);
+	char ** pmatch_builtin_expandos       (const char *name, int *howmany, int maxret, int start, int rev);
+	char ** pmatch_builtin_variables       (const char *name, int *howmany, int maxret, int start, int rev);
 
 
 	void	bucket_var_alias (Bucket *, const char *);
@@ -128,7 +128,7 @@
  * The first argument is the text to be expanded.
  * The third argument are the command line expandoes $0, $1, etc.
  */
-	char *	expand_alias 		(Char *, Char *);
+	char *	expand_alias 		(const char *, const char *);
 
 /*
  * This is the interface to the "expression parser"
@@ -136,7 +136,7 @@
  * The second argument is the command line expandoes ($0, $1, etc)
  * The third argument will be set if the command line expandoes are used.
  */
-	char *	parse_inline 		(char *, Char *);
+	char *	parse_inline 		(char *, const char *);
 
 /*
  * This function is used to save all the current aliases to a global
@@ -162,14 +162,14 @@
  * This is only used by next_unit and expand_alias to call built in functions.
  * Noone should call this function directly.
  */
-	char *	call_function		(char *, Char *);
+	char *	call_function		(char *, const char *);
 	void	init_functions		(void);
 	void	init_expandos		(void);
 
 /*
  * These are the two primitives for runtime stacks.
  */
-	int	make_local_stack 	(Char *);
+	int	make_local_stack 	(const char *);
 	void	destroy_local_stack 	(void);
 	void	set_current_command 	(char *);
 	void	bless_local_stack 	(void);

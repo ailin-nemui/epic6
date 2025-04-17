@@ -2863,19 +2863,11 @@ Timeval get_time (Timeval *timer)
 		timer = &retval;
 
 	{
-#ifdef HAVE_CLOCK_GETTIME
+		/* I don't care if you don't have clock_gettime() in $CURRENT_YEAR */
 		struct timespec ts;
 		clock_gettime(CLOCK_REALTIME, &ts);
 		timer->tv_sec = ts.tv_sec;
 		timer->tv_usec = ts.tv_nsec / 1000;
-#else
-# ifdef HAVE_GETTIMEOFDAY
-		gettimeofday(timer, NULL);
-# else
-		timer->tv_sec = time(NULL);
-		timer->tv_usec = 0;
-# endif
-#endif
 	}
 
 	return *timer;

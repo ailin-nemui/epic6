@@ -43,11 +43,7 @@
 /* This is still an experimental feature. */
 /* #define VIRTUAL_FILEDESCRIPTORS */
 
-#if defined(HAVE_SYSCONF) && defined(_SC_OPEN_MAX)
-# define IO_ARRAYLEN 	sysconf(_SC_OPEN_MAX)
-#else
-# define IO_ARRAYLEN 1024		/* I can't assume any more */
-#endif
+#define IO_ARRAYLEN 	sysconf(_SC_OPEN_MAX)
 
 #define MAX_SEGMENTS 16
 
