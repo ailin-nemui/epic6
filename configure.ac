@@ -5,6 +5,20 @@ dnl thanks to the screen 3.3 configure.in for giving me examples to
 dnl work from and steal ;)
 dnl
 
+dnl ------------------------------------------------------------
+dnl The expectation of epic6 is that you're using a system that
+dnl is compliant with POSIX 1003.1-2017 (issue 7)
+dnl https://pubs.opengroup.org/onlinepubs/9699919799/
+dnl
+dnl This includes linuxes and bsd's released since about 2020.
+dnl We no longer check or compensate for older systems -- use epic5.
+dnl
+dnl We do use some POSIX 1003.1-2024 (issue 8) features in epic6, 
+dnl but we check for those and compensate if they're missing.
+dnl Issue 8 spec: https://pubs.opengroup.org/onlinepubs/9799919799/
+dnl ------------------------------------------------------------
+dnl
+
 AC_INIT([epic6],[0])
 AC_CONFIG_SRCDIR([source/irc.c])
 AC_CONFIG_HEADERS([include/defs.h])
@@ -191,7 +205,7 @@ fi
 
 dnl Look for common libraries that have common functions
 AC_CHECK_LIB(m, pow, LIBS="$LIBS -lm",)
-AC_CHECK_LIB(rt, clock_gettime, LIBS="$LIBS -lrt",)
+dnl AC_CHECK_LIB(rt, clock_gettime, LIBS="$LIBS -lrt",)
 AC_CHECK_LIB(sqlite, sqlite_open, LIBS="$LIBS -lsqlite",)
 AC_CHECK_LIB(sodium, sodium_init, LIBS="$LIBS -lsodium",)
 AC_CHECK_LIB(regex, regcomp, LIBS="$LIBS -lregex",)
@@ -205,58 +219,13 @@ dnl We no longer check for header files required by posix.
 dnl We no longer check for functions required by posix.
 dnl We no longer try to support systems that are that weird.
 dnl
-AC_CHECK_HEADERS(locale.h xlocale.h term.h ieeefp.h,)
+AC_CHECK_HEADERS(term.h ieeefp.h,)
 
 AC_CHECK_FUNC(unveil, AC_DEFINE([HAVE_UNVEIL], 1, [Define if you have unveil()]),)
 AC_CHECK_FUNC(pledge, AC_DEFINE([HAVE_PLEDGE], 1, [Define if you have pledge()]),)
-AC_CHECK_FUNC(newlocale, AC_DEFINE([HAVE_NEWLOCALE], 1, [Define if you have newlocale()]),)
 AC_CHECK_FUNC(tcgetwinsize, AC_DEFINE([HAVE_TCGETWINSIZE], 1, [Define if you have tcgetwinsize()]),)
 AC_CHECK_FUNC(strlcpy, AC_DEFINE([HAVE_STRLCPY], 1, [Define if you have strlcpy()]),)
 AC_CHECK_FUNC(strlcat, AC_DEFINE([HAVE_STRLCAT], 1, [Define if you have strlcat()]),)
-
-dnl -- Because someone is trying to use CentOS 5.11...
-AC_MSG_CHECKING(whether you are using a gnu libc that is so old it needs a hack to use newlocale)
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-	#include <locale.h>
-	#include <xlocale.h>
-	#include <stdlib.h>
-]],[[
-	locale_t utf8_locale;
-	utf8_locale = newlocale(LC_ALL_MASK, "en_US.UTF-8", 0);
-	return 0;
-]])],
-   [ AC_MSG_RESULT(no, good) ],
-   [ AC_MSG_RESULT(yes, ugh.)
-     AC_MSG_CHECKING(whether we can fix that with _GNU_SOURCE)
-     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-	#define _GNU_SOURCE
-	#include <locale.h>
-	#include <xlocale.h>
-	#include <stdlib.h>
-     ]],[[
-	locale_t utf8_locale;
-	utf8_locale = newlocale(LC_ALL_MASK, "en_US.UTF-8", 0);
-	return 0;
-     ]])],
-     [ AC_MSG_RESULT(yes) 
-       AC_DEFINE(NEWLOCALE_REQUIRES__GNU_SOURCE, 1, [Define this if newlocale() requires #define __GNU_SOURCE to work]) ],
-     [ AC_MSG_RESULT(no. well...)
-       AC_MSG_CHECKING(whether we can fix that with _XOPEN_SOURCE 700)
-       AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-	  #include <stdlib.h>
-	  #define _XOPEN_SOURCE 700
-	  #include <locale.h>
-       ]],[[
-	  locale_t utf8_locale;
-	  utf8_locale = newlocale(LC_ALL_MASK, "en_US.UTF-8", 0);
-	  return 0;
-       ]])],
-       [ AC_MSG_RESULT(yes.  Yay!) 
-         AC_DEFINE(NEWLOCALE_REQUIRES__XOPEN_SOURCE_700, 1, [Define this if newlocale() requires #define __XOPEN_SOURCE 700 to work]) ],
-         [ AC_MSG_RESULT(no.  bummer for you) 
-           AC_DEFINE(NEWLOCALE_DOESNT_WORK, 1, [Define this if newlocale() doesn't work the way I expect]) ], :), ], :)
-     ]
-)
 
 AC_FUNC_ALLOCA
 

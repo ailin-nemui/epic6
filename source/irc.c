@@ -52,7 +52,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3036;
+const unsigned long	commit_id = 3037;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -90,10 +90,6 @@ const char ridiculous_version_name[] = "Otiose";
 #include "files.h"
 #include "ctcp.h"
 #include <pwd.h>
-#ifdef NEWLOCALE_REQUIRES__GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-#include <locale.h>
 
 
 /*

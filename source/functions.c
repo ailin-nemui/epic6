@@ -6887,14 +6887,6 @@ BUILT_IN_FUNCTION(function_serverctl, input)
 	return serverctl(input);
 }
 
-
-#ifdef NO_JOB_CONTROL
-BUILT_IN_FUNCTION(function_killpid, input)
-{
-	RETURN_EMPTY;
-}
-#endif
-
 BUILT_IN_FUNCTION(function_killpid, input)
 {
 	char *	pid_str;

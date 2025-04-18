@@ -27,12 +27,6 @@
 /* Define this if you have a working libarchive */
 #undef HAVE_LIBARCHIVE
 
-/* Define to 1 if you have the <locale.h> header file. */
-#undef HAVE_LOCALE_H
-
-/* Define if you have newlocale() */
-#undef HAVE_NEWLOCALE
-
 /* Define if you have pledge() */
 #undef HAVE_PLEDGE
 
@@ -83,18 +77,6 @@
 
 /* Define to 1 if you have the <valgrind/memcheck.h> header file. */
 #undef HAVE_VALGRIND_MEMCHECK_H
-
-/* Define to 1 if you have the <xlocale.h> header file. */
-#undef HAVE_XLOCALE_H
-
-/* Define this if newlocale() doesn't work the way I expect */
-#undef NEWLOCALE_DOESNT_WORK
-
-/* Define this if newlocale() requires #define __GNU_SOURCE to work */
-#undef NEWLOCALE_REQUIRES__GNU_SOURCE
-
-/* Define this if newlocale() requires #define __XOPEN_SOURCE 700 to work */
-#undef NEWLOCALE_REQUIRES__XOPEN_SOURCE_700
 
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT

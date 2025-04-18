@@ -783,7 +783,6 @@ int	Socket (int domain, int type, int protocol)
 		return -1;
 	}
 
-#ifndef NO_STRUCT_LINGER
 	{
 		struct linger   lin;
 
@@ -791,7 +790,6 @@ int	Socket (int domain, int type, int protocol)
 		lin.l_onoff = lin.l_linger = 0;
 		setsockopt(s, SOL_SOCKET, SO_LINGER, (char *)&lin, optlen);
 	}
-#endif
 
 	opt = 1;
         setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, optlen);

@@ -39,16 +39,6 @@
 #include "server.h"
 #include <langinfo.h>
 #include <wctype.h>
-#ifdef NEWLOCALE_REQUIRES__GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-#ifdef NEWLOCALE_REQUIRES__XOPEN_SOURCE_700
-#define _XOPEN_SOURCE_700
-#endif
-#include <locale.h>
-#ifdef HAVE_XLOCALE_H
-#include <xlocale.h>
-#endif
 
 /*
  * Here's the plan...
@@ -1205,26 +1195,18 @@ BUILT_IN_COMMAND(encoding)
 					 recode_rules[x]->encoding);
 }
 
-#ifdef HAVE_NEWLOCALE
 static	locale_t	utf8_locale = 0;
-#endif
 
 void	create_utf8_locale (void)
 {
-#ifdef HAVE_NEWLOCALE
 	utf8_locale = newlocale(LC_ALL_MASK, "en_US.UTF-8", 0);
-#else
-	yell("*** Your system does not support newlocale(3), so case insensitive string comparison probably won't work for non-english languages.  Sorry.");
-#endif
 }
 
 int	mkupper_l (int codepoint)
 {
-#ifdef HAVE_NEWLOCALE
 	if (utf8_locale)
 		return towupper_l(codepoint, utf8_locale);
 	else 
-#endif
 	     if (codepoint >= 0x80)
 		return codepoint;
 	else
@@ -1234,11 +1216,9 @@ int	mkupper_l (int codepoint)
 
 int	mklower_l (int codepoint)
 {
-#ifdef HAVE_NEWLOCALE
 	if (utf8_locale)
 		return towlower_l(codepoint, utf8_locale);
 	else 
-#endif
 	      if (codepoint >= 0x80)
 		return codepoint;
 	else

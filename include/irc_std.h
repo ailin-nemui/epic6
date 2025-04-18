@@ -9,6 +9,7 @@
 #ifndef __irc_std_h
 #define __irc_std_h
 
+/* Bah. */
 #define _GNU_SOURCE 1
 
 #include "defs.h"
@@ -37,10 +38,10 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <regex.h>
-/* I used to #include <locale.h>, but centos 5.11 required special handling */
 #include <iconv.h>
 #include <time.h>
 #include <fcntl.h>
+#include <locale.h>
 
 /*
  * Everybody needs these INET headers...
@@ -217,10 +218,6 @@ typedef struct stat		Stat;
 #define VALGRIND_MEMPOOL_TRIM(x,y,z)
 #define VALGRIND_MEMPOOL_FREE(x,y)
 #define VALGRIND_DESTROY_MEMPOOL(x)
-#endif
-
-#ifdef NEWLOCALE_DOESNT_WORK
-#undef HAVE_NEWLOCALE
 #endif
 
 #ifdef HAVE_ATTRIBUTE_FALLTHROUGH

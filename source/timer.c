@@ -341,7 +341,6 @@ BUILT_IN_COMMAND(timercmd)
  * This is put here on purpose -- we dont want any of the above functions
  * to have any knowledge of this struct.
  */
-#define REFNUM_MAX 10
 typedef struct  timerlist_stru
 {
 	char	*ref;
@@ -750,7 +749,7 @@ static	void	list_timers (const char *command)
  * Automatically assigned refnums (when the user doesnt specify one) will
  * always be one more than the highest pending refnum.
  *
- * "refnum_gets" must be REFNUM_MAX + 1 bytes by definition of API.
+ * "refnum_gets" must be REFNUM_MAX_ + 1 bytes by definition of API.
  */
 static	int	create_timer_ref (const char *refnum_wanted, char **refnum_gets)
 {

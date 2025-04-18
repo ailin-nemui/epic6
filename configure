@@ -3972,54 +3972,6 @@ then :
   LIBS="$LIBS -lm"
 fi
 
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for clock_gettime in -lrt" >&5
-printf %s "checking for clock_gettime in -lrt... " >&6; }
-if test ${ac_cv_lib_rt_clock_gettime+y}
-then :
-  printf %s "(cached) " >&6
-else case e in #(
-  e) ac_check_lib_save_LIBS=$LIBS
-LIBS="-lrt  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.
-   The 'extern "C"' is for builds by C++ compilers;
-   although this is not generally supported in C code supporting it here
-   has little cost and some practical benefit (sr 110532).  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char clock_gettime (void);
-int
-main (void)
-{
-return clock_gettime ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"
-then :
-  ac_cv_lib_rt_clock_gettime=yes
-else case e in #(
-  e) ac_cv_lib_rt_clock_gettime=no ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS ;;
-esac
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_rt_clock_gettime" >&5
-printf "%s\n" "$ac_cv_lib_rt_clock_gettime" >&6; }
-if test "x$ac_cv_lib_rt_clock_gettime" = xyes
-then :
-  LIBS="$LIBS -lrt"
-fi
-
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for sqlite_open in -lsqlite" >&5
 printf %s "checking for sqlite_open in -lsqlite... " >&6; }
 if test ${ac_cv_lib_sqlite_sqlite_open+y}
@@ -4290,18 +4242,6 @@ then :
 printf "%s\n" "#define STDC_HEADERS 1" >>confdefs.h
 
 fi
-ac_fn_c_check_header_compile "$LINENO" "locale.h" "ac_cv_header_locale_h" "$ac_includes_default"
-if test "x$ac_cv_header_locale_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_LOCALE_H 1" >>confdefs.h
-
-fi
-ac_fn_c_check_header_compile "$LINENO" "xlocale.h" "ac_cv_header_xlocale_h" "$ac_includes_default"
-if test "x$ac_cv_header_xlocale_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_XLOCALE_H 1" >>confdefs.h
-
-fi
 ac_fn_c_check_header_compile "$LINENO" "term.h" "ac_cv_header_term_h" "$ac_includes_default"
 if test "x$ac_cv_header_term_h" = xyes
 then :
@@ -4332,14 +4272,6 @@ printf "%s\n" "#define HAVE_PLEDGE 1" >>confdefs.h
 
 fi
 
-ac_fn_c_check_func "$LINENO" "newlocale" "ac_cv_func_newlocale"
-if test "x$ac_cv_func_newlocale" = xyes
-then :
-
-printf "%s\n" "#define HAVE_NEWLOCALE 1" >>confdefs.h
-
-fi
-
 ac_fn_c_check_func "$LINENO" "tcgetwinsize" "ac_cv_func_tcgetwinsize"
 if test "x$ac_cv_func_tcgetwinsize" = xyes
 then :
@@ -4364,112 +4296,6 @@ printf "%s\n" "#define HAVE_STRLCAT 1" >>confdefs.h
 
 fi
 
-
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether you are using a gnu libc that is so old it needs a hack to use newlocale" >&5
-printf %s "checking whether you are using a gnu libc that is so old it needs a hack to use newlocale... " >&6; }
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-	#include <locale.h>
-	#include <xlocale.h>
-	#include <stdlib.h>
-
-int
-main (void)
-{
-
-	locale_t utf8_locale;
-	utf8_locale = newlocale(LC_ALL_MASK, "en_US.UTF-8", 0);
-	return 0;
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-else case e in #(
-  e)  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether we can fix that with _GNU_SOURCE" >&5
-printf %s "checking whether we can fix that with _GNU_SOURCE... " >&6; }
-     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-	#define _GNU_SOURCE
-	#include <locale.h>
-	#include <xlocale.h>
-	#include <stdlib.h>
-
-int
-main (void)
-{
-
-	locale_t utf8_locale;
-	utf8_locale = newlocale(LC_ALL_MASK, "en_US.UTF-8", 0);
-	return 0;
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-
-printf "%s\n" "#define NEWLOCALE_REQUIRES__GNU_SOURCE 1" >>confdefs.h
-
-else case e in #(
-  e)  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no. well..." >&5
-printf "%s\n" "no. well..." >&6; }
-       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether we can fix that with _XOPEN_SOURCE 700" >&5
-printf %s "checking whether we can fix that with _XOPEN_SOURCE 700... " >&6; }
-       cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-	  #include <stdlib.h>
-	  #define _XOPEN_SOURCE 700
-	  #include <locale.h>
-
-int
-main (void)
-{
-
-	  locale_t utf8_locale;
-	  utf8_locale = newlocale(LC_ALL_MASK, "en_US.UTF-8", 0);
-	  return 0;
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes.  Yay!" >&5
-printf "%s\n" "yes.  Yay!" >&6; }
-
-printf "%s\n" "#define NEWLOCALE_REQUIRES__XOPEN_SOURCE_700 1" >>confdefs.h
-
-else case e in #(
-  e)  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no.  bummer for you" >&5
-printf "%s\n" "no.  bummer for you" >&6; }
-
-printf "%s\n" "#define NEWLOCALE_DOESNT_WORK 1" >>confdefs.h
-  ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext,  ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-
- ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 
 ac_fn_c_check_type "$LINENO" "size_t" "ac_cv_type_size_t" "$ac_includes_default"
 if test "x$ac_cv_type_size_t" = xyes
