@@ -3604,7 +3604,7 @@ static	int	refnumber = 0;
 	new_s->fpout = stdout;
 	new_s->fdin = 0;
 	if (use_input)
-		new_open(0, do_screens, NEWIO_READ, 0, -1);
+		new_open(0, do_screens, NEWIO_READ, POLLIN, 0, -1);
 	new_s->fpin = stdin;
 	new_s->control = -1;
 	new_s->wserv_version = 0;
@@ -3722,7 +3722,7 @@ int	create_additional_screen (void)
 	local_sockaddr.si.sin_addr.s_addr = htonl((INADDR_LOOPBACK));
 	local_sockaddr.si.sin_port = 0;
 
-	if ((new_cmd = client_bind(&local_sockaddr, sizeof(local_sockaddr.si))) < 0)
+	if ((new_cmd = network_server(&local_sockaddr, sizeof(local_sockaddr.si))) < 0)
 	{
 		yell("Couldn't establish server side of new screen");
 		return -1;
@@ -3891,7 +3891,7 @@ int	create_additional_screen (void)
 
 			set_screen_fdin(new_s, fd);
 			set_screen_fdout(new_s, fd);
-			new_open(fd, do_screens, NEWIO_RECV, 1, -1);
+			new_open(fd, do_screens, NEWIO_RECV, POLLIN, 1, -1);
 
 			if (!(fin = fdopen(fd, "r+")))
 			{
@@ -3926,7 +3926,7 @@ int	create_additional_screen (void)
                                 return -1;
                         }
 
-			new_open(get_screen_control(new_s), do_screens, NEWIO_RECV, 1, -1);
+			new_open(get_screen_control(new_s), do_screens, NEWIO_RECV, POLLIN, 1, -1);
 
                         if ((refnum = new_window(new_s)) < 1)
                                 panic(1, "WINDOW is NULL and it shouldnt be!");

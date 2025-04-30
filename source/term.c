@@ -48,7 +48,11 @@
 #include "screen.h"
 #include "output.h"
 #include "newio.h"
+#ifdef HAVE_TERMIOS_WINSIZE
 #include <termios.h>
+#else
+#include <sys/ioctl.h>
+#endif
 
 /*
  * If "HAVE_TERMINFO" is #define'd then we will use terminfo type function

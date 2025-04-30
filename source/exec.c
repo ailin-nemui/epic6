@@ -1205,8 +1205,8 @@ static int	start_process (Process *proc)
 		proc->disowned = 0;
 		proc->dumb = 0;
 
-		new_open(proc->p_stdout, do_exec, NEWIO_READ, 1, proc->server_refnum);
-		new_open(proc->p_stderr, do_exec, NEWIO_READ, 1, proc->server_refnum);
+		new_open(proc->p_stdout, do_exec, NEWIO_READ, POLLIN, 1, proc->server_refnum);
+		new_open(proc->p_stderr, do_exec, NEWIO_READ, POLLOUT, 1, proc->server_refnum);
 		break;
 	}
 	}

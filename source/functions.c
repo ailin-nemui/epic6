@@ -3605,7 +3605,7 @@ BUILT_IN_FUNCTION(function_iptoname, words)
 	char	ret[256];
 
 	*ret = 0;
-	inet_ptohn(AF_UNSPEC, words, ret, sizeof(ret));
+	paddr_to_hostname(words, ret, sizeof(ret));
 	RETURN_FSTR(ret);		/* Dont put function call in macro! */
 }
 
@@ -3614,7 +3614,7 @@ BUILT_IN_FUNCTION(function_nametoip, words)
 	char	ret[256];
 
 	*ret = 0;
-	inet_hntop(AF_INET, words, ret, sizeof(ret));
+	hostname_to_paddr(words, ret, sizeof(ret));
 	RETURN_FSTR(ret);		/* Dont put function call in macro! */
 }
 
@@ -6731,29 +6731,24 @@ BUILT_IN_FUNCTION(function_wordtoindex, input)
 
 BUILT_IN_FUNCTION(function_iptolong, word)
 {
-	SSu     addr;
 	char *  dotted_quad;
+	struct in_addr	addr;
 
-	addr.si.sin_family = AF_INET;
 	GET_FUNC_ARG(dotted_quad, word);
-	if (inet_strton(dotted_quad, NULL, &addr, AI_NUMERICHOST))
-		RETURN_EMPTY;
-
-	return malloc_sprintf(NULL, UINTMAX_FORMAT, 
-				(uintmax_t)ntohl(addr.si.sin_addr.s_addr));
+	if (inet_aton(dotted_quad, &addr))
+		return malloc_sprintf(NULL, "%lu", (unsigned long)ntohl(addr.s_addr));
+	RETURN_EMPTY;
 }
 
 BUILT_IN_FUNCTION(function_longtoip, word)
 {
-	char *  ip32;
-	SSu     addr;
-	char    retval[256];
+	char *  	ip32;
+	struct in_addr	addr;
+	const char *	retval;
 
 	GET_FUNC_ARG(ip32, word);
-	addr.si.sin_family = AF_INET;
-	if (inet_strton(ip32, NULL, &addr, AI_NUMERICHOST))
-		RETURN_EMPTY;
-	inet_ntostr(&addr, retval, 256, NULL, 0, NI_NUMERICHOST);
+	addr.s_addr = (unsigned long)ntohl(strtoul(ip32, NULL, 10));
+	retval = inet_ntoa(addr);
 	RETURN_FSTR(retval);
 }
 

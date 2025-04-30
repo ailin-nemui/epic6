@@ -546,7 +546,7 @@ int	ssl_startup (int vfd, int channel, const char *hostname, const char *cert)
 	}
 
 	set_non_blocking(channel);
-	ssl_connect(vfd, 0);
+	ssl_connect(vfd, 0, 0);
 	return 0;
 }
 
@@ -643,7 +643,7 @@ int	ssl_write (int vfd, const void *data, size_t len)
  *	-1 / EINVAL -- The vfd is not set up for ssl.
  *	Anything else -- The final return value of SSL_read().
  */
-int	ssl_read (int vfd, int quiet)
+int	ssl_read (int vfd, int quiet, int revents)
 {
 	ssl_info *x;
 	int	c;
@@ -690,7 +690,7 @@ int	ssl_read (int vfd, int quiet)
 	return c;
 }
 
-int	ssl_connect (int vfd, int quiet)
+int	ssl_connect (int vfd, int quiet, int revents)
 {
 	ssl_info *	x;
 	int		errcode;

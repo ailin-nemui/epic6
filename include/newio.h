@@ -74,6 +74,7 @@
 #define NEWIO_SSL_CONNECT 7
 #define NEWIO_PASSTHROUGH_READ 8
 #define NEWIO_PASSTHROUGH_WRITE 9
+#define NEWIO_PASSTHROUGH 10
 
 #define IO_BUFFER_SIZE 8192
 
@@ -86,7 +87,7 @@
 	int	get_server_by_vfd	(int);
 #define SRV(vfd) get_server_by_vfd(vfd)
 
-	int	new_open		(int, void (*) (int), int, int, int);
+	int	new_open		(int, void (*) (int), int, int, int, int);
 	int     new_open_failure_callback (int vfd, void (*) (int, int));
 	int	new_hold_fd		(int);
 	int	new_unhold_fd		(int);

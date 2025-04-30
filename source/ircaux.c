@@ -3741,9 +3741,9 @@ char *	switch_hostname (const char *new_hostname)
 	if (v4 && *v4)
 	{
 	    new_4.si.sin_family = AF_INET;
-	    if (!inet_strton(v4, zero, &new_4, AI_ADDRCONFIG))
+	    if (!hostname_to_ssu(AF_INET, v4, zero, &new_4, AI_ADDRCONFIG))
 	    {
-		if ((fd = client_bind(&new_4, sizeof(new_4.si))) >= 0)
+		if ((fd = network_server(&new_4, sizeof(new_4.si))) >= 0)
 		{
 		    close(fd);
 		    accept4 = 1;
@@ -3761,9 +3761,9 @@ char *	switch_hostname (const char *new_hostname)
 	if (v6 && *v6)
 	{
 	    new_6.si6.sin6_family = AF_INET6;
-	    if (!inet_strton(v6, zero, &new_6, AI_ADDRCONFIG)) 
+	    if (!hostname_to_ssu(AF_INET6, v6, zero, &new_6, AI_ADDRCONFIG)) 
 	    {
-		if ((fd = client_bind(&new_6, sizeof(new_6.si6))) >= 0)
+		if ((fd = network_server(&new_6, sizeof(new_6.si6))) >= 0)
 		{
 		    close(fd);
 		    accept6 = 1;

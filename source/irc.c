@@ -52,7 +52,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3037;
+const unsigned long	commit_id = 3038;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -959,6 +959,7 @@ int 	main (int argc, char *argv[])
 	init_expandos();
 	init_newio();
 	init_ctcp();
+	init_ares();
 
 	fprintf(stderr, "EPIC VI -- %s\n", ridiculous_version_name);
 	fprintf(stderr, "EPIC Software Labs (2006)\n");

@@ -956,7 +956,7 @@ static	PyObject *	epic_callback_when_readable (PyObject *self, PyObject *args)
 	callback->except_callback = except_callback;
 	callback->flags = flags;
 
-	new_open(vfd, do_python_fd, NEWIO_PASSTHROUGH_READ, 0, from_server);
+	new_open(vfd, do_python_fd, NEWIO_PASSTHROUGH_READ, POLLIN, 0, from_server);
 	new_open_failure_callback(vfd, do_python_fd_failure);
 	return PyLong_FromLong(0L);
 }
@@ -1024,7 +1024,7 @@ static	PyObject *	epic_callback_when_writable (PyObject *self, PyObject *args)
 	callback->except_callback = except_callback;
 	callback->flags = flags;
 
-	new_open(vfd, do_python_fd, NEWIO_PASSTHROUGH_WRITE, 0, from_server);
+	new_open(vfd, do_python_fd, NEWIO_PASSTHROUGH_WRITE, POLLOUT, 0, from_server);
 	new_open_failure_callback(vfd, do_python_fd_failure);
 	return PyLong_FromLong(0L);
 }

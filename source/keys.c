@@ -1295,7 +1295,7 @@ void	init_keys (void)
 	BIND("^O", "HIGHLIGHT_OFF");
 	BIND("^Q", "QUOTE_CHARACTER");
 	/* ^R */
-	BIND("^S", "TOGGLE_STOP_SCREEN");
+	/* ^S */
 	BIND("^U", "ERASE_LINE");
 	BIND("^V", "REVERSE");
 	BIND("^W", "NEXT_WINDOW");

@@ -66,6 +66,9 @@
 /* Define if you have tcgetwinsize() */
 #undef HAVE_TCGETWINSIZE
 
+/* Define this if termios.h has struct winsize */
+#undef HAVE_TERMIOS_WINSIZE
+
 /* Define to 1 if you have the <term.h> header file. */
 #undef HAVE_TERM_H
 

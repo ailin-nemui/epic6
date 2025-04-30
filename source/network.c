@@ -36,11 +36,181 @@
 #include "newio.h"
 #include "output.h"
 
-static int	Connect 	 (int, SSu *);
-static socklen_t socklen  	 (SSu *);
-static int	Getnameinfo 	 (SSu *, socklen_t, char *, size_t, char *, size_t, int);
-static int	Socket 		(int, int, int);
+static socklen_t        socklen (const SSu *sockaddr);
+static int      Socket (int domain, int type, int protocol);
+static int Connect (int fd, SSu *addr);
+static  int     Getaddrinfo (const char *nodename, const char *servname, const AI *hints, AI **res);
+static  void    Freeaddrinfo (AI *ai);
+static int      Getnameinfo (SSu *ssu, socklen_t ssulen, char *host, size_t hostlen, char *serv, size_t servlen, int flags);
+static  void    do_ares_callback (int vfd);
+static  void    ares_sock_state_cb_ (void *data, ares_socket_t socket_fd, int readable, int writable);
+static int      paddr_to_ssu (const char *host, SSu *storage_, int flags);
+static void     ares_addrinfo_callback_ (void *arg, int status, int timeouts, struct ares_addrinfo *result);
+static void     ares_nameinfo_callback_ (void *arg, int status, int timeouts, char *host, char *port);
+static void     marshall_getaddrinfo (int fd, AI *results);
 
+/****************************************************************************/
+int	set_non_blocking (int fd)
+{
+	int	rval;
+
+	if ((rval = fcntl(fd, F_GETFL, 0)) == -1)
+	{
+		syserr(-1, "set_non_blocking: fcntl(%d, F_GETFL) failed: %s",
+				fd, strerror(errno));
+		return -1;
+	}
+	rval |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, rval) == -1)
+	{
+		syserr(-1, "set_non_blocking: fcntl(%d, F_SETFL) failed: %s",
+				fd, strerror(errno));
+		return -1;
+	}
+	return 0;
+}
+
+int	set_blocking (int fd)
+{
+	int	rval;
+
+	if ((rval = fcntl(fd, F_GETFL, 0)) == -1)
+	{
+		syserr(-1, "set_blocking: fcntl(%d, F_GETFL) failed: %s",
+				fd, strerror(errno));
+		return -1;
+	}
+	rval &= (~(O_NONBLOCK));
+	if (fcntl(fd, F_SETFL, rval) == -1)
+	{
+		syserr(-1, "set_blocking: fcntl(%d, F_SETFL) failed: %s",
+				fd, strerror(errno));
+		return -1;
+	}
+	return 0;
+}
+
+static socklen_t	socklen (const SSu *sockaddr)
+{
+	if (family(sockaddr) == AF_INET)
+		return sizeof(sockaddr->si);
+	else if (family(sockaddr) == AF_INET6)
+		return sizeof(sockaddr->si6);
+	else
+		return 0;
+}
+
+int	family (const SSu *sockaddr_)
+{
+	return (sockaddr_->sa).sa_family;
+}
+
+/****************************************************************************/
+/*
+ * Socket -- Create a new socket and set baseline preferences
+ * 
+ * Arguments:
+ *	domain	- The domain passed to socket(2), usually AF_INET
+ *	type	- The type passed to socket(2), usually SOCK_STREAM
+ *	protocol - The protocol passed to socket(2), usually 0
+ *
+ * Return value:
+ *	The fd of a new socket
+ *
+ * Notes:
+ *	All sockets come with:
+ *	- lingering off (close(2) won't block if jammed)
+ *	- reuseaddr on (let someone re-use our port after we close(2))
+ *	- keepalive on (fail the socket if TCP ping/pongs fail)
+ */
+static int	Socket (int domain, int type, int protocol)
+{
+        int     opt;
+        int     optlen = sizeof(opt);
+	int	s;
+
+	if ((s = socket(domain, type, protocol)) < 0)
+	{
+		syserr(-1, "Socket: socket(%d,%d,%d) failed: %s",
+				domain, type, protocol, strerror(errno));
+		return -1;
+	}
+
+	{
+		struct linger   lin;
+
+		/* Turning of "lingering" ordinarily makes close(2) non-blocking if the socket is jammed */
+		lin.l_onoff = lin.l_linger = 0;
+		setsockopt(s, SOL_SOCKET, SO_LINGER, (char *)&lin, optlen);
+	}
+
+	opt = 1;
+        setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, optlen);
+        opt = 1;
+        setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (char *)&opt, optlen);
+	return s;
+}
+
+/*
+ * It is possible for a race condition to exist; such that poll()
+ * indicates that a listen()ing socket is able to recieve a new connection
+ * and that a later accept() call will still block because the connection
+ * has been closed in the interim.  This wrapper for accept() attempts to
+ * defeat this by making the accept() call nonblocking.
+ */
+int	Accept (int s, SSu *addr, socklen_t *addrlen)
+{
+	int	retval;
+
+	set_non_blocking(s);
+	if ((retval = accept(s, &addr->sa, addrlen)) < 0)
+		syserr(-1, "Accept: accept(%d) failed: %s", 
+				s, strerror(errno));
+	set_blocking(s);
+	set_blocking(retval);		/* Just in case */
+	return retval;
+}
+
+static int Connect (int fd, SSu *addr)
+{
+	int	retval;
+
+	set_non_blocking(fd);
+	if ((retval = connect(fd, &addr->sa, socklen(addr))))
+	{
+	    if (errno != EINPROGRESS)
+		syserr(-1, "Connect: connect(%d) failed: %s", fd, strerror(errno));
+	    else
+		retval = 0;
+	}
+	set_blocking(fd);
+	return retval;
+}
+
+/* * * * * */
+/*
+ * This may ONLY be used to convert p-addrs to an SSU, which is nonblocking.
+ */
+static	int	Getaddrinfo (const char *nodename, const char *servname, const AI *hints, AI **res)
+{
+	return getaddrinfo(nodename, servname, hints, res);
+}
+
+static	void	Freeaddrinfo (AI *ai)
+{
+	freeaddrinfo(ai);
+}
+
+/*
+ * This may ONLY be used to convert SSUs to p-addrs, which is nonblocking.
+ */
+static int	Getnameinfo (SSu *ssu, socklen_t ssulen, char *host, size_t hostlen, char *serv, size_t servlen, int flags)
+{
+	return getnameinfo(&ssu->sa, ssulen, host, hostlen, serv, servlen, flags);
+}
+
+
+/*****************************************************************************/
 /*
    Retval    Meaning
    --------  -------------------------------------------
@@ -60,7 +230,6 @@ static int	Socket 		(int, int, int);
    -14       The family request does not make sense.
 */
 
-/*****************************************************************************/
 /*
  * NAME: network_client
  * USAGE: Create a new socket and establish both endpoints with the 
@@ -73,6 +242,9 @@ static int	Socket 		(int, int, int);
  *           the connection.  NULL is not permitted.
  *       rl - The sizeof(r) -- if 0, then 'r' is treated as a NULL value.
  *            Therefore, 0 is not permitted.
+ * RETURN VALUE:
+ *	An fd for which a nonblocking connect is underway and ready to go!
+ *	Just pass it to new_open(fd, ..., NEWIO_CONNECT, ...);
  */
 int	network_client (SSu *l, socklen_t ll, SSu *r, socklen_t rl)
 {
@@ -128,62 +300,20 @@ int	network_client (SSu *l, socklen_t ll, SSu *r, socklen_t rl)
 	return fd;
 }
 
-
-/*****************************************************************************/
 /*
  * NAME: network_server
- * USAGE: Establish a local passive (listening) socket at the given port.
- * ARGS: family - AF_INET is the only supported argument.
- *       port - The port to establish the connection upon.  May be 0, 
- *		which requests any open port.
- *	 storage - Pointer to a sockaddr structure big enough for the
- *		   specified family.  Upon success, it will be filled with
- *		   the local sockaddr of the new connection.
- * NOTES: In most cases, the local address for 'storage' will be INADDR_ANY
- *        which doesn't really give you any useful information.  It is not
- *        possible to authoritatively figure out the local IP address
- *        without using ioctl().  However, we guess the best we may.
- *
- * NOTES: This function lacks IPv6 support.
- *        This function lacks Unix Domain Socket support.
- */
-int	network_server (int family, unsigned short port, SSu *storage)
-{
-	socklen_t len;
-	int	fd;
-
-	if (inet_vhostsockaddr(family, port, NULL, storage, &len))
-	{
-		syserr(-1, "network_server: inet_vhostsockaddr(%d,%d) failed.", family, port);
-		return -1;
-	}
-
-	if (!len)
-	{
-		syserr(-1, "network_server: inet_vhostsockaddr(%d,%d) didn't "
-			"return an address I could bind", family, port);
-		return -1;
-	}
-
-	if ((fd = client_bind(storage, len)) < 0)
-	{
-		syserr(-1, "network_server: client_bind(%d,%d) failed.", family, port);
-		return -1;
-	}
-
-	return fd;
-}
-
-/*
- * NAME: client_bind
- * USAGE: Create a new socket and establish one endpoint with the arguments
- *        given.
- * ARGS: local - A local sockaddr structure representing the local side of
- *               the connection.  NULL is not permitted.
- *       local_len - The sizeof(l) -- if 0, then 'l' is treated as a NULL 
+ * USAGE: Create a network server with the address provided
+ * ARGS: local - INPUT - A local sockaddr structure representing the local side of
+ *                       the connection.  NULL is not permitted.
+ *			 If you don't care what port to listen on, port = 0;
+ *		 OUTPUT - The sockaddr of the server (which will include the port)
+ *       local_len - The sizeof(local) -- if 0, then 'local' is treated as a NULL 
  *		     value.  Therefore, 0 is not permitted.
+ * RETURN VALUE:
+ *	A fd for a listening server that is live and ready for action.
+ *	Just pass it to new_open(fd, ..., NEWIO_ACCEPT, ...).
  */
-int	client_bind (SSu *local, socklen_t local_len)
+int	network_server (SSu *local, socklen_t local_len)
 {
 	int	fd = -1;
 	int	family_ = AF_UNSPEC;
@@ -203,21 +333,6 @@ int	client_bind (SSu *local, socklen_t local_len)
 		syserr(-1, "client_bind: socket(%d) failed: %s", family_, strerror(errno));
 		return -1;
 	}
-
-#ifdef IP_PORTRANGE
-	/*
-	 * On 4.4BSD systems, this socket option asks the
-	 * operating system to select a port from the "high
-	 * port range" when we ask for port 0 (any port).
-	 * Maybe some day Linux will support this.
-	 */
-	if (family_ == AF_INET && getenv("EPIC_USE_HIGHPORTS"))
-	{
-		int ports = IP_PORTRANGE_HIGH;
-		setsockopt(fd, IPPROTO_IP, IP_PORTRANGE, 
-				(char *)&ports, sizeof(ports));
-	}
-#endif
 
 	if (bind(fd, &local->sa, local_len))
 	{
@@ -248,7 +363,6 @@ int	client_bind (SSu *local, socklen_t local_len)
 	return fd;
 }
 
-/*****************************************************************************/
 /*
  * NAME: inet_vhostsockaddr
  * USAGE: Get the sockaddr of the current virtual host, if one is in use.
@@ -304,97 +418,150 @@ int	inet_vhostsockaddr (int family, int port, const char *wanthost, SSu *storage
 		p = p_port;
 	}
 
-	if ((err = my_getaddrinfo(lhn, p, &hints, &res)))
+	if ((err = Getaddrinfo(lhn, p, &hints, &res)))
 	{
-		syserr(-1, "inet_vhostsockaddr: my_getaddrinfo(%s,%s) failed: %s", lhn, p, gai_strerror(err));
+		syserr(-1, "inet_vhostsockaddr: Getaddrinfo(%s,%s) failed: %s", lhn, p, gai_strerror(err));
 		return -1;
 	}
 
 	memcpy(&storage->ss, res->ai_addr, res->ai_addrlen);
-	my_freeaddrinfo(res);
+	Freeaddrinfo(res);
 	*len = socklen(storage);
 	return 0;
 }
 
-/************************************************************************/
+
+/******************************************************************************************/
+static	ares_channel_t *	ares_channel_;
+static	struct ares_options	ares_options_;
+static	int			ares_optmask_;
+
+static	void	do_ares_callback (int vfd)
+{
+	char	datastr[128];
+	int	revents, readable = 0, writable = 0;;
+
+	dgets(vfd, datastr, sizeof(datastr), 1);
+	revents = atol(datastr);
+
+	if (revents & POLLIN)
+		readable = vfd;
+	if (revents & POLLOUT)
+		writable = vfd;
+	ares_process_fd(ares_channel_, readable, writable);
+}
+
+static	void	ares_sock_state_cb_ (void *data, ares_socket_t socket_fd, int readable, int writable)
+{
+	int	revents = 0;
+
+	if (readable)
+		revents |= POLLIN;
+	if (writable)
+		revents |= POLLOUT;
+
+	new_open(socket_fd, do_ares_callback, NEWIO_PASSTHROUGH, revents, 0, -2);
+}
+
+void	init_ares (void)
+{
+	int	retval;
+
+	memset(&ares_options_, 0, sizeof(ares_options_));
+	ares_options_.sock_state_cb = ares_sock_state_cb_;
+	ares_options_.sock_state_cb_data = NULL;
+
+	ares_optmask_ = ARES_OPT_SOCK_STATE_CB;
+
+	retval = ares_init_options(&ares_channel_, &ares_options_, ares_optmask_);
+	if (retval == ARES_SUCCESS)
+		return;
+	else if (retval == ARES_EFILE)
+	{
+		panic(1, "init_ares failed with ARES_EFILE");
+		/* */ return;
+	}
+	else if (retval == ARES_ENOMEM)
+	{
+		panic(1, "init_ares failed with ARES_ENOMEM");
+		/* */ return;
+	}
+	else if (retval == ARES_ENOTINITIALIZED)
+	{
+		panic(1, "init_ares failed with ARES_ENOTINITIALIZED");
+		/* */ return;
+	}
+	else if (retval == ARES_ENOSERVER)
+	{
+		panic(1, "init_ares failed with ARES_ENOSERVER");
+		/* */ return;
+	}
+}
+
+
+/*****************************************************************************
+ *		IN THIS PLACE ARE THINGS THAT DO NOT BLOCK.
+ *****************************************************************************/
+
 /*
- * NAME: inet_strton
- * USAGE: Convert "any" kind of address represented by a string into
- *	  a socket address suitable for connect()ing or bind()ing with.
+ * NAME: my_inet_pton
+ * USAGE: Like inet_pton(), but uses getaddrinfo() so we don't have to muck
+ *	  around inside of sockaddrs.
  * ARGS: hostname - The address to convert.  It may be any of the following:
  *		IPv4 "Presentation Address"	(A.B.C.D)
  *		IPv6 "Presentation Address"	(A:B::C:D)
- *		Hostname			(foo.bar.com)
- *		32 bit host order ipv4 address	(2134546324)
  *	 storage - A pointer to a (union SSU_ (aka, a (struct sockaddr_storage)) with the 
  *		"family" argument filled in (AF_INET or AF_INET6).  
  *		If "hostname" is a p-addr, then the form of the p-addr
  *		must agree with the family in 'storage'.
  */
-int	inet_strton (const char *host, const char *port, SSu *storage_, int flags)
+static int	paddr_to_ssu (const char *host, SSu *storage_, int flags)
 {
-	int family_ = family(storage_);
+	AI	hints;
+	AI *	results;
+	int	retval;
 
-        /* First check for legacy 32 bit integer DCC addresses */
-	if ((family_ == AF_INET || family_ == AF_UNSPEC) && host && is_number(host))
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_flags = flags | AI_NUMERICHOST;
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = 0;
+
+	if ((retval = Getaddrinfo(host, NULL, &hints, &results))) 
 	{
-		(storage_->si).sin_family = AF_INET;
-#ifdef HAVE_SA_LEN
-		(storage_->si).sin_len = sizeof(struct sockaddr_in);
-#endif
-		(storage_->si).sin_addr.s_addr = htonl(strtoul(host, NULL, 10));
-		if (port)
-			(storage_->si).sin_port = htons((unsigned short)strtoul(port, NULL, 10));
-		return 0;
+		syserr(-1, "paddr_to_ssu: Getaddrinfo(%s) failed: %s", host, gai_strerror(retval));
+		return -1;
 	}
-	else
-	{
-		AI hints;
-		AI *results;
-		int retval;
 
-		memset(&hints, 0, sizeof(hints));
-		hints.ai_flags = flags;
-		hints.ai_family = family_;
-		hints.ai_socktype = SOCK_STREAM;
-		hints.ai_protocol = 0;
+	/* memcpy can bite me. */
+	memcpy(&(storage_->ss), results->ai_addr, results->ai_addrlen);
 
-		if ((retval = my_getaddrinfo(host, port, &hints, &results))) 
-		{
-			syserr(-1, "inet_strton: my_getaddrinfo(%s,%s) failed: %s", host, port, gai_strerror(retval));
-			return -1;
-		}
-
-		/* memcpy can bite me. */
-		memcpy(&(storage_->ss), results->ai_addr, results->ai_addrlen);
-
-		my_freeaddrinfo(results);
-		return 0;
-	}
+	Freeaddrinfo(results);
+	return 0;
 }
 
 /*
- * NAME: inet_ntostr
- * USAGE: Convert a "sockaddr name" (SA) into a Hostname/p-addr
- * PLAIN ENGLISH: Convert getpeername() into "foo.bar.com"
+ * NAME: ssu_to_paddr
+ * USAGE: Like inet_ntop(), but uses getnameinfo() so we don't have to much
+ *	  around inside of sockaddrs.
+ * PLAIN ENGLISH: Convert getpeername() into "1.2.3.4"
  * ARGS: name - The socket address, possibly returned by getpeername().
  *       retval - A string to store the hostname/paddr (RETURN VALUE)
  *       size - The length of 'retval' in bytes
- * RETURN VALUE: "retval" is returned upon success
- *		 "empty_string" is returned for any error.
+ * RETURN VALUE: 0 for success, -1 for error
  *
  * NOTES: 'flags' should be set to NI_NAMEREQD if you don't want the remote
  *        host's p-addr if it does not have a DNS hostname.
  */
-int	inet_ntostr (SSu *name_, char *host, int hsize, char *port, int psize, int flags)
+int	ssu_to_paddr (SSu *name_, char *host, int hsize, char *port, int psize, int flags)
 {
-	int	retval;
-	socklen_t len;
+	int		retval;
+	socklen_t 	len;
 
 	len = socklen(name_);
-	if ((retval = Getnameinfo(name_, len, host, hsize, port, psize, flags | NI_NUMERICSERV))) 
+	if ((retval = Getnameinfo(name_, len, host, hsize, port, psize, flags | NI_NUMERICHOST | NI_NUMERICSERV))) 
 	{
-		syserr(-1, "inet_ntostr: Getnameinfo(sockaddr->p_addr) failed: %s", 
+		syserr(-1, "ssu_to_paddr: Getnameinfo(sockaddr->p_addr) failed: %s", 
 					gai_strerror(retval));
 		return -1;
 	}
@@ -402,35 +569,165 @@ int	inet_ntostr (SSu *name_, char *host, int hsize, char *port, int psize, int f
 	return 0;
 }
 
-/*
- * NAME: inet_sa_to_paddr
- * USAGE: Convert a 'sockaddr name' (SA) into a p-addr
- * PLAIN ENGLISH: Convert getpeername into "1.2.3.4"
- * ARGS: name - The socket address, usually returned by getpeername(),
- *	 flags - extra flags you want to pass to getnameinfo() 
- *		 note, NI_NUMERICHOST is always included.
- */
-char *	inet_ssu_to_paddr (SSu *name, int flags)
+char *	ssu_to_paddr_quick (SSu *name_)
 {
-	char		buffer[8192];
-	int		gni_retval;
-	socklen_t	len;
+	int		retval;
+	socklen_t 	len;
+	char		host[256];
+	char		port[256];
 
-	len = socklen(name);
-	if ((gni_retval = Getnameinfo(name, len, buffer, sizeof(buffer), NULL, 0, flags | NI_NUMERICHOST)))
+	len = socklen(name_);
+	if ((retval = Getnameinfo(name_, len, host, sizeof(host), port, sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV))) 
 	{
-		syserr(-1, "inet_sa_to_paddr: Getnameinfo(sockaddr->p_addr) failed: %s",
-					gai_strerror(gni_retval));
-		return malloc_strdup("<error>");
+		syserr(-1, "ssu_to_paddr_quick: Getnameinfo(sockaddr->p_addr) failed: %s", 
+					gai_strerror(retval));
+		return malloc_strdup("invalid p-addr");
 	}
 
-	return malloc_strdup(buffer);
+	return malloc_strdup(host);
 }
 
-/* * * * * * * * * */
-/* Only used by $convert() and $nametoip() */
+int	ssu_to_port_quick (SSu *name_)
+{
+	int		retval;
+	socklen_t 	len;
+	char		host[256];
+	char		port[256];
+
+	len = socklen(name_);
+	if ((retval = Getnameinfo(name_, len, host, sizeof(host), port, sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV))) 
+	{
+		syserr(-1, "ssu_to_paddr_quick: Getnameinfo(sockaddr->p_addr) failed: %s", 
+					gai_strerror(retval));
+		return -1;
+	}
+
+	return atol(port);
+}
+
+
+/*****************************************************************************
+ *		IN THIS PLACE ARE THINGS THAT BLOCK FOR YOU.
+ *****************************************************************************/
+struct	hostname_to_ssu_data {
+	int			status;
+	int			timeouts;
+	struct ares_addrinfo *	result;
+	int			done;
+};
+
+/* * * * * * */
+static void	ares_addrinfo_callback_ (void *arg, int status, int timeouts, struct ares_addrinfo *result)
+{
+	struct hostname_to_ssu_data	*data;
+
+	if (!arg)
+		return;
+	data = (struct hostname_to_ssu_data *)arg;
+	data->status = status;
+	data->timeouts = timeouts;
+	data->result = result;
+	data->done = 1;
+}
+
 /*
- * NAME: inet_hntop
+ */
+int	hostname_to_ssu (int family, const char *host, const char *port, SSu *ssu, int flags)
+{
+	struct hostname_to_ssu_data	data;
+	struct ares_addrinfo_hints 	hints;
+
+	memset(&data, 0, sizeof(data));
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = family;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = 0;
+	hints.ai_flags = flags | ARES_AI_NUMERICSERV | ARES_AI_NOSORT | ARES_AI_ENVHOSTS;
+
+	ares_getaddrinfo(ares_channel_, host, port, &hints, ares_addrinfo_callback_, &data);
+	while (!data.done)
+		io("hostname_to_ssu");
+
+	if (data.status != ARES_SUCCESS) {
+		yell("ares_getaddrinfo(%s,%s) failed: %d", host, port, data.status);
+		return -1;
+	}
+
+	memcpy(ssu, data.result->nodes->ai_addr, data.result->nodes->ai_addrlen);
+	ares_freeaddrinfo(data.result);
+	return 0;
+}
+
+struct	ssu_to_hostname_data {
+	SSu *			ssu;
+	int			status;
+	int			timeouts;
+	char *			host;
+	size_t			hostsize;
+	char *			port;
+	size_t			portsize;
+	int			done;
+};
+
+/* * * * * * */
+static void	ares_nameinfo_callback_ (void *arg, int status, int timeouts, char *host, char *port)
+{
+	struct ssu_to_hostname_data	*data;
+
+	if (!arg)
+		return;
+	data = (struct ssu_to_hostname_data *)arg;
+	data->status = status;
+	data->timeouts = timeouts;
+	if (data->host)
+	{
+		if (!host) {
+			char *x = ssu_to_paddr_quick(data->ssu);
+			strlcpy(data->host, x, data->hostsize);
+			new_free(&x);
+		}
+		else
+			strlcpy(data->host, host, data->hostsize);
+	}
+	if (data->port)
+	{
+		if (!port)
+			*(data->port) = 0;
+		else
+			strlcpy(data->port, port, data->portsize);
+	}
+	data->done = 1;
+}
+
+int	ssu_to_hostname (SSu *ssu, char *host, size_t hostsize, char *port, size_t portsize, int flags)
+{
+	struct ssu_to_hostname_data	data;
+
+	memset(&data, 0, sizeof(data));
+	data.ssu = ssu;
+	data.host = host;
+	data.hostsize = hostsize;
+	data.port = port;
+	data.portsize = portsize;
+
+	ares_getnameinfo(ares_channel_, &(ssu->sa), socklen(ssu), flags | ARES_NI_NAMEREQD | ARES_NI_LOOKUPHOST | ARES_NI_NUMERICSERV, ares_nameinfo_callback_, &data);
+
+	while (!data.done)
+		io("hostname_to_ssu");
+
+	if (data.status != ARES_SUCCESS) {
+		yell("ares_getnameinfo failed: %d", data.status);
+		return -1;
+	}
+	return 0;
+}
+
+
+/**********************************************************************/
+/* Function backends */
+/*
+ * NAME: hostname_to_paddr (formerly inet_hntop)
  * USAGE: Convert a Hostname into a "presentation address" (p-addr)
  * PLAIN ENGLISH: Convert "A.B.C.D" into "foo.bar.com"
  * ARGS: family - The family whose presesentation address format to use
@@ -440,27 +737,26 @@ char *	inet_ssu_to_paddr (SSu *name, int flags)
  * RETURN VALUE: "retval" is returned upon success
  *		 "empty_string" is returned for any error.
  */
-int	inet_hntop (int family, const char *host, char *retval, int size)
+int	hostname_to_paddr (const char *host, char *retval, int size)
 {
 	SSu	buffer;
 
-	buffer.sa.sa_family = family;
-	if (inet_strton(host, NULL, &buffer, AI_ADDRCONFIG))
+	buffer.sa.sa_family = AF_INET;
+	if (hostname_to_ssu(AF_INET, host, NULL, &buffer, AI_ADDRCONFIG))
 	{
-		syserr(-1, "inet_hntop: inet_strton(%d,%s) failed", family, host);
+		syserr(-1, "hostname_to_paddr: hostname_to_ssu(%s) failed", host);
 		return -1;
 	}
 
-	if (inet_ntostr(&buffer, retval, size, NULL, 0, NI_NUMERICHOST))
+	if (ssu_to_paddr(&buffer, retval, size, NULL, 0, NI_NUMERICHOST))
 	{
-		syserr(-1, "inet_hntop: inet_ntostr(%d,%s) failed", family, host);
+		syserr(-1, "hostname_to_paddr: ssu_to_paddr(%s) failed", host);
 		return -1;
 	}
 
 	return 0;
 }
 
-/* Only used by $convert() and $iptoname() */
 /*
  * NAME: inet_ptohn
  * USAGE: Convert a "presentation address" (p-addr) into a Hostname
@@ -472,28 +768,26 @@ int	inet_hntop (int family, const char *host, char *retval, int size)
  * RETURN VALUE: "retval" is returned upon success
  *		 "empty_string" is returned for any error.
  */
-int	inet_ptohn (int family, const char *ip, char *retval, int size)
+int	paddr_to_hostname (const char *ip, char *retval, int size)
 {
 	SSu	buffer;
 
 	memset((char *)&buffer.ss, 0, sizeof(buffer.ss));
-	buffer.sa.sa_family = family;
-	if (inet_strton(ip, NULL, &buffer, AI_NUMERICHOST))
+	if (paddr_to_ssu(ip, &buffer, 0))
 	{
-		syserr(-1, "inet_ptohn: inet_strton(%d,%s) failed", family, ip);
+		syserr(-1, "inet_ptohn: paddr_to_ssu(%s) failed", ip);
 		return -1;
 	}
 
-	if (inet_ntostr(&buffer, retval, size, NULL, 0, NI_NAMEREQD))
+	if (ssu_to_hostname(&buffer, retval, size, NULL, 0, NI_NAMEREQD))
 	{
-		syserr(-1, "inet_ptohn: inet_ntostr(%d,%s) failed", family, ip);
+		syserr(-1, "inet_ptohn: ssu_to_hostname(%s) failed", ip);
 		return -1;
 	}
 
 	return 0;
 }
 
-/* Only used by $convert() */
 /*
  * NAME: one_to_another
  * USAGE: Convert a p-addr to a Hostname, or a Hostname to a p-addr.
@@ -516,13 +810,13 @@ int	one_to_another (int family, const char *what, char *retval, int size)
 	int	old_window_display;
 
 	old_window_display = swap_window_display(0);
-	if (inet_ptohn(family, what, retval, size))
+	if (paddr_to_hostname(what, retval, size))
 	{
-		if (inet_hntop(family, what, retval, size))
+		if (hostname_to_paddr(what, retval, size))
 		{
 			swap_window_display(old_window_display);
 			syserr(-1, "one_to_another: both inet_ptohn and "
-					"inet_hntop failed (%d,%s)", 
+					"hostname_to_paddr failed (%d,%s)", 
 					family, what);
 			return -1;
 		}
@@ -532,272 +826,8 @@ int	one_to_another (int family, const char *what, char *retval, int size)
 	return 0;
 }
 
-/****************************************************************************/
-int	set_non_blocking (int fd)
-{
-	int	rval;
 
-	if ((rval = fcntl(fd, F_GETFL, 0)) == -1)
-	{
-		syserr(-1, "set_non_blocking: fcntl(%d, F_GETFL) failed: %s",
-				fd, strerror(errno));
-		return -1;
-	}
-	rval |= O_NONBLOCK;
-	if (fcntl(fd, F_SETFL, rval) == -1)
-	{
-		syserr(-1, "set_non_blocking: fcntl(%d, F_SETFL) failed: %s",
-				fd, strerror(errno));
-		return -1;
-	}
-	return 0;
-}
-
-int	set_blocking (int fd)
-{
-	int	rval;
-
-	if ((rval = fcntl(fd, F_GETFL, 0)) == -1)
-	{
-		syserr(-1, "set_blocking: fcntl(%d, F_GETFL) failed: %s",
-				fd, strerror(errno));
-		return -1;
-	}
-	rval &= (~(O_NONBLOCK));
-	if (fcntl(fd, F_SETFL, rval) == -1)
-	{
-		syserr(-1, "set_blocking: fcntl(%d, F_SETFL) failed: %s",
-				fd, strerror(errno));
-		return -1;
-	}
-	return 0;
-}
-
-/****************************************************************************/
-/*
- * It is possible for a race condition to exist; such that poll()
- * indicates that a listen()ing socket is able to recieve a new connection
- * and that a later accept() call will still block because the connection
- * has been closed in the interim.  This wrapper for accept() attempts to
- * defeat this by making the accept() call nonblocking.
- */
-int	my_accept (int s, SSu *addr, socklen_t *addrlen)
-{
-	int	retval;
-
-	set_non_blocking(s);
-	if ((retval = accept(s, &addr->sa, addrlen)) < 0)
-		syserr(-1, "my_accept: accept(%d) failed: %s", 
-				s, strerror(errno));
-	set_blocking(s);
-	set_blocking(retval);		/* Just in case */
-	return retval;
-}
-
-static int Connect (int fd, SSu *addr)
-{
-	int	retval;
-
-	set_non_blocking(fd);
-	if ((retval = connect(fd, &addr->sa, socklen(addr))))
-	{
-	    if (errno != EINPROGRESS)
-		syserr(-1, "Connect: connect(%d) failed: %s", fd, strerror(errno));
-	    else
-		retval = 0;
-	}
-	set_blocking(fd);
-	return retval;
-}
-
-/*
- * XXX - Ugh!  Some getaddrinfo()s take AF_UNIX paths as the 'servname'
- * instead of as the 'nodename'.  How heinous!
- */
-int	my_getaddrinfo (const char *nodename, const char *servname, const AI *hints, AI **res)
-{
-#ifdef GETADDRINFO_DOES_NOT_DO_AF_UNIX
-	int	do_af_unix = 0;
-	SSu 	storage;
-	AI *	results;
-	int	len;
-
-	if (nodename && strchr(nodename, '/'))
-		do_af_unix = 1;
-	if (hints && hints->ai_family == AF_UNIX)
-		do_af_unix = 1;
-
-	if (do_af_unix)
-	{
-		if (!nodename)
-			return EAI_NONAME;
-
-                memset(&storage.su, 0, sizeof(storage.su));
-                storage.su.sun_family = AF_UNIX;
-                strlcpy(storage.su.sun_path, nodename, sizeof(storage.su.sun_path));
-#ifdef HAVE_SA_LEN
-# ifdef SUN_LEN
-                storage.su.sun_len = SUN_LEN(&storage.su);
-# else
-                storage.su.sun_len = strlen(nodename) + 1;
-# endif
-#endif
-                len = strlen(storage.su.sun_path) + 3;
-
-		(*res) = new_malloc(sizeof(*results));
-		(*res)->ai_flags = 0;
-		(*res)->ai_family = AF_UNIX;
-		(*res)->ai_socktype = SOCK_STREAM;
-		(*res)->ai_protocol = 0;
-		(*res)->ai_addrlen = len;
-		(*res)->ai_canonname = malloc_strdup(nodename);
-		(*res)->ai_addr = new_malloc(sizeof(storage.su));
-		memcpy((*res)->ai_addr, &storage.su, sizeof(storage.su));
-		(*res)->ai_next = 0;
-
-                return 0;
-	}
-#endif
-
-	/*
-	 * XXX -- Support getaddrinfo()s that want an AF_UNIX path to
-	 * be the second argument and not the first one.  Bleh.
-	 */
-	if ((nodename && strchr(nodename, '/')) || 
-	    (hints && hints->ai_family == AF_UNIX))
-		return getaddrinfo(NULL, nodename, hints, res);
-	else
-		return getaddrinfo(nodename, servname, hints, res);
-}
-
-void	my_freeaddrinfo (AI *ai)
-{
-#ifdef GETADDRINFO_DOES_NOT_DO_AF_UNIX
-	if (ai->ai_family == AF_UNIX)
-	{
-		new_free(&ai->ai_canonname);
-		new_free(&ai->ai_addr);
-		new_free(&ai);
-		return;
-	}
-#endif
-
-	freeaddrinfo(ai);
-}
-
-static int	Getnameinfo(SSu *ssu, socklen_t ssulen, char *host, size_t hostlen, char *serv, size_t servlen, int flags)
-{
-#ifdef GETADDRINFO_DOES_NOT_DO_AF_UNIX
-	if (family(ssu) == AF_UNIX) 
-	{
-		socklen_t	len;
-
-#ifdef HAVE_SA_LEN
-                len = ssu->su.sun_len;
-#else
-# ifdef SUN_LEN
-		len = SUN_LEN(&ssu->su);
-# else
-		len = strlen(ssu->su.sun_path);
-# endif
-#endif
-
-		if (host && hostlen)
-		{
-		    if (hostlen <= len)
-		    {
-			memcpy(host, ssu->su.sun_path, hostlen);
-			host[hostlen - 1] = 0;
-		    }
-		    else
-		    {
-			memcpy(host, &ssu->su.sun_path, len);
-			host[len] = 0;
-		    }
-		}
-
-		if (serv && servlen)
-			*serv = 0;
-
-                return 0;
-	}
-#endif
-
-	if ((flags & GNI_INTEGER) && family(ssu) == AF_INET) 
-	{
-		snprintf(host, hostlen, "%lu", 
-			(unsigned long)ntohl(ssu->si.sin_addr.s_addr));
-		host = NULL;
-		hostlen = 0;
-	}
-
-	flags = flags & ~(GNI_INTEGER);
-	return getnameinfo(&ssu->sa, ssulen, host, hostlen, serv, servlen, flags);
-}
-
-static socklen_t	socklen (SSu *sockaddr)
-{
-	if (sockaddr->sa.sa_family == AF_INET)
-		return sizeof(sockaddr->si);
-	else if (sockaddr->sa.sa_family == AF_INET6)
-		return sizeof(sockaddr->si6);
-	else if (sockaddr->sa.sa_family == AF_UNIX)
-		return strlen(sockaddr->su.sun_path) + 2;
-	else
-		return 0;
-}
-
-int	family (SSu *sockaddr_)
-{
-	return (sockaddr_->sa).sa_family;
-}
-
-/* set's socket options */
-/*
- * Socket -- Create a new socket and set baseline preferences
- * 
- * Arguments:
- *	domain	- The domain passed to socket(2), usually AF_INET
- *	type	- The type passed to socket(2), usually SOCK_STREAM
- *	protocol - The protocol passed to socket(2), usually 0
- *
- * Return value:
- *	The fd of a new socket
- *
- * Notes:
- *	All sockets come with:
- *	- lingering off (close(2) won't block if jammed)
- *	- reuseaddr on (let someone re-use our port after we close(2))
- *	- keepalive on (fail the socket if TCP ping/pongs fail)
- */
-int	Socket (int domain, int type, int protocol)
-{
-        int     opt;
-        int     optlen = sizeof(opt);
-	int	s;
-
-	if ((s = socket(domain, type, protocol)) < 0)
-	{
-		syserr(-1, "Socket: socket(%d,%d,%d) failed: %s",
-				domain, type, protocol, strerror(errno));
-		return -1;
-	}
-
-	{
-		struct linger   lin;
-
-		/* Turning of "lingering" ordinarily makes close(2) non-blocking if the socket is jammed */
-		lin.l_onoff = lin.l_linger = 0;
-		setsockopt(s, SOL_SOCKET, SO_LINGER, (char *)&lin, optlen);
-	}
-
-	opt = 1;
-        setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, optlen);
-        opt = 1;
-        setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (char *)&opt, optlen);
-	return s;
-}
-
+/**********************************************************************************************/
 pid_t	async_getaddrinfo (const char *nodename, const char *servname, const AI *hints, int fd)
 {
 	AI *results = NULL;
@@ -810,7 +840,7 @@ pid_t	async_getaddrinfo (const char *nodename, const char *servname, const AI *h
 		return helper;
 	}
 
-        if ((err = my_getaddrinfo(nodename, servname, hints, &results)))
+        if ((err = Getaddrinfo(nodename, servname, hints, &results)))
         {
 		err = -labs(err);		/* Always a negative number */
 		if (!write(fd, &err, sizeof(err))) 
@@ -829,13 +859,13 @@ pid_t	async_getaddrinfo (const char *nodename, const char *servname, const AI *h
         }
 
         marshall_getaddrinfo(fd, results);
-        my_freeaddrinfo(results);
+        Freeaddrinfo(results);
         close(fd);
 	exit(0);
 	return 0;	/* XXX This function should be void */
 }
 
-void	marshall_getaddrinfo (int fd, AI *results)
+static void	marshall_getaddrinfo (int fd, AI *results)
 {
 	ssize_t	len,
 		gah;

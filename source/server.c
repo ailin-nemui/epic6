@@ -1479,7 +1479,7 @@ BUILT_IN_COMMAND(servercmd)
  * to implement it as one monolithic function.  There is nothing special about 
  * doing it one way or the other.
  */
-void	do_server (int fd)
+static	void	do_server (int fd)
 {
 	Server *s;
 	char	buffer[IO_BUFFER_SIZE + 1];
@@ -1712,7 +1712,7 @@ something_broke:
 			}
 
 			memcpy(&s->remote_sockname.ss, &name.ss, sizeof(name.ss));
-			s->remote_paddr = inet_ssu_to_paddr(&name, 0);
+			s->remote_paddr = ssu_to_paddr_quick((SSu *)&name);
 			say("Connected to IP address %s", s->remote_paddr);
 
 			/*
@@ -1749,7 +1749,7 @@ something_broke:
 				 * dgets().
 				 */
 				set_server_state(i, SERVER_SSL_CONNECTING);
-				new_open(des, do_server, NEWIO_SSL_CONNECT, 0, i);
+				new_open(des, do_server, NEWIO_SSL_CONNECT, POLLIN, 0, i);
 				pop_message_from(l);
 				break;
 			}
@@ -1759,9 +1759,9 @@ return_from_ssl_detour:
 			 * Our IO callback depends on our medium
 			 */
 			if (is_fd_ssl_enabled(des))
-				new_open(des, do_server, NEWIO_SSL_READ, 0, i);
+				new_open(des, do_server, NEWIO_SSL_READ, POLLIN, 0, i);
 			else
-				new_open(des, do_server, NEWIO_RECV, 0, i);
+				new_open(des, do_server, NEWIO_RECV, POLLIN, 0, i);
 
 			/* Always try to fall back to the nick from the server description */
 			/* This was discussed and agreed to in April 2016 */
@@ -2256,7 +2256,7 @@ static	int	grab_server_address (int server)
 	xvfd[0] = xvfd[1] = -1;
 	if (socketpair(PF_UNIX, SOCK_STREAM, 0, xvfd))
 		yell("socketpair: %s", strerror(errno));
-	new_open(xvfd[1], do_server, NEWIO_READ, 1, server);
+	new_open(xvfd[1], do_server, NEWIO_READ, POLLIN, 1, server);
 
 	memset(&hints, 0, sizeof(hints));
 	if (empty(s->info->proto_type))
@@ -2351,7 +2351,7 @@ static int	connect_next_server_address_internal (int server)
 		continue;
 	    }
 
-	    if (inet_ntostr((SSu *)(ai->ai_addr), p_addr, 256, p_port, 24, NI_NUMERICHOST))
+	    if (ssu_to_paddr((SSu *)(ai->ai_addr), p_addr, 256, p_port, 24, NI_NUMERICHOST))
 		say("Connecting to server refnum %d (%s), using address %d",
 					server, s->info->host, s->addr_counter);
 	    else
@@ -2459,7 +2459,7 @@ int 	connect_to_server_next_addr (int new_server)
 	if (x_debug & DEBUG_SERVER_CONNECT)
 		say("connect_next_server_address returned [%d]", des);
 	from_server = new_server;	/* XXX sigh */
-	new_open(des, do_server, NEWIO_CONNECT, 0, from_server);
+	new_open(des, do_server, NEWIO_CONNECT, POLLOUT, 0, from_server);
 
 	/*
 	 * Get the local IP socket address
@@ -3246,14 +3246,12 @@ static void    set_server_port (int refnum, int port)
 int	get_server_port (int refnum)
 {
 	Server *s;
-	char	p_port[12];
 
 	if (!(s = get_server(refnum)))
 		return 0;
 
 	if (is_server_open(refnum))
-	   if (!inet_ntostr(&s->remote_sockname, NULL, 0, p_port, 12, 0))
-		return atol(p_port);
+		return ssu_to_port_quick(&s->remote_sockname);
 
 	return s->info->port;
 }
@@ -3261,14 +3259,12 @@ int	get_server_port (int refnum)
 int	get_server_local_port (int refnum)
 {
 	Server *s;
-	char	p_port[12];
 
 	if (!(s = get_server(refnum)))
 		return 0;
 
 	if (is_server_open(refnum))
-	    if (!inet_ntostr(&s->local_sockname, NULL, 0, p_port, 12, 0))
-		return atol(p_port);
+		return ssu_to_port_quick(&s->local_sockname);
 
 	return 0;
 }
@@ -4819,8 +4815,6 @@ char 	*serverctl 	(char *input)
 				RETURN_STR("ipv4");
 			else if (family(&a) == AF_INET6)
 				RETURN_STR("ipv6");
-			else if (family(&a) == AF_UNIX)
-				RETURN_STR("unix");
 			else
 				RETURN_STR("unknown");
 		} else if (!my_strnicmp(listc, "PROTOCOL", len)) {

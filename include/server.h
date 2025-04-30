@@ -220,8 +220,6 @@ const	AI *		next_addr;		/* The next one to try upon failure */
 	int	close_all_servers		(const char *);
 	void	close_server			(int, const char *);
 
-	void	do_server			(int);
-
 	void	set_server_away_message		(int, const char *);
 const	char *	get_server_away_message		(int);
 	void	set_server_away_status		(int, int);

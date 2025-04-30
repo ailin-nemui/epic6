@@ -170,3 +170,15 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Stop checking for standard things in 'configure.ac'.
 * More removals from configure.ac.
 * Even more removals for historical unix behaviors!
+* First round of c-ares support, $iptoname(), $nametoip()
+* Apparently linux needs <sys/ioctl.h> to define 'struct winsize'
+* Nearly complete refactor of network.c, all things sockets and dns
+* Stop using getaddrinfo() and friends except for non-dns things
+* Sunset support for unix domain sockets (for /server)
+* Retrench on using poll(2) for everything; refactor newio to pass 'revent'
+* You now tell new_open() what poll(2) flags you are interested in.
+* The new c-ares stuff is built on the refactored newio stuff
+* Rename inet_* functions to avoid obsolete jargon abbreviations 
+* $iptolong() is reverted to using inet_aton().
+* $longtoip() is reverted to using inet_ntoa().
+* The ^S keybinding to TOGGLE_STOP_SCREEN is no longer a default

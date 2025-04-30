@@ -266,6 +266,27 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 
 dnl ----------------------------------------------------------
 dnl
+dnl POSIX Issue 8 (2024) defines tcgetwinsize() and 
+dnl (struct winsize) is part of #include <termios.h>
+dnl POSIX Issue 7 (2018) doesn't define either, and at least
+dnl in linux you have to use ioctl() and #include <sys/ioctl.h>
+dnl
+dnl -----------------------------------------------------------
+AC_MSG_CHECKING([to see you have struct winsize in termios.h])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+        #include <termios.h>
+]],[[
+	struct winsize	w;
+	w.ws_row = 10;
+	return 0;
+]])],
+  	[ AC_DEFINE([HAVE_TERMIOS_WINSIZE], 1, [Define this if termios.h has struct winsize])
+	  AC_MSG_RESULT([yes]) ],
+  	[ AC_MSG_RESULT([no]) ], :)
+
+
+dnl ----------------------------------------------------------
+dnl
 dnl Some implementations of getaddrinfo (*cough*KAME*cough*) don't 
 dnl support the AF_UNIX protocol family.  For these partially incomplete 
 dnl implementations, we must add our own support in a wrapper.

@@ -4497,6 +4497,40 @@ esac
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking to see you have struct winsize in termios.h" >&5
+printf %s "checking to see you have struct winsize in termios.h... " >&6; }
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+        #include <termios.h>
+
+int
+main (void)
+{
+
+	struct winsize	w;
+	w.ws_row = 10;
+	return 0;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+
+printf "%s\n" "#define HAVE_TERMIOS_WINSIZE 1" >>confdefs.h
+
+	  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+else case e in #(
+  e)  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }  ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking to see if your getaddrinfo supports AF_UNIX" >&5
 printf %s "checking to see if your getaddrinfo supports AF_UNIX... " >&6; }

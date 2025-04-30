@@ -40,9 +40,6 @@
 #include "ssl.h"
 #include "timer.h"
 
-/* This is still an experimental feature. */
-/* #define VIRTUAL_FILEDESCRIPTORS */
-
 #define IO_ARRAYLEN 	sysconf(_SC_OPEN_MAX)
 
 #define MAX_SEGMENTS 16
@@ -63,10 +60,11 @@ typedef	struct	myio_struct
 		clean,
 		held;
 	void	(*callback) (int vfd);
-	int	(*io_callback) (int vfd, int quiet);
+	int	(*io_callback) (int vfd, int quiet, int revents);
 	void	(*failure_callback) (int channel, int error);
 	int	quiet;
 	int	server;			/* For message routing */
+	int	poll_events;
 }           MyIO;
 
 static	MyIO **	io_rec = NULL;
@@ -91,54 +89,18 @@ static	int	kreadable (int vfd, double);
 static	int	kwritable (int vfd, double);
 
 /* These functions implement basic i/o operations for unix */
-static int	unix_read (int channel, int);
-static int	unix_recv (int channel, int);
-static int	unix_accept (int channel, int);
-static int	unix_connect (int channel, int);
+static int	unix_read (int channel, int, int);
+static int	unix_recv (int channel, int, int);
+static int	unix_accept (int channel, int, int);
+static int	unix_connect (int channel, int, int);
 static int	unix_close (int channel, int);
-static int	passthrough_event (int channel, int quiet);
+static int	passthrough_event (int channel, int quiet, int);
 
-/* 
- * On systems where vfd != channel, you need these functions to 
- * map between the two.  You don't want to use these on unix,
- * because they're unnecessarily expensive.
- */
-#ifdef VIRTUAL_FILEDESCRIPTORS
-static int	get_vfd_by_channel (int channel) 
-{
-	int	vfd;
-	for (vfd = 0; vfd <= global_max_vfd; vfd++)
-	    if (io_rec[vfd] && io_rec[vfd]->channel == channel)
-		return vfd;
-	return -1;
-}
-#define VFD(channel) get_vfd_by_channel(channel)
 
-static	int	get_new_vfd (int channel)
-{
-	int	vfd;
-
-	for (vfd = 0; vfd <= global_max_vfd; vfd++)
-	    if (io_rec[vfd] && io_rec[vfd]->channel == channel)
-		return vfd;
-	for (vfd = 0; vfd <= global_max_vfd; vfd++)
-	    if (io_rec[vfd] == NULL)
-		return vfd;
-	return global_max_vfd + 1;
-}
-
-static int	get_channel_by_vfd (int vfd)
-{
-	if (!io_rec[vfd])
-		panic(1, "get_channel_by_vfd(%d): vfd is not set up!");
-	return io_rec[vfd]->channel;
-}
-#define CHANNEL(vfd) get_channel_by_vfd(vfd);
-#else
+/* XXX Please refactor these away */
 #define VFD(channel) channel
 #define CHANNEL(vfd) vfd
 #define get_new_vfd(channel) channel
-#endif
 
 int	get_server_by_vfd (int vfd)
 {
@@ -520,11 +482,33 @@ int	my_iswritable (int vfd, double seconds)
 
 /****************************************************************************/
 /*
- * Register a filedesc for readable events
- * Set up its input buffer
- * Returns an vfd!
+ * new_open - Register an fd with the event looper for callbacks.
+ *
+ * Arguments:
+ *	channel - A file descriptor that you got from somewhere [forgive the name]
+ *	callback - A function that will be called when you have data ready
+ *		int fd	- The channel/fd you registered
+ *		int revents - The events returned by poll(2)
+ *	io_type - The OS-level handler you want performed on this fd
+ *		You can use NEWIO_PASSTHROUGH if you just want to be notified
+ *		and don't want any assistance.
+ *	poll_events - What sort of notifications you want (POLLIN or POLLOUT)
+ *	quiet - Whether you want the handling of this fd to be chatty (usually 0)
+ *	server - The IRC server refnum associated with this fd (for output purposes)
+ * 
+ * When you register an fd with this function, it will:
+ *	(1) Wait until it is "ready" at the io level [with poll]
+ *	(2) If you specify an io_type, it will run a function to "handle" your fd.
+ *	(3) The io handler will buffer (with dgets_buffer()) the data for the activity.
+ *	    This will tell the looper to buffer data for your consumption
+ *	(4) Your callback will be invoked, telling you which fd is ready and what
+ *	    poll() said it was ready for.  Your callback must consume the buffered data.
+ *	    If you use NEWIO_PASSTHROUGH, then dgets() will buffer dummy data
+ *	    -- You still need to consume it!
+ *
+ * Return value:  'channel' is returned.
  */
-int 	new_open (int channel, void (*callback) (int), int io_type, int quiet, int server)
+int 	new_open (int channel, void (*callback) (int), int io_type, int poll_events, int quiet, int server)
 {
 	MyIO *ioe;
 	int	vfd;
@@ -558,26 +542,39 @@ int 	new_open (int channel, void (*callback) (int), int io_type, int quiet, int 
 	ioe->quiet = quiet;
 	ioe->server = server;
 
-	if (io_type == NEWIO_READ)
+	if (io_type == NEWIO_READ) {
 		ioe->io_callback = unix_read;
-	else if (io_type == NEWIO_ACCEPT)
+		ioe->poll_events = POLLIN;
+	} else if (io_type == NEWIO_ACCEPT) {
 		ioe->io_callback = unix_accept;
-	else if (io_type == NEWIO_SSL_READ)
+		ioe->poll_events = POLLIN;
+	} else if (io_type == NEWIO_SSL_READ) {
 		ioe->io_callback = ssl_read;
-	else if (io_type == NEWIO_CONNECT)
+		ioe->poll_events = POLLIN;
+	} else if (io_type == NEWIO_CONNECT) {
 		ioe->io_callback = unix_connect;
-	else if (io_type == NEWIO_RECV)
+		ioe->poll_events = POLLOUT;
+	} else if (io_type == NEWIO_RECV) {
 		ioe->io_callback = unix_recv;
-	else if (io_type == NEWIO_NULL)
+		ioe->poll_events = POLLIN;
+	} else if (io_type == NEWIO_NULL) {
 		ioe->io_callback = NULL;
-	else if (io_type == NEWIO_SSL_CONNECT)
+		ioe->poll_events = 0;
+	} else if (io_type == NEWIO_SSL_CONNECT) {
 		ioe->io_callback = ssl_connect;
-	else if (io_type == NEWIO_PASSTHROUGH_READ)
+		ioe->poll_events = POLLIN;
+	} else if (io_type == NEWIO_PASSTHROUGH_READ) {
 		ioe->io_callback = passthrough_event;
-	else if (io_type == NEWIO_PASSTHROUGH_WRITE)
+		ioe->poll_events = POLLIN;
+	} else if (io_type == NEWIO_PASSTHROUGH_WRITE) {
 		ioe->io_callback = passthrough_event;
-	else
+		ioe->poll_events = POLLOUT;
+	} else if (io_type == NEWIO_PASSTHROUGH) {
+		ioe->io_callback = passthrough_event;
+		ioe->poll_events = poll_events;
+	} else {
 		panic(1, "New_open doesn't recognize io type %d", io_type);
+	}
 
 	ioe->callback = callback;
 	ioe->failure_callback = NULL;
@@ -754,7 +751,7 @@ static int	unix_close (int channel, int quiet)
 	return 0;
 }
 
-static int	unix_read (int channel, int quiet)
+static int	unix_read (int channel, int quiet, int revents)
 {
 	ssize_t	c;
 	char	buffer[8192];
@@ -785,7 +782,7 @@ static int	unix_read (int channel, int quiet)
 	return c;
 }
 
-static int	unix_recv (int channel, int quiet)
+static int	unix_recv (int channel, int quiet, int revents)
 {
 	ssize_t	c;
 	char	buffer[8192];
@@ -816,7 +813,7 @@ static int	unix_recv (int channel, int quiet)
 	return c;
 }
 
-static int	unix_accept (int channel, int quiet)
+static int	unix_accept (int channel, int quiet, int revents)
 {
 	int	newfd;
 	SSu	addr;
@@ -824,11 +821,11 @@ static int	unix_accept (int channel, int quiet)
 
 	memset(&addr.ss, 0, sizeof(addr.ss));
 	len = sizeof(addr.ss);
-	if ((newfd = my_accept(channel, &addr, &len)) < 0)
+	if ((newfd = Accept(channel, &addr, &len)) < 0)
 	{
 	    if (!quiet)
 		syserr(CSRV(channel), 
-			"unix_accept: my_accept(%d) failed: %s", channel, strerror(errno));
+			"unix_accept: Accept(%d) failed: %s", channel, strerror(errno));
 	}
 
 	dgets_buffer(channel, &newfd, sizeof(newfd));
@@ -836,7 +833,7 @@ static int	unix_accept (int channel, int quiet)
 	return sizeof(newfd) + sizeof(addr);
 }
 
-static int	unix_connect (int channel, int quiet)
+static int	unix_connect (int channel, int quiet, int revents)
 {
 	int	sockerr;
 	int	gso_result;
@@ -876,10 +873,13 @@ static int	unix_connect (int channel, int quiet)
 	return (sizeof(int) + sizeof(localaddr.ss)) * 2;
 }
 
-static int	passthrough_event (int channel, int quiet)
+static int	passthrough_event (int channel, int quiet, int revents)
 {
-	/* We just push something so it's there. */
-	dgets_buffer(channel, "\n", 1);
+	char	revents_str[1024];
+
+	/* Tell the caller what the revents are */
+	snprintf(revents_str, 1024, "%d\n", revents);
+	dgets_buffer(channel, revents_str, strlen(revents_str));
 	return 1;
 }
 
@@ -898,7 +898,7 @@ static int	passthrough_event (int channel, int quiet)
  *		user's callback, which uses dgets() to return 
  *		whatever was queued up here, and marks the fd as "clean".
  */
-static void	new_io_event (int vfd)
+static void	new_io_event (int vfd, int revents)
 {
 	MyIO *ioe;
 	int	c;
@@ -917,7 +917,7 @@ static void	new_io_event (int vfd)
 		 * (which sets ioe->clean = 0) or to return an error (in which
 		 * case we do it ourselves right here)
 		 */
-		if ((c = ioe->io_callback(vfd, ioe->quiet)) <= 0)
+		if ((c = ioe->io_callback(vfd, ioe->quiet, revents)) <= 0)
 		{
 			ioe->error = -1;
 			ioe->clean = 0;
@@ -1040,7 +1040,7 @@ static	int	kdoit (Timeval *timeout)
 		{
 		    if (polls[vfd].revents)
 		    {
-			new_io_event(vfd);
+			new_io_event(vfd, polls[vfd].revents);
 			break;
 		    }
 		}

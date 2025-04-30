@@ -1,5 +1,15 @@
 EPIC6-0.0.1
 
+*** News 04/30/2025 -- Unix Domain Sockets support sunset
+	ircII has traditionally supported unix domain sockets to connect to
+	servers, as in  /server /tmp/.ircd/6667.  I bet you didn't even know
+	that.  I bet I was the only one who ever even used that.
+
+*** News 04/30/2025 -- ^S is no longer bound to TOGGLE_STOP_SCREEN by default
+	TOGGLE_STOP_SCREEN toggles "hold mode" which most people do not 
+	want to use anyways.  It's one of those things that everyone turns
+	off, so why not just make it opt-in instead of opt-out?
+
 *** News 04/10/2025 -- $json_implode() now defaults to "compact:true"
 	The $json_implode() function takes an assign tree root
 	and converts everything underneath it into a json doc.

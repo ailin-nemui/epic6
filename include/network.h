@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2005 Jeremy Nelson
+ * Copyright 2003, 2025 Jeremy Nelson
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -31,62 +31,26 @@
 #ifndef __NETWORK_H__
 #define __NETWORK_H__
 
+	int     set_non_blocking	(int);
+	int     set_blocking		(int);
+	int     family			(const SSu *);
+	int     Accept			(int, SSu *, socklen_t *);
+	int     network_client		(SSu *, socklen_t, SSu *, socklen_t);
+	int     network_server		(SSu *, socklen_t);
+	int     inet_vhostsockaddr	(int, int, const char *, SSu *, socklen_t *);
+	void    init_ares		(void);
+	int     ssu_to_paddr		(SSu *, char *, int, char *, int, int);
+	char *  ssu_to_paddr_quick	(SSu *);
+	int     ssu_to_port_quick	(SSu *);
+	int     hostname_to_ssu		(int, const char *, const char *, SSu *, int);
+	int     ssu_to_hostname		(SSu *, char *, size_t, char *, size_t, int);
+	int     hostname_to_paddr	(const char *, char *, int);
+	int     paddr_to_hostname	(const char *, char *, int);
+	int     one_to_another		(int, const char *, char *, int);
+	pid_t   async_getaddrinfo	(const char *, const char *, const AI *, int);
+	void    unmarshall_getaddrinfo	(AI *);
 
-		/* String(any) -> SSu */
-	int     inet_strton             (const char *, const char *, SSu *, int);
-
-		/* SSu -> String (paddr or hostname) */
-	int     inet_ntostr             (SSu *, char *, int, char *, int, int);
-
-		/* SSu -> String (paddr) */
-	char *  inet_ssu_to_paddr	(SSu *name, int flags);
-
-		/* String (hostname) -> String (p-addr) */
-	int	inet_hntop             	(int, const char *, char *, int);
-
-		/* String (p-addr) -> String (hostname) */
-	int	inet_ptohn             	(int, const char *, char *, int);
-
-		/* String (hostname) -> String (p-addr) 
-		   String (p-addr)   -> String (hostname */
-	int	one_to_another         	(int, const char *, char *, int);
-
-		/* Accept a connection without blocking race condition into an SSu */
-	int     my_accept              	(int, SSu *, socklen_t *);
-
-		/* This lives in ircaux.c -- probably should not */
-	char *	switch_hostname        	(const char *);
-
-		/* Create fd with SSu for both sides */
-	int     network_client          (SSu *, socklen_t, SSu *, socklen_t);
-
-		/* Create listening server using default vhost */
-	int     network_server          (int family, unsigned short port, SSu *storage);
-
-		/* Create listening socket using specified vhost */
-	int     client_bind             (SSu *, socklen_t);
-
-		/* Create socket pinned to arbitrary (or default) vhost */
-		/* Used by network_server() */
-	int     inet_vhostsockaddr 	(int, int, const char *, SSu *, socklen_t *);
-
-		
-		/* A getaddrinfo() wrapper that supports AF_UNIX reliably */
-	int	my_getaddrinfo		(const char *, const char *, const AI *, AI **);
-	void	my_freeaddrinfo		(AI *);
-
-		/* Nonblocking getaddrinfo() that writes its results to an fd */
-	pid_t	async_getaddrinfo	(const char *, const char *, const AI *, int);
-	void	marshall_getaddrinfo	(int, AI *results);
-	void	unmarshall_getaddrinfo	(AI *results);
-
-		/* Set any fd to nonblocking */
-	int	set_non_blocking	(int);
-		/* Set any fd to blocking */
-	int	set_blocking		(int);
-		/* Tell me what family (AF_INET) this SSu is for */
-	int	family			(SSu *);
-
-#define GNI_INTEGER 0x4000
+/* This lives in ircaux.c for some reason */
+	char * switch_hostname 		(const char *);
 
 #endif
