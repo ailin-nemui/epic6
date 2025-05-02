@@ -1364,7 +1364,7 @@ BUILT_IN_COMMAND(e_hostname)
 
 		if (!strcmp(args, "-"))
 			args = NULL;
-		s = switch_hostname(args);
+		s = set_default_hostnames(args);
 		say("%s", s);
 		new_free(&s);
 	}

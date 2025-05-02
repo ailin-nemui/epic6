@@ -182,3 +182,7 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * $iptolong() is reverted to using inet_aton().
 * $longtoip() is reverted to using inet_ntoa().
 * The ^S keybinding to TOGGLE_STOP_SCREEN is no longer a default
+* Refactor how vhosts are handled, with caching.
+* Unfortunately, vhost handling is still blocking.
+* Don't bother to figure out what hosename or modes to send at USER time
+

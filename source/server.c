@@ -2300,7 +2300,7 @@ static int	connect_next_server_address_internal (int server)
 	Server *s;
 	int	fd = -1;
 	SSu	localaddr;
-	socklen_t locallen;
+	socklen_t locallen = 0;
 	const AI *	ai;
 	char	p_addr[256];
 	char	p_port[24];
@@ -2331,8 +2331,12 @@ static int	connect_next_server_address_internal (int server)
 		yell("Trying to connect to server %d using address [%d] and protocol [%d]",
 					server, s->addr_counter, ai->ai_family);
 
+#if 0
 	    if ((inet_vhostsockaddr(ai->ai_family, -1, s->info->vhost,
 						&localaddr, &locallen)) < 0)
+#endif
+	    memset(&localaddr, 0, sizeof(localaddr));
+	    if (get_default_vhost(ai->ai_family, s->info->vhost, &localaddr, &locallen))
 	    {
 		    syserr(server, "connect_next_server_address_internal: "
 				"Can't use address [%d]  because I can't get "
@@ -2872,7 +2876,6 @@ void	register_server (int refnum, const char *nick)
 {
 	Server *	s;
 	int		ofs = from_server;
-	const char *	usehost;
 
 	if (!(s = get_server(refnum)))
 		return;
@@ -2920,7 +2923,12 @@ void	register_server (int refnum, const char *nick)
 	 * Use the correct vhost for the socket type
 	 * (ie, if we connected via ipv6, use the ipv6 vhost)
 	 * If we're not using a vhost, then just fallback to hostname.
+	 *
+	 * In 2025, I couldn't find any server that did not ignore
+	 * this field, so I think I'm going to just not bother.
 	 */
+#if 0
+	const char *	usehost;
 	if (family(&s->remote_sockname) == AF_INET)
 		usehost = LocalIPv4HostName;
 	else if (family(&s->remote_sockname) == AF_INET6)
@@ -2929,14 +2937,12 @@ void	register_server (int refnum, const char *nick)
 		usehost = hostname;
 	if (usehost == NULL)
 		usehost = hostname;
+#endif
 
 #if 0
 	send_to_aserver(refnum, "CAP LS 302");
 #endif
-	send_to_aserver(refnum, "USER %s %s %s :%s", 
-			get_string_var(DEFAULT_USERNAME_VAR),
-			(send_umode && *send_umode) ? send_umode : 
-			usehost,
+	send_to_aserver(refnum, "USER %s . . :%s", 
 			get_string_var(DEFAULT_USERNAME_VAR),
 			s->realname);
 	change_server_nickname(refnum, nick);

@@ -510,7 +510,7 @@ void	init_ares (void)
  * ARGS: hostname - The address to convert.  It may be any of the following:
  *		IPv4 "Presentation Address"	(A.B.C.D)
  *		IPv6 "Presentation Address"	(A:B::C:D)
- *	 storage - A pointer to a (union SSU_ (aka, a (struct sockaddr_storage)) with the 
+ *	 storage - A pointer to a (union SSU_) (aka, a (struct sockaddr_storage)) with the 
  *		"family" argument filled in (AF_INET or AF_INET6).  
  *		If "hostname" is a p-addr, then the form of the p-addr
  *		must agree with the family in 'storage'.
@@ -965,5 +965,285 @@ void	unmarshall_getaddrinfo (AI *results)
 		if (result->ai_next)
 			result->ai_next = (AI *)ptr;
 	}
+}
+
+/**********************************************************************************************/
+typedef struct Vhosts {
+	char *	hostname;
+	char *	paddr;
+	int	family;
+	SSu	ssu;
+	socklen_t sl;
+} Vhosts;
+
+static	Vhosts	vhosts[1024];
+static	int	next_vhost = 0;
+static	int	max_vhost = 1024;
+
+int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
+{
+	int	i;
+	int	fd;
+	struct addrinfo *res = NULL, *res_save;
+	struct addrinfo hints;
+	int	err;
+
+	if (empty(something))
+		something = NULL;
+
+	yell("Looking up [%s] for %d", something, family_);
+
+	for (i = 0; i < next_vhost; i++)
+	{
+		if (vhosts[i].family != family_)
+			continue;
+
+		if (empty(something) && vhosts[i].hostname == NULL)
+		{
+			yell("Vhost %s is cached. yay.", something);
+			memcpy(ssu_, &vhosts[i].ssu, sizeof(SSu));
+			*sl = socklen(ssu_);
+			return 0;
+		}
+
+		if (!my_stricmp(something, vhosts[i].hostname) || 
+		    !my_stricmp(something, vhosts[i].paddr))
+		{
+			yell("Vhost %s is cached. yay.", something);
+			memcpy(ssu_, &vhosts[i].ssu, sizeof(SSu));
+			*sl = socklen(ssu_);
+			return 0;
+		}
+	}
+
+	/*
+	 * No matter how you spin it, vhosts might get looked up before
+	 * the main event loop is "ready", The solution to this is to have
+	 * vhost lookups be a new server state.  Maybe someday.   Until then,
+	 * we have to do it synchronously.
+	 * XXX I hate this.
+	 */
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = family_;
+	hints.ai_flags = AI_ADDRCONFIG | AI_NUMERICSERV | AI_PASSIVE;
+	if ((err = getaddrinfo(something, zero, &hints, &res)))
+	{
+		yell("lookup_vhost: Could not convert %s to hostname: %s", something, gai_strerror(err));
+		return -1;
+	}
+	res_save = res;
+	for (res_save = res; res; res = res->ai_next)
+	{
+		if (res->ai_family != family_)
+			continue;
+
+		if ((fd = socket(family_, SOCK_STREAM, 0)) < 0)
+		{
+			syserr(-1, "lookup_vhost: socket(%d) failed: %s", family_, strerror(errno));
+			continue;
+		}
+
+		if (bind(fd, res->ai_addr, res->ai_addrlen))
+		{
+			syserr(-1, "lookup_vhost: bind(%s) failed: %s", something, strerror(errno));
+			close(fd);
+			continue;
+		}
+
+		close(fd);
+
+		/* Cache the result */
+		if (next_vhost >= max_vhost)
+		{
+			close(fd);
+			yell("I'm plum full up on vhosts -- sorry!");
+			return -1;
+		}
+
+		i = next_vhost++;
+		memset(&vhosts[i], 0, sizeof(vhosts[i]));
+
+		vhosts[i].family = family(ssu_);
+		if (empty(something))
+		{
+			vhosts[i].hostname = NULL;
+			vhosts[i].paddr = NULL;
+		}
+		else
+		{
+			vhosts[i].hostname = malloc_strdup(something);
+			vhosts[i].paddr = malloc_strdup(something);
+		}
+		memcpy(&(vhosts[i].ssu), res->ai_addr, res->ai_addrlen);
+		vhosts[i].sl = res->ai_addrlen;
+
+		memcpy(ssu_, res->ai_addr, res->ai_addrlen);
+		*sl = res->ai_addrlen;
+
+		yell("Successfully created vhost for %s", something);
+		freeaddrinfo(res_save);
+		return 0;
+	}
+
+	freeaddrinfo(res_save);
+	return -1;
+}
+
+int	get_default_vhost (int family, const char *wanthost, SSu *ssu_, socklen_t *sl)
+{
+	/* CHOICE #1 - Did you have something in mind? */
+	if (!empty(wanthost) && !lookup_vhost(family, wanthost, ssu_, sl))
+	{
+		yell("vhost: %s was fine", wanthost);
+		return 0;		/* Success */
+	}
+
+	/* CHOICE #2 - Do we have a "default" vhost? */
+	if ((family == AF_UNSPEC || family == AF_INET) && LocalIPv4HostName)
+	{
+		if (!lookup_vhost(AF_INET, LocalIPv4HostName, ssu_, sl))
+		{
+			yell("vhost: I used %s instead", LocalIPv4HostName);
+			return 0;	/* Success */
+		}
+	}
+	if ((family == AF_UNSPEC || family == AF_INET6) && LocalIPv6HostName)
+	{
+		if (!lookup_vhost(AF_INET6, LocalIPv6HostName, ssu_, sl))
+		{
+			yell("vhost: I used %s instead", LocalIPv6HostName);
+			return 0;	/* Success */
+		}
+	}
+
+	/* CHOICE #3 - Let the system just decide what's best */
+	if (!lookup_vhost(family, NULL, ssu_, sl))
+	{
+		yell("vhost: I fell back to the default, you know?");
+		return 0;	/* Success */
+	}
+
+	return -1;			/* Failure */
+}
+
+
+/* 
+ * Should I switch over to using getaddrinfo() directly or is using
+ * inet_strton() sufficient?
+ */
+/*
+ * switch_hostname - convert a hostname to a sockaddr you can use
+ *
+ * Hosts can have more than one ip addresses.  By default when you 
+ * use INADDR_ANY the system uses the "primary ip address" associated
+ * with your internet access.  But you can specify any ip address that
+ * your system is configured to use with bind().  But how do you tell
+ * epic to use a non-default ip address?
+ *
+ * This function converts a paddr or hostname into ip addresses -- and 
+ * then if your system is using those ip addresses, will return the sockaddrs
+ * so you can use them later.
+ *
+ * Furthermore, if you use both ipv4 and ipv6, you might have a different
+ * vhost for each of them, using different hostnames.
+ */
+char *	set_default_hostnames (const char *hostname)
+{
+	char 	*workstr = NULL, 
+		*v4 = NULL, 
+		*v6 = NULL;
+	char 	*retval4 = NULL, 
+		*retval6 = NULL, 
+		*retval = NULL;
+	char 	*v4_error = NULL, 
+		*v6_error = NULL;
+	SSu	new_4;
+	SSu	new_6;
+	int	accept4 = 0, 
+		accept6 = 0;
+	socklen_t placeholder = 0;
+
+	if (hostname == NULL)
+	{
+		new_free(&LocalIPv4HostName);
+		new_free(&LocalIPv6HostName);
+		goto summary;
+	}
+
+	workstr = LOCAL_COPY(hostname);
+	v4 = workstr;
+	if ((v6 = strchr(workstr, '/')))
+		*v6++ = 0;
+	else
+		v6 = workstr;
+
+	if (v4 && *v4)
+	{
+		if (lookup_vhost(AF_INET, v4, &new_4, &placeholder))
+			malloc_strcpy(&v4_error, "see above");
+		else
+		{
+			accept4 = 1;
+			malloc_strcpy(&LocalIPv4HostName, v4);
+		}
+	}
+	else
+		malloc_strcpy(&v4_error, "not specified");
+
+	if (v6 && *v6)
+	{
+		if (lookup_vhost(AF_INET6, v6, &new_6, &placeholder))
+			malloc_strcpy(&v6_error, "see above");
+		else
+		{
+			accept6 = 1;
+			malloc_strcpy(&LocalIPv6HostName, v6);
+		}
+	}
+	else
+		malloc_strcpy(&v6_error, "not specified");
+
+summary:
+	if (v4_error)
+		malloc_sprintf(&retval4, "IPv4 vhost not changed because (%s)",
+						v4_error);
+	else if (LocalIPv4HostName)
+	{
+	    if (accept4)
+		malloc_sprintf(&retval4, "IPv4 vhost changed to [%s]",
+						LocalIPv4HostName);
+	    else
+		malloc_sprintf(&retval4, "IPv4 vhost unchanged from [%s]",
+						LocalIPv4HostName);
+	}
+	else
+		malloc_sprintf(&retval4, "IPv4 vhost unset");
+
+	if (v6_error)
+		malloc_sprintf(&retval6, "IPv6 vhost not changed because (%s)",
+						v6_error);
+	else if (LocalIPv6HostName)
+	{
+	    if (accept6)
+		malloc_sprintf(&retval6, "IPv6 vhost changed to [%s]",
+						LocalIPv6HostName);
+	    else
+		malloc_sprintf(&retval6, "IPv6 vhost unchanged from [%s]",
+						LocalIPv6HostName);
+	}
+	else
+		malloc_sprintf(&retval6, "IPv6 vhost unset");
+
+	if (retval6)
+		malloc_sprintf(&retval, "%s, %s", retval4, retval6);
+	else
+		retval = retval4, retval4 = NULL;
+
+	new_free(&v4_error);
+	new_free(&v6_error);
+	new_free(&retval4);
+	new_free(&retval6);
+
+	return retval;
 }
 

@@ -49,6 +49,9 @@
 	int     one_to_another		(int, const char *, char *, int);
 	pid_t   async_getaddrinfo	(const char *, const char *, const AI *, int);
 	void    unmarshall_getaddrinfo	(AI *);
+	char *  set_default_hostnames	(const char *hostname);
+	int     lookup_vhost 		(int family, const char *something, SSu *ssu_, socklen_t *);
+	int     get_default_vhost (int family, const char *wanthost, SSu *ssu_, socklen_t *sl);
 
 /* This lives in ircaux.c for some reason */
 	char * switch_hostname 		(const char *);

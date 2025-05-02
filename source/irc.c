@@ -36,6 +36,9 @@
 #define __need_term_h__
 #include "irc.h"
 
+/*
+ * ɔɩɗɚ -- For an upside down world...
+ */
 
 /*
  * irc_version is what $J returns, its the common-name for the version.
@@ -52,7 +55,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3038;
+const unsigned long	commit_id = 3039;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -164,6 +167,8 @@ jmp_buf		panic_jumpseat;
 int		system_reset = 0;
 
 intmax_t	sequence_point = 0;
+
+char *		tmp_hostname = NULL;
 
 /*
  * If set, outbound connections will be bind()ed to the address
@@ -460,7 +465,6 @@ static	void	parse_args (int argc, char **argv)
 	struct passwd *	entry;
 	char *		ptr = (char *) 0;
 	const char *	cptr = NULL;
-	const char *	tmp_hostname = NULL;
 	char *		the_path = NULL;
 
 	/* 
@@ -584,7 +588,7 @@ static	void	parse_args (int argc, char **argv)
 	new_free(&the_path);
 
 	if ((cptr = getenv("IRCHOST")) && *cptr)
-		tmp_hostname = cptr;
+		tmp_hostname = malloc_strdup(cptr);
 
 	/*
 	 * Parse the command line arguments.
@@ -655,7 +659,7 @@ static	void	parse_args (int argc, char **argv)
 				break;
 
 			case 'H':
-				tmp_hostname = optarg;
+				tmp_hostname = malloc_strdup(optarg);
 				break;
 
 			default:
@@ -724,29 +728,30 @@ static	void	parse_args (int argc, char **argv)
 		}
 	}
 
+	return;
+}
+
+static	void	init_vhosts (void)
+{
 	/*
 	 * Figure out our virtual hostname, if any.
 	 */
 	if (tmp_hostname)
 	{
-		char *s = switch_hostname(tmp_hostname);
+		char *s = set_default_hostnames(tmp_hostname);
 		fprintf(stderr, "%s\n", s);
 		new_free(&s);
 	}
+	new_free(&tmp_hostname);
 
 	/*
 	 * Make sure we have a hostname.
 	 */
-	if (!LocalIPv4HostName && !LocalIPv6HostName)
+	if (gethostname(hostname, NAME_LEN) || strlen(hostname) == 0)
 	{
-		if (gethostname(hostname, NAME_LEN) || strlen(hostname) == 0)
-		{
-			fprintf(stderr, "I don't know what your hostname is and I can't do much without it.\n");
-			exit(1);
-		}
+		fprintf(stderr, "I don't know what your hostname is and I can't do much without it.\n");
+		exit(1);
 	}
-
-	return;
 }
 
 /* fire scripted signal events -pegasus */
@@ -960,6 +965,7 @@ int 	main (int argc, char *argv[])
 	init_newio();
 	init_ctcp();
 	init_ares();
+	init_vhosts();
 
 	fprintf(stderr, "EPIC VI -- %s\n", ridiculous_version_name);
 	fprintf(stderr, "EPIC Software Labs (2006)\n");
