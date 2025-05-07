@@ -36,18 +36,20 @@
 #include "newio.h"
 #include "output.h"
 
-static socklen_t        socklen (const SSu *sockaddr);
-static int      Socket (int domain, int type, int protocol);
-static int Connect (int fd, SSu *addr);
+static socklen_t socklen (const SSu *sockaddr);
+static socklen_t sasocklen (const struct sockaddr *sockaddr);
+static int	safamily (const struct sockaddr *sa);
+static	int	Socket (int domain, int type, int protocol);
+static	int	Connect (int fd, SSu *addr);
 static  int     Getaddrinfo (const char *nodename, const char *servname, const AI *hints, AI **res);
 static  void    Freeaddrinfo (AI *ai);
-static int      Getnameinfo (SSu *ssu, socklen_t ssulen, char *host, size_t hostlen, char *serv, size_t servlen, int flags);
+static	int	Getnameinfo (SSu *ssu, socklen_t ssulen, char *host, size_t hostlen, char *serv, size_t servlen, int flags);
 static  void    do_ares_callback (int vfd);
 static  void    ares_sock_state_cb_ (void *data, ares_socket_t socket_fd, int readable, int writable);
-static int      paddr_to_ssu (const char *host, SSu *storage_, int flags);
-static void     ares_addrinfo_callback_ (void *arg, int status, int timeouts, struct ares_addrinfo *result);
-static void     ares_nameinfo_callback_ (void *arg, int status, int timeouts, char *host, char *port);
-static void     marshall_getaddrinfo (int fd, AI *results);
+static	int	paddr_to_ssu (const char *host, SSu *storage_, int flags);
+static	void	ares_addrinfo_callback_ (void *arg, int status, int timeouts, struct ares_addrinfo *result);
+static	void	ares_nameinfo_callback_ (void *arg, int status, int timeouts, char *host, char *port);
+static	void	marshall_getaddrinfo (int fd, AI *results);
 
 /****************************************************************************/
 int	set_non_blocking (int fd)
@@ -100,9 +102,24 @@ static socklen_t	socklen (const SSu *sockaddr)
 		return 0;
 }
 
+static socklen_t	sasocklen (const struct sockaddr *sockaddr_)
+{
+	if (safamily(sockaddr_) == AF_INET)
+		return sizeof(struct sockaddr_in);
+	else if (safamily(sockaddr_) == AF_INET6)
+		return sizeof(struct sockaddr_in6);
+	else
+		return 0;
+}
+
 int	family (const SSu *sockaddr_)
 {
 	return (sockaddr_->sa).sa_family;
+}
+
+static int	safamily (const struct sockaddr *sa)
+{
+	return sa->sa_family;
 }
 
 /****************************************************************************/
@@ -605,6 +622,24 @@ int	ssu_to_port_quick (SSu *name_)
 	return atol(port);
 }
 
+/*
+ * XXX I lament that this is necessary. :( 
+ * Perhaps someday it won't be.
+ */
+static	char * sa_to_paddr_quick (struct sockaddr *name_)
+{
+	char	addrbuf[128];
+
+	if (name_->sa_family == AF_INET)
+		inet_ntop(name_->sa_family, &((struct sockaddr_in *)name_)->sin_addr, addrbuf, sizeof(addrbuf));
+	else if (name_->sa_family == AF_INET6)
+		inet_ntop(name_->sa_family, &((struct sockaddr_in6 *)name_)->sin6_addr, addrbuf, sizeof(addrbuf));
+	else
+		*addrbuf = 0;
+
+	return malloc_strdup(addrbuf);
+}
+
 
 /*****************************************************************************
  *		IN THIS PLACE ARE THINGS THAT BLOCK FOR YOU.
@@ -968,6 +1003,8 @@ void	unmarshall_getaddrinfo (AI *results)
 }
 
 /**********************************************************************************************/
+#include <ifaddrs.h>
+
 typedef struct Vhosts {
 	char *	hostname;
 	char *	paddr;
@@ -979,6 +1016,79 @@ typedef struct Vhosts {
 static	Vhosts	vhosts[1024];
 static	int	next_vhost = 0;
 static	int	max_vhost = 1024;
+
+void	init_one_vhost (struct ifaddrs *addr)
+{
+	char	addrbuf[128];
+	int	i;
+
+	if (!addr->ifa_addr)
+		return;
+
+	if (addr->ifa_addr->sa_family != AF_INET && addr->ifa_addr->sa_family != AF_INET6)
+		return;
+
+	if (addr->ifa_addr->sa_family == AF_INET)
+		inet_ntop(addr->ifa_addr->sa_family, &((struct sockaddr_in *)addr->ifa_addr)->sin_addr, addrbuf, sizeof(addrbuf));
+	if (addr->ifa_addr->sa_family == AF_INET6)
+		inet_ntop(addr->ifa_addr->sa_family, &((struct sockaddr_in6 *)addr->ifa_addr)->sin6_addr, addrbuf, sizeof(addrbuf));
+
+	/* Cache the result */
+	if (next_vhost >= max_vhost)
+	{
+		yell("I'm plum full up on vhosts -- sorry!");
+		return;
+	}
+
+	i = next_vhost++;
+	memset(&vhosts[i], 0, sizeof(vhosts[i]));
+
+	vhosts[i].family = addr->ifa_addr->sa_family;
+	vhosts[i].hostname = NULL;
+	vhosts[i].hostname = malloc_strdup(addrbuf);
+	vhosts[i].paddr = malloc_strdup(addrbuf);
+	memcpy(&(vhosts[i].ssu), addr->ifa_addr, sasocklen(addr->ifa_addr));
+	vhosts[i].sl = sasocklen(addr->ifa_addr);
+
+	yell("Successfully created vhost for %s", addrbuf);
+}
+
+void	init_vhosts_stage1 (void)
+{
+	struct ifaddrs	*addrs, *tmp;
+
+	if (getifaddrs(&addrs)) 
+	{
+		yell("getifaddrs failed: %s", strerror(errno));
+		return;
+	}
+
+	for (tmp = addrs; tmp; tmp = tmp->ifa_next)
+		init_one_vhost(tmp);
+
+	freeifaddrs(addrs);
+	return;
+}
+
+BUILT_IN_COMMAND(vhostscmd)
+{
+	int	i;
+	char	familystr[128];
+
+	for (i = 0; i < next_vhost; i++)
+	{
+		if (vhosts[i].family == AF_INET)
+			strlcpy(familystr, "ipv4", sizeof(familystr));
+		else if (vhosts[i].family == AF_INET6)
+			strlcpy(familystr, "ipv6", sizeof(familystr));
+		else
+			strlcpy(familystr, "????", sizeof(familystr));
+
+		say("Vhost=%d, family=%s, hostname=%s, paddr=%s, sl=%d", 
+			i, familystr, vhosts[i].hostname, vhosts[i].paddr, vhosts[i].sl);
+	}
+}
+
 
 int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 {
@@ -993,6 +1103,9 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 
 	yell("Looking up [%s] for %d", something, family_);
 
+	/*
+	 * Check to see if it's cached...
+	 */
 	for (i = 0; i < next_vhost; i++)
 	{
 		if (vhosts[i].family != family_)
@@ -1063,7 +1176,7 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 		i = next_vhost++;
 		memset(&vhosts[i], 0, sizeof(vhosts[i]));
 
-		vhosts[i].family = family(ssu_);
+		vhosts[i].family = res->ai_family;
 		if (empty(something))
 		{
 			vhosts[i].hostname = NULL;
@@ -1072,7 +1185,7 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 		else
 		{
 			vhosts[i].hostname = malloc_strdup(something);
-			vhosts[i].paddr = malloc_strdup(something);
+			vhosts[i].paddr = sa_to_paddr_quick(res->ai_addr);
 		}
 		memcpy(&(vhosts[i].ssu), res->ai_addr, res->ai_addrlen);
 		vhosts[i].sl = res->ai_addrlen;
@@ -1089,9 +1202,37 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 	return -1;
 }
 
+/*
+ * get_default_vhost -- give me a sockaddr i can use for my side of a socket.
+ *
+ * Arguments:
+ *	family	 - (INPUT) AF_INET, AF_INET6, or AF_UNSPEC
+ *	wanthost - (INPUT) The vhost you want to use (if not the system defualt)
+ *	ssu	 - (OUTPUT) The sockaddr you should use
+ *	sl	 - (OUTPUT) The sockaddr's length
+ *
+ * Return value:
+ *	 0	- Everything went fine,  You can use 'ssu' and 'sl'
+ *	-1	- Something went wrong -- do not use 'ssu'.
+ *
+ * Notes:
+ *	Every socket connection, whether inbound or outbound, has a sockaddr
+ *	for both ends.  In 99% of the circumstances, you don't do anything
+ *	special and the OS chooses a sockaddr for you.  But if your machine
+ *	has multiple IP addresses, you might want to use one other than the
+ *	system's default.  You can set a default with -H or /hostname or you
+ *	can specify the :vhost=: field in a server desc.
+ *
+ *	You use this function to get an ssu for the local side of the socket,
+ *	and it should be passed to network_client() or network_server().
+ *
+ * 	Specifying an invalid vhost causes it to be ignored.  It will then
+ *	try the next vhost on the list, and in the end will fall back to 
+ *	"let the OS use the default address"
+ */
 int	get_default_vhost (int family, const char *wanthost, SSu *ssu_, socklen_t *sl)
 {
-	/* CHOICE #1 - Did you have something in mind? */
+	/* CHOICE #1 - Did you have something specific in mind? */
 	if (!empty(wanthost) && !lookup_vhost(family, wanthost, ssu_, sl))
 	{
 		yell("vhost: %s was fine", wanthost);
@@ -1127,12 +1268,8 @@ int	get_default_vhost (int family, const char *wanthost, SSu *ssu_, socklen_t *s
 }
 
 
-/* 
- * Should I switch over to using getaddrinfo() directly or is using
- * inet_strton() sufficient?
- */
 /*
- * switch_hostname - convert a hostname to a sockaddr you can use
+ * set_default_hostnames -- convert a paddr/hostname to a sockaddr you can use
  *
  * Hosts can have more than one ip addresses.  By default when you 
  * use INADDR_ANY the system uses the "primary ip address" associated
@@ -1145,7 +1282,8 @@ int	get_default_vhost (int family, const char *wanthost, SSu *ssu_, socklen_t *s
  * so you can use them later.
  *
  * Furthermore, if you use both ipv4 and ipv6, you might have a different
- * vhost for each of them, using different hostnames.
+ * vhost for each of them, using different hostnames.  You can seperate
+ * them with a slash  (e.g.   "ipv4.host.com/ipv6.host.com")
  */
 char *	set_default_hostnames (const char *hostname)
 {

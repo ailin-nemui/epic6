@@ -185,4 +185,7 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Refactor how vhosts are handled, with caching.
 * Unfortunately, vhost handling is still blocking.
 * Don't bother to figure out what hosename or modes to send at USER time
+* <- (2158) Better handle IRC/IRC-SSL when servers don't respond
+* Use getifaddrs() to pull our local ips at start-up.
+* Add undocumented /vhosts command -- it's just for debugging for now.
 

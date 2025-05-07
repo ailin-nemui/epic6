@@ -731,7 +731,7 @@ static	void	parse_args (int argc, char **argv)
 	return;
 }
 
-static	void	init_vhosts (void)
+static	void	init_vhosts_stage2 (void)
 {
 	/*
 	 * Figure out our virtual hostname, if any.
@@ -956,6 +956,7 @@ int 	main (int argc, char *argv[])
 	init_transforms();
 	init_recodings();
 	init_variables_stage1();
+	init_vhosts_stage1();
 	parse_args(argc, argv);
 	init_binds();
 	init_keys();
@@ -965,7 +966,7 @@ int 	main (int argc, char *argv[])
 	init_newio();
 	init_ctcp();
 	init_ares();
-	init_vhosts();
+	init_vhosts_stage2();
 
 	fprintf(stderr, "EPIC VI -- %s\n", ridiculous_version_name);
 	fprintf(stderr, "EPIC Software Labs (2006)\n");

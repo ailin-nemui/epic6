@@ -261,21 +261,24 @@ int	clear_serverinfo (ServerInfo *s)
  * 'passwd'   is the protocol passwd to log onto the server (usually blank)
  * 'nick'     is the nickname you want to use on this server
  * 'group'    is the server group this server belongs to
- * 'type'     is the server protocol type, either "IRC" or "IRC-SSL"
- * 'proto'    is the socket protocol type, either 'tcp4' or 'tcp6' or neither.
+ * 'tls'      is whether you want to connect to the server with tls (or not)
+ * 'family'   is the socket family, either 'tcp4' or 'tcp6' or neither.
  * 'vhost'    is the virtual hostname to use for this connection.
  * 'cert'     is the local certificate file (PEM) to use for SSL
+ *
+ * Historical fields (for backwards compatability)
+ * 'type'     is the server protocol type, either "IRC" or "IRC-SSL"
+ * 'proto'    is an old name for 'family'
  *
  * --
  * A new-style server description is a colon separated list of values:
  *
- *   host=HOST	   port=PORTNUM   pass=PASSWORD 
- *   nick=NICK     group=GROUP    type=PROTOCOL_TYPE
- *   proto=SOCKETYPE  vhost=HOST  
- *   cert=/path/to/file.pem
+ *   host=HOST	            port=PORTNUM   pass=PASSWORD 
+ *   nick=NICK              group=GROUP    tls=YES|NO|AUTO
+ *   family=ipv4|ipv6|auto  vhost=HOST     cert=/path/to/file.pem
  *
  * for example:
- *	host=irc.server.com:group=efnet:type=IRC-SSL:cert=~/.certs/network.pem
+ *	host=irc.server.com:group=efnet:tls=yes:cert=~/.certs/network.pem
  * 
  * The command type ("host", "port") can be abbreviated as long as it's
  * not ambiguous:
@@ -286,6 +289,10 @@ int	clear_serverinfo (ServerInfo *s)
  * field that doesn't have a descriptor follows whatever was in the previous
  * field.  
  *	 irc.server.com:group=efnet:IRC-SSL
+ *
+ *   1. The default "port" depends on the value of "tls".
+ *
+ * XXX This should all be done with json instead of fields like this.
  */
 
 enum serverinfo_fields { HOST, PORT, PASS, NICK, GROUP, TYPE, PROTO, VHOST, CERT, LASTFIELD };
@@ -443,6 +450,11 @@ int	str_to_serverinfo (char *str, ServerInfo *s)
 				s->port = -(s->port);
 				s->server_type = "IRC";
 			}
+
+			if (s->port == 6697 || s->port == 7000)
+				s->server_type = "IRC-SSL";
+			else
+				s->server_type = "IRC";
 		}
 		else if (fieldnum == PASS)
 			s->password = descstr;
@@ -1902,15 +1914,30 @@ return_from_ssl_detour:
 					int	server_was_registered = is_server_registered(i);
 
 					/* XXX Ugh. i'm going to regret this */
-					if (s->any_data == 0 && strcmp(get_server_type(i), "IRC-SSL") )
+					if (s->any_data == 0)
 					{
-						close_server(i, NULL);
-						set_server_server_type(i, "IRC-SSL");
-						set_server_state(i, SERVER_RECONNECT);
-						say("Connection closed from %s - Trying SSL next", s->info->host);
-						break;
+						if (s->info->port > 6690 && strcmp(get_server_type(i), "IRC-SSL"))
+						{
+							close_server(i, NULL);
+							set_server_server_type(i, "IRC-SSL");
+							set_server_state(i, SERVER_RECONNECT);
+							say("Connection closed from %s - Trying SSL next", s->info->host);
+							break;
+						}
+						else if (s->info->port <= 6690 && strcmp(get_server_type(i), "IRC"))
+						{
+							close_server(i, NULL);
+							set_server_server_type(i, "IRC");
+							set_server_state(i, SERVER_RECONNECT);
+							say("Connection closed from %s - Trying no-SSL next", s->info->host);
+							break;
+						}
+						else
+						{
+							say("Something went wrong with your connection to %s -- you might need to help me!", s->info->host);
+							/* No "break" here -- fallthrough */
+						}
 					}
-
 
 					parsing_server_index = i;
 					server_is_unregistered(i);

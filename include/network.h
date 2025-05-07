@@ -51,9 +51,12 @@
 	void    unmarshall_getaddrinfo	(AI *);
 	char *  set_default_hostnames	(const char *hostname);
 	int     lookup_vhost 		(int family, const char *something, SSu *ssu_, socklen_t *);
-	int     get_default_vhost (int family, const char *wanthost, SSu *ssu_, socklen_t *sl);
+	int     get_default_vhost	(int family, const char *wanthost, SSu *ssu_, socklen_t *sl);
+        void	init_vhosts_stage1	(void);
 
 /* This lives in ircaux.c for some reason */
 	char * switch_hostname 		(const char *);
+
+	BUILT_IN_COMMAND(vhostscmd);
 
 #endif

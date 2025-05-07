@@ -308,6 +308,7 @@ static	IrcCommand irc_command[] =
 	{ "USLEEP",	usleepcmd	},
 	{ "USRIP",	usripcmd	},
 	{ "VERSION",	version		},
+	{ "VHOSTS",	vhostscmd	},
 	{ "WAIT",	waitcmd		},
 	{ "WALLCHOPS",	send_2comm	},
 	{ "WALLOPS",	e_wallop	},
