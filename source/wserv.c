@@ -68,7 +68,7 @@ static	int	connectory (const char *, const char *);
 
 int	main (int argc, char **argv)
 {
-	int	nread;
+	ssize_t	nread;
 	char * 	port;
 	char *	host;
 	char *	tmp;
@@ -167,7 +167,7 @@ int	main (int argc, char **argv)
 		{
 			if ((nread = read(0, buffer, sizeof(buffer))) > 0)
 			{
-				if (!write(data, buffer, nread)) 
+				if (!write(data, buffer, (size_t)nread)) 
 					(void) 0;
 			}
 			else
@@ -177,7 +177,7 @@ int	main (int argc, char **argv)
 		{
 			if ((nread = read(data, buffer, sizeof(buffer))) > 0)
 			{
-				if (!write(0, buffer, nread)) 
+				if (!write(0, buffer, (size_t)nread)) 
 					(void) 0;
 			}
 			else
@@ -223,17 +223,17 @@ static int	connectory (const char *host, const char *port)
 	hints.ai_protocol = 0;
 
 	if ((retval = getaddrinfo(host, port, &hints, &results))) {
-	    yell("getaddrinfo(%s): %s", host, gai_strerror(retval));
+	    yell("getaddrinfo(%s:%s): %s", host, port, gai_strerror(retval));
 	    my_exit(6);
 	}
 
 	if ((s = socket(results->ai_family, results->ai_socktype, results->ai_protocol)) < 0) {
-	    yell("socket(%s): %s", host, gai_strerror(retval));
+	    yell("socket(%s:%s): %s", host, port, strerror(errno));
 	    my_exit(6);
 	}
 
 	if (connect(s, results->ai_addr, results->ai_addrlen) < 0) {
-	    yell("connect(%s): %s", host, strerror(errno));
+	    yell("connect(%s:%s): %s", host, port, strerror(errno));
 	    my_exit(6);
 	}
 
@@ -317,7 +317,6 @@ void	yell (const char *format, ...)
 		vfprintf(stderr, format, args);
 		va_end(args);
 		sleep(5);
-		my_exit(4);
         }
 }
 

@@ -2815,16 +2815,16 @@ int	isdir (const char *filename)
 	return 0;
 }
 
-struct metric_time	timeval_to_metric (const Timeval *tv)
+struct metric_time	timespec_to_metric (const Timespec *ts)
 {
 	struct metric_time retval;
 	double	my_timer;
 	long	sec;
 
-	retval.mt_days = tv->tv_sec / 86400;
-	sec = tv->tv_sec % 86400;		/* Seconds after midnight */
+	retval.mt_days = ts->tv_sec / 86400;
+	sec = ts->tv_sec % 86400;		/* Seconds after midnight */
 	sec = sec * 1000;			/* Convert to ms */
-	sec += (tv->tv_usec / 1000);		/* Add ms fraction */
+	sec += (ts->tv_nsec / 1000000);		/* Add ms fraction */
 	my_timer = (double)sec / 86400.0;	/* Convert to millidays */
 	retval.mt_mdays = my_timer;
 	return retval;
@@ -2832,11 +2832,11 @@ struct metric_time	timeval_to_metric (const Timeval *tv)
 
 struct metric_time	get_metric_time (double *timer)
 {
-	Timeval	tv;
+	Timespec	ts;
 	struct metric_time mt;
 
-	get_time(&tv);
-	mt = timeval_to_metric(&tv);
+	get_time(&ts);
+	mt = timespec_to_metric(&ts);
 	if (timer)
 		*timer = mt.mt_mdays;
 	return mt;
@@ -2844,22 +2844,16 @@ struct metric_time	get_metric_time (double *timer)
 
 
 /* Gets the time in second/usecond if you can,  second/0 if you cant. */
-Timeval get_time (Timeval *timer)
+Timespec	get_time (Timespec *timer)
 {
-	static Timeval retval;
+	static Timespec retval;
 
-	/* Substitute a dummy timeval if we need one. */
+	/* Substitute a dummy timespec if we need one. */
 	if (!timer)
 		timer = &retval;
 
-	{
-		/* I don't care if you don't have clock_gettime() in $CURRENT_YEAR */
-		struct timespec ts;
-		clock_gettime(CLOCK_REALTIME, &ts);
-		timer->tv_sec = ts.tv_sec;
-		timer->tv_usec = ts.tv_nsec / 1000;
-	}
-
+	/* I don't care if you don't have clock_gettime() in $CURRENT_YEAR */
+	clock_gettime(CLOCK_REALTIME, timer);
 	return *timer;
 }
 
@@ -2868,27 +2862,27 @@ Timeval get_time (Timeval *timer)
  * gotten probably with a call to get_time.  't1' should be the older
  * timer and 't2' should be the most recent timer.
  */
-double 	time_diff (const Timeval t1, const Timeval t2)
+double 	time_diff (const Timespec t1, const Timespec t2)
 {
-	Timeval td;
+	Timespec td;
 
 	td.tv_sec = t2.tv_sec - t1.tv_sec;
-	td.tv_usec = t2.tv_usec - t1.tv_usec;
+	td.tv_nsec = t2.tv_nsec - t1.tv_nsec;
 
-	return (double)td.tv_sec + ((double)td.tv_usec / 1000000.0);
+	return (double)td.tv_sec + ((double)td.tv_nsec / 1000000000.0);
 }
 
-Timeval double_to_timeval (double x)
+Timespec	double_to_timespec (double x)
 {
-	Timeval td;
-	time_t	s;
+	Timespec	td;
+	time_t		s;
 
 	s = (time_t) x;
 	x = x - s;
-	x = x * 1000000;
+	x = x * 1000000000;
 
 	td.tv_sec = s;
-	td.tv_usec = (long) x;
+	td.tv_nsec = (long) x;
 	return td;
 }
 
@@ -2897,15 +2891,15 @@ Timeval double_to_timeval (double x)
  * gotten probably with a call to get_time.  'one' should be the older
  * timer and 'two' should be the most recent timer.
  */
-Timeval time_subtract (const Timeval t1, const Timeval t2)
+Timespec	time_subtract (const Timespec t1, const Timespec t2)
 {
-	Timeval td;
+	Timespec	td;
 
 	td.tv_sec = t2.tv_sec - t1.tv_sec;
-	td.tv_usec = t2.tv_usec - t1.tv_usec;
-	if (td.tv_usec < 0)
+	td.tv_nsec = t2.tv_nsec - t1.tv_nsec;
+	if (td.tv_nsec < 0)
 	{
-		td.tv_usec += 1000000;
+		td.tv_nsec += 1000000000;
 		td.tv_sec--;
 	}
 	return td;
@@ -2914,15 +2908,15 @@ Timeval time_subtract (const Timeval t1, const Timeval t2)
 /* 
  * Adds the interval "two" to the base time "one" and returns it.
  */
-Timeval time_add (const Timeval t1, const Timeval t2)
+Timespec	time_add (const Timespec t1, const Timespec t2)
 {
-	Timeval td;
+	Timespec	td;
 
-	td.tv_usec = t1.tv_usec + t2.tv_usec;
+	td.tv_nsec = t1.tv_nsec + t2.tv_nsec;
 	td.tv_sec = t1.tv_sec + t2.tv_sec;
-	if (td.tv_usec >= 1000000)
+	if (td.tv_nsec >= 1000000000)
 	{
-		td.tv_usec -= 1000000;
+		td.tv_nsec -= 1000000000;
 		td.tv_sec++;
 	}
 	return td;
@@ -3215,10 +3209,10 @@ char *	unsplitw (char ***container, int howmany, int extended)
  */
 int	new_split_string (char *str, char ***to, int delimiter)
 {
-	int	segments = 0;
-	char *s;
-	int	code_point;
-	int	i;
+	int		segments = 0;
+	char *		s;
+	int		code_point;
+	int		i;
 	ptrdiff_t	offset;
 
 	/* First, count the number of segments in 'str' */
@@ -3250,8 +3244,8 @@ int	new_split_string (char *str, char ***to, int delimiter)
 			 * Back up one code point so that 'p' points
 			 * at the delimiter again.
 			 */
-			char *p = s;
-			ptrdiff_t	offset;
+			char *		p = s;
+
 			previous_code_point2(str, p, &offset);
 			p += offset;
 
@@ -3411,36 +3405,18 @@ size_t 	streq (const char *str1, const char *str2)
 	return cnt;
 }
 
-/* XXXX this doesnt belong here. im not sure where it goes, though. */
-char *	get_my_fallback_userhost (void)
-{
-	static char uh[BIG_BUFFER_SIZE];
-
-	const char *x = get_string_var(DEFAULT_USERNAME_VAR);
-
-	if (x && *x)
-		strlcpy(uh, x, sizeof uh);
-	else
-		strlcpy(uh, "Unknown", sizeof uh);
-
-	strlcat(uh, "@", sizeof uh);
-	strlcat(uh, hostname, sizeof uh);
-	return uh;
-}
-
-
 double	time_to_next_interval (int interval)
 {
-	Timeval	right_now, then;
+	Timespec	right_now, then;
 
 	get_time(&right_now);
 
-	then.tv_usec = 1000000 - right_now.tv_usec;
+	then.tv_nsec = 1000000000 - right_now.tv_nsec;
 	if (interval == 1)
 		then.tv_sec = 0;
 	else
 		then.tv_sec = interval - (right_now.tv_sec + 1) % interval;
-	return (double)then.tv_sec + (double)then.tv_usec / 1000000;
+	return (double)then.tv_sec + (double)then.tv_nsec / 1000000000;
 }
 
 

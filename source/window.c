@@ -2861,14 +2861,14 @@ static int	get_window_by_desc (const char *stuff)
 
 	for (window_ = 0; traverse_all_windows2(&window_); )
 	{
-		Window *w = get_window_by_refnum_direct(window_);
+		w = get_window_by_refnum_direct(window_);
 		if (w->uuid && !my_stricmp(w->uuid, stuff))
 			return w->refnum;
 	}
 
 	for (window_ = 0; traverse_all_windows2(&window_); )
 	{
-		Window *w = get_window_by_refnum_direct(window_);
+		w = get_window_by_refnum_direct(window_);
 		if (w->name && !my_stricmp(w->name, stuff))
 			return w->refnum;
 	}
@@ -2879,33 +2879,32 @@ static int	get_window_by_desc (const char *stuff)
 	return -1;
 }
 
-static Window *get_window_by_refnum_direct (int refnum)
+static Window *	get_window_by_refnum_direct (int refnum)
 {
 	if (refnum == 0)
 		refnum = current_window_;
 
-	if (refnum >= 1 && refnum <= INTERNAL_REFNUM_CUTOVER * 2)
+	if (refnum <= 0 || refnum > INTERNAL_REFNUM_CUTOVER * 2)
+		return NULL;
+
+	if (refnum >= 1 && refnum < INTERNAL_REFNUM_CUTOVER)
 	{
-		if (refnum >= 1 && refnum < INTERNAL_REFNUM_CUTOVER)
+		if (windows[refnum] && (refnum != (int)windows[refnum]->user_refnum))
 		{
-			if (windows[refnum] && (refnum != (int)windows[refnum]->user_refnum))
-			{
-				yell("Refnum (direct) %d points at window %d. fixing", refnum, windows[refnum]->user_refnum);
-				windows[refnum] = NULL;
-			}
+			yell("Refnum (direct) %d points at window %d. fixing", refnum, windows[refnum]->user_refnum);
+			windows[refnum] = NULL;
 		}
-		else
+	}
+	else
+	{
+		if (windows[refnum] && (refnum != (int)windows[refnum]->refnum))
 		{
-			if (windows[refnum] && (refnum != (int)windows[refnum]->refnum))
-			{
-				yell("Refnum (direct) %d points at window %d. fixing", windows[refnum]->refnum, refnum);
-				windows[refnum] = NULL;
-			}
+			yell("Refnum (direct) %d points at window %d. fixing", windows[refnum]->refnum, refnum);
+			windows[refnum] = NULL;
 		}
-		return windows[refnum];
 	}
 
-	return NULL;
+	return windows[refnum];
 }
 
 int	get_server_current_window (int server)
@@ -9696,11 +9695,12 @@ static int	change_line (int window_, const char *str)
  */
 char 	*windowctl 	(char *input)
 {
-	int	refnum, len;
-	char	*listc;
-	char 	*ret = NULL;
-	Window	*w;
-	int	old_status_update;
+	int		refnum;
+	size_t		len;
+	char	*	listc;
+	char 	*	ret = NULL;
+	Window	*	w;
+	int		old_status_update;
 
 
 	GET_FUNC_ARG(listc, input);
@@ -9883,7 +9883,7 @@ char 	*windowctl 	(char *input)
 	    } else if (!my_strnicmp(listc, "DECEASED", len)) {
 		RETURN_INT(w->deceased);
 	    } else if (!my_strnicmp(listc, "TOPLINE", len)) {
-		int	i;
+		intmax_t	i;
 		GET_INT_ARG(i, input);
 		if (i <= 0 || i >= 10)
 			RETURN_EMPTY;
@@ -9891,13 +9891,13 @@ char 	*windowctl 	(char *input)
 	    } else if (!my_strnicmp(listc, "TOPLINES", len)) {
 		RETURN_INT(w->toplines_wanted);
 	    } else if (!my_strnicmp(listc, "ACTIVITY_FORMAT", len)) {
-		int	i;
+		intmax_t	i;
 		GET_INT_ARG(i, input);
 		if (i < 0 || i > 10)
 			RETURN_EMPTY;
 		RETURN_STR(w->activity_format[i]);
 	    } else if (!my_strnicmp(listc, "ACTIVITY_DATA", len)) {
-		int	i;
+		intmax_t	i;
 		GET_INT_ARG(i, input);
 		if (i < 0 || i > 10)
 			RETURN_EMPTY;
@@ -9909,8 +9909,8 @@ char 	*windowctl 	(char *input)
 	    } else if (!my_strnicmp(listc, "SCREEN", len)) {
 		RETURN_INT(get_window_screennum(w->refnum));
 	    } else if (!my_strnicmp(listc, "LINE", len)) {
-		Display *Line;
-		int	line;
+		Display *	Line;
+		intmax_t	line;
 
 		GET_INT_ARG(line, input);
 		Line = w->display_ip;
@@ -10070,7 +10070,7 @@ char 	*windowctl 	(char *input)
 	    } else if (!my_strnicmp(listc, "DECEASED", len)) {
 		RETURN_EMPTY;
 	    } else if (!my_strnicmp(listc, "TOPLINE", len)) {
-		int line;
+		intmax_t	line;
 
 		GET_INT_ARG(line, input)
 		if (line <= 0 || line >= 10)
@@ -10081,7 +10081,7 @@ char 	*windowctl 	(char *input)
 	    } else if (!my_strnicmp(listc, "TOPLINES", len)) {
 		RETURN_EMPTY;
 	    } else if (!my_strnicmp(listc, "ACTIVITY_FORMAT", len)) {
-		int line;
+		intmax_t	line;
 
 		GET_INT_ARG(line, input)
 		if (line < 0 || line > 10)
@@ -10090,7 +10090,7 @@ char 	*windowctl 	(char *input)
 		window_statusbar_needs_update(w->refnum);
 		RETURN_INT(1);
 	    } else if (!my_strnicmp(listc, "ACTIVITY_DATA", len)) {
-		int line;
+		intmax_t	line;
 
 		GET_INT_ARG(line, input)
 		if (line < 0 || line > 10)
@@ -10099,7 +10099,7 @@ char 	*windowctl 	(char *input)
 		window_statusbar_needs_update(w->refnum);
 		RETURN_INT(1);
 	    } else if (!my_strnicmp(listc, "CURRENT_ACTIVITY", len)) {
-		int	line;
+		intmax_t	line;
 
 		GET_INT_ARG(line, input)
 		if (line < 0 || line > 10)

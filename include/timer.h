@@ -22,7 +22,7 @@ typedef enum {
 				 TimerDomain, int, int, int);
 	int	timer_exists	(const char *);
 	int     remove_timer	(const char *);
-	Timeval	TimerTimeout 	(void);
+	Timespec	TimerTimeout 	(void);
 	char *	timerctl	(char *);
 	void	dump_timers	(void);
 	void    timers_swap_windows (unsigned oldref, unsigned newref);

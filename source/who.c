@@ -50,12 +50,13 @@
 #include "timer.h"
 #include "alias.h"
 
+static	int	who_global_refnum = 0;
+
+#if 0
 /* XXXX - only debugging stuff for adm.  Remove later */
 static	FILE *	who_log = NULL;
-static	int	who_global_refnum = 0;
-static	char	who_timeref[] = "WHOTIM";
-
 static int	who_queue_debug (void *unused);
+static	char	who_timeref[] = "WHOTIM";
 
 static void	WHO_DEBUG (const char *format, ...)
 {
@@ -92,6 +93,8 @@ static void	WHO_DEBUG (const char *format, ...)
 		do_log(0, "who.log", &who_log);
 	}
 }
+#endif
+static void	WHO_DEBUG (const char *format, ...) {}
 
 
 /*
@@ -143,7 +146,7 @@ static char *who_item_full_desc (WhoEntry *item)
 		"who_target [%s], who_name [%s], who_host [%s], "
 		"who_server [%s], who_nick [%s], who_real [%s], "
 		"who_stuff [%s], who_end [%s], next [%p], line [%s], "
-		"end [%s], requested ["INTMAX_FORMAT"], dirty ["INTMAX_FORMAT"]",
+		"end [%s]",
 			item->refnum,
 			item->dirty, item->piggyback, item->undernet_extended, 
 				S(item->undernet_extended_args),
@@ -156,9 +159,11 @@ static char *who_item_full_desc (WhoEntry *item)
 			S(item->who_stuff), S(item->who_end), 
 				(void *)item->next, 
 			item->line ? "<internal>" : "<none>",
-			item->end ? "<internal>" : "<none>",
+			item->end ? "<internal>" : "<none>");
+#if 0
 			(intmax_t) item->request_time.tv_sec,
 			(intmax_t) item->dirty_time.tv_sec);
+#endif
 	else
 	    snprintf(retval, sizeof retval, "<none>");
 
@@ -187,8 +192,10 @@ static WhoEntry *who_queue_top (int refnum)
 	if (!(s = get_server(refnum)))
 		return NULL;
 
+#if 0
 	WHO_DEBUG("Returning top of who queue for server %d [%s]", 
 			refnum, who_item_desc(s->who_queue));
+#endif
 	return s->who_queue;
 }
 
@@ -209,8 +216,10 @@ static WhoEntry *who_previous_query (int refnum, WhoEntry *me)
 	while (what && what->next != me)
 		what = what->next;
 
+#if 0
 	WHO_DEBUG("Returning item previous to [%d(%d)] - [%s]", 
 			me->refnum, refnum, who_item_desc(what));
+#endif
 	return what;
 }
 
@@ -231,23 +240,19 @@ static void who_queue_add (int refnum, WhoEntry *item)
 	else
 		bottom->next = item;
 
+#if 0
 	get_time(&item->request_time);
+#endif
 
+#if 0
 	WHO_DEBUG("Adding item to who queue for server %d [%s]", 
 			refnum, who_item_full_desc(item));
+#endif
 	return;
 }
 
 static void delete_who_item (WhoEntry *save)
 {
-	Timeval t;
-	double	d;
-
-	get_time(&t);
-	d = time_diff(save->request_time, t);
-	WHO_DEBUG("Final deletion of item [%s], alive for [%f] seconds",
-			who_item_full_desc(save), d);
-
 	new_free(&save->who_target);
 	new_free(&save->who_name);
 	new_free(&save->who_host);
@@ -265,7 +270,9 @@ static void who_queue_pop (int refnum)
 	int	piggyback;
 	Server *s;
 
+#if 0
 	WHO_DEBUG("Popping first item off of server [%d]", refnum);
+#endif
 
 	if (!(s = get_server(refnum)))
 		return;
@@ -281,8 +288,10 @@ static void who_queue_pop (int refnum)
 	}
 	while (piggyback);
 
+#if 0
 	if (s->who_queue == NULL)
 		WHO_DEBUG("WHO QUEUE for server [%d] is now empty", refnum);
+#endif
 	return;
 }
 
@@ -307,12 +316,6 @@ static WhoEntry *get_new_who_entry (void)
 	new_w->undernet_extended_args = NULL;
 	new_w->dalnet_extended = 0;
 	new_w->dalnet_extended_args = NULL;
-	new_w->request_time.tv_sec = 0;
-	new_w->request_time.tv_usec = 0;
-	new_w->dirty_time.tv_sec = 0;
-	new_w->dirty_time.tv_usec = 0;
-
-	WHO_DEBUG("Creating new who item with refnum [%d]", new_w->refnum);
 	return new_w;
 }
 
@@ -322,7 +325,9 @@ static void who_queue_list (int refnum)
 	int count = 0;
 	Server *s;
 
+#if 0
 	WHO_DEBUG("Listing queue for server [%d]", refnum);
+#endif
 
 	if (!(s = get_server(refnum)))
 		return;
@@ -330,7 +335,9 @@ static void who_queue_list (int refnum)
 	for (item = s->who_queue; item; item = item->next)
 	{
 		yell("[%d] %s", count, who_item_full_desc(item));
+#if 0
 		WHO_DEBUG("[%d] %s", count, who_item_full_desc(item));
+#endif
 		count++;
 	}
 }
@@ -339,7 +346,9 @@ static void who_queue_flush (int refnum)
 {
 	Server *s;
 
+#if 0
 	WHO_DEBUG("Flushing who queue for server [%d]",  refnum);
+#endif
 
 	if (!(s = get_server(refnum)))
 		return;
@@ -348,7 +357,9 @@ static void who_queue_flush (int refnum)
 		who_queue_pop(refnum);
 
 	yell("Who queue for server [%d] purged", refnum);
+#if 0
 	WHO_DEBUG("done");
+#endif
 }
 
 
@@ -377,7 +388,9 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 	/* Maybe should output a warning? */
 	if (!is_server_registered(refnum))
 	{
+#if 0
 		WHO_DEBUG("WHOBASE: server [%d] is not connected", refnum);
+#endif
 		return;
 	}
 
@@ -395,7 +408,9 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 		if ((len = strlen(arg)) == 0)
 		{
 			say("Unknown or missing flag");
+#if 0
 			WHO_DEBUG("WHOBASE: empty argument. punting.");
+#endif
 			delete_who_item(new_w);
 			return;
 		}
@@ -403,16 +418,22 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 		else if (!my_strnicmp(arg, "away", MAX(len, 1)))
 		{
 			new_w->who_mask |= WHO_AWAY;
+#if 0
 			WHO_DEBUG("WHOBASE: Setting WHO_AWAY flag");
+#endif
 		}
 		else if (!my_strnicmp(arg, "chops", MAX(len, 2)))
 		{
 			new_w->who_mask |= WHO_CHOPS;
+#if 0
 			WHO_DEBUG("WHOBASE: Setting WHO_CHOPS flag");
+#endif
 		}
 		else if (!my_strnicmp(arg, "diagnose", MAX(len, 1)))
 		{
+#if 0
 			WHO_DEBUG("WHOBASE: Listing the who queue");
+#endif
 			who_queue_list(refnum);
 			delete_who_item(new_w);
 			return;
@@ -1979,6 +2000,7 @@ void	clean_server_queues (int i)
 
 /* XXXX */
 
+#if 0
 static int	who_queue_debug (void *unused)
 {
 	Server *s;
@@ -2042,5 +2064,6 @@ static	int	last_refnum_checked = 0;
 
 	return 0;
 }
+#endif
 
 

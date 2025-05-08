@@ -70,11 +70,11 @@ static void	reset_broken_clock (void)
 
 static void	reset_standard_clock (void)
 {
-static		int	min = -1;
-static		int	hour = -1;
-		Timeval	tv;
-	struct 	tm	time_val;
-		time_t	hideous;
+static		int		min = -1;
+static		int		hour = -1;
+		Timespec	tv;
+	struct 	tm		time_val;
+		time_t		hideous;
 
 	/* 
 	 * Every time /set clock_interval goes off this function calls
@@ -129,7 +129,7 @@ static	long	last_milliday;
 		int	old_server = from_server;
 		int	idle_milliday;
 
-		idle_milliday = (int)(timeval_to_metric(&idle_time).mt_mdays);
+		idle_milliday = (int)(timespec_to_metric(&idle_time).mt_mdays);
 		from_server = primary_server;
 		do_hook(TIMER_LIST, "%03ld", current_milliday);
 		do_hook(IDLE_LIST, "%ld", 
@@ -196,16 +196,15 @@ struct system_timer {
 	char *	name;
 	int *	interval_variable;
 	int *	toggle_variable;
-	Timeval	last_event;
 	void	(*callback) (void);
 };
 
 struct system_timer system_timers[] = {
 	{ clock_timeref, 	 
-	  &CLOCK_INTERVAL_VAR, 	&CLOCK_VAR, 	{ 0, 0 },
+	  &CLOCK_INTERVAL_VAR, 	&CLOCK_VAR,
 	  clock_systimer 	},
 	{ NULL,			 
-	  0,			0,		{ 0, 0 },
+	  0,			0,	
 	  NULL 			}
 };
 
@@ -231,7 +230,6 @@ static int	system_timer (void *entry)
 				GENERAL_TIMER, -1, 0, 0);
 
 	item->callback();
-	item->last_event = now;
 	return 0;
 }
 
@@ -247,9 +245,6 @@ int	update_system_timer (const char *entry)
 	{
 	    if (all == 1 || !strcmp(system_timers[i].name, entry))
 	    {
-		/* This needs to be set before calling 'system_timer' */
-		get_time(&now);
-
 		if (get_int_var(*system_timers[i].toggle_variable) &&
 		    get_int_var(*system_timers[i].interval_variable))
 			system_timer(&system_timers[i]);

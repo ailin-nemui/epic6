@@ -91,7 +91,7 @@ typedef struct
 	char *	exitpc;			/* Commands to run on process cleanup (-EXIT) */
 	WaitCmd *waitcmds;		/* Commands to run on process exit (-END or /WAIT -CMD) */
 
-	Timeval	started_at;		/* When the process began */
+	Timespec	started_at;	/* When the process began */
 	int	lines_recvd;		/* How many lines we've received from process */
 	int	lines_sent;		/* How many lines we've sent */
 	int	lines_limit;		/* How many lines till we give up */
@@ -1902,7 +1902,7 @@ char *  execctl (char *input)
 		} else if (!my_stricmp(field, "STARTED_AT")) {
                         return malloc_sprintf(&retval, "%ld %ld",
                                 (long) proc->started_at.tv_sec,
-                                (long) proc->started_at.tv_usec);
+                                (long) proc->started_at.tv_nsec);
 		} else if (!my_stricmp(field, "P_STDIN")) {
 			RETURN_INT(proc->p_stdin);
 		} else if (!my_stricmp(field, "P_STDOUT")) {

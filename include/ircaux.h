@@ -157,12 +157,12 @@ const 	char *	ftoa			(double);
 	/* - - - - Functions dealing with time - - - - */
 	const char *	my_ctime 		(time_t);
 struct 	metric_time 	get_metric_time		(double *);
-struct 	metric_time 	timeval_to_metric	(const Timeval *);
-	Timeval 	get_time		(Timeval *);
-	double 		time_diff 		(const Timeval, const Timeval);
-	Timeval 	time_add		(const Timeval, const Timeval);
-	Timeval 	time_subtract		(const Timeval, const Timeval);
-	Timeval 	double_to_timeval 	(double);
+struct 	metric_time 	timespec_to_metric	(const Timespec *);
+	Timespec 	get_time		(Timespec *);
+	double 		time_diff 		(const Timespec, const Timespec);
+	Timespec 	time_add		(const Timespec, const Timespec);
+	Timespec 	time_subtract		(const Timespec, const Timespec);
+	Timespec 	double_to_timespec 	(double);
 	double  	time_to_next_interval	(int interval);
 
 	/* - - - - - - */

@@ -84,7 +84,7 @@ BUILT_IN_COMMAND(debuglogcmd)
 int	debuglog (const char *format, ...)
 {
 	char	timebuf[10240];
-	struct timeval xnow;
+	struct timespec xnow;
 	time_t sec;
 	struct tm *tm;
 
@@ -97,7 +97,7 @@ int	debuglog (const char *format, ...)
 		sec = xnow.tv_sec;
 		tm = localtime(&sec);
 		strftime(timebuf, 10240, "%F %T", tm);
-		fprintf(debuglogf, "[%s.%04ld] ", timebuf, (long)xnow.tv_usec / 1000);
+		fprintf(debuglogf, "[%s.%04ld] ", timebuf, (long)xnow.tv_nsec / 1000000);
                 vfprintf(debuglogf, format, args);
                 va_end(args);
 		fprintf(debuglogf, "\n");

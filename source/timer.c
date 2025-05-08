@@ -344,7 +344,7 @@ BUILT_IN_COMMAND(timercmd)
 typedef struct  timerlist_stru
 {
 	char	*ref;
-        Timeval time;
+        Timespec time;
 	int	(*callback) (void *);
 	void *	callback_data;
         char *	command;
@@ -352,7 +352,7 @@ typedef struct  timerlist_stru
 	struct	timerlist_stru *prev;
         struct  timerlist_stru *next;
 	long	events;
-	Timeval	interval;
+	Timespec	interval;
 	int	domain;
 	int	domref;
 	int	cancelable;
@@ -387,7 +387,7 @@ static Timer *	new_timer (void)
 	ntimer = (Timer *) new_malloc(sizeof(Timer));
 	ntimer->ref = NULL;
 	ntimer->time.tv_sec = 0;
-	ntimer->time.tv_usec = 0;
+	ntimer->time.tv_nsec = 0;
 	ntimer->callback = NULL;
 	ntimer->callback_data = NULL;
 	ntimer->command = NULL;
@@ -396,7 +396,7 @@ static Timer *	new_timer (void)
 	ntimer->next = NULL;
 	ntimer->events = 0;
 	ntimer->interval.tv_sec = 0;
-	ntimer->interval.tv_usec = 0;
+	ntimer->interval.tv_nsec = 0;
 	ntimer->domain = GENERAL_TIMER;
 	ntimer->domref = -1;
 	ntimer->cancelable = 0;
@@ -679,7 +679,7 @@ int 	timer_exists (const char *ref)
 void    dump_timers (void)
 {
         Timer   *tmp;
-        Timeval current;
+        Timespec current;
         double  time_left;
 
         yell("*X*X*X*X*X*X*X*X*X* WARNING *X*X*X*X*X*X*X*X*X*X");
@@ -715,7 +715,7 @@ void    dump_timers (void)
 static	void	list_timers (const char *command)
 {
 	Timer	*tmp;
-	Timeval	current;
+	Timespec current;
 	double	time_left;
 	int	timer_count = 0;
 
@@ -917,7 +917,7 @@ char *add_timer (int update, const char *refnum_want, double interval, long even
 {
 	Timer	*ntimer, *otimer = NULL;
 	char *	refnum_got = NULL;
-	Timeval right_now;
+	Timespec right_now;
 	char *	retval;
 
 	right_now = get_time(NULL);
@@ -974,11 +974,11 @@ char *add_timer (int update, const char *refnum_want, double interval, long even
 		(void) 0;	/* XXX sigh - not updating interval */
 	else
 	{
-		ntimer->interval = double_to_timeval(interval);
+		ntimer->interval = double_to_timespec(interval);
 		if (snap)
 		{
 			double x = time_to_next_interval(interval);
-			ntimer->time = time_add(right_now, double_to_timeval(x));
+			ntimer->time = time_add(right_now, double_to_timespec(x));
 		}
 		else
 			ntimer->time = time_add(right_now, ntimer->interval);
@@ -1037,12 +1037,12 @@ char *add_timer (int update, const char *refnum_want, double interval, long even
  * TimerTimeout:  Called from irc_io to help create the timeout
  * part of the call to poll().
  */
-Timeval	TimerTimeout (void)
+Timespec	TimerTimeout (void)
 {
-	Timeval	forever = {9999, 0};
-	Timeval right_away = {0, 0};
-	Timeval	current;
-	Timeval	timeout_in;
+	Timespec	forever = {9999, 0};
+	Timespec	right_away = {0, 0};
+	Timespec	current;
+	Timespec	timeout_in;
 
 	/* This, however, should never happen. */
 	if (!PendingTimers)
@@ -1066,7 +1066,7 @@ Timeval	TimerTimeout (void)
  */
 void 	ExecuteTimers (void)
 {
-	Timeval	right_now;
+	Timespec	right_now;
 	Timer *	current, *next;
 	int	old_from_server = from_server;
 
@@ -1139,7 +1139,6 @@ void 	ExecuteTimers (void)
 		 * then we call the lambda function.
 		 */
 		get_time(&right_now);
-		now = right_now;
 		if (current->callback)
 			(*current->callback)(current->callback_data);
 		else
@@ -1210,7 +1209,7 @@ char *	timerctl (char *input)
 		len = strlen(listc);
 		if (!my_strnicmp(listc, "TIMEOUT", len)) {
 			return malloc_sprintf(NULL, "%ld %ld", (long) t->time.tv_sec,
-						    (long) t->time.tv_usec);
+						    (long)(t->time.tv_nsec / 1000));
 		} else if (!my_strnicmp(listc, "COMMAND", len)) {
 			if (t->callback)
 				RETURN_EMPTY;
@@ -1223,7 +1222,7 @@ char *	timerctl (char *input)
 			RETURN_INT(t->events);
 		} else if (!my_strnicmp(listc, "INTERVAL", len)) {
 			return malloc_sprintf(NULL, "%ld %ld", (long) t->interval.tv_sec,
-						    (long) t->interval.tv_usec);
+						    (long)(t->interval.tv_nsec / 1000));
 		} else if (!my_strnicmp(listc, "SERVER", len)) {
 			if (t->domain != SERVER_TIMER)
 				RETURN_INT(-1);
@@ -1253,7 +1252,7 @@ char *	timerctl (char *input)
 			GET_INT_ARG(tv_sec, input);
 			GET_INT_ARG(tv_usec, input);
 			t->time.tv_sec = tv_sec;
-			t->time.tv_usec = tv_usec;
+			t->time.tv_nsec = tv_usec * 1000;
 		} else if (!my_strnicmp(listc, "COMMAND", len)) {
 			malloc_strcpy((char **)&t->command, input);
 		} else if (!my_strnicmp(listc, "SUBARGS", len)) {
@@ -1270,7 +1269,7 @@ char *	timerctl (char *input)
 			GET_INT_ARG(tv_sec, input);
 			GET_INT_ARG(tv_usec, input);
 			t->interval.tv_sec = tv_sec;
-			t->interval.tv_usec = tv_usec;
+			t->interval.tv_nsec = tv_usec * 1000;
 		} else if (!my_strnicmp(listc, "SERVER", len)) {
 			int	refnum;
 

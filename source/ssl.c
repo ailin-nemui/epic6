@@ -1292,12 +1292,12 @@ static void	destroy_ssl_cert_errors (ssl_cert_error *chain)
  * Arguments:
  *	preverify_ok - 0 if OpenSSL found a certificate error
  *		       1 if OpenSSL found no further errors with a cert
- *	ctx	     - Information about the certificates being evaluated.
+ *	ctx_	     - Information about the certificates being evaluated.
  *		       Because many certs might be evaluated, you have
  *		       to interrogate this to find out what is up.
  *		       Most of our actual arguments live inside here.
  *
- * Indirect arguments (pulled out of `ctx'):
+ * Indirect arguments (pulled out of `ctx_'):
  * 	err_cert     - This is the cert that was evaluated
  *	err	     - If preverify_ok == 0, the error that was found
  *	depth	     - Depth == 0 is the server's own certificate
@@ -1309,7 +1309,7 @@ static void	destroy_ssl_cert_errors (ssl_cert_error *chain)
  * Return value:
  *	This function always returns 1
  */
-static int verify_callback (int preverify_ok, X509_STORE_CTX *ctx)
+static int verify_callback (int preverify_ok, X509_STORE_CTX *ctx_)
 {
 	char    subject[MAX_ONELINE];
 	char    issuer[MAX_ONELINE];
@@ -1320,12 +1320,12 @@ static int verify_callback (int preverify_ok, X509_STORE_CTX *ctx)
 	ssl_info *mydata;
 
 	/*
-	 * Get the indirect arguments out of 'ctx'
+	 * Get the indirect arguments out of 'ctx_'
 	 */
-	err_cert = X509_STORE_CTX_get_current_cert(ctx);
-	err = X509_STORE_CTX_get_error(ctx);
-	depth = X509_STORE_CTX_get_error_depth(ctx);
-	ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
+	err_cert = X509_STORE_CTX_get_current_cert(ctx_);
+	err = X509_STORE_CTX_get_error(ctx_);
+	depth = X509_STORE_CTX_get_error_depth(ctx_);
+	ssl = X509_STORE_CTX_get_ex_data(ctx_, SSL_get_ex_data_X509_STORE_CTX_idx());
 	mydata = SSL_get_ex_data(ssl, mydata_index);
 
 	X509_NAME_oneline(X509_get_subject_name(err_cert), subject, MAX_ONELINE);

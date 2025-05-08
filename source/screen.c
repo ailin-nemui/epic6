@@ -137,7 +137,7 @@ struct	ScreenStru *	next;			/* Previous screen in list */
 
 	/* Key qualifier stuff */
 	int		quote_hit;		/* True after QUOTE_CHARACTER hit */
-	Timeval 	last_press;		/* The last time a key was pressed. */
+	Timespec 	last_press;		/* The last time a key was pressed. */
 	void *		last_key;		/* The last Key pressed. */
 
 	int		co;
@@ -681,13 +681,13 @@ static void	term_attribute (Attribute *a)
 		int 	value;
 		value = GET_X_COLOR(a->fg);
 
-		snprintf(buffer, sizeof(buffer), "\e[38;5;%dm", value);
+		snprintf(buffer, sizeof(buffer), "\x1B[38;5;%dm", value);
 		tputs_x(buffer);
 	} else if (IS_COLOR_RGB(a->fg)) {
 		char buffer[BIG_BUFFER_SIZE];
 		int	r, g, b;
 		GET_RGB_COLOR(a->fg, r, g, b);
-		snprintf(buffer, sizeof(buffer), "\e[38;2;%d;%d;%dm", r, g, b);
+		snprintf(buffer, sizeof(buffer), "\x1B[38;2;%d;%d;%dm", r, g, b);
 		tputs_x(buffer);
 	} 
 
@@ -705,13 +705,13 @@ static void	term_attribute (Attribute *a)
 		int 	value;
 		value = GET_X_COLOR(a->bg);
 
-		snprintf(buffer, sizeof(buffer), "\e[48;5;%dm", value);
+		snprintf(buffer, sizeof(buffer), "\x1B[48;5;%dm", value);
 		tputs_x(buffer);
 	} else if (IS_COLOR_RGB(a->bg)) {
 		char buffer[BIG_BUFFER_SIZE];
 		int	r, g, b;
 		GET_RGB_COLOR(a->bg, r, g, b);
-		snprintf(buffer, sizeof(buffer), "\e[48;2;%d;%d;%dm", r, g, b);
+		snprintf(buffer, sizeof(buffer), "\x1B[48;2;%d;%d;%dm", r, g, b);
 		tputs_x(buffer);
 	} 
 
@@ -3118,8 +3118,6 @@ void 	add_to_screen (const char *buffer)
 	{
 	    if (is_channel(get_who_from()))
 	    {
-		int	w;
-
 		if (from_server == NOSERV)
 		    panic(0, "Output to channel [%s:NOSERV]: %s", get_who_from(), buffer);
 
@@ -3563,7 +3561,7 @@ void 	repaint_window_body (int window_)
  *
  * The new screen is stored in "last_input_screen"!
  */
-void	create_new_screen (void)
+void	create_new_screen (int first)
 {
 	Screen	*new_s = NULL, *list;
 static	int	refnumber = 0;
@@ -3597,15 +3595,27 @@ static	int	refnumber = 0;
 	new_s->input_window = -1;
 	new_s->visible_windows = 0;
 	new_s->window_stack = NULL;
-	new_s->last_press.tv_sec = new_s->last_press.tv_usec  = 0;
+	new_s->last_press.tv_sec = new_s->last_press.tv_nsec  = 0;
 	new_s->last_key = NULL;
 	new_s->quote_hit = 0;
-	new_s->fdout = 1;
-	new_s->fpout = stdout;
-	new_s->fdin = 0;
-	if (use_input)
-		new_open(0, do_screens, NEWIO_READ, POLLIN, 0, -1);
-	new_s->fpin = stdin;
+
+	if (first)
+	{
+		new_s->fdin = 0;
+		new_s->fpin = stdin;
+		new_s->fdout = 1;
+		new_s->fpout = stdout;
+		if (use_input)
+			new_open(0, do_screens, NEWIO_READ, POLLIN, 0, -1);
+	}
+	else
+	{
+		new_s->fdin = -1;
+		new_s->fpin = NULL;
+		new_s->fdout = -1;
+		new_s->fpout = NULL;
+	}
+
 	new_s->control = -1;
 	new_s->wserv_version = 0;
 	new_s->alive = 1;
@@ -3718,8 +3728,13 @@ int	create_additional_screen (void)
 	else
 		panic(1, "Opening new wound");
 
+	memset(&local_sockaddr, 0, sizeof(local_sockaddr));
 	local_sockaddr.si.sin_family = AF_INET;
-	local_sockaddr.si.sin_addr.s_addr = htonl((INADDR_LOOPBACK));
+#if 0
+	local_sockaddr.si.sin_addr.s_addr = inet_addr("127.0.0.1");
+#else
+	local_sockaddr.si.sin_addr.s_addr = htonl(INADDR_ANY);
+#endif
 	local_sockaddr.si.sin_port = 0;
 
 	if ((new_cmd = network_server(&local_sockaddr, sizeof(local_sockaddr.si))) < 0)
@@ -3728,6 +3743,7 @@ int	create_additional_screen (void)
 		return -1;
 	}
 	port = ntohs(local_sockaddr.si.sin_port);
+	yell("Now listening on port %d", (int)port);
 
 	/* Create the command line arguments... */
 	if (screen_type == ST_SCREEN)
@@ -3780,7 +3796,7 @@ int	create_additional_screen (void)
 	}
 
 	/* Now create a new screen */
-	create_new_screen();
+	create_new_screen(0);
 	new_s = last_input_screen;
 
 	/*
@@ -3841,29 +3857,26 @@ int	create_additional_screen (void)
 	 * error signals
 	 */
 	for (;;)
-
-	/* 
-	 * You need to kill_screen(new_s) before you do say() or yell()
-	 * if you know what is good for you...
-	 */
-	switch (my_isreadable(new_cmd, 10))
 	{
-	    case -1:
+	    int readable;
+
+	    readable = my_isreadable(new_cmd, 10);
+
+	    /* Interrupted by Signal, or timeout */
+	    if (readable <= 0)
 	    {
-		if ((errno == EINTR) || (errno == EAGAIN))
-			continue;
-		FALLTHROUGH
-		/* FALLTHROUGH */
-	    }
-	    case 0:
-	    {
+		/* Interrupted by a signal we ignore */
+		if ((readable < 0) && ((errno == EINTR) || (errno == EAGAIN)))
+			continue;	/* Try again */
+
+		/* Everything else is an error */
 		int 	old_errno = errno;
 		int 	errnod = get_child_exit(child);
 
 		close(new_cmd);
 		kill_screen(new_s);
 		kill(child, SIGKILL);
-		if (get_screen_fdin(new_s) != 0)
+		if (get_screen_fdin(new_s) != -1)
 		{
 			say("The wserv only connected once -- it's probably "
 			    "an old, incompatable version.");
@@ -3874,65 +3887,47 @@ int	create_additional_screen (void)
 		yell("Errno is %d", old_errno);
 		return -1;
 	    }
-	    default:
+
+	    /* We got our first connection */
+	    else if (get_screen_fpin(new_s) == NULL)
 	    {
-		if (get_screen_fdin(new_s) == 0) 
+		int	fd;	/* Hurt me harder, clang... */
+
+		if ((fd = accept(new_cmd, &new_socket.sa, &new_sock_size)) < 0)
 		{
-			int	fd;	/* Hurt me harder, clang... */
-			FILE *	fin, *fout;
-
-			if ((fd = accept(new_cmd, &new_socket.sa, &new_sock_size)) < 0)
-			{
-				close(new_cmd);
-				kill_screen(new_s);
-				yell("Couldn't establish data connection to new screen");
-				return -1;
-			}
-
-			set_screen_fdin(new_s, fd);
-			set_screen_fdout(new_s, fd);
-			new_open(fd, do_screens, NEWIO_RECV, POLLIN, 1, -1);
-
-			if (!(fin = fdopen(fd, "r+")))
-			{
-				close(new_cmd);
-				kill_screen(new_s);
-				yell("Couldn't establish data connection to new screen");
-				return -1;
-			}
-			if (!(fout = fdopen(fd, "r+")))
-			{
-				fclose(fin);
-				close(new_cmd);
-				kill_screen(new_s);
-				yell("Couldn't establish data connection to new screen");
-				return -1;
-			}
-			set_screen_fpin(new_s, fin);
-			set_screen_fpout(new_s, fout);
-			continue;
-		}
-		else
-		{
-			int	refnum;
-
-			set_screen_control(new_s, accept(new_cmd, &new_socket.sa, &new_sock_size));
 			close(new_cmd);
-
-			if (get_screen_control(new_s) < 0)
-			{
-                                kill_screen(new_s);
-                                yell("Couldn't establish control connection to new screen");
-                                return -1;
-                        }
-
-			new_open(get_screen_control(new_s), do_screens, NEWIO_RECV, POLLIN, 1, -1);
-
-                        if ((refnum = new_window(new_s)) < 1)
-                                panic(1, "WINDOW is NULL and it shouldnt be!");
-
-                        return refnum;
+			kill_screen(new_s);
+			yell("Couldn't establish data connection to new screen");
+			return -1;
 		}
+
+		set_screen_fdin(new_s, fd);
+		set_screen_fdout(new_s, fd);
+		new_open(fd, do_screens, NEWIO_RECV, POLLIN, 1, -1);
+	    }
+
+	    /* We got our second connection */
+	    else
+	    {
+		int	refnum;
+		int	fd;
+
+		if ((fd = accept(new_cmd, &new_socket.sa, &new_sock_size)) < 0)
+		{
+			close(new_cmd);
+			kill_screen(new_s);
+			yell("Couldn't establish control connection to new screen");
+			return -1;
+		}
+
+		set_screen_control(new_s, fd);
+		new_open(fd, do_screens, NEWIO_RECV, POLLIN, 1, -1);
+
+		if ((refnum = new_window(new_s)) < 1)
+			panic(1, "WINDOW is NULL and it shouldnt be!");
+
+		close(new_cmd);
+		return refnum;
 	    }
 	}
 	close(new_cmd);		/* Oh, shut up clang */
@@ -4959,11 +4954,11 @@ int             get_screen_quote_hit            (int screen_)
 	return s->quote_hit;
 }
 
-Timeval         get_screen_last_press           (int screen_)
+Timespec         get_screen_last_press           (int screen_)
 {
 	Screen *s = get_screen_by_refnum(screen_);
 	if (!s)
-		return (Timeval){0, 0};
+		return (Timespec){0, 0};
 	return s->last_press;
 }
 
@@ -5118,6 +5113,11 @@ void		set_screen_fdin			(int screen_, int value)
 	if (!s)
 		return;
 	s->fdin = value;
+
+	FILE *f = fdopen(value, "r+");
+	if (!f)
+		return;
+	s->fpin = f;
 }
 
 void		set_screen_fdout		(int screen_, int value)
@@ -5126,8 +5126,14 @@ void		set_screen_fdout		(int screen_, int value)
 	if (!s)
 		return;
 	s->fdout = value;
+
+	FILE *f = fdopen(value, "r+");
+	if (!f)
+		return;
+	s->fpout = f;
 }
 
+#if 0
 void		set_screen_fpin			(int screen_, FILE *value)
 {
 	Screen *s = get_screen_by_refnum(screen_);
@@ -5143,6 +5149,7 @@ void		set_screen_fpout		(int screen_, FILE *value)
 		return;
 	s->fpout = value;
 }
+#endif
 
 void		set_screen_control		(int screen_, int value)
 {
@@ -5160,7 +5167,7 @@ void		set_screen_last_key		(int screen_, void *value)
 	s->last_key = value;
 }
 
-void		set_screen_last_press		(int screen_, Timeval value)
+void		set_screen_last_press		(int screen_, Timespec value)
 {
 	Screen *s = get_screen_by_refnum(screen_);
 	if (!s)

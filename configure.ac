@@ -664,6 +664,22 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]],[[ return 0; ]])],
         [AC_MSG_RESULT(no)
 	CFLAGS="$old_cflags"])
 
+AC_MSG_CHECKING(whether your compiler supports -Wpedantic)
+old_cflags="$CFLAGS"
+CFLAGS="$CFLAGS -Wpedantic"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]],[[ return 0; ]])],
+	[AC_MSG_RESULT(yes)],
+        [AC_MSG_RESULT(no)
+	CFLAGS="$old_cflags"])
+
+AC_MSG_CHECKING(whether your compiler supports -Wshadow)
+old_cflags="$CFLAGS"
+CFLAGS="$CFLAGS -Wshadow"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]],[[ return 0; ]])],
+	[AC_MSG_RESULT(yes)],
+        [AC_MSG_RESULT(no)
+	CFLAGS="$old_cflags"])
+
 AC_MSG_CHECKING(whether your compiler supports -Wno-unused-parameter)
 old_cflags="$CFLAGS"
 CFLAGS="$CFLAGS -Wno-unused-parameter"

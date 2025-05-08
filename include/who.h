@@ -35,9 +35,6 @@ typedef struct WhoEntryT
         struct WhoEntryT *next;
 	void (*line) (int, const char *, const char *, const char **);
 	void (*end) (int, const char *, const char *, const char **);
-
-	Timeval	request_time;
-	Timeval	dirty_time;
 } WhoEntry;
 
 	BUILT_IN_COMMAND(whocmd);

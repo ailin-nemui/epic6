@@ -2358,10 +2358,6 @@ static int	connect_next_server_address_internal (int server)
 		yell("Trying to connect to server %d using address [%d] and protocol [%d]",
 					server, s->addr_counter, ai->ai_family);
 
-#if 0
-	    if ((inet_vhostsockaddr(ai->ai_family, -1, s->info->vhost,
-						&localaddr, &locallen)) < 0)
-#endif
 	    memset(&localaddr, 0, sizeof(localaddr));
 	    if (get_default_vhost(ai->ai_family, s->info->vhost, &localaddr, &locallen))
 	    {
@@ -3365,9 +3361,9 @@ static void	set_server_userhost (int refnum, const char *uh)
 
 static void	set_server_uh_addr (int refnum)
 {
-	Server *s;
-	char *host;
-	const char *uh;
+	Server *	s;
+	char *		host;
+	const char *	uh;
 
 	if (!(s = get_server(refnum)))
 		return;
@@ -3402,6 +3398,8 @@ static void	set_server_uh_addr (int refnum)
 		     "Listening sockets might not work with this server "
 		     "connection!", host + 1);
 	}
+#else
+	(void) host;	/* Be quiet, clang */
 #endif
 }
 
@@ -5169,17 +5167,16 @@ Server *      get_server (int server)
 /* This was moved from ircaux.c */
 static char *  get_my_fallback_userhost (void)
 {
-        static char uh[BIG_BUFFER_SIZE];
+        static char 	uh[BIG_BUFFER_SIZE];
+        const char *	u;
+	char 		h[NAME_LEN + 1];
 
-        const char *x = get_string_var(DEFAULT_USERNAME_VAR);
+	u = get_string_var(DEFAULT_USERNAME_VAR);
+	if (!u || !*u)
+		u = "Unknown";
+	gethostname(h, sizeof(h));
 
-        if (x && *x)
-                strlcpy(uh, x, sizeof uh);
-        else
-                strlcpy(uh, "Unknown", sizeof uh);
-
-        strlcat(uh, "@", sizeof uh);
-        strlcat(uh, hostname, sizeof uh);
+	snprintf(uh, sizeof(uh), "%s@%s", u, h);
         return uh;
 }
 

@@ -185,7 +185,7 @@ int	init_screen (void)
 	/*
 	 * System independant stuff
 	 */
-	create_new_screen();
+	create_new_screen(1);
 	new_window(main_screen);
 	update_all_windows();
 

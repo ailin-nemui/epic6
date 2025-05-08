@@ -3986,11 +3986,11 @@ BUILT_IN_FUNCTION(function_tdiff2, input)
  */
 BUILT_IN_FUNCTION(function_utime, input)
 {
-	Timeval tp;
+	Timespec tp;
 
 	get_time(&tp);
 	return malloc_sprintf(NULL, INTMAX_FORMAT" %ld", (intmax_t)tp.tv_sec, 
-							 (long)tp.tv_usec);
+							 (long)(tp.tv_nsec / 1000));
 }
 
 
@@ -5987,8 +5987,6 @@ BUILT_IN_FUNCTION(function_rest, input)
 	}
 	else
 	{
-		ptrdiff_t	offset;
-
 		/* Walk 'start' code points from the end */
 		x = input + strlen(input);
 		while (start++ < 0)

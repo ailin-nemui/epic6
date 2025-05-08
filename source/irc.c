@@ -55,7 +55,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3039;
+const unsigned long	commit_id = 3040;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -99,42 +99,136 @@ const char ridiculous_version_name[] = "Otiose";
  * Global variables
  */
 
-/* The ``DEFAULT'' port used for irc server connections. */
-int		irc_port = 6667;
+	/* The ``DEFAULT'' port used for irc server connections. */
+	/*
+	 * Set by:	parse_args:  IRCPORT env, or -p command line argument
+	 * Used by:	serverinfo_to_newserv() - default port for new servers
+	 */
+	int		irc_port = 6667;
 
-/* 
- * When a numeric is being processed, this holds the negative value
- * of the numeric.  Its negative so if we pass it to do_hook, it can
- * tell its a numeric and not a named ON event.
- */
-int		current_numeric = -1;
+	/* 
+	 * When a numeric is being processed, this holds the negative value
+	 * of the numeric.  Its negative so if we pass it to do_hook, it can
+	 * tell its a numeric and not a named ON event.
+	 */
+	/*
+	 * Set by:	numbered_command  (numeric handling)
+	 * Used by:	$H -- alias_current_numeric() 
+	 *		banner()  (with /set show_numerics for banner)
+	 * Thoughts:	Should be per-server, not global.
+	 */
+	int		current_numeric = -1;
 
-/* Set if the client is not using a termios interface */
-int		dumb_mode = 0;
+	/*
+	 * THESE NEXT FOUR VARIABLES SOULD BE COLLAPSED INTO ONE
+	 */
+	/* Set if the client is not using a termios interface */
+	/*
+	 * Set by:	parse_args --  -d and -b command line arguments
+	 *		main() -- if we're not connected to a terminal
+	 * Used by:	/botmode - you must be in dumb mode to use /botmode.
+	 *		update_input() - input line is suppressed in dumb mode
+	 *		irc_exit() - screen is reset if in dumb mode
+	 *		on 464 - do not ask for password in dumb mode
+	 *		add_to_screen() - simplify output in dumb mode
+	 *		scroll_window() - window scrolling gated by dumb mode
+	 *		repaint_window_body() - gated by dumb mode
+	 *		do_screens() - simplify user input in dumb mode
+	 *		user_input_codepoint() - gated by dumb mode
+	 *		redraw_status() - gated by dumb mode
+	 *		term_init() - panics if called in dumb mode
+	 * 		set_automargin_override() - gated by dumb mode
+	 * Thoughts:	Should be renamed. 
+	 */
+	int		dumb_mode = 0;
 
-/* Set if the client is supposed to fork(). (a bot.)  Probably bogus. */
-int		background = 0;
+	/* Set if the client is supposed to fork(). (a bot.)  Probably bogus. */
+	/*
+	 * Set by:	/botmode
+	 *		parse_args -- -b command line argument
+	 * Used by:	main() -- switching to bot mode, redirecting stdout to /dev/null
+	 *		p_kill -- If killed and bot didn't handle, then exit program
+	 *			^^^ This is bogus.
+	 */
+	int		background = 0;
 
-/* Set if the client is checking fd 0 for input. (usu. op of "background") */
-int		use_input = 1;
+	/* This is 1 if we are in the foreground process group */
+	/*
+	 * Set by:	term_cont -- if we are the fg or bg process
+	 * Used by:	cursor_to_input() -- gated on foreground
+	 *		update_input -- gated on foreground
+	 *		rite() -- controls whether output_with_count() outputs or just counts.
+	 *			^^^ This is bogus
+	 *		scroll_window -- physical output gated on foreground
+	 *		repaint_window_body() -- passed to output_with_count().
+	 *		redraw_status() - gated on foreground
+	 * Notes: Nothing sets this to low!  That's heinous and wrong.
+	 */
+	int		foreground = 1;
 
-/*
- * Set when an OPER command is sent out, reset when umode +o or 464 reply
- * comes back.  This is *seriously* bogus.
- */
-int		oper_command = 0;
+	/* Set if the client is checking fd 0 for input. (usu. op of "background") */
+	/*
+	 * Set by:	/botmode
+	 *		parse_args -- -b command line argument
+	 *		term_cont -- if we are the fg or bg process
+	 * Used by:	parse_args -- -b and -q cannot be used together
+	 *			      -b and -s cannot be used together
+	 *		main -- causes a fork()  [why not background?]
+	 *		create_new_screen -- to decide whether to open stdin for reading
+	 *				^^^ this is absolutely wrong
+	 *		kill_screen -- to decide whether to close fdin for reading
+	 *		do_screens -- gated on use_input
+	 * Notes: background and use_input should be merged
+	 */
+	int		use_input = 1;
+	/*
+	 * END GROUP OF VARIABLES TO COLLAPSE
+	 */
 
-/* Set if your IRCRC file is NOT to be loaded on startup. */
-int		quick_startup = 0;
+	/*
+	 * Set when an OPER command is sent out, reset when umode +o or 464 reply
+	 * comes back.  This is *seriously* bogus.
+	 */
+	/*
+	 * Set by:	/oper
+	 *		/on 464 - to reset to 0
+	 * Used by:	/on 464 - to differentiate OPER password from PASS password.
+	 * Notes: BURN IT WITH FIRE
+	 */
+	int		oper_command = 0;
 
-/* Set if user does not want to auto-connect to a server upon startup */
-int		dont_connect = 0;
+	/* Set if your IRCRC file is NOT to be loaded on startup. */
+	/*
+	 * Set by:	parse_args -- -q command line argument
+	 * Used by:	parse_args -- cannot use -q and -b; or -q and -s at the same time.
+	 *		load_ircrc -- loading your ~/.epicrc is gated on it
+	 * Notes: This is heinous
+	 */
+	int		quick_startup = 0;
 
-/* Set to the current time, each time you press a key. */
-Timeval		idle_time = { 0, 0 };
+	/* Set if user does not want to auto-connect to a server upon startup */
+	/*
+	 * Set by:	parse_args() -- -s command line argument
+	 * Used by:	parse_args() -- cannot use -b -and -s at the same time
+	 *		main() -- To decide whether to connect or show server list at startup.
+	 */
+	int		dont_connect = 0;
 
-/* Set to the time the client booted up */
-Timeval		start_time;
+	/* Set to the time the client booted up */
+	/*
+	 * Set by:	main() -- as part of the boot process
+	 * Used by:	alias_online() -- $F
+	 */
+	Timespec	start_time;
+
+	/* Set to the current time, each time you press a key. */
+	/*
+	 * Set by:	main() as part of the boot process
+	 *		do_screens() each time you press a key
+	 * Used by:	reset_standard_clock -- for /ON IDLE
+	 *		alias_idle -- for $E
+	 */
+	Timespec	idle_time = { 0, 0 };
 
 /* Set to 0 when you want to suppress all beeps (such as window repaints) */
 int		global_beep_ok = 1;
@@ -148,14 +242,9 @@ int		dead = 0;
 /* The number of pending SIGINTs (^C) still unprocessed. */
 volatile sig_atomic_t	cntl_c_hit = 0;
 
-/* This is 1 if we are in the foreground process group */
-int		foreground = 1;
-
 /* This is 1 if you want all logging to be inhibited. Dont leave this on! */
 int		inhibit_logging = 0;
 
-/* This is reset every time io() is called.  Use this to save calls to time */
-Timeval		now = {0, 0};
 
 /* Output which is displayed without modification by the user */
 int		privileged_output = 0;
@@ -194,18 +283,17 @@ char		*startup_file = NULL,		/* Set when epicrc loaded */
 		*irc_lib = (char *) 0,		/* path to the ircII library */
 		*default_channel = NULL,	/* Channel to join on connect */
 		nickname[NICKNAME_LEN + 1],	/* users nickname */
-		hostname[NAME_LEN + 1],		/* name of current host */
 		*send_umode = NULL;		/* sent umode */
+char		*cut_buffer = (char *) 0;	/* global cut_buffer */
+
 const char	empty_string[] = "",		/* just an empty string */
 		space[] = " ",			/* just a lonely space */
 		on[] = "ON",
-/*		my_off[] = "OFF", */
 		zero[] = "0",
 		one[] = "1",
 		star[] = "*",
 		dot[] = ".",
 		comma[] = ",";
-char	*cut_buffer = (char *) 0;	/* global cut_buffer */
 
 static		char	switch_help[] =
 "Usage: epic [switches] [nickname] [server list]                      \n\
@@ -744,6 +832,7 @@ static	void	init_vhosts_stage2 (void)
 	}
 	new_free(&tmp_hostname);
 
+#if 0
 	/*
 	 * Make sure we have a hostname.
 	 */
@@ -752,6 +841,7 @@ static	void	init_vhosts_stage2 (void)
 		fprintf(stderr, "I don't know what your hostname is and I can't do much without it.\n");
 		exit(1);
 	}
+#endif
 }
 
 /* fire scripted signal events -pegasus */
@@ -794,7 +884,7 @@ static	const	char	*caller[51] = { NULL }; /* XXXX */
 static	int		level = 0,
 			old_level = 0,
 			last_warn = 0;
-	Timeval		timer;
+	Timespec	timer;
 
 	sequence_point++;
 
@@ -810,7 +900,9 @@ static	int		level = 0,
 	}
 
 	level++;
+#if 0
 	get_time(&now);
+#endif
 
 	/* Don't let this accumulate behind the user's back. */
 	cntl_c_hit = 0;
@@ -850,7 +942,9 @@ static	int		level = 0,
 		/* Timeout -- Need to do timers */
 		case 0:
 		{
+#if 0
 			get_time(&now);
+#endif
 			ExecuteTimers();
 			break;
 		}
@@ -858,7 +952,9 @@ static	int		level = 0,
 		/* Interrupted system call -- check for SIGINT */
 		case -1:
 		{
+#if 0
 			get_time(&now);
+#endif
 			if (cntl_c_hit)		/* SIGINT is useful */
 			{
 				user_input_byte('\003');
@@ -872,7 +968,9 @@ static	int		level = 0,
 		/* Check it out -- something is on one of our descriptors. */
 		default:
 		{
+#if 0
 			get_time(&now);
+#endif
 			do_filedesc();
 			break;
 		} 
@@ -1045,7 +1143,7 @@ int 	main (int argc, char *argv[])
 				(void) 0;
 		}
 		dumb_mode = 1;		/* Just in case */
-		create_new_screen();
+		create_new_screen(1);
 		new_window(main_screen);
 		init_variables_stage2();
 		build_status(NULL);

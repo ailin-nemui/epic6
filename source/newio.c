@@ -78,7 +78,7 @@ static  void    kholdread (int vfd);
 static  void    kunholdread (int vfd);
 static  void    kwrite (int vfd);
 static  void    knowrite (int vfd);
-static	int	kdoit (Timeval *timeout);
+static	int	kdoit (Timespec *timeout);
 static	void	kinit (void);
 static	void	kcleaned (int vfd);
 static	void	klock (void);
@@ -370,7 +370,7 @@ ssize_t	dgets (int vfd, char *buf, size_t buflen, int buffer)
  *	 0	The timeout has expired (ie, call ExecuteTimers())
  *	 1	An fd is dirty (ie, call do_filedesc())
  */
-int 	do_wait (Timeval *timeout)
+int 	do_wait (Timespec *timeout)
 {
 static	int	polls = 0;
 	int	vfd;
@@ -389,7 +389,7 @@ static	int	polls = 0;
 	 */
 	if (timeout)
 	{
-	    if (timeout->tv_sec == 0 && timeout->tv_usec == 0)
+	    if (timeout->tv_sec == 0 && timeout->tv_nsec == 0)
 	    {
 		if (polls++ > 10000)
 		{
@@ -1022,14 +1022,14 @@ static  void    knowrite (int vfd)
 
 static	void	kcleaned (int vfd) { return; }
 
-static	int	kdoit (Timeval *timeout)
+static	int	kdoit (Timespec *timeout)
 {
 	int	ms;
 	int	vfd;
 	int	retval;
 
 	ms = timeout->tv_sec * 1000;
-	ms += (timeout->tv_usec / 1000);
+	ms += (timeout->tv_nsec / 1000000);
 	retval = poll(polls, global_max_vfd + 1, ms);
 
 	if (retval < 0 && errno != EINTR)
@@ -1055,10 +1055,14 @@ static	void	kunlock (void) { return; }
 static	int	ksleep (double timeout)
 {
 	struct pollfd	pfd;
+	int		e;
 
 	pfd.fd = -1;
 	pfd.events = pfd.revents = 0;
-	poll(&pfd, 1, timeout * 1000 + 1);
+	e = poll(&pfd, 1, timeout * 1000 + 1);
+
+	if (e < 0)
+		return e;
 	return 1;
 }
 
@@ -1070,8 +1074,10 @@ static	int	kreadable (int vfd, double timeout)
 	pfd.fd = vfd;
 	pfd.events = POLLIN;
 	pfd.revents = 0;
-	e = poll(&pfd, 1, timeout * 1000 + 1);		/* Wait for >1ms */
+	e = poll(&pfd, 1, (long)(timeout * 1000) + 1);
 
+	if (e < 0)
+		return e;
 	if (e > 0 && (pfd.revents & POLLIN))
 		return 1;
 	return 0;		/* Hrm? */
@@ -1087,6 +1093,8 @@ static	int	kwritable (int vfd, double timeout)
 	pfd.revents = 0;
 	e = poll(&pfd, 1, timeout * 1000 + 1);		/* Wait for >1ms */
 
+	if (e < 0)
+		return e;
 	if (e > 0 && (pfd.revents & POLLOUT))
 		return 1;
 	return 0;		/* Hrm? */

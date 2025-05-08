@@ -109,7 +109,6 @@ extern	const	char 	empty_string[];
 extern	const	char	space[];
 extern	const	char	star[];
 extern	const	char	dot[];
-extern		char	hostname[NAME_LEN + 1];
 extern const 	char 	internal_version[];
 extern		char *	startup_file;
 extern		char *	irc_lib;
@@ -136,10 +135,9 @@ extern		int	do_window_notifies;
 
 extern 		char *	LocalIPv4HostName;
 extern 		char *	LocalIPv6HostName;
-extern struct timeval 	start_time;
-extern struct timeval	idle_time;
-extern struct timeval	now;
-extern struct timeval	input_timeout;
+extern struct timespec 	start_time;
+extern struct timespec	idle_time;
+extern struct timespec	input_timeout;
 extern		jmp_buf	panic_jumpseat;
 extern		intmax_t sequence_point;
 

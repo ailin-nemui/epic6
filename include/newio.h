@@ -9,7 +9,7 @@
  * Here are the interfaces you must define if you want to add a new 
  * looper to epic.  EPIC will call these functions to do various things:
  *
- *	int	do_wait (struct timeval *timeout)
+ *	int	do_wait (struct timespec *timeout)
  *	- PURPOSE: Wait until a filedesc is dirty, or the timeout expires.
  *	- INPUT:  timeout - The maximum amount of time to wait before returning
  *	- OUTPUT: -1 if returning for any reason other than timeout or 
@@ -80,7 +80,7 @@
 
 	int	dgets_buffer		(int, const void *, ssize_t);
 	ssize_t	dgets 			(int, char *, size_t, int);
-	int	do_wait			(struct timeval *);
+	int	do_wait			(struct timespec *);
 	void	do_filedesc		(void);
 	void	init_newio		(void);
 	size_t	get_pending_bytes	(int);

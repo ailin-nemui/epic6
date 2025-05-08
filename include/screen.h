@@ -24,7 +24,7 @@
 	void		fire_normal_prompt		(const char *);
 	void		add_to_screen			(const char *);
 	void    	user_input_byte			(unsigned char byte);
-	void		create_new_screen		(void);
+	void		create_new_screen		(int);
 	void		kill_screen			(int);
 
 const	char *		all_off				(void);
@@ -65,7 +65,7 @@ const	char *		all_off				(void);
 	void *		get_screen_input_line		(int);
 	int		get_screen_prompt_list_type	(int);
 	int		get_screen_quote_hit		(int);
-	Timeval		get_screen_last_press		(int);
+	Timespec	get_screen_last_press		(int);
 	void *		get_screen_last_key		(int);
 	int		get_screen_columns		(int);
 	int		get_screen_lines		(int);
@@ -92,7 +92,7 @@ const	char *		all_off				(void);
 	void		set_screen_fpout		(int, FILE *);
 	void		set_screen_control		(int, int);
 	void		set_screen_last_key		(int, void *);
-	void		set_screen_last_press		(int, Timeval);
+	void		set_screen_last_press		(int, Timespec);
 	void		set_screen_input_line		(int, void *);
 
 	int    		screen_add_window_before 	(int screen_, int existing_window_, int new_window_);

@@ -702,9 +702,9 @@ static	void	e_pause_cb (const char *u1, const char *u2) { e_pause_cb_throw--; }
 static int e_pause_callback (void *ignored) { return 0; }
 BUILT_IN_COMMAND(e_pause)
 {
-	char *	sec;
-	double 	seconds;
-	Timeval	start;
+	char *		sec;
+	double 		seconds;
+	Timespec	start;
 
 	if (!(sec = next_arg(args, &args)))
 	{
@@ -720,7 +720,7 @@ BUILT_IN_COMMAND(e_pause)
 
 	seconds = atof(sec);
 	get_time(&start);
-	start = time_add(start, double_to_timeval(seconds));
+	start = time_add(start, double_to_timespec(seconds));
 
 	/* 
 	 * I use comment here simply becuase its not going to mess
@@ -2270,12 +2270,12 @@ BUILT_IN_COMMAND(oper)
 /* pingcmd: ctcp ping, duh - phone, jan 1993. */
 BUILT_IN_COMMAND(pingcmd)
 {
-	Timeval t;
-	char buffer[64];
+	Timespec	t;
+	char		buffer[64];
 
 	get_time(&t);
 	snprintf(buffer, 63, "%s PING %ld %ld", args, 
-				(long)t.tv_sec, (long)t.tv_usec);
+				(long)t.tv_sec, (long)(t.tv_nsec / 1000));
 	ctcp(NULL, buffer, empty_string);
 }
 

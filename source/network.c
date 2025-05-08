@@ -380,74 +380,6 @@ int	network_server (SSu *local, socklen_t local_len)
 	return fd;
 }
 
-/*
- * NAME: inet_vhostsockaddr
- * USAGE: Get the sockaddr of the current virtual host, if one is in use.
- * ARGS: family - The family whose sockaddr info is to be retrieved
- *       storage - Pointer to a sockaddr structure appropriate for family.
- *       len - This will be set to the size of the sockaddr structure that
- *             was copied, or set to 0 if no virtual host is available in
- *             the given family.
- * NOTES: If "len" is set to 0, do not attempt to bind() 'storage'!
- */
-int	inet_vhostsockaddr (int family, int port, const char *wanthost, SSu *storage, socklen_t *len)
-{
-	char	p_port[12];
-	char	*p = NULL;
-	AI	hints, *res;
-	int	err;
-	const char *lhn;
-
-	/*
-	 * If port == -1, AND "wanthost" is NULL, then this is a client connection, 
-	 * so we punt if there is no virtual host name.  But if port is NOT zero, 
-	 * then the caller expects us to return a sockaddr they can bind() to, 
-	 * so we need to use LocalIPv(4|6)HostName, even if it's NULL.  If you 
-	 * return *len == 0 for port != -1, then listening sockets break.
-	 */
-	if ((family == AF_UNIX) 
-         || (family == AF_INET && port == -1 && empty(wanthost) && LocalIPv4HostName == NULL) 
-	 || (family == AF_INET6 && port == -1 && empty(wanthost) && LocalIPv6HostName == NULL))
-	{
-		*len = 0;
-		return 0;		/* No vhost needed */
-	}
-
-	if (wanthost && *wanthost)
-		lhn = wanthost;
-	else if (family == AF_INET)
-		lhn = LocalIPv4HostName;
-	else if (family == AF_INET6)
-		lhn = LocalIPv6HostName;
-	else
-		lhn = NULL;
-
-	/*
-	 * Can it really be this simple?
-	 */
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = family;
-	hints.ai_socktype = SOCK_STREAM;
-	if (port != -1) 
-	{
-		hints.ai_flags = AI_PASSIVE;
-		snprintf(p_port, 12, "%d", port);
-		p = p_port;
-	}
-
-	if ((err = Getaddrinfo(lhn, p, &hints, &res)))
-	{
-		syserr(-1, "inet_vhostsockaddr: Getaddrinfo(%s,%s) failed: %s", lhn, p, gai_strerror(err));
-		return -1;
-	}
-
-	memcpy(&storage->ss, res->ai_addr, res->ai_addrlen);
-	Freeaddrinfo(res);
-	*len = socklen(storage);
-	return 0;
-}
-
-
 /******************************************************************************************/
 static	ares_channel_t *	ares_channel_;
 static	struct ares_options	ares_options_;
@@ -807,7 +739,7 @@ int	paddr_to_hostname (const char *ip, char *retval, int size)
 {
 	SSu	buffer;
 
-	memset((char *)&buffer.ss, 0, sizeof(buffer.ss));
+	memset((char *)&buffer, 0, sizeof(buffer));
 	if (paddr_to_ssu(ip, &buffer, 0))
 	{
 		syserr(-1, "inet_ptohn: paddr_to_ssu(%s) failed", ip);
@@ -1011,6 +943,7 @@ typedef struct Vhosts {
 	int	family;
 	SSu	ssu;
 	socklen_t sl;
+	int	is_default;
 } Vhosts;
 
 static	Vhosts	vhosts[1024];
@@ -1049,6 +982,7 @@ void	init_one_vhost (struct ifaddrs *addr)
 	vhosts[i].paddr = malloc_strdup(addrbuf);
 	memcpy(&(vhosts[i].ssu), addr->ifa_addr, sasocklen(addr->ifa_addr));
 	vhosts[i].sl = sasocklen(addr->ifa_addr);
+	vhosts[i].is_default = 0;
 
 	yell("Successfully created vhost for %s", addrbuf);
 }
@@ -1084,8 +1018,8 @@ BUILT_IN_COMMAND(vhostscmd)
 		else
 			strlcpy(familystr, "????", sizeof(familystr));
 
-		say("Vhost=%d, family=%s, hostname=%s, paddr=%s, sl=%d", 
-			i, familystr, vhosts[i].hostname, vhosts[i].paddr, vhosts[i].sl);
+		say("Vhost=%d, family=%s, hostname=%s, paddr=%s, sl=%d, is_default=%d", 
+			i, familystr, vhosts[i].hostname, vhosts[i].paddr, vhosts[i].sl, vhosts[i].is_default);
 	}
 }
 
@@ -1093,7 +1027,6 @@ BUILT_IN_COMMAND(vhostscmd)
 int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 {
 	int	i;
-	int	fd;
 	struct addrinfo *res = NULL, *res_save;
 	struct addrinfo hints;
 	int	err;
@@ -1101,7 +1034,10 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 	if (empty(something))
 		something = NULL;
 
-	yell("Looking up [%s] for %d", something, family_);
+	/* This is a protection mechanism in case anything goes sideways */
+	*sl = 0;
+
+	yell("Looking up [%s] for %d", something?something:"<default>", family_);
 
 	/*
 	 * Check to see if it's cached...
@@ -1111,9 +1047,9 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 		if (vhosts[i].family != family_)
 			continue;
 
-		if (empty(something) && vhosts[i].hostname == NULL)
+		if (empty(something) && vhosts[i].is_default)
 		{
-			yell("Vhost %s is cached. yay.", something);
+			yell("Vhost family %d has default. yay.", family_);
 			memcpy(ssu_, &vhosts[i].ssu, sizeof(SSu));
 			*sl = socklen(ssu_);
 			return 0;
@@ -1122,12 +1058,16 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 		if (!my_stricmp(something, vhosts[i].hostname) || 
 		    !my_stricmp(something, vhosts[i].paddr))
 		{
-			yell("Vhost %s is cached. yay.", something);
+			yell("Vhost %s is cached. yay.", something?something:"<default>");
 			memcpy(ssu_, &vhosts[i].ssu, sizeof(SSu));
 			*sl = socklen(ssu_);
 			return 0;
 		}
 	}
+
+	/* If you asked for the default and I don't have one, then you get nothing */
+	if (empty(something))
+		return 0;
 
 	/*
 	 * No matter how you spin it, vhosts might get looked up before
@@ -1144,9 +1084,10 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 		yell("lookup_vhost: Could not convert %s to hostname: %s", something, gai_strerror(err));
 		return -1;
 	}
-	res_save = res;
 	for (res_save = res; res; res = res->ai_next)
 	{
+		int	fd;
+
 		if (res->ai_family != family_)
 			continue;
 
@@ -1168,7 +1109,6 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 		/* Cache the result */
 		if (next_vhost >= max_vhost)
 		{
-			close(fd);
 			yell("I'm plum full up on vhosts -- sorry!");
 			return -1;
 		}
@@ -1267,6 +1207,34 @@ int	get_default_vhost (int family, const char *wanthost, SSu *ssu_, socklen_t *s
 	return -1;			/* Failure */
 }
 
+int	make_vhost_default (int family_, const char *something)
+{
+	int	i;
+	int	count = 0;
+
+	/*
+	 * Check to see if it's cached...
+	 */
+	for (i = 0; i < next_vhost; i++)
+	{
+		/* We are going to reset all values for this family */
+		if (vhosts[i].family != family_)
+			continue;
+
+		if (!my_stricmp(something, vhosts[i].hostname) || 
+		    !my_stricmp(something, vhosts[i].paddr))
+		{
+			vhosts[i].is_default = 1;
+			count++;
+		}
+		else
+			vhosts[i].is_default = 0;
+	}
+
+	return count;
+}
+
+
 
 /*
  * set_default_hostnames -- convert a paddr/hostname to a sockaddr you can use
@@ -1323,6 +1291,7 @@ char *	set_default_hostnames (const char *hostname)
 		{
 			accept4 = 1;
 			malloc_strcpy(&LocalIPv4HostName, v4);
+			make_vhost_default(AF_INET, LocalIPv4HostName);
 		}
 	}
 	else
@@ -1336,6 +1305,7 @@ char *	set_default_hostnames (const char *hostname)
 		{
 			accept6 = 1;
 			malloc_strcpy(&LocalIPv6HostName, v6);
+			make_vhost_default(AF_INET6, LocalIPv4HostName);
 		}
 	}
 	else

@@ -204,7 +204,7 @@ typedef union SSu {
 
 typedef struct addrinfo		AI;
 
-typedef struct timeval		Timeval;
+typedef struct timespec		Timespec;
 typedef struct stat		Stat;
 
 /*

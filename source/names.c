@@ -81,7 +81,7 @@ struct	channel_stru *	prev;		/* pointer to previous channel */
 	char		chop;		/* true if i'm a channel operator */
 	char		voice;		/* true if i'm a channel voice */
 	char		half_assed;	/* true if i'm a channel helper */
-	Timeval		join_time;	/* When we joined the channel */
+	Timespec	join_time;	/* When we joined the channel */
 }	Channel;
 
 

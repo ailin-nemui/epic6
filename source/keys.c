@@ -141,7 +141,7 @@ static List *	find_binding 		(const char *name) ;
 
 static void	key_exec 		(Key *key);
 static void	key_exec_bt 		(Key *);
-static void *	timeout_keypress 	(void *, Timeval);
+static void *	timeout_keypress 	(void *, Timespec);
 static int	do_input_timeouts	(void *ignored);
 
 static Key *	construct_keymap 	(Key *);
@@ -607,7 +607,7 @@ static void	key_exec_bt (Key *key)
  *
  * Clear as mud?
  */
-void *	handle_keypress (void *lastp, Timeval pressed, uint32_t keyx, int quote_override) 
+void *	handle_keypress (void *lastp, Timespec pressed, uint32_t keyx, int quote_override) 
 {
 	Key 	*kp, 
 		*last;
@@ -699,11 +699,11 @@ void *	handle_keypress (void *lastp, Timeval pressed, uint32_t keyx, int quote_o
  *	The return value should be passed to the next call to handle_keypress().
  *	It does not matter what the value is. ;-)
  */
-static void *	timeout_keypress (void *lastp, Timeval pressed) 
+static void *	timeout_keypress (void *lastp, Timespec pressed) 
 {
 	int 	mpress = 0; /* ms count since last pressing */
-	Timeval tv;
-	Timeval right_now;
+	Timespec tv;
+	Timespec right_now;
 	Key *	last;
 
 	/* If there is no outstanding key sequence, we have nothing to check */
@@ -725,7 +725,7 @@ static void *	timeout_keypress (void *lastp, Timeval pressed)
 	get_time(&right_now);
 	tv = time_subtract(pressed, right_now);
 	mpress = tv.tv_sec * 1000;
-	mpress += tv.tv_usec / 1000;
+	mpress += tv.tv_nsec / 1000000;
 
 	/*
 	 * If it has been more than /set key_interval milliseconds since 
@@ -916,7 +916,7 @@ static int	clean_keymap (Key *map)
  *		^_		31
  *		^?		127
  *
- * 	  \e			27 (escape)
+ * 	  \e			27 (escape)  (\x1B)
  *	  \xxx	(where 'xxx' is between 000 and 177)
  *	  \^			94 (caret)
  *	  \\			92 (backslash)
@@ -2206,7 +2206,7 @@ static BUILT_IN_KEYBINDING(mousemachine)
 
 static void	cleanup_mousemachine (void)
 {
-	tputs_x("\e[?1000;1006;1015l");
+	tputs_x("\x1B[?1000;1006;1015l");
 	term_flush();
 }
 
@@ -2247,11 +2247,11 @@ void    set_mouse_support (void *stuff)
         
 	if (value) {
 		bind_string(head_keymap(), "^[[<", "KEYMAP", "MOUSE");
-		tputs_x("\e[?1000;1006;1015h");
+		tputs_x("\x1B[?1000;1006;1015h");
 		term_flush();
 	} else {
 		bind_string(head_keymap(), "^[[<", "NOTHING", NULL);
-		tputs_x("\e[?1000;1006;1015l");
+		tputs_x("\x1B[?1000;1006;1015l");
 		term_flush();
 	}
 }       
