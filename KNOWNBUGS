@@ -188,4 +188,15 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * <- (2158) Better handle IRC/IRC-SSL when servers don't respond
 * Use getifaddrs() to pull our local ips at start-up.
 * Add undocumented /vhosts command -- it's just for debugging for now.
-
+* Use -Wshadow and -Wpedantic if they're available
+  - Fix all warnings thereupon
+* Restart refactoring global variables
+* Don't require a valid hostname upon startup (we use vhosts above)
+* Remove the 'now' variable -- just check the time when you need it.
+* Deprecate all (Timeval), move to (Timespec) 
+* Create_new_screen() now is told if this is 1st or 2nd screen
+* Switch \e to \x1B in literal strings (\e is non-standard)
+* Roll /hostname in with vhost support so we track "default" vhost
+* Fix bug in kreadable() that broke /window create
+* Refactor /window create to avoid a "resource leak" clang insists upon
+* Deprecate /WHO queue debugging.
