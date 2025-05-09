@@ -52,51 +52,6 @@
 
 static	int	who_global_refnum = 0;
 
-#if 0
-/* XXXX - only debugging stuff for adm.  Remove later */
-static	FILE *	who_log = NULL;
-static int	who_queue_debug (void *unused);
-static	char	who_timeref[] = "WHOTIM";
-
-static void	WHO_DEBUG (const char *format, ...)
-{
-	va_list	args;
-
-	if (who_log == NULL && (x_debug & DEBUG_WHO_QUEUE))
-	{
-		add_timer(1, who_timeref, 5, -1, who_queue_debug, 
-				NULL, NULL, GENERAL_TIMER, -1, 0, 0);
-		do_log(1, "who.log", &who_log);
-	}
-
-	if (who_log)
-	{
-		time_t	t;
-		char	my_buffer[256];
-		struct tm *ugh;
-
-		time(&t);
-		ugh = localtime(&t);
-		strftime(my_buffer, 255, "%H:%M:%S ", ugh);
-		fprintf(who_log, "%s", my_buffer);
-
-		va_start(args, format);
-		vfprintf(who_log, format, args);
-		fputc('\n', who_log);
-		fflush(who_log);
-		va_end(args);
-	}
-
-	if (who_log && !(x_debug & DEBUG_WHO_QUEUE))
-	{
-		remove_timer(who_timeref);
-		do_log(0, "who.log", &who_log);
-	}
-}
-#endif
-static void	WHO_DEBUG (const char *format, ...) {}
-
-
 /*
  *
  *
@@ -160,10 +115,6 @@ static char *who_item_full_desc (WhoEntry *item)
 				(void *)item->next, 
 			item->line ? "<internal>" : "<none>",
 			item->end ? "<internal>" : "<none>");
-#if 0
-			(intmax_t) item->request_time.tv_sec,
-			(intmax_t) item->dirty_time.tv_sec);
-#endif
 	else
 	    snprintf(retval, sizeof retval, "<none>");
 
@@ -192,10 +143,6 @@ static WhoEntry *who_queue_top (int refnum)
 	if (!(s = get_server(refnum)))
 		return NULL;
 
-#if 0
-	WHO_DEBUG("Returning top of who queue for server %d [%s]", 
-			refnum, who_item_desc(s->who_queue));
-#endif
 	return s->who_queue;
 }
 
@@ -216,10 +163,6 @@ static WhoEntry *who_previous_query (int refnum, WhoEntry *me)
 	while (what && what->next != me)
 		what = what->next;
 
-#if 0
-	WHO_DEBUG("Returning item previous to [%d(%d)] - [%s]", 
-			me->refnum, refnum, who_item_desc(what));
-#endif
 	return what;
 }
 
@@ -240,14 +183,6 @@ static void who_queue_add (int refnum, WhoEntry *item)
 	else
 		bottom->next = item;
 
-#if 0
-	get_time(&item->request_time);
-#endif
-
-#if 0
-	WHO_DEBUG("Adding item to who queue for server %d [%s]", 
-			refnum, who_item_full_desc(item));
-#endif
 	return;
 }
 
@@ -270,10 +205,6 @@ static void who_queue_pop (int refnum)
 	int	piggyback;
 	Server *s;
 
-#if 0
-	WHO_DEBUG("Popping first item off of server [%d]", refnum);
-#endif
-
 	if (!(s = get_server(refnum)))
 		return;
 
@@ -288,10 +219,6 @@ static void who_queue_pop (int refnum)
 	}
 	while (piggyback);
 
-#if 0
-	if (s->who_queue == NULL)
-		WHO_DEBUG("WHO QUEUE for server [%d] is now empty", refnum);
-#endif
 	return;
 }
 
@@ -325,19 +252,12 @@ static void who_queue_list (int refnum)
 	int count = 0;
 	Server *s;
 
-#if 0
-	WHO_DEBUG("Listing queue for server [%d]", refnum);
-#endif
-
 	if (!(s = get_server(refnum)))
 		return;
 
 	for (item = s->who_queue; item; item = item->next)
 	{
 		yell("[%d] %s", count, who_item_full_desc(item));
-#if 0
-		WHO_DEBUG("[%d] %s", count, who_item_full_desc(item));
-#endif
 		count++;
 	}
 }
@@ -346,10 +266,6 @@ static void who_queue_flush (int refnum)
 {
 	Server *s;
 
-#if 0
-	WHO_DEBUG("Flushing who queue for server [%d]",  refnum);
-#endif
-
 	if (!(s = get_server(refnum)))
 		return;
 
@@ -357,9 +273,6 @@ static void who_queue_flush (int refnum)
 		who_queue_pop(refnum);
 
 	yell("Who queue for server [%d] purged", refnum);
-#if 0
-	WHO_DEBUG("done");
-#endif
 }
 
 
@@ -387,12 +300,7 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 
 	/* Maybe should output a warning? */
 	if (!is_server_registered(refnum))
-	{
-#if 0
-		WHO_DEBUG("WHOBASE: server [%d] is not connected", refnum);
-#endif
 		return;
-	}
 
 	new_w = get_new_who_entry();
 	new_w->line = line;
@@ -408,32 +316,16 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 		if ((len = strlen(arg)) == 0)
 		{
 			say("Unknown or missing flag");
-#if 0
-			WHO_DEBUG("WHOBASE: empty argument. punting.");
-#endif
 			delete_who_item(new_w);
 			return;
 		}
 
 		else if (!my_strnicmp(arg, "away", MAX(len, 1)))
-		{
 			new_w->who_mask |= WHO_AWAY;
-#if 0
-			WHO_DEBUG("WHOBASE: Setting WHO_AWAY flag");
-#endif
-		}
 		else if (!my_strnicmp(arg, "chops", MAX(len, 2)))
-		{
 			new_w->who_mask |= WHO_CHOPS;
-#if 0
-			WHO_DEBUG("WHOBASE: Setting WHO_CHOPS flag");
-#endif
-		}
 		else if (!my_strnicmp(arg, "diagnose", MAX(len, 1)))
 		{
-#if 0
-			WHO_DEBUG("WHOBASE: Listing the who queue");
-#endif
 			who_queue_list(refnum);
 			delete_who_item(new_w);
 			return;
@@ -443,7 +335,6 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 			new_w->dalnet_extended = 1;
 			new_w->dalnet_extended_args = new_next_arg(args, &args);
 			channel = args;		/* Grab the rest of args */
-			WHO_DEBUG("WHOBASE: setting -dx flag [%s]", new_w->dalnet_extended_args, channel);
 			args = NULL;
 		}
 		else if (!my_strnicmp(arg, "end", MAX(len, 3)))
@@ -454,25 +345,19 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 				malloc_strcpy(&new_w->who_end, stuff);
 			else
 				say("Need {...} argument for -END argument.");
-			WHO_DEBUG("WHOBASE: setting who_end [%s]", new_w->who_end);
 		}
 		else if (!my_strnicmp(arg, "flush", MAX(len, 1)))
 		{
-			WHO_DEBUG("WHOBASE: flushing who queue [%d]", refnum);
 			who_queue_flush(refnum);
 			delete_who_item(new_w);
 			return;
 		}
 	 	else if (!my_strnicmp(arg, "here", MAX(len, 2)))
-		{
-			WHO_DEBUG("WHOBASE: setting WHO_HERE flag");
 			new_w->who_mask |= WHO_HERE;
-		}
 		else if (!my_strnicmp(arg, "hosts", MAX(len, 2)))
 		{
 			if ((arg = next_arg(args, &args)) == NULL)
 			{
-				WHO_DEBUG("WHOBASE: -HOST missing argument");
 				say("WHO -HOST: missing argument");
 				delete_who_item(new_w);
 				return;
@@ -481,8 +366,6 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 			new_w->who_mask |= WHO_HOST;
 			malloc_strcpy(&new_w->who_host, arg);
 			channel = new_w->who_host;
-			WHO_DEBUG("WHOBASE: Setting -HOST argument [%s]", 
-					new_w->who_host);
 		}
 
 		else if (!my_strnicmp(arg, "line", MAX(len, 4)))
@@ -493,7 +376,6 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 				malloc_strcpy(&new_w->who_stuff, stuff);
 			else
 				say("Need {...} argument for -LINE argument.");
-			WHO_DEBUG("WHOBASE: setting -line [%s]", new_w->who_end);
 		}
 		else if (!my_strnicmp(arg, "literal", MAX(len, 3)))
 		{
@@ -504,7 +386,6 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 			new_free(&new_w->who_stuff);
 			new_free(&new_w->who_end);
 
-			WHO_DEBUG("WHOBASE: Doing -LITERAL [%s]", args);
 			who_queue_add(refnum, new_w);
 
 			send_to_aserver(refnum, "WHO %s", args);
@@ -513,13 +394,11 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 		else if (!my_strnicmp(arg, "lusers", MAX(len, 2)))
 		{
 			new_w->who_mask |= WHO_LUSERS;
-			WHO_DEBUG("WHOBASE: Setting WHO_LUSERS flag", args);
 		}
 		else if (!my_strnicmp(arg, "name", MAX(len, 2)))
 		{
 			if ((arg = next_arg(args, &args)) == NULL)
 			{
-				WHO_DEBUG("WHOBASE: -NAME missing argument");
 				say("WHO -NAME: missing arguement");
 				delete_who_item(new_w);
 				return;
@@ -528,14 +407,11 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 			new_w->who_mask |= WHO_NAME;
 			malloc_strcpy(&new_w->who_name, arg);
 			channel = new_w->who_name;
-			WHO_DEBUG("WHOBASE: Setting -NAME argument [%s]", 
-					new_w->who_name);
 		}
 		else if (!my_strnicmp(arg, "nick", MAX(len, 2)))
 		{
 			if ((arg = next_arg(args, &args)) == NULL)
 			{
-				WHO_DEBUG("WHOBASE: -NICK missing argument");
 				say("WHO -NICK: missing arguement");
 				delete_who_item(new_w);
 				return;
@@ -544,29 +420,17 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 			new_w->who_mask |= WHO_NICK;
 			malloc_strcpy(&new_w->who_nick, arg);
 			channel = new_w->who_nick;
-			WHO_DEBUG("WHOBASE: Setting -NICK argument [%s]", 
-					new_w->who_nick);
 		}
 		else if (!my_strnicmp(arg, "nochops", MAX(len, 2)))
-		{
 			new_w->who_mask |= WHO_NOCHOPS;
-			WHO_DEBUG("WHOBASE: Setting WHO_NOCHOPS flag");
-		}
 		else if (!my_strnicmp(arg, "oper", MAX(len, 1)))
-		{
 			new_w->who_mask |= WHO_OPS;
-			WHO_DEBUG("WHOBASE: Setting WHO_OPS flag");
-		}
 		else if (!my_strnicmp(arg, "operspy", MAX(len, 5)))
-		{
 			new_w->who_mask |= WHO_OPERSPY;
-			WHO_DEBUG("WHOBASE: Setting WHO_OPERSPY flag");
-		}
 		else if (!my_strnicmp(arg, "realname", MAX(len, 1)))
 		{
 			if ((arg = next_arg(args, &args)) == NULL)
 			{
-				WHO_DEBUG("WHOBASE: -REALNAME missing argument");
 				say("WHO -REALNAME: missing arguement");
 				delete_who_item(new_w);
 				return;
@@ -575,13 +439,11 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 			new_w->who_mask |= WHO_REAL;
 			malloc_strcpy(&new_w->who_real, arg);
 			channel = new_w->who_real;
-			WHO_DEBUG("WHOBASE: Setting -REALNAME [%s]", new_w->who_real);
 		}
 		else if (!my_strnicmp(arg, "servers", MAX(len, 1)))
 		{
 			if ((arg = next_arg(args, &args)) == NULL)
 			{
-				WHO_DEBUG("WHOBASE: -SERVERS missing argument");
 				say("WHO -SERVER: missing arguement");
 				delete_who_item(new_w);
 				return;
@@ -590,24 +452,17 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 			new_w->who_mask |= WHO_SERVER;
 			malloc_strcpy(&new_w->who_server, arg);
 			channel = new_w->who_server;
-			WHO_DEBUG("WHOBASE: Setting -SERVERS [%s]", new_w->who_server);
 		}
 		else if (!my_strnicmp(arg, "u-i", MAX(len, 3)))
-		{
 			new_w->who_mask |= WHO_INVISIBLE;
-			WHO_DEBUG("WHOBASE: Setting WHO_INVISIBLE flag");
-		}
 		else if (!my_strnicmp(arg, "ux", MAX(len, 2)))
 		{
 			new_w->undernet_extended = 1;
 			new_w->undernet_extended_args = args;
 			args = NULL;
-			WHO_DEBUG("WHOBASE: Setting undernet flag [%s]",
-					new_w->undernet_extended_args);
 		}
 		else
 		{
-			WHO_DEBUG("WHOBASE: Unknown flag [%s]", arg);
 			say("Unknown or missing flag");
 			delete_who_item(new_w);
 			return;
@@ -618,37 +473,26 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 		channel = get_window_echannel(0);
 		if (!channel || !*channel)
 		{
-			WHO_DEBUG("WHOBASE: WHO *, but not on channel");
 			say("You are not on a channel.  "
 			    "Use /WHO ** to see everybody.");
 			delete_who_item(new_w);
 			return;
 		}
-		else
-			WHO_DEBUG("WHOBASE: WHO * -> WHO %s", channel);
 	    }
 	    else
-	    {
 		channel = arg;
-		WHO_DEBUG("WHOBASE: WHO %s", channel);
-	    }
 	}
 
 	if (no_args)
 	{
-		WHO_DEBUG("WHOBASE: No arguments");
 		say("No argument specified");
 		delete_who_item(new_w);
 		return;
 	}
 
 	if (!channel && (new_w->who_mask & WHO_OPS))
-	{
 		channel = "*.*";
-		WHO_DEBUG("WHOBASE: Fallback to WHO %s", channel);
-	}
 	new_w->who_target = malloc_strdup(channel);
-	WHO_DEBUG("WHOBASE: Target is [%s]", new_w->who_target);
 
 	who_queue_add(refnum, new_w);
 
@@ -660,20 +504,11 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 		!strcmp(old->who_target, channel))
 	{
 		old->piggyback = 1;
-		WHO_DEBUG("WHOBASE: Piggybacking onto refnum [%d]", 
-					old->refnum);
 		if (x_debug & DEBUG_OUTBOUND)
 			yell("Piggybacking this WHO onto last one.");
 	}
 	else if (new_w->undernet_extended)
 	{
-		WHO_DEBUG("UNET QUERY: [%d] WHO %s %s%s%s", 
-			refnum, new_w->who_target,
-			(new_w->who_mask & WHO_OPS) ?  "o" : "",
-			(new_w->who_mask & WHO_INVISIBLE) ? "x" : "",
-			new_w->undernet_extended_args ? 
-				new_w->undernet_extended_args : "");
-
 		send_to_aserver(refnum, "WHO %s %s%s%s", 
 			new_w->who_target,
 			(new_w->who_mask & WHO_OPS) ?  "o" : "",
@@ -683,21 +518,12 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 	}
 	else if (new_w->dalnet_extended)
 	{
-		WHO_DEBUG("DALNET QUERY: [%d] WHO %s %s", 
-			refnum, new_w->dalnet_extended_args,
-			new_w->who_target);
-
 		send_to_aserver(refnum, "WHO %s %s", 
 			new_w->dalnet_extended_args,
 			new_w->who_target);
 	}
 	else if (new_w->who_mask & WHO_OPERSPY)
 	{
-		WHO_DEBUG("OPERSPY QUERY: [%d] OPERSPY WHO %s %s%s", 
-			refnum, new_w->who_target,
-			(new_w->who_mask & WHO_OPS) ?  "o" : "",
-			(new_w->who_mask & WHO_INVISIBLE) ? "x" : "");
-
 		send_to_aserver(refnum, "OPERSPY WHO %s %s%s", 
 			new_w->who_target,
 			(new_w->who_mask & WHO_OPS) ?  "o" : "",
@@ -705,11 +531,6 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 	}
 	else
 	{
-		WHO_DEBUG("STD WHO: [%d] WHO %s %s%s", 
-			refnum, new_w->who_target,
-			(new_w->who_mask & WHO_OPS) ?  "o" : "",
-			(new_w->who_mask & WHO_INVISIBLE) ? "x" : "");
-
 		send_to_aserver(refnum, "WHO %s %s%s", 
 			new_w->who_target,
 			(new_w->who_mask & WHO_OPS) ?  "o" : "",
@@ -735,7 +556,6 @@ static	int	last_width = -1;
 
 	if (!new_w)
 	{
-		WHO_DEBUG("WHOREPLY: server [%d] queue empty.", refnum);
                 new_w = get_new_who_entry();
                 new_w->line = NULL;
                 new_w->end = NULL;
@@ -745,8 +565,6 @@ static	int	last_width = -1;
 
 	if (new_w->undernet_extended)
 	{
-		WHO_DEBUG("WHOREPLY: Server [%d], who refnum [%d], "
-			"Unet request, Std reply.", refnum, new_w->refnum);
 		yell("### You asked for an extended undernet request but "
 			"didn't get one back. ###");
 	}
@@ -761,14 +579,7 @@ do
 	 * piggyback it now!
 	 */
 	if (new_w->dirty == 0)
-	{
-		WHO_DEBUG("WHOREPLY: Server [%d], who_refnum [%d]: "
-				"Reply is now dirty", refnum, new_w->refnum);
 		new_w->dirty = 1;
-	}
-	else
-		WHO_DEBUG("WHOREPLY: Server [%d], who_refnum [%d]: Processing",
-				refnum, new_w->refnum);
 
 	/*
 	 * We dont always want to use this function.
@@ -777,7 +588,6 @@ do
 	 */
 	if (new_w->line)
 	{
-		WHO_DEBUG("WHOREPLY: Dispatching to callback", new_w->refnum);
 		new_w->line(refnum, from, comm, ArgList);
 		continue;
 	}
@@ -884,7 +694,6 @@ do
 }
 while (new_w->piggyback && (new_w = new_w->next));
 
-	WHO_DEBUG("WHOREPLY: Done processing who reply server [%d]", refnum);
 	pop_message_from(l);
 }
 
@@ -933,10 +742,7 @@ void	who_end (int refnum, const char *from, const char *comm, const char **ArgLi
 		{ rfc1459_odd(from, comm, ArgList); return; }
 
 	if (!new_w || !new_w->who_target)
-	{
-		WHO_DEBUG("WHOEND: Server [%d], queue is empty.", refnum);
 		return;
-	}
 
 	target = malloc_strdup(ArgList[0]);
 
@@ -960,23 +766,13 @@ void	who_end (int refnum, const char *from, const char *comm, const char **ArgLi
 
 		if (strchr(new_w->who_target, ',') && !strchr(target, ','))
 		{
-		    WHO_DEBUG("WHOEND: Removing one response [%s] from comma-set [%s]", target, new_w->who_target);
 		    if (!remove_from_comma_list(new_w->who_target, target))
-		    {
-			WHO_DEBUG("WHOEND: Server [%d], end of who for refnum [%d]/[%s], (target was not included in comma-set: [%s])!", refnum, new_w->refnum, new_w->who_target, target);
 			*new_w->who_target = 0;
-		    }
 		}
 		else if (strcmp(target, new_w->who_target))
-		{
-			WHO_DEBUG("WHOEND: Server [%d], end of who for refnum [%d]/[%s], (target was wrong: [%s])!", refnum, new_w->refnum, new_w->who_target, target);
 			*new_w->who_target = 0;
-		}
 		else
-		{
-			WHO_DEBUG("WHOEND: Server [%d], end of who for refnum [%d]/[%s]", refnum, new_w->refnum, new_w->who_target);
 			*new_w->who_target = 0;
-		}
 	}
 	while (new_w->piggyback && (new_w = new_w->next));
 	pop_message_from(l);
@@ -984,15 +780,9 @@ void	who_end (int refnum, const char *from, const char *comm, const char **ArgLi
 	if (new_w)
 	{
 	   if (!*new_w->who_target)
-	   {
-		WHO_DEBUG("Popping off for server [%d]", refnum);
 		who_queue_pop(refnum);
-	   }
 	   else
-	   {
-		WHO_DEBUG("NOT POPPING OFF FOR SERVER [%d] BECAUSE THE TOP OF THE WHO QUEUE HAS [%s] LEFT IN THE TARGET LIST", refnum, new_w->who_target);
 		yell("WHOEND: Caution -- not popping off who queue -- [%s] is left on target list", new_w->who_target);
-	   }
 	}
 	/* XXX - There should probably be an else here, to cover when new_w had a piggyback, but there was nothing to piggyback on */
 
@@ -1996,74 +1786,5 @@ void	clean_server_queues (int i)
 	while (userhost_wait_top(i))
 		userhost_wait_pop(i);
 }
-
-
-/* XXXX */
-
-#if 0
-static int	who_queue_debug (void *unused)
-{
-	Server *s;
-	int	refnum;
-	WhoEntry *item;
-	double d;
-static	int	last_refnum_checked = 0;
-
-	for (refnum = 0; refnum < number_of_servers; refnum++)
-	{
-	    if (!(s = get_server(refnum)))
-		continue;
-
-	    for (item = s->who_queue; item; item = item->next)
-	    {
-		if (item->refnum >= last_refnum_checked + 100)
-		{
-			WHO_DEBUG("WATCHER: Who refnum is up to [%d]", 
-					item->refnum);
-			last_refnum_checked = item->refnum;
-		}
-
-		if (item->dirty == 0)
-		{
-		    d = time_diff(item->request_time, now);
-		    if (d >= 15)
-		    {
-			yell("Warning: who item [%d] (server %d) is not dirty and > 15 seconds old", item->refnum, refnum);
-			WHO_DEBUG("WATCHER: Who item [%d] is not dirty, > 15 seconds old", item->refnum);
-			WHO_DEBUG("WATCHER: [%s]", who_item_full_desc(item));
-			yell("Flushing who queue for server [%d] -- check logs", refnum);
-			who_queue_flush(refnum);
-		    }
-		}
-		else
-		{
-		    d = time_diff(item->request_time, now);
-		    if (d >= 30)
-		    {
-			yell("Warning: who item [%d] (server %d) is dirty and > 30 seconds old", item->refnum, refnum);
-			WHO_DEBUG("WATCHER: Who item [%d] is dirty, > 30 seconds old", item->refnum);
-			WHO_DEBUG("WATCHER: [%s]", who_item_full_desc(item));
-			yell("Flushing who queue for server [%d] -- check logs", refnum);
-			who_queue_flush(refnum);
-		    }
-		    else
-		    {
-		        d = time_diff(item->dirty_time, now);
-		        if (d >= 15)
-		        {
-			   yell("Warning: who item [%d] (server %d) is dirty for > 15 seconds", item->refnum, refnum);
-			   WHO_DEBUG("WATCHER: Who item [%d] is dirty > 15 seconds", item->refnum);
-			   WHO_DEBUG("WATCHER: [%s]", who_item_full_desc(item));
-			}
-			yell("Flushing who queue for server [%d] -- check logs", refnum);
-			who_queue_flush(refnum);
-		    }
-		}
-	    }
-	}
-
-	return 0;
-}
-#endif
 
 

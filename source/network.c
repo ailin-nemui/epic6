@@ -35,8 +35,8 @@
 #include "vars.h"
 #include "newio.h"
 #include "output.h"
+#include "cJSON.h"
 
-static socklen_t socklen (const SSu *sockaddr);
 static socklen_t sasocklen (const struct sockaddr *sockaddr);
 static int	safamily (const struct sockaddr *sa);
 static	int	Socket (int domain, int type, int protocol);
@@ -50,6 +50,8 @@ static	int	paddr_to_ssu (const char *host, SSu *storage_, int flags);
 static	void	ares_addrinfo_callback_ (void *arg, int status, int timeouts, struct ares_addrinfo *result);
 static	void	ares_nameinfo_callback_ (void *arg, int status, int timeouts, char *host, char *port);
 static	void	marshall_getaddrinfo (int fd, AI *results);
+	void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares_addrinfo *result);
+	int	json_to_sockaddr_array (const char *json_string, SSu **addr_array) ;
 
 /****************************************************************************/
 int	set_non_blocking (int fd)
@@ -92,7 +94,7 @@ int	set_blocking (int fd)
 	return 0;
 }
 
-static socklen_t	socklen (const SSu *sockaddr)
+socklen_t	socklen (const SSu *sockaddr)
 {
 	if (family(sockaddr) == AF_INET)
 		return sizeof(sockaddr->si);
@@ -390,13 +392,20 @@ static	void	do_ares_callback (int vfd)
 	char	datastr[128];
 	int	revents, readable = 0, writable = 0;;
 
-	dgets(vfd, datastr, sizeof(datastr), 1);
+	if ((dgets(vfd, datastr, sizeof(datastr), 1)) <= 0)
+	{
+		yell("I closed ares_callback fd %d.", vfd);
+		new_close(vfd);
+		return;
+	}
+
 	revents = atol(datastr);
 
 	if (revents & POLLIN)
 		readable = vfd;
 	if (revents & POLLOUT)
 		writable = vfd;
+	yell("ares_process_fd: %d, readable=%d, writable=%d", ares_channel_, readable, writable);
 	ares_process_fd(ares_channel_, readable, writable);
 }
 
@@ -577,6 +586,8 @@ static	char * sa_to_paddr_quick (struct sockaddr *name_)
  *		IN THIS PLACE ARE THINGS THAT BLOCK FOR YOU.
  *****************************************************************************/
 struct	hostname_to_ssu_data {
+	int			fd;
+
 	int			status;
 	int			timeouts;
 	struct ares_addrinfo *	result;
@@ -599,7 +610,7 @@ static void	ares_addrinfo_callback_ (void *arg, int status, int timeouts, struct
 
 /*
  */
-int	hostname_to_ssu (int family, const char *host, const char *port, SSu *ssu, int flags)
+int	hostname_to_ssu (int fd, int family, const char *host, const char *port, SSu *ssu, int flags)
 {
 	struct hostname_to_ssu_data	data;
 	struct ares_addrinfo_hints 	hints;
@@ -612,29 +623,52 @@ int	hostname_to_ssu (int family, const char *host, const char *port, SSu *ssu, i
 	hints.ai_protocol = 0;
 	hints.ai_flags = flags | ARES_AI_NUMERICSERV | ARES_AI_NOSORT | ARES_AI_ENVHOSTS;
 
+	if (fd >= 0)
+		data.fd = fd;
 	ares_getaddrinfo(ares_channel_, host, port, &hints, ares_addrinfo_callback_, &data);
-	while (!data.done)
-		io("hostname_to_ssu");
+	if (fd < 0)
+	{
+		while (!data.done)
+			io("hostname_to_ssu");
 
-	if (data.status != ARES_SUCCESS) {
-		yell("ares_getaddrinfo(%s,%s) failed: %d", host, port, data.status);
-		return -1;
+		if (data.status != ARES_SUCCESS) {
+			yell("ares_getaddrinfo(%s,%s) failed: %d", host, port, data.status);
+			return -1;
+		}
+
+		memcpy(ssu, data.result->nodes->ai_addr, data.result->nodes->ai_addrlen);
+		ares_freeaddrinfo(data.result);
+		return 0;
 	}
-
-	memcpy(ssu, data.result->nodes->ai_addr, data.result->nodes->ai_addrlen);
-	ares_freeaddrinfo(data.result);
 	return 0;
 }
 
+
+/* * * * * * * * * * */
+int	hostname_to_json (int fd, int family, const char *host, const char *port, int flags)
+{
+	struct ares_addrinfo_hints 	hints;
+	int	*fd_ = new_malloc(sizeof(int));
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = family;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = 0;
+	hints.ai_flags = flags | ARES_AI_NUMERICSERV | ARES_AI_NOSORT | ARES_AI_ENVHOSTS;
+
+	*fd_ = fd;
+	ares_getaddrinfo(ares_channel_, host, port, &hints, my_addrinfo_json_callback, fd_);
+	return 0;
+}
 struct	ssu_to_hostname_data {
-	SSu *			ssu;
-	int			status;
-	int			timeouts;
-	char *			host;
-	size_t			hostsize;
-	char *			port;
-	size_t			portsize;
-	int			done;
+	SSu *	ssu;
+	int	status;
+	int	timeouts;
+	char *	host;
+	size_t	hostsize;
+	char *	port;
+	size_t	portsize;
+	int	done;
 };
 
 /* * * * * * */
@@ -709,7 +743,7 @@ int	hostname_to_paddr (const char *host, char *retval, int size)
 	SSu	buffer;
 
 	buffer.sa.sa_family = AF_INET;
-	if (hostname_to_ssu(AF_INET, host, NULL, &buffer, AI_ADDRCONFIG))
+	if (hostname_to_ssu(-1, AF_INET, host, NULL, &buffer, AI_ADDRCONFIG))
 	{
 		syserr(-1, "hostname_to_paddr: hostname_to_ssu(%s) failed", host);
 		return -1;
@@ -795,6 +829,380 @@ int	one_to_another (int family, const char *what, char *retval, int size)
 
 
 /**********************************************************************************************/
+/*
+ * ObDisclaimer -- I "vibe coded" this with Gemini 2.5 Flash (Preview).
+ *
+ * To every extent permitted by law, I disclaim all copyright 
+ * to code which I did not write.  If anybody does has any rights 
+ * to this, it isn't me.
+ */
+
+// Helper function to convert sockaddr to string
+// Returns the buffer 's' on success, NULL on failure
+char *	sockaddr_to_string (const struct sockaddr *sa, char *s, size_t maxlen) 
+{
+    if (!sa || !s || maxlen == 0) return NULL;
+
+    switch (sa->sa_family) {
+        case AF_INET: {
+            struct sockaddr_in *ipv4 = (struct sockaddr_in *)sa;
+            if (inet_ntop(AF_INET, &(ipv4->sin_addr), s, maxlen) == NULL) {
+                yell("inet_ntop (IPv4)");
+                return NULL;
+            }
+            return s;
+        }
+        case AF_INET6: {
+            struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)sa;
+            if (inet_ntop(AF_INET6, &(ipv6->sin6_addr), s, maxlen) == NULL) {
+                yell("inet_ntop (IPv6)");
+                return NULL;
+            }
+            return s;
+        }
+        default:
+            snprintf(s, maxlen, "Unknown family %d", sa->sa_family);
+            return s; // Return the buffer with error message
+    }
+}
+
+cJSON *	convert_ares_addrinfo_to_json (const struct ares_addrinfo *result) 
+{
+    if (!result) {
+        return NULL; // Nothing to convert
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    if (!root) {
+        return NULL; // Failed to create root object
+    }
+
+    // Add the "name" field
+    if (result->name) {
+        if (!cJSON_AddItemToObject(root, "name", cJSON_CreateString(result->name))) {
+            // Failed to add name, clean up and return
+            cJSON_DeleteItem(&root);
+            return NULL;
+        }
+    } else {
+         // Add a null or empty string for name if not present
+        if (!cJSON_AddItemToObject(root, "name", cJSON_CreateString(""))) {
+             cJSON_DeleteItem(&root);
+             return NULL;
+        }
+    }
+
+
+    // Add the "cnames" array
+    cJSON *cnames_array = cJSON_CreateArray();
+    if (!cnames_array) {
+        cJSON_DeleteItem(&root); // Clean up previously created root
+        return NULL; // Failed to create cnames array
+    }
+    if (!cJSON_AddItemToObject(root, "cnames", cnames_array)) {
+        cJSON_DeleteItem(&root); // Clean up previously created root + array
+        return NULL; // Failed to add cnames array to root
+    }
+
+    struct ares_addrinfo_cname *current_cname = result->cnames;
+    while (current_cname) {
+        if (current_cname->name) {
+            cJSON *cname_string = cJSON_CreateString(current_cname->name);
+            if (!cname_string) {
+                 // Handle error: failed to create string, clean up everything
+                 cJSON_DeleteItem(&root);
+                 return NULL;
+            }
+            if (!cJSON_AddItemToArray(cnames_array, cname_string)) {
+                 // Handle error: failed to add string to array, clean up everything
+                 cJSON_DeleteItem(&root);
+                 return NULL;
+            }
+        }
+        current_cname = current_cname->next;
+    }
+
+    // Add the "nodes" array
+    cJSON *nodes_array = cJSON_CreateArray();
+    if (!nodes_array) {
+        cJSON_DeleteItem(&root); // Clean up previously created root + cnames array
+        return NULL; // Failed to create nodes array
+    }
+     if (!cJSON_AddItemToObject(root, "nodes", nodes_array)) {
+        cJSON_DeleteItem(&root); // Clean up previously created root + cnames array + nodes array
+        return NULL; // Failed to add nodes array to root
+    }
+
+
+    struct ares_addrinfo_node *current_node = result->nodes;
+    while (current_node) {
+        cJSON *node_obj = cJSON_CreateObject();
+        if (!node_obj) {
+            // Handle error: failed to create node object, clean up everything
+            cJSON_DeleteItem(&root);
+            return NULL;
+        }
+         if (!cJSON_AddItemToArray(nodes_array, node_obj)) {
+             // Handle error: failed to add node object to array, clean up everything
+             cJSON_DeleteItem(&root);
+             return NULL;
+         }
+
+
+        // Add fields to the node object
+        // Family
+        const char *family_str = "Unknown";
+        if (current_node->ai_family == AF_INET) family_str = "IPv4";
+        else if (current_node->ai_family == AF_INET6) family_str = "IPv6";
+        if (!cJSON_AddItemToObject(node_obj, "family", cJSON_CreateString(family_str))) {
+             cJSON_DeleteItem(&root); return NULL; // Cleanup on error
+        }
+
+        // Socktype and Protocol (as numbers)
+         if (!cJSON_AddItemToObject(node_obj, "socktype", cJSON_CreateNumber(current_node->ai_socktype))) {
+             cJSON_DeleteItem(&root); return NULL; // Cleanup on error
+         }
+         if (!cJSON_AddItemToObject(node_obj, "protocol", cJSON_CreateNumber(current_node->ai_protocol))) {
+             cJSON_DeleteItem(&root); return NULL; // Cleanup on error
+         }
+
+
+        // Address
+        char addr_str[INET6_ADDRSTRLEN]; // Max size for IPv6
+        if (sockaddr_to_string(current_node->ai_addr, addr_str, sizeof(addr_str))) {
+            if (!cJSON_AddItemToObject(node_obj, "address", cJSON_CreateString(addr_str))) {
+                cJSON_DeleteItem(&root); return NULL; // Cleanup on error
+            }
+        } else {
+             // Handle case where address conversion failed (e.g., add null or error string)
+            if (!cJSON_AddItemToObject(node_obj, "address", cJSON_CreateString("Conversion Error"))) {
+                cJSON_DeleteItem(&root); return NULL; // Cleanup on error
+            }
+        }
+
+        if (current_node->ai_addr) {
+            int port = 0; // Default to 0 if extraction fails or address family is unknown
+
+            if (current_node->ai_family == AF_INET) {
+                struct sockaddr_in *ipv4 = (struct sockaddr_in *)current_node->ai_addr;
+                port = ntohs(ipv4->sin_port); // Convert from network byte order
+            } else if (current_node->ai_family == AF_INET6) {
+                struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)current_node->ai_addr;
+                port = ntohs(ipv6->sin6_port); // Convert from network byte order
+            }
+
+            // Add the port to the JSON node object
+            if (!cJSON_AddItemToObject(node_obj, "port", cJSON_CreateNumber(port))) {
+                 // Handle error: failed to add port, clean up everything
+                 cJSON_DeleteItem(&root); 
+		return NULL; // Cleanup on error
+            }
+        }
+
+        // TTL (if available in your ares_addrinfo_node struct)
+        // Note: TTL might not be a standard field in all ares versions or results.
+        // Check the ares documentation/header for your specific version.
+        // Example if it were available:
+        // if (!cJSON_AddItemToObject(node_obj, "ttl", cJSON_CreateNumber(current_node->ai_ttl))) {
+        //    cJSON_DeleteItem(&root); return NULL; // Cleanup on error
+        // }
+
+        current_node = current_node->ai_next;
+    }
+
+    return root; // Success! Return the created JSON object
+}
+
+void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares_addrinfo *result) 
+{
+    char *json_string;
+    int   fd;
+
+    fd = *(int *)arg;
+    new_free(&arg);
+
+    // Your context data can be retrieved from arg if needed
+    // MyContext *ctx = (MyContext *)arg;
+
+    if (status == ARES_SUCCESS) {
+        say("DNS lookup successful.");
+
+        // Convert the result to JSON
+        cJSON *json_output = convert_ares_addrinfo_to_json(result);
+
+        if (json_output) {
+            // Print the JSON (or do something else with it)
+            json_string = cJSON_Generate(json_output, true_);
+            if (json_string) {
+                say("JSON Result: %s", json_string);
+            } else {
+                yell("Failed to print JSON.\n");
+            }
+
+            // IMPORTANT: Free the cJSON object when you are done
+            cJSON_DeleteItem(&json_output);
+        } else {
+            yell("Failed to convert ares_addrinfo to JSON.\n");
+        }
+
+    } else {
+        yell("DNS lookup failed with status: %d (%s)\n", status, ares_strerror(status));
+        // Handle the error appropriately
+    }
+
+    // IMPORTANT: Free the ares_addrinfo result when you are done
+    // This must be done whether the status is success or failure,
+    // but ONLY if 'result' is not NULL.
+    if (result) {
+        ares_freeaddrinfo(result);
+    }
+
+    yell("Writing JSON results to fd %d", fd);
+    write(fd, json_string, strlen(json_string));
+    new_free(&json_string);
+
+    // If this callback signals the end of a specific request/task,
+    // you might need to clean up the context data 'arg' as well,
+    // depending on how you managed it.
+    // e.g., free(arg);
+    new_close(fd);
+
+}
+
+// Function to convert JSON (from convert_ares_addrinfo_to_json)
+// into a dynamically allocated array of sockaddr_storage.
+//
+// json_string: The input JSON string.
+// addr_array:  An output parameter. On success, this will point to
+//              a dynamically allocated array of sockaddr_storage.
+//              The caller is responsible for freeing this memory using free().
+// port:	Port (in host order)
+//
+// Returns:     The number of sockaddr_storage structures successfully added
+//              to the array, or -1 on parsing or allocation error.
+int	json_to_sockaddr_array (const char *json_string, SSu **addr_array) 
+{
+    if (!json_string || !addr_array) {
+        fprintf(stderr, "json_to_sockaddr_array: Invalid input parameters.\n");
+        return -1;
+    }
+
+    *addr_array = NULL; // Initialize the output parameter
+    yell("json_to_sockaddr_array: I got: %s", json_string);
+
+    size_t consumed = 0;
+    cJSON *root = cJSON_Parse(json_string, strlen(json_string), &consumed);
+    if (!root) {
+        const char *error_ptr = json_string + consumed;
+        yell("json_to_sockaddr_array: Error before: %s", error_ptr);
+        return -1; // Failed to parse JSON
+    }
+
+    // Get the "nodes" array
+    cJSON *nodes_array = cJSON_GetObjectItemCaseSensitive(root, "nodes");
+    if (!cJSON_IsArray(nodes_array)) {
+        yell("json_to_sockaddr_array: 'nodes' is not an array or does not exist.");
+        cJSON_DeleteItem(&root);
+        return 0; // No nodes to process, treat as empty but not an error
+    }
+
+    int num_potential_nodes = cJSON_GetArraySize(nodes_array);
+    if (num_potential_nodes <= 0) {
+        cJSON_DeleteItem(&root);
+        return 0; // Empty array or size 0
+    }
+
+    // Allocate memory for the sockaddr_storage array
+    // We allocate for the maximum potential nodes, and will track actual valid ones.
+    *addr_array = new_malloc(num_potential_nodes * sizeof(struct sockaddr_storage));
+    if (!*addr_array) {
+        yell("json_to_sockaddr_array: Failed to allocate memory for sockaddr_storage array");
+        cJSON_DeleteItem(&root);
+        return -1; // Allocation failed
+    }
+    memset(*addr_array, 0, num_potential_nodes * sizeof(struct sockaddr_storage));
+
+    int valid_address_count = 0;
+
+    // Iterate through the nodes array
+    for (int i = 0; i < num_potential_nodes; i++) {
+        cJSON *node_obj = cJSON_GetArrayItem(nodes_array, i);
+        if (!cJSON_IsObject(node_obj)) {
+            yell("json_to_sockaddr_array: Item %d in 'nodes' is not an object, skipping.", i);
+            continue; // Skip non-object items
+        }
+
+        cJSON *address_item = cJSON_GetObjectItemCaseSensitive(node_obj, "address");
+        if (!cJSON_IsString(address_item) || cJSON_GetStringValue(address_item) == NULL || strlen(cJSON_GetStringValue(address_item)) == 0) {
+            yell("json_to_sockaddr_array: Node %d missing or invalid 'address' string, skipping.", i);
+            continue; // Skip nodes without a valid address string
+        }
+        const char *address_str = cJSON_GetStringValue(address_item);
+
+        cJSON *port_item = cJSON_GetObjectItemCaseSensitive(node_obj, "port");
+        if (!cJSON_IsNumber(port_item) || cJSON_GetNumberValue(port_item) < 0 || cJSON_GetNumberValue(port_item) > 65535) {
+            yell("json_to_sockaddr_array: Node %d missing or invalid 'port' string, skipping.", i);
+            continue; // Skip nodes without a valid port
+        }
+        unsigned short	port = (unsigned short)cJSON_GetNumberValue(port_item);
+
+        SSu *current_storage = &((*addr_array)[valid_address_count]);
+        memset(current_storage, 0, sizeof(struct sockaddr_storage)); // Clear the structure
+
+        // Attempt to convert the address string using inet_pton
+        // Try IPv4 first
+        if (inet_pton(AF_INET, address_str, &((current_storage->si).sin_addr)) == 1) {
+            current_storage->ss.ss_family = AF_INET;
+            valid_address_count++;
+            // Note: We are not setting port here. Typically, you would set the port
+            // needed for your connection (e.g., using htons) after this function
+            // returns, based on the service you are connecting to.
+            ((struct sockaddr_in*)current_storage)->sin_port = htons(port);
+        }
+        // Else, try IPv6
+        else if (inet_pton(AF_INET6, address_str, &((current_storage->si6).sin6_addr)) == 1) {
+            current_storage->ss.ss_family = AF_INET6;
+            valid_address_count++;
+            // Note: Set IPv6 port similarly
+            ((struct sockaddr_in6*)current_storage)->sin6_port = htons(port);
+            // You might also need to set flowinfo and scope_id for IPv6
+        } else {
+            yell("json_to_sockaddr_array: Could not parse address '%s' as IPv4 or IPv6, skipping.\n", address_str);
+            // Address conversion failed, this slot in the array remains unused
+        }
+    }
+
+    // If the number of valid addresses is less than allocated,
+    // we could realloc to save memory, but for simplicity,
+    // we return the actual count and the caller uses only the first 'count' elements.
+    // If count is 0, free the allocated memory as it's not needed.
+    if (valid_address_count == 0 && *addr_array) {
+        new_free(addr_array);
+        *addr_array = NULL;
+    }
+    // Optional: Reallocate to the exact size if valid_address_count < num_potential_nodes
+    /*
+    else if (valid_address_count > 0 && valid_address_count < num_potential_nodes) {
+         struct sockaddr_storage *realloced_array = new_realloc(*addr_array, valid_address_count * sizeof(struct sockaddr_storage));
+         if (realloced_array) {
+             *addr_array = realloced_array;
+         } else {
+             // Realloc failed, the original array is still valid.
+             // Log a warning if desired. We return the count of valid addresses.
+             fprintf(stderr, "json_to_sockaddr_array: Failed to reallocate array to exact size.\n");
+         }
+    }
+    */
+
+
+    // Free the cJSON object
+    cJSON_DeleteItem(&root);
+
+    return valid_address_count;
+}
+/************* end vibe code **********************/
+
+/**********************************************************************/
 pid_t	async_getaddrinfo (const char *nodename, const char *servname, const AI *hints, int fd)
 {
 	AI *results = NULL;
@@ -1008,6 +1416,12 @@ BUILT_IN_COMMAND(vhostscmd)
 {
 	int	i;
 	char	familystr[128];
+
+	if (args && *args)
+	{
+		hostname_to_json(1, AF_UNSPEC, args, "0", 0);
+		return;
+	}
 
 	for (i = 0; i < next_vhost; i++)
 	{

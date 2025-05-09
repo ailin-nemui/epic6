@@ -287,9 +287,6 @@ static	void 	show_window 			(int window_);
 static	int	get_window_by_desc 		(const char *stuff);
 static	int	get_next_window  		(int window_);
 static	int	get_previous_window 		(int window_);
-#if 0
-static	void	set_window_screen 		(int refnum, int screennum);
-#endif
 static	void	recheck_queries 		(int window_);
 static	int	check_window_target 		(int window_, int server, const char *nick);
 static	int	add_window_target 		(int window_, int server, const char *target, int as_current);
@@ -545,9 +542,6 @@ int	new_window (int screen_)
 		set_screens_current_window(screen_, new_w->refnum);
 	else
 	{
-#if 0
-		new_w->screen = NULL;
-#endif
 		new_w->screen_ = -1;
 		add_to_invisible_list(new_w->refnum);
 	}
@@ -649,11 +643,7 @@ static int	unlink_window (int window_)
 			set_screen_window_list(get_window_screennum(window_), -1);
 			set_screen_visible_windows(get_window_screennum(window_), 0);
 			set_screen_input_window(get_window_screennum(window_), -1);
-#if 0
-			set_window_screen(window_, NULL);
-#else
 			set_window_screennum(window_, -1);
-#endif
 			if (current_window_ == window_)
 				current_window_ = -1;
 		}
@@ -1084,11 +1074,7 @@ void 	add_to_invisible_list (int window_)
 		set_window_my_columns(window_, get_screen_columns(get_window_screennum(window_)));
 	else
 		set_window_my_columns(window_, current_term->TI_cols);	/* Whatever */
-#if 0
-	set_window_screen(window_, NULL);
-#else
 	set_window_screennum(window_, -1);
-#endif
 }
 
 
@@ -1744,23 +1730,12 @@ static void 	move_window_to (int window_, int offset)
 		set_window_prev(window_, w_);
 		set_window_next(window_, get_window_next(w_));
 
-#if 0
-		/* One last sanity check */
-		if (get_window_prev(window_) == -1 || get_window_next(window_) == -1)
-			panic(1, "window_move_to(%d): Window %d's prev and "
-				"next are both null, but that's impossible", 
-				offset, get_window_user_refnum(window_));
-#endif
-
 		set_window_prev(get_window_next(window_), window_);
 		set_window_next(get_window_prev(window_), window_);
 
 		set_window_list_check(window_, 1);
 	}
 
-#if 0
-	yell("screen_window_place(%d, %d, %d)", s_, offset, window_);
-#endif
 	screen_window_place(s_, offset, window_);
 	set_screens_current_window(s_, window_);
 	make_window_current_by_refnum(window_);
@@ -3562,11 +3537,6 @@ void 	window_check_servers (void)
 
 		/* This bootstraps the reconnect process */
 		bootstrap_server_connection(i);
-
-#if 0
-		/* XXX - I should create a shim with a better name */
-		grab_server_address(i);
-#endif
 	    }
 	    else if (status == SERVER_ACTIVE)
 	    {
@@ -7492,9 +7462,6 @@ WINDOWCMD(remove)
 WINDOWCMD(scratch)
 {
 	short scratch = 0;
-#if 0
-	Window *	window = get_window_by_refnum_direct(refnum);
-#endif
 
 	if (!args)
 		return refnum;
@@ -7523,9 +7490,6 @@ WINDOWCMD(screen_debug)
 WINDOWCMD(scroll)
 {
 	short 	scroll = 0;
-#if 0
-	Window *	window = get_window_by_refnum_direct(refnum);
-#endif
 
 	if (!args)
 		return refnum;

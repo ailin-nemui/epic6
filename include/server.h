@@ -57,8 +57,13 @@ typedef	struct
 	Bucket *	altnames;		/* Alternate handles for the server */
 
 	/* state = DNS */
+#if 0
 	AI *		addrs;			/* Returned by getaddrinfo */
 const	AI *		next_addr;		/* The next one to try upon failure */
+#else
+	SSu *		addrs;
+	int		addrs_total;
+#endif
 	int		addr_counter;		/* How far we're into "addrs" */
 	ssize_t		addr_len;
 	ssize_t		addr_offset;

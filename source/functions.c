@@ -8329,10 +8329,6 @@ BUILT_IN_FUNCTION(function_rgb, input)
 		snprintf(retval_str, 25, "%s,%s", fg_color_str, bg_color_str);
 
 	RETURN_FSTR(retval_str);
-
-#if 0
-	color = rgb_to_256(r_fg, g_fg, b_fg);
-#endif
 }
 
 

@@ -58,6 +58,7 @@ typedef	struct	myio_struct
 	short	segments,
 		error,
 		clean,
+		eof,
 		held;
 	void	(*callback) (int vfd);
 	int	(*io_callback) (int vfd, int quiet, int revents);
@@ -245,8 +246,7 @@ ssize_t	dgets (int vfd, char *buf, size_t buflen, int buffer)
 
 	if (ioe->error)
 	{
-	    if (!ioe->quiet)
-	       syserr(SRV(vfd), "dgets: fd [%d] must be closed", vfd);
+	    syserr(SRV(vfd), "dgets: fd [%d] must be closed", vfd);
 	    return -1;
 	}
 
@@ -516,6 +516,9 @@ int 	new_open (int channel, void (*callback) (int), int io_type, int poll_events
 	if (channel < 0)
 		return channel;		/* Invalid */
 
+	yell("new_open: vfd = %d, callback = %#p, io_type = %d, poll_events = %d, quiet = %d, server = %d",
+		channel, callback, io_type, poll_events, quiet, server);
+
 	vfd = get_new_vfd(channel);
 
 	/*
@@ -538,6 +541,7 @@ int 	new_open (int channel, void (*callback) (int), int io_type, int poll_events
 	ioe->segments = 0;
 	ioe->error = 0;
 	ioe->clean = 1;
+	ioe->eof = 0;
 	ioe->held = 0;
 	ioe->quiet = quiet;
 	ioe->server = server;
@@ -678,6 +682,8 @@ int	new_close_with_option (int vfd, int virtual)
 
 	if (vfd >= 0 && vfd <= global_max_vfd && (ioe = io_rec[vfd]))
 	{
+		yell("new_close: vfd = %d", vfd);
+
 		if (ioe->io_callback == ssl_read)	/* XXX */
 			ssl_shutdown(ioe->channel);
 
@@ -901,7 +907,7 @@ static int	passthrough_event (int channel, int quiet, int revents)
 static void	new_io_event (int vfd, int revents)
 {
 	MyIO *ioe;
-	int	c;
+	int	c = 0;
 
 	if (!(ioe = io_rec[vfd]))
 		panic(1, "new_io_event: vfd [%d] isn't set up!", vfd);
@@ -912,20 +918,39 @@ static void	new_io_event (int vfd, int revents)
 
 	if (ioe->io_callback)
 	{
+#if 0
+		/* These flags tell us that further IO is pointless */
+		if (revents & POLLHUP)
+		{
+			ioe->eof = 1;
+			ioe->clean = 0;
+			syserr(SRV(vfd), "new_io_event: fd %d POLLHUP", vfd);
+			knoread(vfd);
+			knowrite(vfd);
+		}
+#endif
+		if (revents & POLLNVAL)
+		{
+			ioe->eof = 1;
+			syserr(SRV(vfd), "new_io_event: fd %d POLLNVAL", vfd);
+			knoread(vfd);
+			knowrite(vfd);
+			return;
+		}
+
 		/* 
 		 * We may expect ioe->io_callback() to either call dgets_buffer
 		 * (which sets ioe->clean = 0) or to return an error (in which
 		 * case we do it ourselves right here)
 		 */
-		if ((c = ioe->io_callback(vfd, ioe->quiet, revents)) <= 0)
+		else if ((c = ioe->io_callback(vfd, ioe->quiet, revents)) <= 0)
 		{
 			ioe->error = -1;
 			ioe->clean = 0;
-			if (!ioe->quiet)
-			   syserr(SRV(vfd), "new_io_event: fd %d must be closed", vfd);
+			syserr(SRV(vfd), "new_io_event: fd %d must be closed", vfd);
 
 			if (x_debug & DEBUG_INBOUND) 
-				yell("VFD [%d] FAILED [%d]", vfd, c);
+				yell("VFD [%d] FAILED [%d] [%d]", vfd, revents, c);
 			return;
 		}
 

@@ -2461,10 +2461,6 @@ const 	char 	*words;
 				firstwb = pos;
 			}
 
-#if 0
-			saved_a = a;
-#endif
-
 			/* XXX Sigh -- exactly the same as above. */
 			cols = codepoint_numcolumns(codepoint);
 			if (cols == -1)
@@ -2662,9 +2658,6 @@ const 	char 	*words;
 				 */
 				if (lhs_count <= continued_count) {
 					word_break = pos;
-#if 0
-					saved_a = a;
-#endif
 				}
 
 				/*
@@ -2709,10 +2702,7 @@ const 	char 	*words;
 			buffer[pos] = 0;
 			pos_copy = LOCAL_COPY(buffer + word_break);
 			strlcpy(buffer, cont, bufsiz / 2);
-#if 0
-			/* -- I'm not sure if this is necessary */
-			/* write_internal_attribute(buffer + strlen(buffer), &olda, &saved_a); */
-#endif
+
 			/* -- and I think this should be before we copy pos_copy back */
 			write_internal_attribute(buffer + strlen(buffer), bufsiz - strlen(buffer), &olda, &a);
 			strlcat(buffer, pos_copy, bufsiz / 2);
@@ -3253,20 +3243,11 @@ static void 	add_to_window (int window_, const char *str)
 	    recursion++;
 	    if (recursion < 5 && (pend = get_string_var(OUTPUT_REWRITE_VAR)))
 	    {
-#if 0
-		char	argstuff[102400];
-
-		/* Create $* and then expand with it */
-		snprintf(argstuff, 102400, "%u %s", get_window_user_refnum(window_), str);
-#else
 		char *argstuff = NULL;
 		malloc_sprintf(&argstuff, "%u %s", get_window_user_refnum(window_), str);
-#endif
 
 		str = free_me = expand_alias(pend, argstuff);
-#if 1
 		new_free(&argstuff);
-#endif
 	    }
 	    recursion--;
 	}
@@ -3730,11 +3711,7 @@ int	create_additional_screen (void)
 
 	memset(&local_sockaddr, 0, sizeof(local_sockaddr));
 	local_sockaddr.si.sin_family = AF_INET;
-#if 0
-	local_sockaddr.si.sin_addr.s_addr = inet_addr("127.0.0.1");
-#else
-	local_sockaddr.si.sin_addr.s_addr = htonl(INADDR_ANY);
-#endif
+	local_sockaddr.si.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 	local_sockaddr.si.sin_port = 0;
 
 	if ((new_cmd = network_server(&local_sockaddr, sizeof(local_sockaddr.si))) < 0)
@@ -5133,24 +5110,6 @@ void		set_screen_fdout		(int screen_, int value)
 	s->fpout = f;
 }
 
-#if 0
-void		set_screen_fpin			(int screen_, FILE *value)
-{
-	Screen *s = get_screen_by_refnum(screen_);
-	if (!s)
-		return;
-	s->fpin = value;
-}
-
-void		set_screen_fpout		(int screen_, FILE *value)
-{
-	Screen *s = get_screen_by_refnum(screen_);
-	if (!s)
-		return;
-	s->fpout = value;
-}
-#endif
-
 void		set_screen_control		(int screen_, int value)
 {
 	Screen *s = get_screen_by_refnum(screen_);
@@ -5382,56 +5341,30 @@ int	screen_window_place (int screen_, int location, int window_)
 	int	x;
 
 	if (!s)
-	{
-#if 0
-		yell("Screen_window_place: screen %d is invalid", screen_);
-#endif
 		return -1;
-	}
 	if (location < 1 || location > MAX_WINDOWS_ON_SCREEN)
-	{
-#if 0
-		yell("Screen_window_place: location %d is invalid", location);
-#endif
 		return -1;
-	}
 
 	/* If we're moving UP the window, put it above the window that is already there */
 	if ((x = screen_window_find(screen_, window_)) >= 0)
 		if (x >= location)
 			location--;
 
-#if 0
-	yell("screen_window_place: %d, %d (-1), %d", screen_, location, window_);
-#endif
-
 	if ((x = screen_window_find(screen_, window_)) >= 0)
 	{
 		WindowAttachment wa = s->_windows[x];
 
-#if 0
-		yell("Moving existing window %d from %d to %d (-1)", window_, x, location);
-#endif
 		screen_windows_make_room_at(screen_, location);
 		if ((x = screen_window_find(screen_, window_)) >= 0)
 			s->_windows[x].window = 0;
 		s->_windows[location] = wa;
 		screen_windows_squeeze(screen_);
-#if 0
-		yell("Done");
-#endif
 	}
 	else
 	{
-#if 0
-		yell("Making room for new window %d on %d/%d (-1)", window_, screen_, location);
-#endif
 		screen_windows_make_room_at(screen_, location);
 		s->_windows[location].window = window_;
 		screen_windows_squeeze(screen_);
-#if 0
-		yell("done");
-#endif
 	}
 
 	return 0;

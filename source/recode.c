@@ -39,6 +39,7 @@
 #include "server.h"
 #include <langinfo.h>
 #include <wctype.h>
+#include <xlocale.h>
 
 /*
  * Here's the plan...

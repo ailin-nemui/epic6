@@ -46,9 +46,8 @@
 #include <poll.h>
 #ifdef HAVE_TERMIOS_WINSIZE
 #include <termios.h>
-#else
-#include <sys/ioctl.h>
 #endif
+#include <sys/ioctl.h>
 
 static 	int 	data = -1;
 static	int	cmd = -1;

@@ -55,7 +55,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3040;
+const unsigned long	commit_id = 3041;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -804,17 +804,7 @@ static	void	parse_args (int argc, char **argv)
 	}
 
 	if (!server_list_size() || append_servers)
-	{
 		read_default_server_file();
-		if (!server_list_size())
-		{
-#if 0
-			ptr = malloc_strdup(DEFAULT_SERVER);
-			add_servers(ptr, NULL);
-			new_free(&ptr);
-#endif
-		}
-	}
 
 	return;
 }
@@ -831,17 +821,6 @@ static	void	init_vhosts_stage2 (void)
 		new_free(&s);
 	}
 	new_free(&tmp_hostname);
-
-#if 0
-	/*
-	 * Make sure we have a hostname.
-	 */
-	if (gethostname(hostname, NAME_LEN) || strlen(hostname) == 0)
-	{
-		fprintf(stderr, "I don't know what your hostname is and I can't do much without it.\n");
-		exit(1);
-	}
-#endif
 }
 
 /* fire scripted signal events -pegasus */
@@ -900,9 +879,6 @@ static	int		level = 0,
 	}
 
 	level++;
-#if 0
-	get_time(&now);
-#endif
 
 	/* Don't let this accumulate behind the user's back. */
 	cntl_c_hit = 0;
@@ -942,9 +918,6 @@ static	int		level = 0,
 		/* Timeout -- Need to do timers */
 		case 0:
 		{
-#if 0
-			get_time(&now);
-#endif
 			ExecuteTimers();
 			break;
 		}
@@ -952,9 +925,6 @@ static	int		level = 0,
 		/* Interrupted system call -- check for SIGINT */
 		case -1:
 		{
-#if 0
-			get_time(&now);
-#endif
 			if (cntl_c_hit)		/* SIGINT is useful */
 			{
 				user_input_byte('\003');
@@ -968,9 +938,6 @@ static	int		level = 0,
 		/* Check it out -- something is on one of our descriptors. */
 		default:
 		{
-#if 0
-			get_time(&now);
-#endif
 			do_filedesc();
 			break;
 		} 

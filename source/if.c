@@ -526,10 +526,6 @@ BUILT_IN_COMMAND(fe)
 		return;
 	}
 
-#if 0
-	old_display = window_display;
-#endif
-
 	placeholder = templist;
 
 	will_catch_break_exceptions++;
@@ -595,9 +591,6 @@ BUILT_IN_COMMAND(fe)
 	add_var_alias(mapvar, map, 0);
 	new_free(&map);
 
-#if 0
-	window_display = old_display;
-#endif
 	new_free(&placeholder);
 }
 

@@ -862,7 +862,9 @@ static	int	serverinfo_to_newserv (ServerInfo *si)
 	s->quit_message = NULL;
 	s->umode[0] = 0;
 	s->addrs = NULL;
+#if 0
 	s->next_addr = NULL;
+#endif
 	s->autoclose = 1;
 	s->default_realname = NULL;
 	s->realname = NULL;
@@ -1533,6 +1535,35 @@ static	void	do_server (int fd)
 		 */
 		if (s->state == SERVER_DNS)
 		{
+			char	result_json[10240];
+			ssize_t	len;
+
+			*result_json = 0;
+			len = dgets(s->des, result_json, sizeof(result_json), 0);
+			if (len < 0)
+			{
+				yell("Soemthing went very wrong with the dns response on %d - %ld", s->des, len);
+				s->des = new_close(s->des);
+			}
+
+			s->addrs_total = json_to_sockaddr_array(result_json, &s->addrs);
+			if (s->addrs_total < 0)
+			{
+				yell("Soemthing went very wrong with the json - %s", result_json);
+				s->addrs_total = 0;
+			}
+			else
+			{
+				yell("I got a dns response: %s", result_json);
+				say("DNS lookup for server %d [%s] "
+					"returned (%d) addresses", 
+					i, s->info->host, s->addrs_total);
+
+				s->des = new_close(s->des);
+				s->addr_counter = 0;
+				connect_to_server_next_addr(i);	/* This function advances us to SERVER_CONNECTING */
+			}
+#if 0
 			int cnt = 0;
 			ssize_t len;
 
@@ -1641,6 +1672,7 @@ static	void	do_server (int fd)
 				    connect_to_server_next_addr(i);	/* This function advances us to SERVER_CONNECTING */
 				}
 			}
+#endif
 		}
 
 		/* - - - - */
@@ -2309,8 +2341,11 @@ static	int	grab_server_address (int server)
 		hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_ADDRCONFIG;
+#if 0
 	async_getaddrinfo(s->info->host, ltoa(s->info->port), &hints, xvfd[0]);
-	close(xvfd[0]);
+#else
+	hostname_to_json(xvfd[0], hints.ai_family, s->info->host, ltoa(s->info->port), 0);
+#endif
 	s->des = xvfd[1];
 	return 0;
 }
@@ -2328,7 +2363,9 @@ static int	connect_next_server_address_internal (int server)
 	int	fd = -1;
 	SSu	localaddr;
 	socklen_t locallen = 0;
+#if 0
 	const AI *	ai;
+#endif
 	char	p_addr[256];
 	char	p_port[24];
 
@@ -2347,38 +2384,44 @@ static int	connect_next_server_address_internal (int server)
 		return -1;
 	}
 
-	s->addr_counter++;
+#if 0
 	for (ai = s->next_addr; ai; ai = ai->ai_next, s->addr_counter++)
+#else
+	for (; s->addr_counter < s->addrs_total; s->addr_counter++)
+#endif
 	{
-	    SSu addr;
+	    SSu 	addr;
+	    int 	family_;
+	    socklen_t	socklen_;
+
+	    family_ = family(&s->addrs[s->addr_counter]);
+	    socklen_ = socklen(&s->addrs[s->addr_counter]);
 
 	    memset(&addr.ss, 0, sizeof(addr.ss));
 
 	    if (x_debug & DEBUG_SERVER_CONNECT)
-		yell("Trying to connect to server %d using address [%d] and protocol [%d]",
-					server, s->addr_counter, ai->ai_family);
+		yell("Trying to connect to server %d using address [%d] and family [%d]",
+					server, s->addr_counter, family_);
 
 	    memset(&localaddr, 0, sizeof(localaddr));
-	    if (get_default_vhost(ai->ai_family, s->info->vhost, &localaddr, &locallen))
+	    if (get_default_vhost(family_, s->info->vhost, &localaddr, &locallen))
 	    {
 		    syserr(server, "connect_next_server_address_internal: "
 				"Can't use address [%d]  because I can't get "
-				"vhost for protocol [%d]",
-					 s->addr_counter, ai->ai_family);
+				"vhost for family [%d]",
+					 s->addr_counter, family_);
 		    continue;
 	    }
 
-	    /* memcpy(&addr.ss, &ai->ai_addr, ai->addrlen) */
-	    /* Remember, network_client() is unconditionally nonblocking! */
-	    if ((fd = network_client(&localaddr, locallen, (SSu *)(ai->ai_addr), ai->ai_addrlen)) < 0)
+	    if ((fd = network_client(&localaddr, locallen, &s->addrs[s->addr_counter], socklen_)) < 0)
 	    {
 		syserr(server, "connect_next_server_address_internal: "
-			"network_client() failed for server %d address [%d].", 
+			"network_client() failed for server %d address [%d].",
 					server, s->addr_counter);
 		continue;
 	    }
 
-	    if (ssu_to_paddr((SSu *)(ai->ai_addr), p_addr, 256, p_port, 24, NI_NUMERICHOST))
+	    if (ssu_to_paddr(&s->addrs[s->addr_counter], p_addr, 256, p_port, 24, NI_NUMERICHOST))
 		say("Connecting to server refnum %d (%s), using address %d",
 					server, s->info->host, s->addr_counter);
 	    else
@@ -2387,7 +2430,7 @@ static int	connect_next_server_address_internal (int server)
 					server, s->info->host, 
 					s->addr_counter, p_addr, p_port);
 
-	    s->next_addr = ai->ai_next;
+	    s->addr_counter++;
 	    return fd;
 	}
 
@@ -2562,7 +2605,7 @@ static void	discard_dns_results (int refnum)
 		return;
 
 	new_free(&s->addrs);
-	s->next_addr = NULL;
+	s->addrs_total = 0;
 }
 
 
@@ -5113,7 +5156,7 @@ int	server_more_addrs (int refnum)
 	if (!(s = get_server(refnum)))
 		return 0;
 
-	if (s->next_addr)
+	if (s->addr_counter < s->addrs_total)
 		return 1;
 	else
 		return 0;
@@ -5142,16 +5185,11 @@ int	server_more_addrs (int refnum)
 static int	server_addrs_left (int refnum)
 {
 	Server *s;
-	const AI *ai;
-	int	count = 0;
 
 	if (!(s = get_server(refnum)))
 		return 0;
 
-	for (ai = s->next_addr; ai; ai = ai->ai_next)
-		count++;
-
-	return count;
+	return s->addrs_total - s->addr_counter;
 }
 
 Server *      get_server (int server)

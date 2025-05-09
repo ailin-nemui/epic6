@@ -200,3 +200,11 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Fix bug in kreadable() that broke /window create
 * Refactor /window create to avoid a "resource leak" clang insists upon
 * Deprecate /WHO queue debugging.
+* Switch /server dns lookup from dns helper to c-ares. Yay! \o/
+* This includes some vibe code from gemini which I did as an experiment.
+* This uncovered some weaknesses in how poll() errors are handled. ummm...
+* There are a lot more debug info for the moment.
+* Make socklen() a global function
+* Removal of #if 0'd out code.
+* Fix <xlocale.h> and <ioctl.h> madness for mac os x.
+* Remove the rest of the who queue debugging.

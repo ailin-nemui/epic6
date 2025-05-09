@@ -1001,10 +1001,6 @@ char *	malloc_strext (const char *str, ptrdiff_t numbytes)
 
 	retval = new_malloc(numbytes + 1);
 	memccpy(retval, str, 0, numbytes);
-#if 0
-	for (i = 0; i < numbytes && str[i]; i++)
-		retval[i] = str[i];
-#endif
 	retval[numbytes] = 0;
 	return retval;
 }
@@ -2241,9 +2237,6 @@ static	int recursion = 0;		/* Recursion is bad */
 		va_end(arglist);
 	}
 
-#if 0
-	term_reset();
-#endif
 	fprintf(stderr, "A critical logic error has occurred.\n");
 	fprintf(stderr, "To protect you from a crash, the client has aborted what you were doing.\n");
 	fprintf(stderr, "Please visit #epic on EFNet and relay this information:\n");
@@ -2251,15 +2244,6 @@ static	int recursion = 0;		/* Recursion is bad */
 	fprintf(stderr, "You can refresh your screen to make this message go away\n");
 	panic_dump_call_stack();
 
-#if 0
-	if (quitmsg == 0)
-		strlcpy(buffer, "Ask user for panic message.", sizeof(buffer));
-
-	if (x_debug & DEBUG_CRASH)
-		irc_exit(0, "Panic: epic6-%lu:%s", commit_id, buffer);
-	else
-		irc_exit(1, "Panic: epic6-%lu:%s", commit_id, buffer);
-#endif
 	recursion--;
 	if (dead)
 		irc_exit(1, "Panic: epic6-%lu:%s", commit_id, buffer);
@@ -3273,18 +3257,6 @@ int	new_split_string (char *str, char ***to, int delimiter)
 	if (str && *str)
 		(*to)[i++] = str;
 
-#if 0
-	/* This is just for helping me debug it. */
-	/* 
-	 * This can false-positive if the string ends with the delimiter,
-	 * which is not an error and should not be called out to the user.
-	 */
-	if (i != segments)
-	{
-		privileged_yell("Warning: new_split_string() thought that string had %d parts, but i only found %d parts", segments, i);
-	}
-#endif
-
 	/* Return the number of segments in 'str' */
 	return segments;
 }
@@ -3717,7 +3689,7 @@ char *	switch_hostname (const char *new_hostname)
 	if (v4 && *v4)
 	{
 	    new_4.si.sin_family = AF_INET;
-	    if (!hostname_to_ssu(AF_INET, v4, zero, &new_4, AI_ADDRCONFIG))
+	    if (!hostname_to_ssu(-1, AF_INET, v4, zero, &new_4, AI_ADDRCONFIG))
 	    {
 		if ((fd = network_server(&new_4, sizeof(new_4.si))) >= 0)
 		{
@@ -3737,7 +3709,7 @@ char *	switch_hostname (const char *new_hostname)
 	if (v6 && *v6)
 	{
 	    new_6.si6.sin6_family = AF_INET6;
-	    if (!hostname_to_ssu(AF_INET6, v6, zero, &new_6, AI_ADDRCONFIG)) 
+	    if (!hostname_to_ssu(-1, AF_INET6, v6, zero, &new_6, AI_ADDRCONFIG)) 
 	    {
 		if ((fd = network_server(&new_6, sizeof(new_6.si6))) >= 0)
 		{
