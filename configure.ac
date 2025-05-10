@@ -219,7 +219,7 @@ dnl We no longer check for header files required by posix.
 dnl We no longer check for functions required by posix.
 dnl We no longer try to support systems that are that weird.
 dnl
-AC_CHECK_HEADERS(term.h ieeefp.h,)
+AC_CHECK_HEADERS(term.h ieeefp.h xlocale.h,)
 
 AC_CHECK_FUNC(unveil, AC_DEFINE([HAVE_UNVEIL], 1, [Define if you have unveil()]),)
 AC_CHECK_FUNC(pledge, AC_DEFINE([HAVE_PLEDGE], 1, [Define if you have pledge()]),)

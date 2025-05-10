@@ -34,7 +34,7 @@
 	int     set_non_blocking	(int);
 	int     set_blocking		(int);
 	int     family			(const SSu *);
-	socklen_t socklen (const SSu *sockaddr);
+	socklen_t socklen 		(const SSu *sockaddr);
 
 	int     Accept			(int, SSu *, socklen_t *);
 	int     network_client		(SSu *, socklen_t, SSu *, socklen_t);
@@ -49,16 +49,12 @@
 	int     hostname_to_paddr	(const char *, char *, int);
 	int     paddr_to_hostname	(const char *, char *, int);
 	int     one_to_another		(int, const char *, char *, int);
-	pid_t   async_getaddrinfo	(const char *, const char *, const AI *, int);
-	void    unmarshall_getaddrinfo	(AI *);
 	char *  set_default_hostnames	(const char *hostname);
 	int     lookup_vhost 		(int family, const char *something, SSu *ssu_, socklen_t *);
 	int     get_default_vhost	(int family, const char *wanthost, SSu *ssu_, socklen_t *sl);
         void	init_vhosts_stage1	(void);
-	int   hostname_to_json (int fd, int family, const char *host, const char *port, int flags);
-	int   json_to_sockaddr_array (const char *json_string, SSu **addr_array);
-/* This lives in ircaux.c for some reason */
-	char * switch_hostname 		(const char *);
+	int	hostname_to_json	(int fd, int family, const char *host, const char *port, int flags);
+	int	json_to_sockaddr_array	(const char *json_string, int *, SSu **addr_array);
 
 	BUILT_IN_COMMAND(vhostscmd);
 

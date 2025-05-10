@@ -862,9 +862,6 @@ static	int	serverinfo_to_newserv (ServerInfo *si)
 	s->quit_message = NULL;
 	s->umode[0] = 0;
 	s->addrs = NULL;
-#if 0
-	s->next_addr = NULL;
-#endif
 	s->autoclose = 1;
 	s->default_realname = NULL;
 	s->realname = NULL;
@@ -1537,6 +1534,7 @@ static	void	do_server (int fd)
 		{
 			char	result_json[10240];
 			ssize_t	len;
+			int	failure_code = 0;
 
 			*result_json = 0;
 			len = dgets(s->des, result_json, sizeof(result_json), 0);
@@ -1544,13 +1542,28 @@ static	void	do_server (int fd)
 			{
 				yell("Soemthing went very wrong with the dns response on %d - %ld", s->des, len);
 				s->des = new_close(s->des);
+				set_server_state(i, SERVER_ERROR);
+				close_server(i, NULL);
 			}
 
-			s->addrs_total = json_to_sockaddr_array(result_json, &s->addrs);
+			s->addrs_total = json_to_sockaddr_array(result_json, &failure_code, &s->addrs);
+			if (failure_code != 0)
+			{
+				yell("DNS lookup failed with status: %d (%s)", failure_code, ares_strerror(failure_code));
+				yell("Something went very wrong with the json - %s", result_json);
+				s->des = new_close(s->des);
+				set_server_state(i, SERVER_ERROR);
+				close_server(i, NULL);
+				continue;
+			}
+
 			if (s->addrs_total < 0)
 			{
-				yell("Soemthing went very wrong with the json - %s", result_json);
-				s->addrs_total = 0;
+				yell("Something went very wrong with the json - %s", result_json);
+				s->des = new_close(s->des);
+				set_server_state(i, SERVER_ERROR);
+				close_server(i, NULL);
+				continue;
 			}
 			else
 			{
@@ -1563,116 +1576,6 @@ static	void	do_server (int fd)
 				s->addr_counter = 0;
 				connect_to_server_next_addr(i);	/* This function advances us to SERVER_CONNECTING */
 			}
-#if 0
-			int cnt = 0;
-			ssize_t len;
-
-			/*
-			 * This is our handler for the first bit of data from 
-			 * the dns helper, which is a length value.  This 
-			 * length value tells us how much data we should expect
-			 * to receive from the dns helper.  We use this value 
-			 * to malloc() off some space and then read into that 
-			 * buffer.
-			 */
-			if (s->addrs == NULL)
-			{
-				len = dgets(s->des, (char *)&s->addr_len, sizeof(s->addr_len), -2);
-				if (len < (ssize_t)sizeof(s->addr_len))
-				{
-					if (len < 0)
-						yell("DNS lookup failed, possibly because of a "
-							"bug in async_getaddrinfo!");
-					else if (len == 0)
-						yell("Got part of the dns response, waiting "
-							"for the rest, stand by...");
-					else
-						yell("Got %ld, expected %ld bytes.  HELP!", 
-							(long)len, (long)sizeof(s->addr_len));
-					pop_message_from(l);
-					continue;		/* Not ready yet */
-				}
-
-				if (s->addr_len < 0)
-				{
-					if (EAI_AGAIN > 0)
-						s->addr_len = labs(s->addr_len);
-					yell("Getaddrinfo(%s) for server %d failed: %s",
-						s->info->host, i, gai_strerror(s->addr_len));
-					s->des = new_close(s->des);
-					set_server_state(i, SERVER_ERROR);
-					set_server_state(i, SERVER_CLOSED);
-				}
-				else if (s->addr_len == 0) 
-				{
-					yell("Getaddrinfo(%s) for server (%d) did not "
-						"resolve.", s->info->host, i);
-					s->des = new_close(s->des);
-					set_server_state(i, SERVER_ERROR);
-					set_server_state(i, SERVER_CLOSED);
-				}
-				else
-				{
-					s->addrs = (AI *)new_malloc(s->addr_len + 1);
-					s->addr_offset = 0;
-				}
-			}
-
-			/*
-			 * If we've already received the "reponse length" value
-			 * [handled above] then s->addrs is not NULL, and we 
-			 * need to write the nonblocking dns responses into the
-			 * buffer.  Once we have all of the reponse, we can 
-			 * "unmarshall" the response (converting a (char *) 
-			 * buffer into a linked list of (struct addrinfo *)'s, 
-			 * which we can then use to connect to the server 
-			 * [via connect_to_server_next_addr()].
-			 */
-			else
-			{
-				len = dgets(s->des, 
-					(char *)s->addrs + s->addr_offset, 
-					s->addr_len - s->addr_offset, -2);
-
-				if (len < s->addr_len - s->addr_offset)
-				{
-				    if (len < 0)
-					yell("DNS lookup failed, possibly "
-					     "because of a bug in "
-					     "async_getaddrinfo!");
-				    else if (len == 0)
-					yell("Got part of the dns response, "
-					     "waiting for the rest, "
-					     "stand by...");
-				    else
-				    {
-					yell("Got %ld, expected %ld bytes", 
-						(long)len, 
-						(long)(s->addr_len - s->addr_offset));
-					s->addr_offset += len;
-				    }
-				    pop_message_from(l);
-				    continue;
-				}
-				else
-				{
-				    unmarshall_getaddrinfo(s->addrs);
-				    s->des = new_close(s->des);
-
-				    s->next_addr = s->addrs;
-				    for (cnt = 0; s->next_addr; s->next_addr = 
-						s->next_addr->ai_next)
-					cnt++;
-				    say("DNS lookup for server %d [%s] "
-					"returned (%d) addresses", 
-					i, s->info->host, cnt);
-
-				    s->next_addr = s->addrs;
-				    s->addr_counter = 0;
-				    connect_to_server_next_addr(i);	/* This function advances us to SERVER_CONNECTING */
-				}
-			}
-#endif
 		}
 
 		/* - - - - */
@@ -2341,11 +2244,8 @@ static	int	grab_server_address (int server)
 		hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_ADDRCONFIG;
-#if 0
-	async_getaddrinfo(s->info->host, ltoa(s->info->port), &hints, xvfd[0]);
-#else
+
 	hostname_to_json(xvfd[0], hints.ai_family, s->info->host, ltoa(s->info->port), 0);
-#endif
 	s->des = xvfd[1];
 	return 0;
 }
@@ -2363,9 +2263,6 @@ static int	connect_next_server_address_internal (int server)
 	int	fd = -1;
 	SSu	localaddr;
 	socklen_t locallen = 0;
-#if 0
-	const AI *	ai;
-#endif
 	char	p_addr[256];
 	char	p_port[24];
 
@@ -2384,11 +2281,7 @@ static int	connect_next_server_address_internal (int server)
 		return -1;
 	}
 
-#if 0
-	for (ai = s->next_addr; ai; ai = ai->ai_next, s->addr_counter++)
-#else
 	for (; s->addr_counter < s->addrs_total; s->addr_counter++)
-#endif
 	{
 	    SSu 	addr;
 	    int 	family_;
@@ -2993,18 +2886,6 @@ void	register_server (int refnum, const char *nick)
 	 * In 2025, I couldn't find any server that did not ignore
 	 * this field, so I think I'm going to just not bother.
 	 */
-#if 0
-	const char *	usehost;
-	if (family(&s->remote_sockname) == AF_INET)
-		usehost = LocalIPv4HostName;
-	else if (family(&s->remote_sockname) == AF_INET6)
-		usehost = LocalIPv6HostName;
-	else
-		usehost = hostname;
-	if (usehost == NULL)
-		usehost = hostname;
-#endif
-
 #if 0
 	send_to_aserver(refnum, "CAP LS 302");
 #endif

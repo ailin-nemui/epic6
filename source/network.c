@@ -41,7 +41,7 @@ static socklen_t sasocklen (const struct sockaddr *sockaddr);
 static int	safamily (const struct sockaddr *sa);
 static	int	Socket (int domain, int type, int protocol);
 static	int	Connect (int fd, SSu *addr);
-static  int     Getaddrinfo (const char *nodename, const char *servname, const AI *hints, AI **res);
+static  int     Getaddrinfo (const char *nodename, const char *servname, AI *hints, AI **res);
 static  void    Freeaddrinfo (AI *ai);
 static	int	Getnameinfo (SSu *ssu, socklen_t ssulen, char *host, size_t hostlen, char *serv, size_t servlen, int flags);
 static  void    do_ares_callback (int vfd);
@@ -49,9 +49,8 @@ static  void    ares_sock_state_cb_ (void *data, ares_socket_t socket_fd, int re
 static	int	paddr_to_ssu (const char *host, SSu *storage_, int flags);
 static	void	ares_addrinfo_callback_ (void *arg, int status, int timeouts, struct ares_addrinfo *result);
 static	void	ares_nameinfo_callback_ (void *arg, int status, int timeouts, char *host, char *port);
-static	void	marshall_getaddrinfo (int fd, AI *results);
 	void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares_addrinfo *result);
-	int	json_to_sockaddr_array (const char *json_string, SSu **addr_array) ;
+	int	json_to_sockaddr_array (const char *json_string, int *error_code, SSu **addr_array) ;
 
 /****************************************************************************/
 int	set_non_blocking (int fd)
@@ -210,8 +209,9 @@ static int Connect (int fd, SSu *addr)
 /*
  * This may ONLY be used to convert p-addrs to an SSU, which is nonblocking.
  */
-static	int	Getaddrinfo (const char *nodename, const char *servname, const AI *hints, AI **res)
+static	int	Getaddrinfo (const char *nodename, const char *servname, AI *hints, AI **res)
 {
+	hints->ai_flags |= AI_NUMERICHOST;
 	return getaddrinfo(nodename, servname, hints, res);
 }
 
@@ -225,7 +225,7 @@ static	void	Freeaddrinfo (AI *ai)
  */
 static int	Getnameinfo (SSu *ssu, socklen_t ssulen, char *host, size_t hostlen, char *serv, size_t servlen, int flags)
 {
-	return getnameinfo(&ssu->sa, ssulen, host, hostlen, serv, servlen, flags);
+	return getnameinfo(&ssu->sa, ssulen, host, hostlen, serv, servlen, flags | NI_NUMERICHOST | NI_NUMERICSERV);
 }
 
 
@@ -405,7 +405,7 @@ static	void	do_ares_callback (int vfd)
 		readable = vfd;
 	if (revents & POLLOUT)
 		writable = vfd;
-	yell("ares_process_fd: %d, readable=%d, writable=%d", ares_channel_, readable, writable);
+	yell("ares_process_fd: vfd=%d, readable=%d, writable=%d", vfd, readable, writable);
 	ares_process_fd(ares_channel_, readable, writable);
 }
 
@@ -517,7 +517,7 @@ int	ssu_to_paddr (SSu *name_, char *host, int hsize, char *port, int psize, int 
 	socklen_t 	len;
 
 	len = socklen(name_);
-	if ((retval = Getnameinfo(name_, len, host, hsize, port, psize, flags | NI_NUMERICHOST | NI_NUMERICSERV))) 
+	if ((retval = Getnameinfo(name_, len, host, hsize, port, psize, flags))) 
 	{
 		syserr(-1, "ssu_to_paddr: Getnameinfo(sockaddr->p_addr) failed: %s", 
 					gai_strerror(retval));
@@ -535,7 +535,7 @@ char *	ssu_to_paddr_quick (SSu *name_)
 	char		port[256];
 
 	len = socklen(name_);
-	if ((retval = Getnameinfo(name_, len, host, sizeof(host), port, sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV))) 
+	if ((retval = Getnameinfo(name_, len, host, sizeof(host), port, sizeof(port), 0)))
 	{
 		syserr(-1, "ssu_to_paddr_quick: Getnameinfo(sockaddr->p_addr) failed: %s", 
 					gai_strerror(retval));
@@ -553,7 +553,7 @@ int	ssu_to_port_quick (SSu *name_)
 	char		port[256];
 
 	len = socklen(name_);
-	if ((retval = Getnameinfo(name_, len, host, sizeof(host), port, sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV))) 
+	if ((retval = Getnameinfo(name_, len, host, sizeof(host), port, sizeof(port), 0)))
 	{
 		syserr(-1, "ssu_to_paddr_quick: Getnameinfo(sockaddr->p_addr) failed: %s", 
 					gai_strerror(retval));
@@ -1036,18 +1036,20 @@ void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares
             if (json_string) {
                 say("JSON Result: %s", json_string);
             } else {
-                yell("Failed to print JSON.\n");
+                yell("Failed to print JSON.");
             }
 
             // IMPORTANT: Free the cJSON object when you are done
             cJSON_DeleteItem(&json_output);
         } else {
-            yell("Failed to convert ares_addrinfo to JSON.\n");
+            yell("Failed to convert ares_addrinfo to JSON.");
         }
 
     } else {
-        yell("DNS lookup failed with status: %d (%s)\n", status, ares_strerror(status));
+        yell("DNS lookup failed with status: %d (%s)", status, ares_strerror(status));
         // Handle the error appropriately
+	json_string = NULL;
+	malloc_sprintf(&json_string, "{\"failure\":%d}", status);
     }
 
     // IMPORTANT: Free the ares_addrinfo result when you are done
@@ -1080,10 +1082,10 @@ void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares
 //
 // Returns:     The number of sockaddr_storage structures successfully added
 //              to the array, or -1 on parsing or allocation error.
-int	json_to_sockaddr_array (const char *json_string, SSu **addr_array) 
+int	json_to_sockaddr_array (const char *json_string, int *failure_code_, SSu **addr_array) 
 {
     if (!json_string || !addr_array) {
-        fprintf(stderr, "json_to_sockaddr_array: Invalid input parameters.\n");
+        yell("json_to_sockaddr_array: Invalid input parameters.");
         return -1;
     }
 
@@ -1096,6 +1098,13 @@ int	json_to_sockaddr_array (const char *json_string, SSu **addr_array)
         const char *error_ptr = json_string + consumed;
         yell("json_to_sockaddr_array: Error before: %s", error_ptr);
         return -1; // Failed to parse JSON
+    }
+
+    cJSON *failure_code = cJSON_GetObjectItemCaseSensitive(root, "failure");
+    if (cJSON_IsNumber(failure_code)) {
+        *failure_code_ = cJSON_GetNumberValue(failure_code);
+    } else {
+ 	*failure_code_ = 0;
     }
 
     // Get the "nodes" array
@@ -1167,7 +1176,7 @@ int	json_to_sockaddr_array (const char *json_string, SSu **addr_array)
             ((struct sockaddr_in6*)current_storage)->sin6_port = htons(port);
             // You might also need to set flowinfo and scope_id for IPv6
         } else {
-            yell("json_to_sockaddr_array: Could not parse address '%s' as IPv4 or IPv6, skipping.\n", address_str);
+            yell("json_to_sockaddr_array: Could not parse address '%s' as IPv4 or IPv6, skipping.", address_str);
             // Address conversion failed, this slot in the array remains unused
         }
     }
@@ -1189,7 +1198,7 @@ int	json_to_sockaddr_array (const char *json_string, SSu **addr_array)
          } else {
              // Realloc failed, the original array is still valid.
              // Log a warning if desired. We return the count of valid addresses.
-             fprintf(stderr, "json_to_sockaddr_array: Failed to reallocate array to exact size.\n");
+             yell("json_to_sockaddr_array: Failed to reallocate array to exact size.");
          }
     }
     */
@@ -1202,145 +1211,6 @@ int	json_to_sockaddr_array (const char *json_string, SSu **addr_array)
 }
 /************* end vibe code **********************/
 
-/**********************************************************************/
-pid_t	async_getaddrinfo (const char *nodename, const char *servname, const AI *hints, int fd)
-{
-	AI *results = NULL;
-	ssize_t	err;
-
-	{
-	/* XXX Letting /exec clean up after us is a hack. */
-	pid_t	helper;
-	if ((helper = fork()))
-		return helper;
-	}
-
-        if ((err = Getaddrinfo(nodename, servname, hints, &results)))
-        {
-		err = -labs(err);		/* Always a negative number */
-		if (!write(fd, &err, sizeof(err))) 
-			(void) 0;
-		close(fd);
-		exit(0);
-        }
-
-	if (!results)
-	{
-		err = 0;
-		if (!write(fd, &err, sizeof(err))) 
-			(void) 0;
-		close(fd);
-		exit(0);
-        }
-
-        marshall_getaddrinfo(fd, results);
-        Freeaddrinfo(results);
-        close(fd);
-	exit(0);
-	return 0;	/* XXX This function should be void */
-}
-
-static void	marshall_getaddrinfo (int fd, AI *results)
-{
-	ssize_t	len,
-		gah;
-	ssize_t	alignment = sizeof(void *);
-	AI 	*result, 
-		*copy;
-	char 	*retval, 
-		*ptr;
-
-	for (len = 0, result = results; result; result = result->ai_next)
-	{
-		len += sizeof(AI);
-		len += result->ai_addrlen;
-		if (result->ai_canonname)
-			len += strlen(result->ai_canonname) + 1;
-		while (len % alignment != 0)
-			len++;
-	}
-
-	/* Why do I know I'm gonna regret this? */
-	ptr = retval = new_malloc(len + 1);
-	memset(retval, 0, len + 1);
-	for (result = results; result; result = result->ai_next)
-	{
-		copy = (AI *)ptr;
-
-		/* Copy over the AI */
-		memcpy(copy, result, sizeof(AI));
-
-		/* Copy over the ai_addr */
-		ptr += sizeof(AI);
-		memcpy(ptr, result->ai_addr, result->ai_addrlen);
-
-		/* Point the AI at the ai_addr */
-		copy->ai_addr = (struct sockaddr *)(ptr);
-
-		/* Copy over the canonname */
-		/* Point the AI at the canonname */
-		ptr += result->ai_addrlen;
-		if (result->ai_canonname)
-		{
-		    gah = strlen(result->ai_canonname) + 1;
-		    memcpy(ptr, result->ai_canonname, gah);
-		    copy->ai_canonname = ptr;
-		    ptr += gah;
-		}
-		else
-		    copy->ai_canonname = NULL;
-
-		 /* Calculate the start of the next entry */
-		 while ((intptr_t)ptr % alignment != 0)
-			ptr++;
-
-		/* Point the AI at the next entry */
-		if (result->ai_next)
-			copy->ai_next = (AI *)ptr;
-		else
-			copy->ai_next = NULL;
-	}
-
-	if (!write(fd, (void *)&len, sizeof(len))) 
-		(void) 0;
-	if (!write(fd, (void *)retval, len)) 
-		(void) 0;
-	new_free(&retval);
-}
-
-void	unmarshall_getaddrinfo (AI *results)
-{
-	ssize_t	len;
-	AI 	*result;
-	char 	*ptr;
-	ssize_t	alignment = sizeof(void *);
-
-	/* Why do I know I'm gonna regret this? */
-	for (result = results; result; result = result->ai_next)
-	{
-		ptr = (char *)result;
-
-		/* Copy over the ai_addr */
-		ptr += sizeof(AI);
-		result->ai_addr = (struct sockaddr *)(ptr);
-		ptr += result->ai_addrlen;
-
-		if (result->ai_canonname)
-		{
-		    result->ai_canonname = ptr;
-		    len = strlen(result->ai_canonname) + 1;
-		    ptr += len;
-		}
-
-		 /* Calculate the start of the next entry */
-		 while ((intptr_t)ptr % alignment != 0)
-			ptr++;
-
-		/* Point the AI at the next entry */
-		if (result->ai_next)
-			result->ai_next = (AI *)ptr;
-	}
-}
 
 /**********************************************************************************************/
 #include <ifaddrs.h>
@@ -1727,31 +1597,25 @@ char *	set_default_hostnames (const char *hostname)
 
 summary:
 	if (v4_error)
-		malloc_sprintf(&retval4, "IPv4 vhost not changed because (%s)",
-						v4_error);
+		malloc_sprintf(&retval4, "IPv4 vhost not changed because (%s)", v4_error);
 	else if (LocalIPv4HostName)
 	{
 	    if (accept4)
-		malloc_sprintf(&retval4, "IPv4 vhost changed to [%s]",
-						LocalIPv4HostName);
+		malloc_sprintf(&retval4, "IPv4 vhost changed to [%s]", LocalIPv4HostName);
 	    else
-		malloc_sprintf(&retval4, "IPv4 vhost unchanged from [%s]",
-						LocalIPv4HostName);
+		malloc_sprintf(&retval4, "IPv4 vhost unchanged from [%s]", LocalIPv4HostName);
 	}
 	else
 		malloc_sprintf(&retval4, "IPv4 vhost unset");
 
 	if (v6_error)
-		malloc_sprintf(&retval6, "IPv6 vhost not changed because (%s)",
-						v6_error);
+		malloc_sprintf(&retval6, "IPv6 vhost not changed because (%s)", v6_error);
 	else if (LocalIPv6HostName)
 	{
 	    if (accept6)
-		malloc_sprintf(&retval6, "IPv6 vhost changed to [%s]",
-						LocalIPv6HostName);
+		malloc_sprintf(&retval6, "IPv6 vhost changed to [%s]", LocalIPv6HostName);
 	    else
-		malloc_sprintf(&retval6, "IPv6 vhost unchanged from [%s]",
-						LocalIPv6HostName);
+		malloc_sprintf(&retval6, "IPv6 vhost unchanged from [%s]", LocalIPv6HostName);
 	}
 	else
 		malloc_sprintf(&retval6, "IPv6 vhost unset");

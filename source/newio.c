@@ -516,8 +516,8 @@ int 	new_open (int channel, void (*callback) (int), int io_type, int poll_events
 	if (channel < 0)
 		return channel;		/* Invalid */
 
-	yell("new_open: vfd = %d, callback = %#p, io_type = %d, poll_events = %d, quiet = %d, server = %d",
-		channel, callback, io_type, poll_events, quiet, server);
+	yell("new_open: vfd = %d, io_type = %d, poll_events = %d, quiet = %d, server = %d",
+		channel, io_type, poll_events, quiet, server);
 
 	vfd = get_new_vfd(channel);
 

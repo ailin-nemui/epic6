@@ -4254,6 +4254,12 @@ then :
   printf "%s\n" "#define HAVE_IEEEFP_H 1" >>confdefs.h
 
 fi
+ac_fn_c_check_header_compile "$LINENO" "xlocale.h" "ac_cv_header_xlocale_h" "$ac_includes_default"
+if test "x$ac_cv_header_xlocale_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_XLOCALE_H 1" >>confdefs.h
+
+fi
 
 
 ac_fn_c_check_func "$LINENO" "unveil" "ac_cv_func_unveil"

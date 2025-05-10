@@ -208,3 +208,10 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Removal of #if 0'd out code.
 * Fix <xlocale.h> and <ioctl.h> madness for mac os x.
 * Remove the rest of the who queue debugging.
+* Add configure check for xlocale.h (rb fro)
+* Add a handler for dns failure (rb fro)
+* Sunset the now unused async dns helper. yay!
+* Sunset the now unused old vhost handler. yay!
+* Getaddrinfo() now stops you from using it in a blocking way
+* Getnameinfo() now stops you from using it in a blocking way
+
