@@ -50,6 +50,7 @@
 #include "ctcp.h"
 #include "debug.h"
 #include "commands.h"
+#include "ecdsatool.h"
 #include "exec.h"
 #include "files.h"
 #include "input.h"
@@ -503,6 +504,7 @@ static BuiltInFunctions	built_in_functions[] =
 	{ "DELITEMS",           function_delitems	},
 	{ "DEUHC",		function_deuhc		},
 	{ "DIFF",               function_diff 		},
+	{ "ECDSATOOL",		function_ecdsatool	},
 	{ "ENCODINGCTL",	function_encodingctl	},
 	{ "EOF",		function_eof 		},
 	{ "EPIC",		function_epic		},

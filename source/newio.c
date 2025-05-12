@@ -932,7 +932,7 @@ static void	new_io_event (int vfd, int revents)
 		if (revents & POLLNVAL)
 		{
 			ioe->eof = 1;
-			syserr(SRV(vfd), "new_io_event: fd %d POLLNVAL", vfd);
+			syserr(SRV(vfd), "new_io_event: fd %d POLLNVAL - I will stop tracking this fd for io events", vfd);
 			knoread(vfd);
 			knowrite(vfd);
 			return;

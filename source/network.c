@@ -123,6 +123,16 @@ static int	safamily (const struct sockaddr *sa)
 	return sa->sa_family;
 }
 
+static const char *	familystr (int family)
+{
+	if (family == AF_INET)
+		return "IPv4";
+	else if (family == AF_INET6)
+		return "IPv6";
+	else
+		return "<family not supported>";
+}
+
 /****************************************************************************/
 /*
  * Socket -- Create a new socket and set baseline preferences
@@ -1025,7 +1035,7 @@ void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares
     // MyContext *ctx = (MyContext *)arg;
 
     if (status == ARES_SUCCESS) {
-        say("DNS lookup successful.");
+        say("my_addrinfo_json_callback: DNS lookup successful.");
 
         // Convert the result to JSON
         cJSON *json_output = convert_ares_addrinfo_to_json(result);
@@ -1034,19 +1044,19 @@ void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares
             // Print the JSON (or do something else with it)
             json_string = cJSON_Generate(json_output, true_);
             if (json_string) {
-                say("JSON Result: %s", json_string);
+                say("my_addrinfo_json_callback: JSON Result: %s", json_string);
             } else {
-                yell("Failed to print JSON.");
+                yell("my_addrinfo_json_callback: Failed to print JSON.");
             }
 
             // IMPORTANT: Free the cJSON object when you are done
             cJSON_DeleteItem(&json_output);
         } else {
-            yell("Failed to convert ares_addrinfo to JSON.");
+            yell("my_addrinfo_json_callback: Failed to convert ares_addrinfo to JSON.");
         }
 
     } else {
-        yell("DNS lookup failed with status: %d (%s)", status, ares_strerror(status));
+        yell("my_addrinfo_json_callback: DNS lookup failed with status: %d (%s)", status, ares_strerror(status));
         // Handle the error appropriately
 	json_string = NULL;
 	malloc_sprintf(&json_string, "{\"failure\":%d}", status);
@@ -1059,7 +1069,7 @@ void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares
         ares_freeaddrinfo(result);
     }
 
-    yell("Writing JSON results to fd %d", fd);
+    yell("my_addrinfo_json_callback: Writing JSON results to fd %d", fd);
     write(fd, json_string, strlen(json_string));
     new_free(&json_string);
 
@@ -1103,9 +1113,11 @@ int	json_to_sockaddr_array (const char *json_string, int *failure_code_, SSu **a
     cJSON *failure_code = cJSON_GetObjectItemCaseSensitive(root, "failure");
     if (cJSON_IsNumber(failure_code)) {
         *failure_code_ = cJSON_GetNumberValue(failure_code);
+        return 0;	/* Treat as empty */
     } else {
  	*failure_code_ = 0;
     }
+
 
     // Get the "nodes" array
     cJSON *nodes_array = cJSON_GetObjectItemCaseSensitive(root, "nodes");
@@ -1321,7 +1333,7 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 	/* This is a protection mechanism in case anything goes sideways */
 	*sl = 0;
 
-	yell("Looking up [%s] for %d", something?something:"<default>", family_);
+	yell("Looking up [%s] vhost for %s", something?something:"<default>", familystr(family_));
 
 	/*
 	 * Check to see if it's cached...

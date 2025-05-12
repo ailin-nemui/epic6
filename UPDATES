@@ -1,5 +1,37 @@
 EPIC6-0.0.1
 
+*** News 05/12/2025 -- New function $ecdsatool()
+	This is based on/forked from the "ecdsatool" and libecdsa projects.
+
+	$ecdsatool(keygen file.pem)
+		Create a new keypair and save it to "file.pem".
+		The file will be created with permissions 0400.
+		If for any reason it can't be created securely,
+		it won't be created at all.
+		The return value is the base64 encoded public key
+
+	$ecdsatool(pubkey file.pem)
+		Output the public key for 'file.pem'
+		The file must have permissions 0400.  
+		If it has insecure permissions, it won't be loaded.
+		The return value is the base64 encoded public key
+
+	$ecdsatool(sign file.pem base64-challenge)
+		Sign the <base64-challenge> with the private key in file.pem.
+		The file must have permissions 0400.  
+		If it has insecure permissions, it won't be used.
+		The return value is the base64 encoded signed challenge
+
+	Maybe in the future we will support 'verify', but I need to find
+	a use case for that first.
+
+*** News 05/12/2025 -- Improvements to vhost handling
+	Vhost handling used to be fully blocking.  Now it blocks only when 
+	(1) You are using a hostname, not an IP address, and
+	(2) It is the first time you're using that vhost.
+	After you use a vhost, it is cached, and doesn't block again.
+	It will never block if you use an IP address.
+
 *** News 04/30/2025 -- Unix Domain Sockets support sunset
 	ircII has traditionally supported unix domain sockets to connect to
 	servers, as in  /server /tmp/.ircd/6667.  I bet you didn't even know

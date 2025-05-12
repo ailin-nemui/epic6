@@ -14,7 +14,7 @@ DEFS	= @DEFS@
 RM	= rm -f
 
 OBJECTS = alias.o alist.o array.o cJSON.o clock.o commands.o \
-	ctcp.o debug.o elf.o exec.o files.o \
+	ctcp.o debug.o ecdsatool.o elf.o exec.o files.o \
 	functions.o hook.o if.o input.o irc.o \
 	ircaux.o ircsig.o keys.o lastlog.o levels.o list.o log.o logfiles.o \
 	names.o network.o newio.o numbers.o output.o parse.o \
@@ -69,6 +69,9 @@ clean::
 
 
 # .o files needing special compilation flags
+
+ecdsatool.o:
+	$(CC) $(CFLAGS) -Wno-deprecated-declarations $(ANSIFLAGS) $(INCLUDES) -c @srcdir@/ecdsatool.c
 
 irc.o: Makefile ../Makefile
 	$(CC) $(CFLAGS) $(ANSIFLAGS) $(INCLUDES) -c @srcdir@/irc.c      \
@@ -159,6 +162,9 @@ debug.o: debug.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/words.h ../include/output.h ../include/reg.h \
   ../include/commands.h
 debuglog.o: debuglog.c
+ecdsatool.o: ecdsatool.c ../include/irc.h ../include/defs.h ../include/config.h \
+  ../include/irc_std.h ../include/debug.h \
+  ../include/ircaux.h ../include/output.h ../include/ecdsatool.h
 elf.o: elf.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h \
   ../include/ircaux.h ../include/network.h \
@@ -199,7 +205,7 @@ functions.o: functions.c ../include/irc.h ../include/defs.h \
   ../include/numbers.h ../include/timer.h \
   ../include/functions.h ../include/options.h ../include/reg.h \
   ../include/ifcmd.h ../include/ssl.h ../include/extlang.h \
-  ../include/cJSON.h ../include/hook.h
+  ../include/cJSON.h ../include/hook.h ../include/ecdsatool.h
 hook.o: hook.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h \
   ../include/hook.h ../include/ircaux.h \

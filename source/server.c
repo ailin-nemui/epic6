@@ -1540,7 +1540,7 @@ static	void	do_server (int fd)
 			len = dgets(s->des, result_json, sizeof(result_json), 0);
 			if (len < 0)
 			{
-				yell("Soemthing went very wrong with the dns response on %d - %ld", s->des, len);
+				yell("do_server: Something went very wrong with the dns response on %d - %ld", s->des, len);
 				s->des = new_close(s->des);
 				set_server_state(i, SERVER_ERROR);
 				close_server(i, NULL);
@@ -1549,25 +1549,22 @@ static	void	do_server (int fd)
 			s->addrs_total = json_to_sockaddr_array(result_json, &failure_code, &s->addrs);
 			if (failure_code != 0)
 			{
-				yell("DNS lookup failed with status: %d (%s)", failure_code, ares_strerror(failure_code));
-				yell("Something went very wrong with the json - %s", result_json);
+				yell("DNS lookup for server %d [%s] failed with error: %d (%s)", 
+					i, s->info->host, failure_code, ares_strerror(failure_code));
 				s->des = new_close(s->des);
 				set_server_state(i, SERVER_ERROR);
 				close_server(i, NULL);
-				continue;
 			}
-
-			if (s->addrs_total < 0)
+			else if (s->addrs_total < 0)
 			{
-				yell("Something went very wrong with the json - %s", result_json);
+				yell("do_server(%d): Something went very wrong with the json - %s", i, result_json);
 				s->des = new_close(s->des);
 				set_server_state(i, SERVER_ERROR);
 				close_server(i, NULL);
-				continue;
 			}
 			else
 			{
-				yell("I got a dns response: %s", result_json);
+				yell("do_server(%d): I got a dns response: %s", i, result_json);
 				say("DNS lookup for server %d [%s] "
 					"returned (%d) addresses", 
 					i, s->info->host, s->addrs_total);

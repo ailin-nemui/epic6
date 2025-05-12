@@ -41,7 +41,7 @@ CHACHA20
 Arena allocation
 *tcgetwinsize() instead of ioctl()
 libsodium
-c-ares
+*c-ares
 
 Actual bugs
 ================
@@ -214,4 +214,7 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Sunset the now unused old vhost handler. yay!
 * Getaddrinfo() now stops you from using it in a blocking way
 * Getnameinfo() now stops you from using it in a blocking way
+* Add ecdsatool.c, which facilitates SASL key sign-ins
+* This includes $ecdsatool() [see UPDATES]
+* Further refinements to the chatty-ness of the nonblocking dns stuff
 
