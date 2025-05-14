@@ -222,4 +222,4 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Sort of adapt the 'capctl' and 'sasl_auth' scripts to use them.
 * The other sasl scripts are still TBD (and now broken)
 * Why, in the name of anything, was i watching /exec stderr with POLLOUT?
-
+* ZNC does not send "*" as the placeholder nick during CAP negotiation

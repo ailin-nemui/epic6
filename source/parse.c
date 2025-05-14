@@ -748,7 +748,7 @@ static void	p_cap (const char *from, const char *comm, const char **ArgList)
 	if (!(args = ArgList[2]))
 		{ rfc1459_odd(from, comm, ArgList); return; }
 
-	if (!my_stricmp(disp, "*") && !my_stricmp(cmd, "LS"))
+	if (!my_stricmp(cmd, "LS"))
 	{
 		char *caps, *one_cap;
 
