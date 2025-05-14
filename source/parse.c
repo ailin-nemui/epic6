@@ -754,15 +754,27 @@ static void	p_cap (const char *from, const char *comm, const char **ArgList)
 
 		caps = LOCAL_COPY(args);
 		while ((one_cap = next_arg(caps, &caps)))
-		{
-			if (!my_stricmp(one_cap, "multi-prefix"))
-			{
-				say("I requested CAP multi-prefix");
-				send_to_server("CAP REQ :multi-prefix");
-			}
-		}
+			do_hook(CAP_LIST, "%s LS %s", from, one_cap);
 		send_to_server("CAP END");
 	}
+	else if (!my_stricmp(cmd, "ACK"))
+	{
+		char *caps, *one_cap;
+
+		caps = LOCAL_COPY(args);
+		while ((one_cap = next_arg(caps, &caps)))
+			do_hook(CAP_LIST, "%s ACK %s", from, one_cap);
+	}
+	else if (!my_stricmp(cmd, "NACK"))
+	{
+		char *caps, *one_cap;
+
+		caps = LOCAL_COPY(args);
+		while ((one_cap = next_arg(caps, &caps)))
+			do_hook(CAP_LIST, "%s NACK %s", from, one_cap);
+	}
+
+
 	say("I got a CAP >%s< >%s< >%s<", disp, cmd, args);
 }
 
@@ -1265,6 +1277,17 @@ static void 	p_notice (const char *from, const char *comm, const char **ArgList)
 	set_server_doing_notice(from_server, 0);
 }
 
+static void	p_authenticate (const char *from, const char *comm, const char **ArgList)
+{
+	const char *plus;
+
+	PasteArgs(ArgList, 0);
+	if (!(plus = ArgList[0]))
+		{ rfc1459_odd(from, comm, ArgList); return; }
+
+	do_hook(AUTHENTICATE_LIST, "%s %s", from, plus);
+}
+
 void	rfc1459_odd (const char *from, const char *comm, const char **ArgList)
 {
 	const char *	stuff;
@@ -1291,10 +1314,9 @@ typedef struct {
 
 static protocol_command rfc1459[] = {
 {	"ADMIN",	NULL,		0		},
+{	"AUTHENTICATE",	p_authenticate,	0,		},
 {	"AWAY",		NULL,		0		},
-#if 0
 {	"CAP",		p_cap,		0		},
-#endif
 { 	"CONNECT",	NULL,		0		},
 {	"ERROR",	p_error,	0		},
 {	"ERROR:",	p_error,	0		},

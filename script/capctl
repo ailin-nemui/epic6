@@ -5,17 +5,17 @@ if (word(2 $loadinfo()) != [pf]) {
 
 package capctl;
 
-## Capability negotiation script for EPIC5.
+## Capability negotiation script for EPIC6.
 ## Written by zlonix@efnet, public domain.
 ##
 ## Version: 1.0 (September, 2022)
 ##  - Initial roll-out
-
-## This script allows you to request needed capabilities from CAP-enabled server,
-## at present only simple and unconditional requests are supported, so there are
-## no checks for NAKs from the server, or any other complicated logic.
+## Version: 2.0 (2025)
+##  - Support for /on cap
 ##
-## Version 302 of the LS protocol is not supported at present time.
+## This script allows you to specify which CAPs you'd like to have turned on
+## when they are available, using server name wildcards.  The client handles
+## the syntax part of CAP -- all we do is tell it what we want turned on.
 ##
 ## Be careful about which capabilities you enable, because it will change the
 ## way server send you messages. Capabilities which use message-tags are safe to
@@ -37,29 +37,13 @@ alias capctl (verb, server, caps) {
 	};
 };
 
-on #-server_established 1000 '\\\\[$$cap.servers\\\\] %' {
+on cap "\\\\[$$cap.servers\\\\] LS *" {
 	@ :server = servername();
 	@ :idx = rmatch($server $cap.servers)-1;
 	@ :server_enc = encode($word($idx $cap.servers));
 
-	quote CAP REQ :$cap[$server_enc][req];
-};
-
-## If we use SASL authentication we must wait 903 numeric, otherwise CAP END
-## will be sent too early. sasl_in_progress variable is set in every sasl
-## script.
-
-on ^odd_server_stuff '\\\\[$$cap.servers\\\\] CAP % ACK *' {
-	@ :server_enc = encode($servername());
-
-	if (!@::sasl_in_progress[$server_enc]) {
-		quote CAP END;
+	if (findw($2 $cap[$server_enc][req]) >= 0) {
+		quote CAP REQ :$2;
 	};
 };
 
-on #-903 -1 * {
-	@ :server_enc = encode($servername());
-	@ ::sasl_in_progress[$server_enc] = [];
-
-	quote CAP END;
-};

@@ -244,7 +244,7 @@ ssize_t	dgets (int vfd, char *buf, size_t buflen, int buffer)
 	if (!(ioe = io_rec[vfd]))
 		panic(1, "dgets called on unsetup vfd %d", vfd);
 
-	if (ioe->error)
+	if (ioe->error && !ioe->quiet)
 	{
 	    syserr(SRV(vfd), "dgets: fd [%d] must be closed", vfd);
 	    return -1;
@@ -270,8 +270,9 @@ ssize_t	dgets (int vfd, char *buf, size_t buflen, int buffer)
 	 */
 	if (buffer == -2 && ioe->write_pos - ioe->read_pos < buflen)
 	{
-		yell("dgets: Wanted %ld bytes, have %ld bytes", 
-			(long)(ioe->write_pos - ioe->read_pos), (long)buflen);
+		if (x_debug & DEBUG_NEWIO)
+			yell("dgets: Wanted %ld bytes, have %ld bytes", 
+				(long)(ioe->write_pos - ioe->read_pos), (long)buflen);
 		ioe->clean = 1;
 		kcleaned(vfd);
 		return 0;
@@ -516,8 +517,9 @@ int 	new_open (int channel, void (*callback) (int), int io_type, int poll_events
 	if (channel < 0)
 		return channel;		/* Invalid */
 
-	yell("new_open: vfd = %d, io_type = %d, poll_events = %d, quiet = %d, server = %d",
-		channel, io_type, poll_events, quiet, server);
+	if (x_debug & DEBUG_NEWIO)
+		yell("new_open: vfd = %d, io_type = %d, poll_events = %d, quiet = %d, server = %d",
+			channel, io_type, poll_events, quiet, server);
 
 	vfd = get_new_vfd(channel);
 
@@ -682,7 +684,8 @@ int	new_close_with_option (int vfd, int virtual)
 
 	if (vfd >= 0 && vfd <= global_max_vfd && (ioe = io_rec[vfd]))
 	{
-		yell("new_close: vfd = %d", vfd);
+		if (x_debug & DEBUG_NEWIO)
+			yell("new_close: vfd = %d", vfd);
 
 		if (ioe->io_callback == ssl_read)	/* XXX */
 			ssl_shutdown(ioe->channel);
@@ -947,7 +950,8 @@ static void	new_io_event (int vfd, int revents)
 		{
 			ioe->error = -1;
 			ioe->clean = 0;
-			syserr(SRV(vfd), "new_io_event: fd %d must be closed", vfd);
+			if (!ioe->quiet)
+				syserr(SRV(vfd), "new_io_event: fd %d must be closed", vfd);
 
 			if (x_debug & DEBUG_INBOUND) 
 				yell("VFD [%d] FAILED [%d] [%d]", vfd, revents, c);

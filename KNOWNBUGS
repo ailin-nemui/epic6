@@ -217,4 +217,9 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Add ecdsatool.c, which facilitates SASL key sign-ins
 * This includes $ecdsatool() [see UPDATES]
 * Further refinements to the chatty-ness of the nonblocking dns stuff
+* Add /xdebug newio to hide a lot of newio chatter
+* Add /on authenticate, and /on cap -- more on this later
+* Sort of adapt the 'capctl' and 'sasl_auth' scripts to use them.
+* The other sasl scripts are still TBD (and now broken)
+* Why, in the name of anything, was i watching /exec stderr with POLLOUT?
 

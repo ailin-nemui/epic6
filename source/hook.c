@@ -142,6 +142,8 @@ typedef struct Hookables
 Hookables hook_function_templates[] =
 {
 	{ "ACTION",		NULL,	3,	0,	0,	NULL, 0 },
+	{ "AUTHENTICATE",	NULL,	1,	0,	0,	NULL, 0 },
+	{ "CAP",		NULL,	4,	0,	0,	NULL, 0 },
 	{ "CHANNEL_CLAIM", 	NULL, 	2,  	0,  	0,  	NULL, 0 },
 	{ "CHANNEL_LOST", 	NULL, 	2,  	0,  	0,  	NULL, 0 },
 	{ "CHANNEL_NICK",	NULL,	3,	0,	0,	NULL, 0 },

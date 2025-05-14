@@ -70,9 +70,6 @@ clean::
 
 # .o files needing special compilation flags
 
-ecdsatool.o:
-	$(CC) $(CFLAGS) -Wno-deprecated-declarations $(ANSIFLAGS) $(INCLUDES) -c @srcdir@/ecdsatool.c
-
 irc.o: Makefile ../Makefile
 	$(CC) $(CFLAGS) $(ANSIFLAGS) $(INCLUDES) -c @srcdir@/irc.c      \
 	-DIRCLIB=\"$(IRCLIB)/\"

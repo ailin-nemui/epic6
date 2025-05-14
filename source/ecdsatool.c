@@ -31,6 +31,8 @@
  * thank you for the great code you gave the world and making this
  * so easy to adapt/adopt. :) Come see us on #epic on EFNet!
  */
+#define OPENSSL_SUPPRESS_DEPRECATED 1
+#define OPENSSL_SUPPRESS_DEPRECATED_3_0 1
 
 #include "irc.h"
 #include "irc_std.h"
@@ -38,9 +40,6 @@
 #include "output.h"
 #include "functions.h"
 #include "ecdsatool.h"
-
-#define OPENSSL_SUPPRESS_DEPRECATED 1
-#define OPENSSL_SUPPRESS_DEPRECATED_3_0 1
 
 typedef struct auth_key_s { EC_KEY *eckey; } ecdsa_key_t;
 

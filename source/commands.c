@@ -155,7 +155,6 @@ static	void	whois 		(const char *, char *, const char *);
 static	void	xechocmd 	(const char *, char *, const char *);
 static	void	xevalcmd 	(const char *, char *, const char *);
 static	void	xtypecmd 	(const char *, char *, const char *);
-static	void	allocdumpcmd	(const char *, char *, const char *);
 
 /* other */
 static	void	eval_inputlist 	(const char *, const char *);

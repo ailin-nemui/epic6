@@ -47,7 +47,7 @@ struct debug_opts
 static struct debug_opts opts[] = 
 {
 	{ "LOCAL_VARS",		DEBUG_LOCAL_VARS },
-	{ "ALIAS",		0 },
+	{ "NEWIO",		DEBUG_NEWIO },
 	{ "CHANNELS",		DEBUG_CHANNELS },
 	{ "CTCPS",		DEBUG_CTCPS },
 	{ "OUTBOUND",		DEBUG_OUTBOUND },

@@ -2883,9 +2883,7 @@ void	register_server (int refnum, const char *nick)
 	 * In 2025, I couldn't find any server that did not ignore
 	 * this field, so I think I'm going to just not bother.
 	 */
-#if 0
 	send_to_aserver(refnum, "CAP LS 302");
-#endif
 	send_to_aserver(refnum, "USER %s . . :%s", 
 			get_string_var(DEFAULT_USERNAME_VAR),
 			s->realname);
