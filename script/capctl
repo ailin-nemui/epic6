@@ -1,7 +1,4 @@
-if (word(2 $loadinfo()) != [pf]) {
-	load -pf $word(1 $loadinfo());
-	return;
-};
+if (word(2 $loadinfo()) != [pf]) { load -pf $word(1 $loadinfo()); return; };
 
 package capctl;
 
@@ -25,25 +22,37 @@ package capctl;
 ## Usage:
 ##	capctl req *.libera.chat account-tag draft/example-1 draft/example-2
 ##
-## This will request three capabilities uppon connect to a server matching
+## This will request three capabilities upon connect to a server matching
 ## *.libera.chat.
 
 alias capctl (verb, server, caps) {
 	if (@verb && @server && @caps) {
 		@ :server_enc = encode($server);
-
 		@ push(cap.servers $server);
 		@ cap[$server_enc][$verb] = caps;
 	};
 };
 
-on cap "\\\\[$$cap.servers\\\\] LS *" {
-	@ :server = servername();
-	@ :idx = rmatch($server $cap.servers)-1;
-	@ :server_enc = encode($word($idx $cap.servers));
+on ^cap "% LS *" {
+	if ((:idx = rmatch($0 $cap.servers)) == 0) {
+		echo rmatch $0 $cap.servers returned 0;
+		if ((idx = rmatch($servername() $cap.servers)) == 0) {
+			return;
+		};
+	};
 
-	if (findw($2 $cap[$server_enc][req]) >= 0) {
+	@idx--;
+	@ :server_enc = encode($word($idx $cap.servers));
+	if ([$2] in cap[$server_enc][req]) {
 		quote CAP REQ :$2;
 	};
+};
+
+on ^cap "% ACK *" {
+	xecho -b CAP $2 has been turned on for this server!;
+};
+
+on ^cap "% NACK *" {
+	xecho -b CAP $2 was rejected by this server!;
 };
 

@@ -4340,7 +4340,15 @@ BUILT_IN_FUNCTION(function_glob, word)
 		expand_twiddle(path, path2);
 
 		if ((numglobs = glob(path2, GLOB_MARK, NULL, &globbers)) < 0)
+		{
+			/* 
+			 * For backwards compatability, 
+			 * zero matches yields an empty return value.
+			 */
+			if (numglobs == GLOB_NOMATCH)
+				RETURN_EMPTY;
 			RETURN_INT(numglobs);
+		}
 
 		for (i = 0; i < globbers.gl_pathc; i++)
 		{

@@ -223,3 +223,9 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * The other sasl scripts are still TBD (and now broken)
 * Why, in the name of anything, was i watching /exec stderr with POLLOUT?
 * ZNC does not send "*" as the placeholder nick during CAP negotiation
+* Refine scripts/capctl to match on both ourname and itsname
+* Fix bad type in param for check_permissions (rb fro)
+* Change $glob() to return empty on zero matches, for backwards compat
+  - POSIX requires glob(3) to return -3 on zero matches these days...
+* Add some more debugging diagnostics for p_cap
+

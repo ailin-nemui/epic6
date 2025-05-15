@@ -265,7 +265,7 @@ static	ecdsa_key_t *	ecdsa_key__new (void)
 	return key;
 }
 
-static	int	check_permissions (FILE *f, int perm)
+static	int	check_permissions (FILE *f, mode_t perm)
 {
 	int	fd;
 	struct stat sb;

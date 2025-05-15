@@ -752,6 +752,7 @@ static void	p_cap (const char *from, const char *comm, const char **ArgList)
 	{
 		char *caps, *one_cap;
 
+		say("I got a CAP >%s< >%s< >%s<", disp, cmd, args);
 		caps = LOCAL_COPY(args);
 		while ((one_cap = next_arg(caps, &caps)))
 			do_hook(CAP_LIST, "%s LS %s", from, one_cap);
@@ -761,6 +762,7 @@ static void	p_cap (const char *from, const char *comm, const char **ArgList)
 	{
 		char *caps, *one_cap;
 
+		say("I got a CAP >%s< >%s< >%s<", disp, cmd, args);
 		caps = LOCAL_COPY(args);
 		while ((one_cap = next_arg(caps, &caps)))
 			do_hook(CAP_LIST, "%s ACK %s", from, one_cap);
@@ -769,13 +771,11 @@ static void	p_cap (const char *from, const char *comm, const char **ArgList)
 	{
 		char *caps, *one_cap;
 
+		say("I got a CAP >%s< >%s< >%s<", disp, cmd, args);
 		caps = LOCAL_COPY(args);
 		while ((one_cap = next_arg(caps, &caps)))
 			do_hook(CAP_LIST, "%s NACK %s", from, one_cap);
 	}
-
-
-	say("I got a CAP >%s< >%s< >%s<", disp, cmd, args);
 }
 
 static void	p_nick (const char *from, const char *comm, const char **ArgList)
