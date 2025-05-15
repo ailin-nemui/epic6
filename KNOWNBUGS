@@ -228,4 +228,4 @@ THE CHANGELOG SINCE THE LAST RELEASE:
 * Change $glob() to return empty on zero matches, for backwards compat
   - POSIX requires glob(3) to return -3 on zero matches these days...
 * Add some more debugging diagnostics for p_cap
-
+* Put queue.c and queue.h back for fudd. :) 

@@ -70,6 +70,7 @@
 #include "reg.h"
 #include "extlang.h"
 #include "elf.h"
+#include "queue.h"
 
 /* used with input_move_cursor */
 #define RIGHT 1
@@ -264,6 +265,7 @@ static	IrcCommand irc_command[] =
 	{ "PYTHON",	pythoncmd	}, /* python.c */
 #endif
 	{ "QUERY",	query		},
+	{ "QUEUE",	queuecmd,	},
 	{ "QUIT",	e_quit		},
 	{ "QUOTE",	quotecmd	},
 	{ "RBIND",	rbindcmd	}, /* keys.c */

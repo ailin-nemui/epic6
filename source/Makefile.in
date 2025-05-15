@@ -18,7 +18,7 @@ OBJECTS = alias.o alist.o array.o cJSON.o clock.o commands.o \
 	functions.o hook.o if.o input.o irc.o \
 	ircaux.o ircsig.o keys.o lastlog.o levels.o list.o log.o logfiles.o \
 	names.o network.o newio.o numbers.o output.o parse.o \
-	@PYTHON_O@ recode.o reg.o screen.o \
+	@PYTHON_O@ queue.o recode.o reg.o screen.o \
 	sdbm.o server.o ssl.o status.o term.o timer.o \
 	vars.o wcwidth.o who.o window.o words.o 
 
@@ -354,6 +354,12 @@ python.o: python.c ../include/irc.h \
   ../include/commands.h ../include/functions.h ../include/output.h \
   ../include/ifcmd.h ../include/extlang.h ../include/newio.h \
   ../include/server.h ../include/who.h
+queue.o: queue.c ../include/irc.h ../include/defs.h ../include/config.h \
+  ../include/irc_std.h ../include/debug.h \
+  ../include/alias.h ../include/ircaux.h \
+  ../include/network.h ../include/words.h ../include/vars.h \
+  ../include/commands.h ../include/ifcmd.h ../include/queue.h \
+  ../include/output.h
 recode.o: recode.c ../include/irc.h ../include/defs.h ../include/config.h \
   ../include/irc_std.h ../include/debug.h \
   ../include/functions.h ../include/ircaux.h \
