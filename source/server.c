@@ -149,6 +149,7 @@ static	int	get_server_accept_cert (int refnum);
 static	void	set_server_accept_cert (int refnum, int val);
 static	char *  get_my_fallback_userhost (void);
 static	void	set_server_server_type (int servref, const char * param );
+static void    set_server_port (int refnum, int port);
 
 
 /*
@@ -712,8 +713,7 @@ int	serverinfo_matches_servref (ServerInfo *si, int servref)
 		return 1;
 
 	if (get_server_005(servref, "NETWORK") && 
-			wild_match(si->host, 
-				   get_server_005(servref, "NETWORK")))
+			wild_match(si->host, get_server_005(servref, "NETWORK")))
 		return 1;
 
 	for (j = 0; j < s->altnames->numitems; j++)
@@ -866,6 +866,7 @@ static	int	serverinfo_to_newserv (ServerInfo *si)
 	s->default_realname = NULL;
 	s->realname = NULL;
 	s->any_data = 0;
+	s->cap_hold = 0;
 
 	s->protocol_metadata = 0;
 	s->doing_privmsg = 0;
@@ -1667,7 +1668,8 @@ something_broke:
 			 * ready, and change our state to tell us what we're 
 			 * doing.
 			 */
-			if (!my_stricmp(get_server_type(i), "IRC-SSL"))
+			const char *x = get_server_type(i);
+			if (!my_stricmp(x, "IRC-SSL"))
 			{
 				/* XXX 'des' might not be both the vfd and channel! */
 				/* (ie, on systems where vfd != channel) */
@@ -1813,7 +1815,7 @@ return_from_ssl_detour:
 					syserr(i, "SSL Certificate Verification for server %d failed: (verify error: %d, checkhost error: %d, self_signed error: %d, other error: %d)", i, verify_error, checkhost_error, self_signed_error, other_error);
 					goto something_broke;
 				}
-			    }
+			}
 
 			goto return_from_ssl_detour;	/* All is well! */
 		}
@@ -2280,48 +2282,80 @@ static int	connect_next_server_address_internal (int server)
 
 	for (; s->addr_counter < s->addrs_total; s->addr_counter++)
 	{
-	    SSu 	addr;
-	    int 	family_;
-	    socklen_t	socklen_;
+		SSu 		addr;
+		int 		family_;
+		socklen_t	socklen_;
+		int		port_;
 
-	    family_ = family(&s->addrs[s->addr_counter]);
-	    socklen_ = socklen(&s->addrs[s->addr_counter]);
+		family_ = family(&s->addrs[s->addr_counter]);
+		socklen_ = socklen(&s->addrs[s->addr_counter]);
 
-	    memset(&addr.ss, 0, sizeof(addr.ss));
+		memset(&addr.ss, 0, sizeof(addr.ss));
 
-	    if (x_debug & DEBUG_SERVER_CONNECT)
-		yell("Trying to connect to server %d using address [%d] and family [%d]",
-					server, s->addr_counter, family_);
+		if (x_debug & DEBUG_SERVER_CONNECT)
+			yell("Trying to connect to server %d using address [%d] and family [%d]",
+				server, s->addr_counter, family_);
 
-	    memset(&localaddr, 0, sizeof(localaddr));
-	    if (get_default_vhost(family_, s->info->vhost, &localaddr, &locallen))
-	    {
-		    syserr(server, "connect_next_server_address_internal: "
+		memset(&localaddr, 0, sizeof(localaddr));
+		if (get_default_vhost(family_, s->info->vhost, &localaddr, &locallen))
+		{
+			syserr(server, "connect_next_server_address_internal: "
 				"Can't use address [%d]  because I can't get "
 				"vhost for family [%d]",
-					 s->addr_counter, family_);
-		    continue;
-	    }
+				 s->addr_counter, family_);
+			continue;
+		}
 
-	    if ((fd = network_client(&localaddr, locallen, &s->addrs[s->addr_counter], socklen_)) < 0)
-	    {
-		syserr(server, "connect_next_server_address_internal: "
-			"network_client() failed for server %d address [%d].",
-					server, s->addr_counter);
-		continue;
-	    }
+		/* 
+		 * NOW, HERE....
+		 *
+		 * DNS lookups may have given us a port number but that is not
+		 * necessarily the port we want to use.  We must sanity check
+		 * things here to prevent the user from futility.
+		 */
+		setssuport(&s->addrs[s->addr_counter], get_server_port(server));
+		port_ = ssuport(&s->addrs[s->addr_counter]);
 
-	    if (ssu_to_paddr(&s->addrs[s->addr_counter], p_addr, 256, p_port, 24, NI_NUMERICHOST))
-		say("Connecting to server refnum %d (%s), using address %d",
-					server, s->info->host, s->addr_counter);
-	    else
-		say("Connecting to server refnum %d (%s), "
+		const char *x = get_server_type(server);
+		if (!my_stricmp(x, "IRC-SSL"))
+		{
+			if (port_ < 6697)
+			{
+				yell("Server %d is set to use SSL but is not using an SSL port. Fixing.", server);
+				set_server_port(server, 6697);
+				setssuport(&s->addrs[s->addr_counter], 6697);
+			}
+		}
+		if (!my_stricmp(x, "IRC"))
+		{
+			if (port_ == 6697)
+			{
+				yell("Server %d is not set to use SSL but is using an SSL port. Fixing.", server);
+				set_server_port(server, 6667);
+				setssuport(&s->addrs[s->addr_counter], 6667);
+			}
+		}
+
+
+		if ((fd = network_client(&localaddr, locallen, &s->addrs[s->addr_counter], socklen_)) < 0)
+		{
+			syserr(server, "connect_next_server_address_internal: "
+				"network_client() failed for server %d address [%d].",
+			server, s->addr_counter);
+			continue;
+		}
+
+		if (ssu_to_paddr(&s->addrs[s->addr_counter], p_addr, 256, p_port, 24, NI_NUMERICHOST))
+			say("Connecting to server refnum %d (%s), using address %d",
+				server, s->info->host, s->addr_counter);
+		else
+			say("Connecting to server refnum %d (%s), "
 				"using address %d (%s:%s)",
-					server, s->info->host, 
-					s->addr_counter, p_addr, p_port);
+				server, s->info->host, 
+				s->addr_counter, p_addr, p_port);
 
-	    s->addr_counter++;
-	    return fd;
+		s->addr_counter++;
+		return fd;
 	}
 
 	say("I'm out of addresses for server %d so I have to stop.", server);
@@ -2532,6 +2566,7 @@ void	close_server (int refnum, const char *message)
 	new_free(&s->s_nickname);
 	new_free(&s->realname);
 	s->any_data = 0;
+	s->cap_hold = 0;
 
 	/* 
 	 * XXX Previously here, we discarded the extra IP addresses.
@@ -2980,13 +3015,20 @@ void  server_is_registered (int refnum, const char *itsname, const char *ourname
 	if (!get_server(refnum))
 		return;
 
-	/* Throw away the rest of addresses to stop reconnections */
+	/* 
+	 * When we get an 001 (hit ACTIVE), we discard other DNS results 
+	 * so that any reconnect results in a new DNS lookup.  If a failure 
+	 * occurs before we hit this point, we will move to the next saved DNS 
+	 * address on failure.
+	 * (This is especially relevant for failed nonblocking connects)
+	 */
 	if (x_debug & DEBUG_SERVER_CONNECT)
 	    yell("We're connected! Throwing away the rest of the addrs");
-
 	discard_dns_results(refnum);
+
 	set_server_state(refnum, SERVER_SYNCING);
 
+	set_server_cap_hold(refnum, 0);
 	set_server_away_status(refnum, 0);
 	accept_server_nickname(refnum, ourname);
 	set_server_itsname(refnum, itsname);
@@ -3031,16 +3073,6 @@ void  server_is_registered (int refnum, const char *itsname, const char *ourname
 					get_server_itsname(from_server));
 	window_check_channels();
 	set_server_state(refnum, SERVER_ACTIVE);
-
-	/* 
-	 * When we hit ACTIVE, we discard other DNS results so that any 
-	 * reconnect results in a new DNS lookup.  If a failure occurs 
-	 * before we hit this point, we will move to the next saved DNS 
-	 * address on failure.
-	 * (This is especially relevant for failed nonblocking connects)
-	 */
-	discard_dns_results(refnum);
-
 	isonbase(from_server, NULL, NULL);
 }
 
@@ -3776,6 +3808,17 @@ const char *	get_server_vhost (int servref )
 		return "<none>";
 }
 
+static void    set_server_cert (int refnum, const char *cert)
+{
+	Server *s;
+
+	if (!(s = get_server(refnum)))
+		return;
+
+	s->info->cert = cert;
+	preserve_serverinfo(s->info);
+}
+
 const char *	get_server_cert (int servref )
 {
 	Server *s;
@@ -3789,6 +3832,25 @@ const char *	get_server_cert (int servref )
 		return NULL;		/* XXX Is this correct? */
 }
 
+void    set_server_cap_hold (int refnum, int value)
+{
+	Server *s;
+
+	if (!(s = get_server(refnum)))
+		return;
+	//yell("XXX setting cap hold on %d to %d", refnum, value);
+	s->cap_hold = value;
+}
+
+int	get_server_cap_hold (int servref )
+{
+	Server *s;
+
+	if (!(s = get_server(servref)))
+		return 0;
+
+	return s->cap_hold;
+}
 
 /* 
  * Getter and setter for "itsname"
@@ -4439,13 +4501,11 @@ static char *	get_server_005s (int refnum, const char *str)
 	{
 		if (s->a005.list[i]->name == NULL)
 			continue;	/* Ignore nulls */
-
 		if (!str || !*str || wild_match(str, s->a005.list[i]->name))
 			malloc_strcat_wordlist(&ret, space, s->a005.list[i]->name);
 	}
 	return ret ? ret : malloc_strdup(empty_string);
 }
-
 
 /*
  * get_server_005 - Retrieve an 005 variable for a server
@@ -4469,11 +4529,26 @@ const char *	get_server_005 (int refnum, const char *setting)
 
 	if (!(s = get_server(refnum)))
 		return NULL;
-	item = (A005_item*)find_alist_item(&s->a005, setting, &cnt, &loc);
-	if (0 > cnt)
-		return ((*item).value);
+	item = (A005_item *)find_alist_item(&s->a005, setting, &cnt, &loc);
+	if (cnt < 0)
+		return item->value;	/* for backwards compat */
 	else
 		return NULL;
+}
+
+static A005_item *	new_005_item (int refnum, const char *setting)
+{
+	Server *	s;
+	A005_item *	new_005;
+
+	if (!(s = get_server(refnum)))
+		return NULL;
+
+	new_005 = (A005_item *)new_malloc(sizeof(A005_item));
+	(*new_005).name = malloc_strdup(setting);
+	(*new_005).value = malloc_strdup(space);
+	add_to_alist((&s->a005), setting, new_005);
+	return new_005;
 }
 
 /*
@@ -4508,36 +4583,25 @@ const char *	get_server_005 (int refnum, const char *setting)
  */
 void	set_server_005 (int refnum, char *setting, const char *value)
 {
-	Server *s;
-	A005_item *new_005;
-	int	destroy = (!value || !*value);
+	Server *	s;
+	A005_item *	new_005;
 
 	if (!(s = get_server(refnum)))
 		return;
 
-	new_005 = (A005_item*)alist_lookup((&s->a005), setting, 0, destroy);
-
-	if (destroy) {
-		if (new_005 && !strcmp(setting, (*new_005).name))
-			destroy_a_005(new_005);
-	} else if (new_005 && !strcmp(setting, (*new_005).name)) {
-		malloc_strcpy(&((*new_005).value), value);
-	} else {
-		new_005 = (A005_item *)new_malloc(sizeof(A005_item));
-		(*new_005).name = malloc_strdup(setting);
-		(*new_005).value = malloc_strdup(value);
-		add_to_alist((&s->a005), setting, new_005);
-	}
+	if (!(new_005 = (A005_item *)alist_lookup((&s->a005), setting, 0, 0)))
+		new_005 = new_005_item(refnum, setting);
+	malloc_strcpy(&(*new_005).value, malloc_strdup(value));
 
 	/* XXX This is a hack XXX */
 	/* We need to set up a table to handle 005 callbacks. */
 	if (!my_stricmp(setting, "CASEMAPPING"))
 	{
-	    if (destroy)
+	    if (!new_005->value)
+		(void) 0; /* nothing */
+	    else if (!my_stricmp(new_005->value, "rfc1459"))
 		set_server_stricmp_table(refnum, 1);
-	    else if (!my_stricmp(value, "rfc1459"))
-		set_server_stricmp_table(refnum, 1);
-	    else if (!my_stricmp(value, "ascii"))
+	    else if (!my_stricmp(new_005->value, "ascii"))
 		set_server_stricmp_table(refnum, 0);
 	    else
 		set_server_stricmp_table(refnum, 1);
@@ -4869,6 +4933,14 @@ char 	*serverctl 	(char *input)
 			GET_INT_ARG(size, input);
 			set_server_ison_len(refnum, size);
 			RETURN_INT(1);
+		} else if (!my_strnicmp(listc, "CAP_HOLD", len)) {
+			int	value;
+			GET_INT_ARG(value, input);
+			set_server_cap_hold(refnum, value);
+			RETURN_INT(1);
+		} else if (!my_strnicmp(listc, "CERT", len)) {
+			set_server_cert(refnum, input);
+			RETURN_INT(1);
 		} else if (!my_strnicmp(listc, "CONNECTED", len)) {
 			RETURN_EMPTY;		/* Read only. */
 		} else if (!my_strnicmp(listc, "COOKIE", len)) {
@@ -4902,6 +4974,9 @@ char 	*serverctl 	(char *input)
 			set_server_quit_message(refnum, input);
 			RETURN_INT(1);
 		} else if (!my_strnicmp(listc, "SSL", len)) {
+			set_server_server_type(refnum, input);
+			RETURN_INT(1);
+		} else if (!my_strnicmp(listc, "TLS", len)) {
 			set_server_server_type(refnum, input);
 			RETURN_INT(1);
 		} else if (!my_strnicmp(listc, "UMODE", len)) {

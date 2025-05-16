@@ -1,0 +1,210 @@
+if (word(2 $loadinfo()) != [pf]) { load -pf $word(1 $loadinfo()); return; };
+
+package sasl;
+
+#
+# Here's the plan
+#
+# 1. You load this script and create some /sasl rules
+# 2. You connect to a server -- the best sasl rule is selected
+# 3. EPIC does the dance -- 
+#      CAP LS 302 / NICK / USER / CAP SASL / AUTHENTICATE / CAP END
+# 4. You go on your merry way.
+#
+# This is a _Minimum Viable Product_.  I intentionally did not allow perfect
+# to be the enemy of good.  If this script does not meet every one of your
+# requirements, please engage with me on what you need to do.  Even better,
+# send me your patches!
+#
+
+#
+# This is based on the sasl_* scripts written by zlonix, without whom
+# this wouldn't have been possible.
+#
+
+#
+# We support three kinds of SASL.  
+#
+#	/sasl *.network.org external filename.pem
+#	/sasl *.network.org nistp256 username ec2key.pem
+#	/sasl *.network.org plain username password
+#	/sasl *.network.org -external
+#	/sasl *.network.org -nistp256
+#	/sasl *.network.org -plain
+#
+
+#
+# THIS SCRIPT HAS OPINIONS...
+#
+# This script will only attempt one kind of SASL per server connection.
+# It prefers EXTERNAL, then NISTP256, then PLAIN.
+# If that one attempt fails, EPIC will disconnect from the server.
+# Because of how EPIC works, it will try the next IP address.
+#
+# If you are using EXTERNAL or PLAIN, then if necessary your server 
+# will connect via TLS even if you didn't specify that.  If TLS does
+# not work, then SASL won't be used.
+# 
+# If you are using NISTP256 then you can connect with TLS or not.
+# EPIC will not force TLS if you use NISTP256.
+#
+
+@sasl_auth_next_rule = 0;
+
+# XXX TODO - Replace this with something better. :) 
+for i from 0 to 100 {
+	if (sasl_rules[$i][server] != []) {
+		@sasl_auth_next_rule = i + 1;
+	};
+};
+
+alias sasl (server, type, data) {
+	if (server == []) {
+		xecho -b SASL rules:;
+		for (@:x = 0, x < sasl_auth.next_rule, @x++) {
+			if (sasl_rules[$x][server] != []) {
+				xecho -b SASL: $sasl_rules[$x][server] $sasl_rules[$x][type] $sasl_rules[$x][data];
+			};
+		};
+	} elsif (left(1 $type) == [-]) {
+		@:rtype = rest(1 $type);
+		for (@x = 0, x < sasl_auth.next_rule, @x++) {
+			if (sasl_rules[$x][server] == server) {
+				if (sasl_rules[$x][type] == rtype) {
+					@ sasl_rules[$x][server] = [];
+					@ sasl_rules[$x][type] = [];
+					@ sasl_rules[$x][data] = [];
+				};
+			};
+		};
+	} else {
+		@ :rule = sasl_auth.next_rule++;
+		@sasl_rules[$rule][server] = server;
+		@sasl_rules[$rule][type] = type;
+		@sasl_rules[$rule][data] = data;
+	}
+};
+
+alias sasl_auth.which_rule {
+	fe (EXTERNAL NISTP256 PLAIN) t {
+		for (@:x = 0, x < sasl_auth.next_rule, @x++) {
+			if (sasl_rules[$x][type] == t) {
+				if ( (serverctl(get $0 name) =~ sasl_rules[$x][server]) ||
+				     (serverctl(get $0 itsname) =~ sasl_rules[$x][server]) ) {
+					return $x
+				};
+			};
+		};
+	};
+};
+
+#
+# When the server switches to POLICY, we decide what we want to do (if possible)
+# Please remember at this point we don't have the server itsname yet.
+# 
+on #-server_state -100 "% % POLICY" {
+	if ((:rule = sasl_auth.which_rule($0)) == []) {
+		xecho -b SASL POLICY - You do not have a SASL policy for server $0;
+		return;
+	};
+	xecho -b SASL POLICY - I will be using SASL rule $rule for server $0;
+	@ sasl_auth[$0][rule] = rule;
+
+	if (sasl_rules[$rule][type] == [EXTERNAL]) {
+		@serverctl(SET $0 SSL IRC-SSL);
+		@serverctl(SET $0 PORT 6697);
+		@serverctl(SET $0 CERT $sasl_rules[$rule][data]);
+	} elsif (sasl_rules[$rule][type] == [NISTP256]) {
+		# Nothing
+	} elsif (sasl_rules[$rule][type] == [PLAIN]) {
+		@serverctl(SET $0 SSL IRC-SSL);
+		@serverctl(SET $0 PORT 6697);
+	};
+};
+
+# I do SASL here
+on #-cap -100 "% LS sasl *" {
+	if (sasl_auth[$servernum()][rule] != []) {
+		@serverctl(SET $servernum() CAP_HOLD 1);
+		quote CAP REQ :sasl
+	}
+};
+
+# You shall not pass!
+on #-cap -100  "% NACK sasl" {
+	xecho -b I'm sorry, server $servernum() says you can't do SASL;
+	disconnect;
+};
+
+# You are now welcome to do SASL
+on #-cap -100 "% ACK sasl" {
+	if ((:rule = sasl_auth[$servernum()][rule]) == []) {
+		return;
+	};
+
+	# TODO - Ensure the server supports what we want to use
+	# TODO - Reconsider what to use if the server doesn't support our first choice
+
+	if (sasl_rules[$rule][type] == [EXTERNAL]) {
+		quote AUTHENTICATE EXTERNAL;
+	} elsif (sasl_rules[$rule][type] == [NISTP256]) {
+		quote AUTHENTICATE ECDSA-NIST256P-CHALLENGE;
+	} elsif (sasl_rules[$rule][type] == [PLAIN]) {
+		quote AUTHENTICATE PLAIN;
+	} else {
+		sasl_auth.failed;
+	};
+};
+
+# That's fine, go ahead
+on #-authenticate -100 "% +" {
+	if ((:rule = sasl_auth[$servernum()][rule]) == []) {
+		sasl_auth.failed;
+	};
+
+	if (sasl_rules[$rule][type] == [EXTERNAL]) {
+		quote AUTHENTICATE +;
+	} elsif (sasl_rules[$rule][type] == [NISTP256]) {
+		@ :nick = word(0 $sasl_rules[$rule][data]);
+		quote AUTHENTICATE $xform("-CTCP +B64" $^\nick\\0$^\nick\\0);
+	} elsif (sasl_rules[$rule][type] == [PLAIN]) {
+		@ :nick = word(0 $sasl_rules[$rule][data]);
+		@ :pass = word(1 $sasl_rules[$rule][data]);
+		@ :x = xform("-CTCP +B64" $^\nick\\0$^\nick\\0$^\pass);
+		quote AUTHENTICATE $x;
+	};
+};
+
+# In the future, SCRAM auth has multiple passes through here....
+on #-authenticate -100 "% *" {
+	if ((:rule = sasl_auth[$servernum()][rule]) == []) {
+		sasl_auth.failed;
+	};
+
+	if (sasl_rules[$rule][type] == [EXTERNAL]) {
+		# Nothing -- this makes no sense
+	} elsif (sasl_rules[$rule][type] == [NISTP256]) {
+		@ :pemfile = word(1 $sasl_rules[$rule][data]);
+		quote AUTHENTICATE $ecdsatool(sign $pemfile $1-);
+	} elsif (sasl_rules[$rule][type] == [PLAIN]) {
+		# Nothing -- this makes no sense
+	};
+};
+
+
+# Success!
+on #-903 -100 * {
+	@serverctl(SET $servernum() CAP_HOLD 0);
+};
+
+# Failure
+on #-904 -100 * {
+	sasl_auth.failed;
+};
+
+
+alias sasl_auth.failed {
+	xecho -b SASL Auth failed to server $servernum() - disconnecting.;
+	disconnect;
+};
+

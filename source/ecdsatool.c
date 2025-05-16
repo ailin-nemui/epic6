@@ -104,7 +104,6 @@ BUILT_IN_FUNCTION(function_ecdsatool, args)
 		RETURN_EMPTY;
 	}
 
-	yell("Running ecdsatool %s (%d)", argv[0], argc);
         return tool->main(argc, argv);
 }
 

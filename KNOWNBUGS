@@ -229,3 +229,13 @@ THE CHANGELOG SINCE THE LAST RELEASE:
   - POSIX requires glob(3) to return -3 on zero matches these days...
 * Add some more debugging diagnostics for p_cap
 * Put queue.c and queue.h back for fudd. :) 
+* Add ssuport() and setssuport() to get ports in and out of SSus'
+* Hide much of the chattyness for dns, vhost, behind /xdebug server_connect
+* Refine /on cap -- $0 = from, $1 = LS, $2 = key, $3- = value
+* Introduce the idea of "cap hold" -- so CAP END doesn't get sent too early.
+$ Add $serverctl(GET|SET x CAP_HOLD y)
+* Add $serverctl(SET x PORT y) that actually works correctly.
+* Once again try to ensure the port and the type (IRC/IRC-SSL) are reasonable
+* Set the port in a sockaddr from the server desc before we use it.
+* Add $serverctl(SET x CERT y)
+* Add /load sasl - unified sasl handling (tested on libera)

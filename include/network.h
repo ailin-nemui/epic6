@@ -35,6 +35,8 @@
 	int     set_blocking		(int);
 	int     family			(const SSu *);
 	socklen_t socklen 		(const SSu *sockaddr);
+	int     ssuport 		(SSu *ssu);
+	void    setssuport 		(SSu *ssu, int port);
 
 	int     Accept			(int, SSu *, socklen_t *);
 	int     network_client		(SSu *, socklen_t, SSu *, socklen_t);

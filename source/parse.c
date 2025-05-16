@@ -748,21 +748,51 @@ static void	p_cap (const char *from, const char *comm, const char **ArgList)
 	if (!(args = ArgList[2]))
 		{ rfc1459_odd(from, comm, ArgList); return; }
 
+	if (!from || !*from)
+		from = "*";
+
+	// yell(">>> p_cap entering from %s %s %s", disp, cmd, args);
 	if (!my_stricmp(cmd, "LS"))
 	{
 		char *caps, *one_cap;
 
-		say("I got a CAP >%s< >%s< >%s<", disp, cmd, args);
+		// say("I got a CAP >%s< >%s< >%s<", disp, cmd, args);
+		set_server_cap_hold(from_server, 0);
+
 		caps = LOCAL_COPY(args);
 		while ((one_cap = next_arg(caps, &caps)))
-			do_hook(CAP_LIST, "%s LS %s", from, one_cap);
-		send_to_server("CAP END");
+		{
+			char *key, *value;
+
+			key = LOCAL_COPY(one_cap);
+			if ((value = strchr(key, '=')))
+			{
+				*value++ = 0;
+				set_server_005(from_server, key, value);
+			}
+
+			do_hook(CAP_LIST, "%s LS %s %s", from, key, value);
+		}
+
+		/* 
+		 * For SASL, we have to do that whole dance during CAP time.
+		 * A script might set this in one of the do_hooks() above,
+		 * and we have to spin until the dance is over before we
+		 * close up CAP time.
+		 */
+		int	holding_server = from_server;
+		while (is_server_open(holding_server) && get_server_cap_hold(holding_server))
+			io("cap_hold");
+
+		if (is_server_open(holding_server))
+			send_to_aserver(holding_server, "CAP END");
+		else
+			yell("the server seems to be closed.");
 	}
 	else if (!my_stricmp(cmd, "ACK"))
 	{
 		char *caps, *one_cap;
 
-		say("I got a CAP >%s< >%s< >%s<", disp, cmd, args);
 		caps = LOCAL_COPY(args);
 		while ((one_cap = next_arg(caps, &caps)))
 			do_hook(CAP_LIST, "%s ACK %s", from, one_cap);
@@ -771,11 +801,11 @@ static void	p_cap (const char *from, const char *comm, const char **ArgList)
 	{
 		char *caps, *one_cap;
 
-		say("I got a CAP >%s< >%s< >%s<", disp, cmd, args);
 		caps = LOCAL_COPY(args);
 		while ((one_cap = next_arg(caps, &caps)))
 			do_hook(CAP_LIST, "%s NACK %s", from, one_cap);
 	}
+	//yell("<<< p_cap exiting from %s %s %s", disp, cmd, args);
 }
 
 static void	p_nick (const char *from, const char *comm, const char **ArgList)
@@ -1284,6 +1314,9 @@ static void	p_authenticate (const char *from, const char *comm, const char **Arg
 	PasteArgs(ArgList, 0);
 	if (!(plus = ArgList[0]))
 		{ rfc1459_odd(from, comm, ArgList); return; }
+
+	if (!from || !*from)
+		from = "*";
 
 	do_hook(AUTHENTICATE_LIST, "%s %s", from, plus);
 }

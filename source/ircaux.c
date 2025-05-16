@@ -302,6 +302,13 @@ void *	really_new_free (void **ptr, const char *fn, int line)
 		VALGRIND_MEMPOOL_FREE(mo_ptr(*ptr), *ptr);
 		VALGRIND_DESTROY_MEMPOOL(mo_ptr(*ptr));
 		fatal_malloc_check(*ptr, NULL, fn, line);
+		/* 
+		 * I am undecided if this is a good idea or bad.
+		 * Not clearing memory leaks it to the next allocator,
+		 * but clearing it means trusting the size has not been 
+		 * tampered with.
+		 */
+		memset((void *)(mo_ptr(*ptr)), 0, alloc_size(*ptr));
 		alloc_size(*ptr) = FREED_VAL;
 		free((void *)(mo_ptr(*ptr)));
 	}

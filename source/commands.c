@@ -1394,6 +1394,19 @@ BUILT_IN_COMMAND(info)
 		say("All EPIC versions by EPIC Software Labs");
 		say("\tCopyright 1993-2025 EPIC Software Labs");
 		say(" ");
+		say("Others whose code is included");
+		say("\tCopyright 1993-2003 Aaron Gifford.");
+		say("\tCopyright 2009-2025 Dave Gamble and cJSON contributors");
+		say("\tCopyright 1998      J. Kean Johnston");
+		say("\tCopyright 1994      Jake Khuon");
+		say("\tCopyright 1995-2025 Jeremy Nelson");
+		say("\tCopyright 2000      Juraj Bednar");
+		say("\tCopyright 1995-2001 Kungliga Tekniska Ho\"gskolan");
+		say("\tCopyright 1992-1997 Paul Falstad");
+		say("\tCopyright 2018      rxi");
+		say("\tCopyright 1998-2015 Todd C. Miller");
+		say("\tCopyright 2013      William Pitcock");
+		say(" ");
 		say("	    Contact the EPIC project (%s)", EMAIL_CONTACT);
 		say("	    for problems with this or any other EPIC client");
 	}

@@ -83,6 +83,7 @@ const	AI *		next_addr;		/* The next one to try upon failure */
 	char *		realname;		/* The actual realname. */
 	char *		default_realname;	/* The default realname. */
 	int		any_data;		/* SSL servers won't send any data back */
+	int		cap_hold;
 
 	/* state = SYNCING */
 
@@ -240,6 +241,8 @@ const	char *	get_server_group		(int);
 const	char *  get_server_server_type		(int);
 const	char *	get_server_vhost		(int);
 const	char *	get_server_cert			(int);
+	int	get_server_cap_hold		(int);
+	void	set_server_cap_hold		(int, int);
 
 	void	set_server_version_string	(int, const char *);
 const 	char *	get_server_version_string	(int);

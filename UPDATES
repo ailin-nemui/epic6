@@ -1,5 +1,66 @@
 EPIC6-0.0.1
 
+*** News 05/16/2025 -- SASL handling, /load sasl
+	There is now a unified sasl handling script that will do all
+	the sasl things in one place.
+
+		/load sasl
+		sasl *.network.org external /path/to/cert.pem
+		sasl *.network.org nistp256 <nick> /path/to/eckey.pem
+		sasl *.network.org plain <nick> <password>
+
+	It's kind of assumed you know what to do with this.  If you don't,
+	then it probably won't affect you.  I may write more on this in
+	the future.  There are now no external dependencies, and no /SETs 
+	to configure.
+
+	This script is sort of opinionated, and will try to steer you
+	to success.
+
+*** News 05/16/2025 -- CAP handling, /ON CAP
+	The client will now automatically request CAPs when you connect 
+	to a server.  If your script is trying to do this manually, you 
+	will need to migrate it to the new way.
+
+		/ON CAP "<server> LS <CAP> <VALUE>" {...}
+	When the server responds with its CAPs, the client will offer 
+	them to you, one at a time, with /on cap.  Even though most CAPs 
+	do not have <value>, there will always be a <value>, even if it's
+	an empty string -- so watch out for that trailing space!
+
+		/quote CAP req $2
+	If you wanted to turn on a cap (in an /on cap) you could do it
+	like this.
+
+		/ON CAP "<server> ACK <CAP>" {...}
+	The server has agreed to turn on <CAP> for you.  If there is 
+	anything you need to do this would be a great time
+
+		/ON CAP "<server> NACK <CAP>" {...}
+	The server has rejected your attempt to turn on <CAP>.  I do
+	not know why this would ever happen, but just in case...
+
+	After the client has offered very CAP via /ON CAP, it will send 
+	a CAP END to continue registration.  If for whatever reason you 
+	need CAP END to be delayed, you may set a "cap hold"
+		@serverctl(SET $0 CAP_HOLD 1)
+	The CAP END will not be sent until you release the hold
+		@serverctl(SET $0 CAP_HOLD 0)
+
+	---WARNING--- You can jam the client by setting a hold and
+	not releasing it later.  I recommend doing something like:
+		timer 15 {@serverctl(SET $servernum() CAP HOLD 0)}
+	which will unjam-it as a safety valve.  There is no harm in 
+	releasing a hold if it's not being held.
+
+*** News 05/16/2025 -- $serverctl PORT and CERT
+	These are values that are usually set in the server description,
+	but now you can get/set them via $serverctl() as well
+		$serverctl(GET x PORT)
+		@serverctl(SET x PORT y)
+		$serverctl(GET x CERT)
+		@serverctl(SET x CERT y)
+
 *** News 05/12/2025 -- New function $ecdsatool()
 	This is based on/forked from the "ecdsatool" and libecdsa projects.
 
