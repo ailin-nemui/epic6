@@ -22,26 +22,28 @@ our sdbm (dbmctl) - Use a modern key-value store (sqlite)
 
 Things to remove, but bring back
 ================================
-*e2e encryption	  - Targeting
-*ignore		  - Targeting
-*flood control	  - Incomplete/unloved
-**mail checking   - Scriptable (brought back)
-**notify	  - Scriptable/unloved (brought back)
+e2e encryption	  - Targeting
+ignore		  - Targeting
+flood control	  - Incomplete/unloved
+*mail checking    - Scriptable (brought back)
+*notify	  	  - Scriptable/unloved (brought back)
+DCC		  - Or at least direct sockets
 
 Things to support
 =================
-CAP/SASL/ZNC
-Emojis (incl ZWJ)
+*CAP/*SASL
 *Unlimited input line
 *Mouse support
 *PBKDF
-CHACHA20
 *Auto-ssl for ssl ports
-*sqlite
-Arena allocation
 *tcgetwinsize() instead of ioctl()
-libsodium
 *c-ares
+sqlite
+ZNC
+Emojis (incl ZWJ)
+CHACHA20
+Arena allocation
+libsodium
 
 Actual bugs
 ================
@@ -239,3 +241,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Set the port in a sockaddr from the server desc before we use it.
 * Add $serverctl(SET x CERT y)
 * Add /load sasl - unified sasl handling (tested on libera)
+* Fix a typo in /load sas (rb zlonix)

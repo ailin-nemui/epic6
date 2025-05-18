@@ -49,12 +49,12 @@ package sasl;
 # EPIC will not force TLS if you use NISTP256.
 #
 
-@sasl_auth_next_rule = 0;
+@sasl_auth.next_rule = 0;
 
 # XXX TODO - Replace this with something better. :) 
 for i from 0 to 100 {
 	if (sasl_rules[$i][server] != []) {
-		@sasl_auth_next_rule = i + 1;
+		@sasl_auth.next_rule = i + 1;
 	};
 };
 

@@ -1059,7 +1059,7 @@ void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares
     // MyContext *ctx = (MyContext *)arg;
 
     if (status == ARES_SUCCESS) {
-        say("my_addrinfo_json_callback: DNS lookup successful.");
+        //say("my_addrinfo_json_callback: DNS lookup successful.");
 
         // Convert the result to JSON
         cJSON *json_output = convert_ares_addrinfo_to_json(result);
@@ -1068,7 +1068,7 @@ void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares
             // Print the JSON (or do something else with it)
             json_string = cJSON_Generate(json_output, true_);
             if (json_string) {
-                say("my_addrinfo_json_callback: JSON Result: %s", json_string);
+                // say("my_addrinfo_json_callback: JSON Result: %s", json_string);
             } else {
 		if (x_debug & DEBUG_SERVER_CONNECT)
 			yell("my_addrinfo_json_callback: Failed to print JSON.");

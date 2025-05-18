@@ -932,7 +932,7 @@ static void	new_io_event (int vfd, int revents)
 			knowrite(vfd);
 		}
 #endif
-		if (revents & POLLNVAL)
+		if (revents & POLLNVAL && !ioe->quiet)
 		{
 			ioe->eof = 1;
 			syserr(SRV(vfd), "new_io_event: fd %d POLLNVAL - I will stop tracking this fd for io events", vfd);
