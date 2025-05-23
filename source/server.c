@@ -1541,7 +1541,9 @@ static	void	do_server (int fd)
 			len = dgets(s->des, result_json, sizeof(result_json), 0);
 			if (len < 0)
 			{
-				yell("do_server: Something went very wrong with the dns response on %d - %ld", s->des, len);
+				if (x_debug & DEBUG_SERVER_CONNECT)
+					yell("do_server: Something went very wrong with the dns response on %d - %ld", s->des, len);
+				say("An unexpected DNS lookup error occurred.");
 				s->des = new_close(s->des);
 				set_server_state(i, SERVER_ERROR);
 				close_server(i, NULL);
@@ -1550,7 +1552,7 @@ static	void	do_server (int fd)
 			s->addrs_total = json_to_sockaddr_array(result_json, &failure_code, &s->addrs);
 			if (failure_code != 0)
 			{
-				yell("DNS lookup for server %d [%s] failed with error: %d (%s)", 
+				say("DNS lookup for server %d [%s] failed with error: %d (%s)", 
 					i, s->info->host, failure_code, ares_strerror(failure_code));
 				s->des = new_close(s->des);
 				set_server_state(i, SERVER_ERROR);
@@ -1558,14 +1560,16 @@ static	void	do_server (int fd)
 			}
 			else if (s->addrs_total < 0)
 			{
-				yell("do_server(%d): Something went very wrong with the json - %s", i, result_json);
+				if (x_debug & DEBUG_SERVER_CONNECT)
+					yell("do_server(%d): Something went very wrong with the json - %s", i, result_json);
 				s->des = new_close(s->des);
 				set_server_state(i, SERVER_ERROR);
 				close_server(i, NULL);
 			}
 			else
 			{
-				yell("do_server(%d): I got a dns response: %s", i, result_json);
+				if (x_debug & DEBUG_SERVER_CONNECT)
+					yell("do_server(%d): I got a dns response: %s", i, result_json);
 				say("DNS lookup for server %d [%s] "
 					"returned (%d) addresses", 
 					i, s->info->host, s->addrs_total);
@@ -2319,7 +2323,7 @@ static int	connect_next_server_address_internal (int server)
 		const char *x = get_server_type(server);
 		if (!my_stricmp(x, "IRC-SSL"))
 		{
-			if (port_ < 6697)
+			if (port_ == 6667)
 			{
 				yell("Server %d is set to use SSL but is not using an SSL port. Fixing.", server);
 				set_server_port(server, 6697);
@@ -3838,7 +3842,6 @@ void    set_server_cap_hold (int refnum, int value)
 
 	if (!(s = get_server(refnum)))
 		return;
-	//yell("XXX setting cap hold on %d to %d", refnum, value);
 	s->cap_hold = value;
 }
 

@@ -49,8 +49,6 @@
 #include "ifcmd.h"
 #include "functions.h"
 
-#include <sys/wait.h>
-
 typedef struct WaitCmdStru
 {
 	struct WaitCmdStru *	next;

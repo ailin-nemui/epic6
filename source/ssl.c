@@ -44,16 +44,6 @@
 #include "ircaux.h"
 #include "ssl.h"
 #include "vars.h"
-
-#include <openssl/crypto.h>
-#include <openssl/x509.h>
-#include <openssl/x509v3.h>
-#include <openssl/evp.h>
-#include <openssl/pem.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/opensslconf.h>
-
 #include "output.h"
 #include "hook.h"
 #include "newio.h"
@@ -510,7 +500,8 @@ int	ssl_startup (int vfd, int channel, const char *hostname, const char *cert)
 
 	if (cert && *cert)
 	{
-		yell("Using client certificate file %s", cert);
+		if (x_debug & DEBUG_SSL)
+			yell("Using client certificate file %s", cert);
 		if (SSL_use_certificate_file(x->ssl, cert, SSL_FILETYPE_PEM) <= 0)
 		{
 			syserr(SRV(vfd), "SSL_use_certificate_file(%s) for fd %d failed", cert, vfd);
@@ -523,7 +514,8 @@ int	ssl_startup (int vfd, int channel, const char *hostname, const char *cert)
 			errno = EINVAL;
 			return -1;
 		}
-		yell("Success");
+		if (x_debug & DEBUG_SSL)
+			yell("Success");
 	}
 
 	if (SSL_set_fd(x->ssl, channel) <= 0)

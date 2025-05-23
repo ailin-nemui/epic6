@@ -60,7 +60,6 @@
 #include "functions.h"
 #include "reg.h"
 #include "timer.h"
-#include <math.h>
 
 typedef	struct	WindowStru
 {

@@ -82,11 +82,6 @@
 #include "ctcp.h"
 #include "cJSON.h"
 
-#include <glob.h>
-#include <regex.h>
-#include <sys/utsname.h>
-#include <math.h>
-
 static	char	
 	*alias_detected 	(void), *alias_sent_nick 	(void),
 	*alias_recv_nick 	(void), *alias_msg_body 	(void),

@@ -36,15 +36,6 @@
 
 #include "irc.h"
 #include "screen.h"
-#include <pwd.h>
-#include <sys/wait.h>
-#include <math.h>
-#include <stddef.h>
-#include <fcntl.h>
-#ifdef HAVE_IEEEFP_H
-#include <ieeefp.h>
-#endif
-#include <openssl/rand.h>
 #include "ircaux.h"
 #include "output.h"
 #include "termx.h"

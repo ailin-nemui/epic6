@@ -995,8 +995,6 @@ static	int	is_fd_valid (int fd)
 /*
  * Implementation of poll() front-end to synchronous unix system calls
  */
-#include <poll.h>
-
 struct pollfd *	polls = NULL;
 
 static void kinit (void)

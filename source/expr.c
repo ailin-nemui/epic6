@@ -34,8 +34,6 @@
  * SUCH DAMAGE.
  */
 
-#include <math.h>
-
 /* Function decls */
 static	void	TruncateAndEscape (char **, const char *, ssize_t, const char *);
 static	char *	alias_special_char (char **, char *, const char *, char *);

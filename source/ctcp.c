@@ -52,8 +52,6 @@
 #include "words.h"
 #include "functions.h"
 
-#include <pwd.h>
-
 /* CTCP BITFLAGS */
 #define CTCP_SPECIAL	1	/* Special handlers handle everything and don't return anything */
 #define CTCP_ORDINARY   2	/* Ordinary handlers either return a inline value or you should tell the user */

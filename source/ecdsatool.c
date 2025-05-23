@@ -100,7 +100,7 @@ BUILT_IN_FUNCTION(function_ecdsatool, args)
 	argc = split_args(args, argv, 10);
         if (!(tool = tool_applet_find(argv[0])))
 	{
-		yell("ecdsatool: no such tool: %s", argv[0]);
+		say("ecdsatool: no such tool: %s", argv[0]);
 		RETURN_EMPTY;
 	}
 
@@ -117,7 +117,7 @@ static char *	tool_keygen (int argc, char *argv[])
 
 	if (argv[1] == NULL)
 	{
-		yell("usage: ecdsatool keygen privatekey.pem\n");
+		say("usage: ecdsatool keygen privatekey.pem\n");
 		RETURN_EMPTY;
 	}
 
@@ -125,19 +125,19 @@ static char *	tool_keygen (int argc, char *argv[])
 
 	if (!(pubout = fopen(argv[1], "w")))
 	{
-		yell("ecdsatool keygen: Could not create file %s -- check permissions?", argv[1]);
+		say("ecdsatool keygen: Could not create file %s -- check permissions?", argv[1]);
 		RETURN_EMPTY;
 	}
 
 	if ((fileno_ = fileno(pubout)) < 0)
 	{
-		yell("ecdsatool keygen: fileno() failed on %s: %s", argv[1], strerror(errno));
+		say("ecdsatool keygen: fileno() failed on %s: %s", argv[1], strerror(errno));
 		RETURN_EMPTY;
 	}
 
 	if (fchmod(fileno_, S_IRUSR) < 0)
 	{
-		yell("ecdsatool keygen: fchmod() failed on %s: %s", argv[1], strerror(errno));
+		say("ecdsatool keygen: fchmod() failed on %s: %s", argv[1], strerror(errno));
 		RETURN_EMPTY;
 	}
 
@@ -156,13 +156,13 @@ static char *	tool_pubkey (int argc, char *argv[])
 
 	if (argv[1] == NULL)
 	{
-		yell("usage: ecdsatool pubkey privatekey.pem\n");
+		say("usage: ecdsatool pubkey privatekey.pem\n");
 		RETURN_EMPTY;
 	}
 
 	if (!(key = ecdsa_key__load(argv[1])))
 	{
-		yell("ecdsatool pubkey: loading key %s failed", argv[1]);
+		say("ecdsatool pubkey: loading key %s failed", argv[1]);
 		RETURN_EMPTY;
 	}
 
@@ -180,13 +180,13 @@ static char *	tool_sign (int argc, char *argv[])
 
 	if (argc < 3)
 	{
-		yell("usage: ecdsatool sign privatekey.pem base64challenge");
+		say("usage: ecdsatool sign privatekey.pem base64challenge");
 		RETURN_EMPTY;
 	}
 
 	if (!(key = ecdsa_key__load(argv[1])))
 	{
-		yell("ecdsatool sign: loading key %s failed", argv[1]);
+		say("ecdsatool sign: loading key %s failed", argv[1]);
 		RETURN_EMPTY;
 	}
 
@@ -197,7 +197,7 @@ static char *	tool_sign (int argc, char *argv[])
 
 	if (!signature)
 	{
-		yell("ecdsatool_sign: signing failed for %s", argv[1]);
+		say("ecdsatool_sign: signing failed for %s", argv[1]);
 		RETURN_EMPTY;
 	}
 
@@ -213,13 +213,13 @@ static char *	tool_verify (int argc, char *argv[])
 
 	if (argc < 4)
 	{
-		yell("usage: ecdsatool verify privatekey.pem base64challenge base64signature");
+		say("usage: ecdsatool verify privatekey.pem base64challenge base64signature");
 		RETURN_EMPTY;
 	}
 
 	if (!(key = ecdsa_key__load(argv[1])))
 	{
-		yell("ecdsatool verify: loading key %s failed", argv[1]);
+		say("ecdsatool verify: loading key %s failed", argv[1]);
 		RETURN_EMPTY;
 	}
 
@@ -274,12 +274,12 @@ static	int	check_permissions (FILE *f, mode_t perm)
 	memset(&sb, 0, sizeof(struct stat));
 	if (fstat(fd, &sb) < 0)
 	{
-		yell("ecdsatool: check_permissions: fstat failed: %s", strerror(errno));
+		say("ecdsatool: check_permissions: fstat failed: %s", strerror(errno));
 		return -1;
 	}
 	if (sb.st_mode != perm)
 	{
-		yell("ecdsatool: check_permissions: file should have %o permissions, but had %o", perm, sb.st_mode);
+		say("ecdsatool: check_permissions: file should have %o permissions, but had %o", perm, sb.st_mode);
 		return -1;
 	}
 	return 0;
@@ -301,7 +301,7 @@ static	ecdsa_key_t *	ecdsa_key__load (const char *filename)
 	}
 	if (check_permissions(in, S_IFREG|S_IRUSR))
 	{
-		yell("ecdsatool: load_key: file %s had insecure permissions - not loaded", filename);
+		say("ecdsatool: load_key: file %s had insecure permissions - not loaded", filename);
 		return NULL;
 	}
 

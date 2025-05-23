@@ -40,8 +40,6 @@
  * liability and the express disclaimer of all warranties.  
  * This software is provided "AS IS".
  */
-#include <math.h>
-
 #define STACKSZ 	80
 #define TOKENCOUNT	80
 #define MAGIC_TOKEN	-14

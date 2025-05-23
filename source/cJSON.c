@@ -80,14 +80,6 @@
  * Other things that were removed might be re-added if we need them.
  * For our needs, we expect scalar json items to be immutable after being built.
  */
-#include <string.h>
-#include <stdio.h>
-#include <math.h>
-#include <stdlib.h>
-#include <limits.h>
-#include <ctype.h>
-#include <float.h>
-
 #include "irc_std.h"
 #include "irc.h"
 #include "ircaux.h"

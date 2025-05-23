@@ -242,3 +242,5 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Add $serverctl(SET x CERT y)
 * Add /load sasl - unified sasl handling (tested on libera)
 * Fix a typo in /load sas (rb zlonix)
+* Refactor irc_std.h.  All #include <x.h>'s now must be there.
+* Reduce some chattiness of debugging info now that things are solidifying up.

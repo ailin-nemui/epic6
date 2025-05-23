@@ -1059,7 +1059,8 @@ void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares
     // MyContext *ctx = (MyContext *)arg;
 
     if (status == ARES_SUCCESS) {
-        //say("my_addrinfo_json_callback: DNS lookup successful.");
+	if (x_debug & DEBUG_SERVER_CONNECT)
+        	yell("my_addrinfo_json_callback: DNS lookup successful.");
 
         // Convert the result to JSON
         cJSON *json_output = convert_ares_addrinfo_to_json(result);
@@ -1068,7 +1069,8 @@ void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares
             // Print the JSON (or do something else with it)
             json_string = cJSON_Generate(json_output, true_);
             if (json_string) {
-                // say("my_addrinfo_json_callback: JSON Result: %s", json_string);
+		if (x_debug & DEBUG_SERVER_CONNECT)
+                	yell("my_addrinfo_json_callback: JSON Result: %s", json_string);
             } else {
 		if (x_debug & DEBUG_SERVER_CONNECT)
 			yell("my_addrinfo_json_callback: Failed to print JSON.");
@@ -1253,8 +1255,6 @@ int	json_to_sockaddr_array (const char *json_string, int *failure_code_, SSu **a
 
 
 /**********************************************************************************************/
-#include <ifaddrs.h>
-
 typedef struct Vhosts {
 	char *	hostname;
 	char *	paddr;
@@ -1287,7 +1287,7 @@ void	init_one_vhost (struct ifaddrs *addr)
 	/* Cache the result */
 	if (next_vhost >= max_vhost)
 	{
-		yell("I'm plum full up on vhosts -- sorry!");
+		say("I'm plum full up on vhosts -- sorry!");
 		return;
 	}
 
@@ -1302,7 +1302,7 @@ void	init_one_vhost (struct ifaddrs *addr)
 	vhosts[i].sl = sasocklen(addr->ifa_addr);
 	vhosts[i].is_default = 0;
 
-	yell("Successfully created vhost for %s", addrbuf);
+	say("Successfully created vhost for %s", addrbuf);
 }
 
 void	init_vhosts_stage1 (void)
@@ -1437,7 +1437,7 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 		/* Cache the result */
 		if (next_vhost >= max_vhost)
 		{
-			yell("I'm plum full up on vhosts -- sorry!");
+			say("I'm plum full up on vhosts -- sorry!");
 			return -1;
 		}
 
@@ -1461,8 +1461,7 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 		memcpy(ssu_, res->ai_addr, res->ai_addrlen);
 		*sl = res->ai_addrlen;
 
-		if (x_debug & DEBUG_SERVER_CONNECT)
-			yell("Successfully created vhost for %s", something);
+		say("Successfully created vhost for %s", something);
 		freeaddrinfo(res_save);
 		return 0;
 	}

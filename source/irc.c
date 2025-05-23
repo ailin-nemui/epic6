@@ -55,7 +55,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3050;
+const unsigned long	commit_id = 3051;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -92,8 +92,6 @@ const char ridiculous_version_name[] = "Otiose";
 #include "extlang.h"
 #include "files.h"
 #include "ctcp.h"
-#include <pwd.h>
-
 
 /*
  * Global variables

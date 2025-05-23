@@ -43,11 +43,6 @@
 #include "defs.h"
 #include "config.h"
 #include "irc_std.h"
-#include <poll.h>
-#ifdef HAVE_TERMIOS_WINSIZE
-#include <termios.h>
-#endif
-#include <sys/ioctl.h>
 
 static 	int 	data = -1;
 static	int	cmd = -1;
