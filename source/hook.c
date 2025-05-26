@@ -150,6 +150,7 @@ Hookables hook_function_templates[] =
 	{ "CHANNEL_SIGNOFF",	NULL,	3,	0,	0,	NULL, 0 },
 	{ "CHANNEL_SYNC",	NULL,	3,	0,	0,	NULL, 0 },
 	{ "CONNECT",		NULL,	2,	0,	0,	NULL, 0 },
+	{ "CONTEXT",		NULL,	4,	0,	0,	NULL, 0 },
 	{ "CTCP",		NULL,	4,	0,	0,	NULL, 0 },
 	{ "CTCP_REPLY",		NULL,	4,	0,	0,	NULL, 0 },
 	{ "CTCP_REQUEST",	NULL,	4,	0,	0,	NULL, 0 },

@@ -155,12 +155,12 @@ struct	ScreenStru *	next;			/* Previous screen in list */
  * The front-end api to output stuff to windows is:
  *
  * 1) Set the window, either directly or indirectly:
- *     a) Directly with		l = message_setall(window, target, level);
- *     b) Indirectly with	l = message_from(target, level);
+ *     a) Directly with		l = set_context(from_server, window, sender, target, level);
+ *     b) Indirectly with	l = set_context(from_server, -1, sender, target, level);
  * 2) Call an output routine:
- *	say(), output(), yell(), put_it(), put_echo(), etc.
+ *	do_hook(), say(), output(), yell(), put_it(), put_echo(), etc.
  * 3) Reset the window:
- *     b) Indirectly with	pop_message_from(l);
+ *     b) Indirectly with	pop_context(l);
  *
  * This file implements the middle part of the "ircII window", everything
  * that sits behind the say/output/yell/put_it/put_echo functions, and in
@@ -3061,9 +3061,13 @@ void 	add_to_screen (const char *buffer)
 		return;
 	}
 
+	if (get_who_output_suppressed())
+		return;
+
 	if (dumb_mode)
 	{
 		add_to_lastlog(get_window_refnum(0), buffer);
+
 		if (privileged_output || 
 		    do_hook(WINDOW_LIST, "%u %s", get_window_user_refnum(0), buffer))
 			puts(buffer);
@@ -3230,6 +3234,10 @@ static void 	add_to_window (int window_, const char *str)
 	{
 	   static int recursion = 0;
 
+	   if (get_who_output_suppressed())
+		return;
+
+
 	   if (!do_hook(WINDOW_LIST, "%u %s", get_window_user_refnum(window_), str))
 		return;
 
@@ -3299,8 +3307,11 @@ static void 	add_to_window (int window_, const char *str)
 	    if (!(get_window_notified(window_)) &&
 			mask_isset(get_window_notify_mask(window_), get_who_level()))
 	    {
+		int l = set_context(from_server, get_window_refnum(0), get_who_sender(), get_who_from(), get_who_level());
 		set_window_notified(window_, 1);
 	    	do_hook(WINDOW_NOTIFIED_LIST, "%u %s", get_window_user_refnum(window_), level_to_str(get_who_level()));
+		pop_context(l);
+
 		if (get_window_notify_when_invisible(window_))
 			type = "Activity";
 		update_all_status();
@@ -3308,9 +3319,9 @@ static void 	add_to_window (int window_, const char *str)
 
 	    if (type)
 	    {
-		int l = message_setall(get_window_refnum(0), get_who_from(), get_who_level());
+		int l = set_context(from_server, get_window_refnum(0), get_who_sender(), get_who_from(), get_who_level());
 		say("%s in window %d", type, get_window_user_refnum(window_));
-		pop_message_from(l);
+		pop_context(l);
 	    }
 	}
 	if (free_me)

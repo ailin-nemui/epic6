@@ -570,7 +570,7 @@ static	int	last_width = -1;
 	}
 
 	/* Who replies always go to the current window. */
-	l = message_from(new_w->who_target, LEVEL_OTHER);
+	l = set_context(from_server, -1, from, new_w->who_target, LEVEL_OTHER);
 
 do
 {
@@ -694,7 +694,7 @@ do
 }
 while (new_w->piggyback && (new_w = new_w->next));
 
-	pop_message_from(l);
+	pop_context(l);
 }
 
 /* Undernet's 354 numeric reply. */
@@ -721,13 +721,13 @@ void	xwhoreply (int refnum, const char *from, const char *comm, const char **Arg
 			"even though you didn't ask for one. ###");
 
 	/* Who replies always go to the current window */
-	l = message_from(new_w->who_target, LEVEL_OTHER);
+	l = set_context(from_server, -1, from, new_w->who_target, LEVEL_OTHER);
 	PasteArgs(ArgList, 0);
 	if (new_w->who_stuff)
 		call_lambda_command("WHO", new_w->who_stuff, ArgList[0]);
 	else if (do_hook(current_numeric, "%s", ArgList[0]))
 		put_it("%s %s", banner(), ArgList[0]);
-	pop_message_from(l);
+	pop_context(l);
 }
 
 
@@ -748,7 +748,7 @@ void	who_end (int refnum, const char *from, const char *comm, const char **ArgLi
 
 	PasteArgs(ArgList, 0);
 
-	l = message_from(new_w->who_target, LEVEL_OTHER);
+	l = set_context(from_server, -1, from, new_w->who_target, LEVEL_OTHER);
 	do
 	{
 		/* Defer to another function, if neccesary.  */
@@ -775,7 +775,7 @@ void	who_end (int refnum, const char *from, const char *comm, const char **ArgLi
 			*new_w->who_target = 0;
 	}
 	while (new_w->piggyback && (new_w = new_w->next));
-	pop_message_from(l);
+	pop_context(l);
 
 	if (new_w)
 	{
@@ -831,7 +831,7 @@ int	fake_who_end (int refnum, const char *from, const char *comm, const char *wh
 		/*who_target = target; */
 	}
 
-	l = message_from(new_w->who_target, LEVEL_OTHER);
+	l = set_context(from_server, -1, from, new_w->who_target, LEVEL_OTHER);
 	do
 	{
 		/* Defer to another function, if neccesary.  */
@@ -855,7 +855,7 @@ int	fake_who_end (int refnum, const char *from, const char *comm, const char *wh
 		}
 	} 
 	while (new_w->piggyback && (new_w = new_w->next));
-	pop_message_from(l);
+	pop_context(l);
 
 	who_queue_pop(refnum);
 	return 1;

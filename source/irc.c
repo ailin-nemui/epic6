@@ -55,7 +55,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3051;
+const unsigned long	commit_id = 3052;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -872,7 +872,7 @@ static	int		level = 0,
 		system_reset = 0;
 		for (i = 0; i < 51; i++)
 			caller[i] = NULL;
-		check_message_from_queue(1);
+		check_context_queue(1);
 		level = 0;
 	}
 
@@ -980,7 +980,7 @@ static	int		level = 0,
 	level--;
 
 	if (level == 0)
-		check_message_from_queue(0);
+		check_context_queue(0);
 
 	return;
 }
@@ -1083,7 +1083,7 @@ int 	main (int argc, char *argv[])
 	my_signal(SIGUSR1, sig_user1);
 	my_signal(SIGUSR2, sig_user2);
 
-	message_from(NULL, LEVEL_OTHER);
+	set_context(-1, -1, NULL, NULL, LEVEL_OTHER);
 
 	/* 
 	 * We use dumb mode for -d, -b, when stdout is redirected to a file,

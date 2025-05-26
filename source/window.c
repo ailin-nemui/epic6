@@ -3227,9 +3227,9 @@ int	remove_window_target (int window_, int server, const char *nick)
 	{
 		int	l;
 
-		l = message_setall(w->refnum, get_who_from(), get_who_level());
+		l = set_context(w->server, w->refnum, get_who_sender(), get_who_from(), get_who_level());
 		say("Removed %s from window target list", item->name);
-		pop_message_from(l);
+		pop_context(l);
 
 		new_free(&item->name);
 		new_free((char **)&item->d);
@@ -3286,9 +3286,9 @@ static int	add_window_target (int window_, int server, const char *target, int a
 
 		if (need_create)
 		{
-			l = message_setall(window_, get_who_from(), get_who_level());
+			l = set_context(server, window_, get_who_sender(), get_who_from(), get_who_level());
 			say("Added %s to window target list", target);
-			pop_message_from(l);
+			pop_context(l);
 
 			new_w = (List *)new_malloc(sizeof(List));
 			new_w->name = malloc_strdup(target);
@@ -3508,7 +3508,6 @@ void 	window_check_servers (void)
 	int	max, i;
 	int	prime = NOSERV;
 	int	status;
-	int	l;
 
 	connected_to_server = 0;
 	max = server_list_size();
@@ -3527,15 +3526,16 @@ void 	window_check_servers (void)
 	    }
 
 	    connected_to_server++;
-	    l = message_setall(window, NULL, LEVEL_OTHER);
 
 	    if (status == SERVER_RECONNECT)
 	    {
+	        int 	l = set_context(get_window_server(window), window, NULL, NULL, LEVEL_OTHER);
 		if (x_debug & DEBUG_SERVER_CONNECT)
 		    yell("window_check_servers() is bringing up server %d", i);
 
 		/* This bootstraps the reconnect process */
 		bootstrap_server_connection(i);
+		pop_context(l);
 	    }
 	    else if (status == SERVER_ACTIVE)
 	    {
@@ -3544,12 +3544,12 @@ void 	window_check_servers (void)
 	    }
 	    else if (status == SERVER_CLOSED && server_more_addrs(i))
 	    {
+	        int	l = set_context(get_window_server(window), window, NULL, NULL, LEVEL_OTHER);
 		if (x_debug & DEBUG_SERVER_CONNECT)
 		    yell("window_check_servers() is restarting server %d", i);
 		connect_to_server_next_addr(i);
+		pop_context(l);
 	    }
-
-	    pop_message_from(l);
 	}
 
 	if (!is_server_open(primary_server))
@@ -3668,18 +3668,35 @@ static void 	revamp_window_masks (int refnum)
 }
 
 struct output_context {
+	const char *	who_sender;
 	const char *	who_from;
 	int		who_level;
 	const char *	who_file;
 	int		who_line;
+	int		who_output_suppressed;
 	int		to_window;
+	int		who_server;
 };
 struct output_context *	contexts = NULL;
 int			context_max = -1;
 int 			context_counter = -1;
 
-int	real_message_setall (int refnum, const char *who, int level, const char *file, int line)
+/*
+ * set_context: With this you can set the who_from variable and the 
+ * who_mask variable, used by the display routines to decide which 
+ * window messages should go to.
+ *
+ * Note - YOU OWN 'who'!  WE COPY THE POINTER BUT YOU STILL OWN THE OBJECT!
+ * YOU _MUST_ CALL pop_context() OR ALL HECK WILL BREAK LOOSE!
+ * 
+ * XXX Ugh. that's ugly. 
+ */
+int	real_set_context (int servref, int refnum, const char *sender, const char *target, int level, const char *file, int line)
 {
+	int	retval;
+	char *	target_str;
+	char *	sender_str;
+
 	if (context_max < 0)
 	{
 		context_max = 32;
@@ -3693,15 +3710,149 @@ int	real_message_setall (int refnum, const char *who, int level, const char *fil
 	}
 
 	if (x_debug & DEBUG_MESSAGE_FROM)
-		yell("Setting context %d [%d:%s:%s] {%s:%d}", context_counter, refnum, who ? who : "<null>", level_to_str(level), file, line);
+		yell("Setting context %d [%d:%s:%s:%s] {%s:%d}", context_counter, 
+								refnum, 
+								coalesce(sender, "<null>"),
+								coalesce(target, "<null>"), 
+								level_to_str(level), 
+								file, line);
 
-	contexts[context_counter].who_from = who;
+	contexts[context_counter].who_server = servref;
+	contexts[context_counter].who_sender = sender;
+	contexts[context_counter].who_from = target;
 	contexts[context_counter].who_level = level;
 	contexts[context_counter].who_file = file;
 	contexts[context_counter].who_line = line;
+	contexts[context_counter].who_output_suppressed = 0;
 	contexts[context_counter].to_window = refnum;
+	retval = context_counter++;
 
-	return context_counter++;
+	target_str = NULL;
+	if (target)
+	{
+		if (!is_channel(target))
+		{
+			const char *	target_userhost;
+			if ((target_userhost = fetch_userhost(servref, NULL, target)))
+				target_str = malloc_sprintf(NULL, "%s!%s", target, target_userhost);
+		}
+	}
+
+	sender_str = NULL;
+	if (sender)
+	{
+		if (!is_channel(sender))
+		{
+			const char *	sender_userhost;
+			if ((sender_userhost = fetch_userhost(servref, NULL, sender)))
+				sender_str = malloc_sprintf(NULL, "%s!%s", sender, sender_userhost);
+			else if (*FromUserHost)	/* XXX Sigh */
+				sender_str = malloc_sprintf(NULL, "%s!%s", sender, FromUserHost);
+		}
+	}
+
+	if (!target_str)
+		target_str = malloc_strdup(coalesce(target, "*"));
+	if (!sender_str)
+		sender_str = malloc_strdup(coalesce(sender, "*"));
+
+	do_hook(CONTEXT_LIST, "%d %d %s %s %s", 
+		contexts[context_counter-1].who_server,
+		contexts[context_counter-1].to_window,
+		sender_str, target_str,
+		level_to_str(contexts[context_counter-1].who_level));
+
+	new_free(&target_str);
+	new_free(&sender_str);
+	return retval;
+}
+
+void	pop_context (int context)
+{
+	if (x_debug & DEBUG_MESSAGE_FROM)
+		yell("popping message context %d", context);
+
+	if (context != context_counter - 1)
+		panic(1, "Output context from %s:%d was not released", 
+			contexts[context_counter-1].who_file,
+			contexts[context_counter-1].who_line);
+
+	context_counter--;
+	contexts[context_counter].who_sender = NULL;
+	contexts[context_counter].who_from = NULL;
+	contexts[context_counter].who_level = LEVEL_NONE;
+	contexts[context_counter].who_file = NULL;
+	contexts[context_counter].who_line = -1;
+	contexts[context_counter].who_output_suppressed = 0;
+	contexts[context_counter].to_window = -1;
+}
+
+/* 
+ * This is called from io() when the main loop has fully unwound.
+ * in theory, there shouldn't be ANY contexts left on the stack.
+ * if there are, maybe we should panic here?  Or maybe just delete them.
+ */
+void	check_context_queue (int doing_reset)
+{
+	int	i;
+
+	/* Well, there's always one context left... */
+	if (context_counter != 1)
+	{
+	    /* Alert to the problem... */
+	    for (i = 1; i < context_counter; i++)
+	    {
+		if (!doing_reset)
+			yell("Warning: Output context from %s:%d was not released",
+				contexts[i].who_file,
+				contexts[i].who_line);
+
+	    }
+
+	    /* And then clean up the mess. */
+	    while (context_counter > 1)
+		pop_context(context_counter - 1);
+	}
+}
+
+const char *	get_who_sender(void)
+{
+	return contexts[context_counter - 1].who_sender;
+}
+
+const char *	get_who_from(void)
+{
+	return contexts[context_counter - 1].who_from;
+}
+
+int	get_who_level (void)
+{
+	return contexts[context_counter - 1].who_level;
+}
+
+int	get_who_output_suppressed (void)
+{
+	return contexts[context_counter - 1].who_output_suppressed;
+}
+
+const char *	get_who_file (void)
+{
+	return contexts[context_counter - 1].who_file;
+}
+
+int	get_who_line (void)
+{
+	return contexts[context_counter - 1].who_line;
+}
+
+int	get_to_window (void)
+{
+	return contexts[context_counter - 1].to_window;
+}
+
+BUILT_IN_COMMAND(shhcmd)
+{
+	contexts[context_counter - 1].who_output_suppressed = 1;
 }
 
 /*
@@ -3724,111 +3875,6 @@ static void	adjust_context_windows (int old_win, int new_win)
 	}
 }
 
-/*
- * message_from: With this you can set the who_from variable and the 
- * who_mask variable, used by the display routines to decide which 
- * window messages should go to.
- *
- * Note - YOU OWN 'who'!  WE COPY THE POINTER BUT YOU STILL OWN THE OBJECT!
- * YOU _MUST_ CALL pop_message_from() OR ALL HECK WILL BREAK LOOSE!
- * 
- * XXX Ugh. that's ugly. 
- */
-int	real_message_from (const char *who, int level, const char *file, int line)
-{
-	if (context_max < 0)
-	{
-		context_max = 32;
-		context_counter = 0;
-		RESIZE(contexts, struct output_context, context_max);
-	}
-	else if (context_counter >= context_max - 20)
-	{
-		context_max *= 2;
-		RESIZE(contexts, struct output_context, context_max);
-	}
-
-	if (x_debug & DEBUG_MESSAGE_FROM)
-		yell("Setting context %d [-:%s:%s] {%s:%d}", context_counter, who ? who : "<null>", level_to_str(level), file, line);
-
-	contexts[context_counter].who_from = who;
-	contexts[context_counter].who_level = level;
-	contexts[context_counter].who_file = file;
-	contexts[context_counter].who_line = line;
-	contexts[context_counter].to_window = -1;
-	return context_counter++;
-}
-
-void	pop_message_from (int context)
-{
-	if (x_debug & DEBUG_MESSAGE_FROM)
-		yell("popping message context %d", context);
-
-	if (context != context_counter - 1)
-		panic(1, "Output context from %s:%d was not released", 
-			contexts[context_counter-1].who_file,
-			contexts[context_counter-1].who_line);
-
-	context_counter--;
-	contexts[context_counter].who_from = NULL;
-	contexts[context_counter].who_level = LEVEL_NONE;
-	contexts[context_counter].who_file = NULL;
-	contexts[context_counter].who_line = -1;
-	contexts[context_counter].to_window = -1;
-}
-
-/* 
- * This is called from io() when the main loop has fully unwound.
- * in theory, there shouldn't be ANY contexts left on the stack.
- * if there are, maybe we should panic here?  Or maybe just delete them.
- */
-void	check_message_from_queue (int doing_reset)
-{
-	int	i;
-
-	/* Well, there's always one context left... */
-	if (context_counter != 1)
-	{
-	    /* Alert to the problem... */
-	    for (i = 1; i < context_counter; i++)
-	    {
-		if (!doing_reset)
-			yell("Warning: Output context from %s:%d was not released",
-				contexts[i].who_file,
-				contexts[i].who_line);
-
-	    }
-
-	    /* And then clean up the mess. */
-	    while (context_counter > 1)
-		pop_message_from(context_counter - 1);
-	}
-}
-
-const char *	get_who_from(void)
-{
-	return contexts[context_counter - 1].who_from;
-}
-
-int	get_who_level (void)
-{
-	return contexts[context_counter - 1].who_level;
-}
-
-const char *	get_who_file (void)
-{
-	return contexts[context_counter - 1].who_file;
-}
-
-int	get_who_line (void)
-{
-	return contexts[context_counter - 1].who_line;
-}
-
-int	get_to_window (void)
-{
-	return contexts[context_counter - 1].to_window;
-}
 
 /* * * * * * * * * * * CLEARING WINDOWS * * * * * * * * * * */
 static void 	clear_window (int window_)
@@ -5239,7 +5285,7 @@ WINDOWCMD(channel)
 	    new_free(&pass);
 	}
 
-	l = message_from(chans_to_join, LEVEL_OTHER);
+	l = set_context(from_server, -1, NULL, chans_to_join, LEVEL_OTHER);
 	if (chans_to_join && passes_to_use)
 		send_to_aserver(window->server,"JOIN %s %s", chans_to_join, passes_to_use);
 	else if (chans_to_join)
@@ -5247,7 +5293,7 @@ WINDOWCMD(channel)
 
 	new_free(&chans_to_join);
 	new_free(&passes_to_use);
-	pop_message_from(l);
+	pop_context(l);
 
 	return refnum;
 }
@@ -5566,9 +5612,9 @@ WINDOWCMD(echo)
 	else
 		to_echo = *args, *args = NULL;
 
-	l = message_setall(window->refnum, get_who_from(), get_who_level());
+	l = set_context(window->server, window->refnum, get_who_sender(), get_who_from(), get_who_level());
 	put_echo(to_echo);
-	pop_message_from(l);
+	pop_context(l);
 
 	return refnum;
 }
@@ -7140,9 +7186,9 @@ EXT_WINDOWCMD(query)
 		while ((oldnick = get_window_equery(refnum)))
 			remove_window_target(refnum, get_window_server(refnum), oldnick);
 
-		l = message_setall(refnum, get_who_from(), get_who_level());
+		l = set_context(get_window_server(refnum), refnum, get_who_sender(), get_who_from(), get_who_level());
 		say("All conversations in this window ended");
-		pop_message_from(l);
+		pop_context(l);
 		
 		recheck_queries(refnum);
 		window_statusbar_needs_update(refnum);
@@ -8397,8 +8443,8 @@ BUILT_IN_COMMAND(windowcmd)
 		else
 			pass_null = 0;
 
-		l = message_setall(refnum > 0 ? refnum : -1, 
-					get_who_from(), get_who_level());
+		l = set_context(get_window_server(refnum), refnum > 0 ? refnum : -1, 
+					get_who_sender(), get_who_from(), get_who_level());
 
 		for (i = 0; options[i].func ; i++)
 		{
@@ -8440,7 +8486,7 @@ BUILT_IN_COMMAND(windowcmd)
 			}
 		}
 
-		pop_message_from(l);
+		pop_context(l);
 	}
 
 	if (!nargs)
@@ -8457,7 +8503,7 @@ BUILT_IN_COMMAND(windowcmd)
 		from_server = old_from_server;
 
 	permit_status_update(old_status_update); 
-	/* pop_message_from(l); */
+	/* pop_context(l); */
 	window_check_channels();
 	update_all_windows();
 }

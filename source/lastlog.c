@@ -36,6 +36,7 @@
 #include "levels.h"
 #include "lastlog.h"
 #include "window.h"
+#include "server.h"
 #include "screen.h"
 #include "vars.h"
 #include "ircaux.h"
@@ -543,7 +544,7 @@ BUILT_IN_COMMAND(lastlog)
 	int		global = 0;
 
 	window = get_window_refnum(0);
-	lc = message_setall(window, NULL, LEVEL_OTHER);
+	lc = set_context(from_server, window, NULL, NULL, LEVEL_OTHER);
 	cnt = get_window_lastlog_size(window);
 	get_window_lastlog_mask(window, &save_mask);
 	clear_window_lastlog_mask(window);
@@ -1288,7 +1289,7 @@ bail:
 	if (norex)
 		regfree(norex);
 	set_window_lastlog_mask(0, save_mask);
-	pop_message_from(lc);
+	pop_context(lc);
 	return;
 }
 

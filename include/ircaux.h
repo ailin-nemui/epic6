@@ -123,6 +123,7 @@ struct 	epic_loadfile *	uzfopen 	(char **, const char *, int, struct stat *);
 	char *	remove_trailing_spaces 	(char *, int);
 	char *	endstr			(char *);
 const 	char *	nonull			(const char *);
+const 	char *	coalesce		(const char *, ...);
 
 	/* - - - - Functions dealing with mutating strings in place - - - - */
 	char *	upper 			(char *);

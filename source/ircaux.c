@@ -6470,6 +6470,18 @@ const char *	nonull (const char *x)
 		return empty_string;
 }
 
+const char *	coalesce (const char *one_, ...)
+{
+	va_list	args;
+
+	va_start(args, one_);
+	while (one_ == NULL)
+		one_ = va_arg(args, const char *);
+	va_end(args);
+	return one_;
+}
+
+
 /*********************************************************************************/
 char *  digest_hexstr (const char *type, const char *input, size_t inputlen, char *output, size_t outputlen)
 {
@@ -6502,6 +6514,7 @@ char *  digest_hexstr (const char *type, const char *input, size_t inputlen, cha
 	}
 	return output;
 }
+
 
 char *  digest (const char *type, const char *input, size_t inputlen, char *output, size_t outputlen)
 {

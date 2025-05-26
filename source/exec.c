@@ -112,7 +112,7 @@ static	void 	do_exec 		(int fd);
 static	Process *	get_process_by_refnum (int refnum);
 static int 	get_process_refnum 	(const char *desc);
 
-static	int	set_message_from_for_process (Process *proc)
+static	int	set_context_for_process (Process *proc)
 {
 	const char *logical_name; 
 	int	l;
@@ -123,9 +123,9 @@ static	int	set_message_from_for_process (Process *proc)
 		logical_name = proc->refnum_desc;
 
 	if (proc->window_refnum)
-		l = message_setall(proc->window_refnum, logical_name, LEVEL_OTHER);
+		l = set_context(proc->server_refnum, proc->window_refnum, logical_name, logical_name, LEVEL_OTHER);
 	else
-		l = message_from(logical_name, LEVEL_OTHER);
+		l = set_context(proc->server_refnum, -1, logical_name, logical_name, LEVEL_OTHER);
 
 	return l;
 }
@@ -240,10 +240,10 @@ static void 		do_exec (int fd)
 
 		if (limit > 0 && proc->lines_recvd >= limit)
 		{
-			int l = set_message_from_for_process(proc);
+			int l = set_context_for_process(proc);
 			say("Ignoring process %d (reached output limit): %s", proc->refnum, proc->commands);
 			ignore_process(proc);
-			pop_message_from(l);
+			pop_context(l);
 		}
 	}
 
@@ -344,7 +344,7 @@ static void 	handle_filedesc (Process *proc, int *fd, int hook_nonl, int hook_nl
 		logical_name = proc->refnum_desc;
 	utf8_text = inbound_recode(logical_name, proc->server_refnum, empty_string, exec_buffer, &extra);
 
-	l = set_message_from_for_process (proc);
+	l = set_context_for_process(proc);
 
 	if (callback)
 	    call_lambda_command("EXEC", callback, utf8_text);
@@ -360,7 +360,7 @@ static void 	handle_filedesc (Process *proc, int *fd, int hook_nonl, int hook_nl
 		if (!proc->redirect)
 		    put_it("%s", utf8_text);
 	}
-	pop_message_from(l);
+	pop_context(l);
 
 	new_free(&extra);
 	from_server = ofs;
@@ -534,7 +534,7 @@ int 		text_to_process (const char *target, const char *text, int show)
 	snprintf(my_buffer, size, "%s\n", text);
 	recoded_text = outbound_recode(logical_name, proc->server_refnum, my_buffer, &extra);
 
-	l = set_message_from_for_process (proc);
+	l = set_context_for_process(proc);
 	if (write(proc->p_stdin, recoded_text, strlen(recoded_text)) <= 0)
 		yell("Was unable to write text %s to process %s", text, target);
 	new_free(&extra);
@@ -543,7 +543,7 @@ int 		text_to_process (const char *target, const char *text, int show)
 		if ((do_hook(SEND_EXEC_LIST, "%s %d %s", logical_name, process_refnum, text)))
 			put_it("%s", text);
 
-	pop_message_from(l);
+	pop_context(l);
 	return (0);
 }
 
@@ -662,7 +662,7 @@ static void 	cleanup_dead_processes (void)
 		}
 
 		from_server = deadproc->server_refnum;
-		l = set_message_from_for_process(deadproc);
+		l = set_context_for_process(deadproc);
 
 		/*
 		 * First thing we do is run any /wait %proc -cmd commands
@@ -712,7 +712,7 @@ static void 	cleanup_dead_processes (void)
 			    }
 			}
 		}
-		pop_message_from(l);
+		pop_context(l);
 
 		deadproc->p_stdin = new_close(deadproc->p_stdin);
 		deadproc->p_stdout = new_close(deadproc->p_stdout);
@@ -815,12 +815,12 @@ static void 	kill_process (Process *proc, int sig)
 
 	old_from_server = from_server;
 	from_server = proc->server_refnum;
-	l = set_message_from_for_process(proc);
+	l = set_context_for_process(proc);
 
 	say("Sending signal %s (%d) to process %d: %s", 
 		get_signal_name(sig), sig, proc->refnum, proc->commands);
 
-	pop_message_from(l);
+	pop_context(l);
 	from_server = old_from_server;
 
 	/* Administrative kill of unlaunched process */
@@ -1558,7 +1558,7 @@ BUILT_IN_COMMAND(execcmd)
 	if (!(flags = execcmd_tokenize_arguments(args, &process, &free_ptr, &extra_args, &numargs, &flags_size)))
 		return;
 
-	l = set_message_from_for_process(process);
+	l = set_context_for_process(process);
 
 	for (i = 0; i < numargs; i++)
 	{
@@ -1606,8 +1606,8 @@ BUILT_IN_COMMAND(execcmd)
 		}
 		else if (my_strnicmp(flag, "-WINDOW", len) == 0)
 		{
-			pop_message_from(l);
-			l = set_message_from_for_process(process);
+			pop_context(l);
+			l = set_context_for_process(process);
 			process->window_refnum = get_window_refnum(0);
 			say("Output from process %d (%s) now going to window %d", 
 					process->refnum, process->commands, process->window_refnum);
@@ -1622,8 +1622,8 @@ BUILT_IN_COMMAND(execcmd)
 			else
 			{
 				process->window_refnum = w;
-				pop_message_from(l);
-				l = set_message_from_for_process(process);
+				pop_context(l);
+				l = set_context_for_process(process);
 				say("Output from process %d (%s) now going to window %d", 
 					process->refnum, process->commands, process->window_refnum);
 			}
@@ -1741,7 +1741,7 @@ BUILT_IN_COMMAND(execcmd)
 	if (process->pid == -1 && launch)
 		start_process(process);
 
-	pop_message_from(l);
+	pop_context(l);
 
 	new_free((char **)&flags);
 	new_free((char **)&free_ptr);

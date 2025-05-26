@@ -282,6 +282,7 @@ static	IrcCommand irc_command[] =
 	{ "SERVLIST",	send_comm	},
 	{ "SET",	setcmd		}, /* vars.c */
 	{ "SETENV",	setenvcmd	},
+	{ "SHH",	shhcmd		}, /* windows.c */
 	{ "SHIFT",	shift_cmd	},
 	{ "SHOOK",	shookcmd	},
 	{ "SILENCE",	send_comm	},
@@ -610,11 +611,11 @@ BUILT_IN_COMMAND(describe)
 
 		message = args;
 
-		l = message_from(target, LEVEL_ACTION);
+		l = set_context(from_server, -1, NULL, target, LEVEL_ACTION);
 		send_ctcp(1, target, "ACTION", "%s", message);
 		if (do_hook(SEND_ACTION_LIST, "%s %s", target, message))
 			put_it("* -> %s: %s %s", target, get_server_nickname(from_server), message);
-		pop_message_from(l);
+		pop_context(l);
 	}
 	else
 		say("Usage: /DESCRIBE <[=]nick|channel|*> <action description>");
@@ -646,12 +647,12 @@ BUILT_IN_COMMAND(e_channel)
 {
 	int	l;
 
-	l = message_from(NULL, LEVEL_OTHER);
+	l = set_context(from_server, -1, NULL, NULL, LEVEL_OTHER);
 	if (args && *args)
 		windowcmd_rejoin(0, &args);
 	else
 		list_channels();
-	pop_message_from(l);
+	pop_context(l);
 }
 
 /*
@@ -850,9 +851,9 @@ BUILT_IN_COMMAND(e_wallop)
 {
 	int l;
 
-	l = message_from(NULL, LEVEL_WALLOP);
+	l = set_context(from_server, -1, NULL, NULL, LEVEL_WALLOP);
 	send_to_server("WALLOPS :%s", args);
-	pop_message_from(l);
+	pop_context(l);
 }
 
 /* Super simple, fast /ECHO */
@@ -888,6 +889,7 @@ BUILT_IN_COMMAND(xechocmd)
 	int	old_output_expires_after = output_expires_after;
 	int	to_level = get_who_level();
 	const char *	to_from = get_who_from();
+	const char *	to_sender = get_who_sender();
 
 	while (more && args && *args == '-')
 	{
@@ -1154,9 +1156,9 @@ BUILT_IN_COMMAND(xechocmd)
 			if (all_windows == 0 && get_window_server(win) != from_server)
 				continue;
 
-			l = message_setall(win, to_from, to_level);
+			l = set_context(from_server, win, to_sender, to_from, to_level);
 			put_echo(args);
-			pop_message_from(l);
+			pop_context(l);
 		}
 	}
 	else if (all_windows != 0)
@@ -1166,9 +1168,9 @@ BUILT_IN_COMMAND(xechocmd)
 			all_windows_for_server);
 	else
 	{
-		int l = message_setall(to_window_refnum, to_from, to_level);
+		int l = set_context(from_server, to_window_refnum, to_sender, to_from, to_level);
 		put_echo(args);
-		pop_message_from(l);
+		pop_context(l);
 	}
 
 	if (stuff)
@@ -1226,7 +1228,7 @@ BUILT_IN_COMMAND(xevalcmd)
 
 			if ((win = lookup_window(next_arg(args, &args))) > 0)
 			{
-				l = message_setall(win, get_who_from(), get_who_level());
+				l = set_context(from_server, win, get_who_sender(), get_who_from(), get_who_level());
 				make_window_current_by_refnum(win);
 			}
 		}
@@ -1244,7 +1246,7 @@ BUILT_IN_COMMAND(xevalcmd)
 	runcmds(args, subargs);
 
 	if (l != -1)
-		pop_message_from(l);
+		pop_context(l);
 
 	make_window_current_by_refnum(old_refnum);
 	from_server = old_from_server;
@@ -2246,10 +2248,10 @@ BUILT_IN_COMMAND(mecmd)
 		{
 			send_ctcp(1, target, "ACTION", "%s", args);
 
-			l = message_from(target, LEVEL_ACTION);
+			l = set_context(from_server, -1, target, target, LEVEL_ACTION);
 			if (do_hook(SEND_ACTION_LIST, "%s %s", target, args))
 				put_it("* %s %s", get_server_nickname(from_server), args);
-			pop_message_from(l);
+			pop_context(l);
 		}
 		else
 			say("No target, neither channel nor query");
@@ -3212,7 +3214,7 @@ struct target_type target[4] =
 		if (!my_stricmp(command, "NOTICE"))
 			i += 2;
 
-		l = message_from(current_nick, target[i].mask);
+		l = set_context(from_server, -1, current_nick, current_nick, target[i].mask);
 
 		/*
 		 * TEXT is the original UTF8 string.
@@ -3232,7 +3234,7 @@ struct target_type target[4] =
 		}
 		set_server_sent_nick(from_server, current_nick);
 
-		pop_message_from(l);
+		pop_context(l);
 	    }
 
 	    new_free(&extra);

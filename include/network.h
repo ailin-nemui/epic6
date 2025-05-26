@@ -43,6 +43,7 @@
 	int     network_server		(SSu *, socklen_t);
 	int     inet_vhostsockaddr	(int, int, const char *, SSu *, socklen_t *);
 	void    init_ares		(void);
+        int     paddr_to_ssu		(const char *host, SSu *storage_, int flags);
 	int     ssu_to_paddr		(SSu *, char *, int, char *, int, int);
 	char *  ssu_to_paddr_quick	(SSu *);
 	int     ssu_to_port_quick	(SSu *);

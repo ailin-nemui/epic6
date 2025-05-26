@@ -46,7 +46,7 @@ static  void    Freeaddrinfo (AI *ai);
 static	int	Getnameinfo (SSu *ssu, socklen_t ssulen, char *host, size_t hostlen, char *serv, size_t servlen, int flags);
 static  void    do_ares_callback (int vfd);
 static  void    ares_sock_state_cb_ (void *data, ares_socket_t socket_fd, int readable, int writable);
-static	int	paddr_to_ssu (const char *host, SSu *storage_, int flags);
+	int	paddr_to_ssu (const char *host, SSu *storage_, int flags);
 static	void	ares_addrinfo_callback_ (void *arg, int status, int timeouts, struct ares_addrinfo *result);
 static	void	ares_nameinfo_callback_ (void *arg, int status, int timeouts, char *host, char *port);
 	void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares_addrinfo *result);
@@ -492,7 +492,7 @@ void	init_ares (void)
  *****************************************************************************/
 
 /*
- * NAME: my_inet_pton
+ * NAME: paddr_to_ssu 
  * USAGE: Like inet_pton(), but uses getaddrinfo() so we don't have to muck
  *	  around inside of sockaddrs.
  * ARGS: hostname - The address to convert.  It may be any of the following:
@@ -503,7 +503,7 @@ void	init_ares (void)
  *		If "hostname" is a p-addr, then the form of the p-addr
  *		must agree with the family in 'storage'.
  */
-static int	paddr_to_ssu (const char *host, SSu *storage_, int flags)
+int	paddr_to_ssu (const char *host, SSu *storage_, int flags)
 {
 	AI	hints;
 	AI *	results;
@@ -791,7 +791,7 @@ int	hostname_to_paddr (const char *host, char *retval, int size)
 }
 
 /*
- * NAME: inet_ptohn
+ * NAME: paddr_to_hostname (was: inet_ptohn)
  * USAGE: Convert a "presentation address" (p-addr) into a Hostname
  * PLAIN ENGLISH: Convert "foo.bar.com" into "A.B.C.D"
  * ARGS: family - The family whose presesentation address format to use
@@ -808,13 +808,13 @@ int	paddr_to_hostname (const char *ip, char *retval, int size)
 	memset((char *)&buffer, 0, sizeof(buffer));
 	if (paddr_to_ssu(ip, &buffer, 0))
 	{
-		syserr(-1, "inet_ptohn: paddr_to_ssu(%s) failed", ip);
+		syserr(-1, "paddr_to_hostname: paddr_to_ssu(%s) failed", ip);
 		return -1;
 	}
 
 	if (ssu_to_hostname(&buffer, retval, size, NULL, 0, NI_NAMEREQD))
 	{
-		syserr(-1, "inet_ptohn: ssu_to_hostname(%s) failed", ip);
+		syserr(-1, "paddr_to_hostname: ssu_to_hostname(%s) failed", ip);
 		return -1;
 	}
 
@@ -848,7 +848,7 @@ int	one_to_another (int family, const char *what, char *retval, int size)
 		if (hostname_to_paddr(what, retval, size))
 		{
 			swap_window_display(old_window_display);
-			syserr(-1, "one_to_another: both inet_ptohn and "
+			syserr(-1, "one_to_another: both paddr_to_hostname and "
 					"hostname_to_paddr failed (%d,%s)", 
 					family, what);
 			return -1;

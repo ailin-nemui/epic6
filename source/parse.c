@@ -268,11 +268,11 @@ static void	p_topic (const char *from, const char *comm, const char **ArgList)
 	if (!(new_topic = ArgList[1])) 
 		{ rfc1459_odd(from, comm, ArgList); return; }
 
-	l = message_from(channel, LEVEL_TOPIC);
+	l = set_context(from_server, -1, from, channel, LEVEL_TOPIC);
 	if (do_hook(TOPIC_LIST, "%s %s %s", from, channel, new_topic))
 		say("%s has changed the topic on channel %s to %s",
 			from, check_channel_type(channel), new_topic);
-	pop_message_from(l);
+	pop_context(l);
 }
 
 static void	p_wallops (const char *from, const char *comm, const char **ArgList)
@@ -291,9 +291,9 @@ static void	p_wallops (const char *from, const char *comm, const char **ArgList)
 	{
 		int	retval;
 
-		l = message_from(NULL, LEVEL_OPERWALL);
+		l = set_context(from_server, -1, from, NULL, LEVEL_OPERWALL);
 		retval = do_hook(OPERWALL_LIST, "%s %s", from, message + 11);
-		pop_message_from(l);
+		pop_context(l);
 		if (!retval)
 			return;
 	}
@@ -303,7 +303,7 @@ static void	p_wallops (const char *from, const char *comm, const char **ArgList)
 	 * treat it as a wallop.
 	 */
 
-	l = message_from(NULL, LEVEL_WALLOP);
+	l = set_context(from_server, -1, from, NULL, LEVEL_WALLOP);
 	if (do_hook(WALLOP_LIST, "%s %c %s", 
 				from, 
 				server_wallop ? 'S' : '*', 
@@ -311,7 +311,7 @@ static void	p_wallops (const char *from, const char *comm, const char **ArgList)
 		put_it("!%s%s! %s", 
 				from, server_wallop ? empty_string : star, 
 				message);
-	pop_message_from(l);
+	pop_context(l);
 }
 
 /*
@@ -392,7 +392,7 @@ static void	p_privmsg (const char *from, const char *comm, const char **ArgList)
 
 	/*
 	 * Do ctcp's first, and if there's nothing left, then dont
-	 * go to all the work below.  Plus, we dont set message_from
+	 * go to all the work below.  Plus, we dont set set_context
 	 * until we know there's other stuff besides the ctcp in the
 	 * message, which keeps things going to the wrong window.
 	 */
@@ -459,7 +459,7 @@ static void	p_privmsg (const char *from, const char *comm, const char **ArgList)
 		set_server_recv_nick(from_server, from);
 
 	/* Go ahead and throw it to the user */
-	l = message_from(target, level);
+	l = set_context(from_server, -1, from, target, level);
 
 	if (do_hook(GENERAL_PRIVMSG_LIST, "%s %s %s", from, real_target, message))
 	{
@@ -481,7 +481,7 @@ static void	p_privmsg (const char *from, const char *comm, const char **ArgList)
 	}
 
 	/* Clean up and go home. */
-	pop_message_from(l);
+	pop_context(l);
 	set_server_doing_privmsg(from_server, 0);
 }
 
@@ -497,19 +497,19 @@ static void	p_quit (const char *from, const char *comm, const char **ArgList)
 
 	for (chan = walk_channels(1, from); chan; chan = walk_channels(0, from))
 	{
-	    l = message_from(chan, LEVEL_QUIT);
+	    l = set_context(from_server, -1, from, chan, LEVEL_QUIT);
 	    if (!do_hook(CHANNEL_SIGNOFF_LIST, "%s %s %s", chan, from, 
 							quit_message))
 		one_prints = 0;
-	    pop_message_from(l);
+	    pop_context(l);
 	}
 
 	if (one_prints)
 	{
-		l = message_from(what_channel(from, from_server), LEVEL_QUIT);
+		l = set_context(from_server, -1, from, what_channel(from, from_server), LEVEL_QUIT);
 		if (do_hook(SIGNOFF_LIST, "%s %s", from, quit_message))
 			say("Signoff: %s (%s)", from, quit_message);
-		pop_message_from(l);
+		pop_context(l);
 	}
 
 	/* Send all data about this unperson to the memory hole. */
@@ -607,13 +607,13 @@ static void	p_join (const char *from, const char *comm, const char **ArgList)
 	if (vo)
 		strlcat(extra, " (+v)", sizeof extra);
 
-	l = message_from(channel, LEVEL_JOIN);
+	l = set_context(from_server, -1, from, channel, LEVEL_JOIN);
 	if (do_hook(JOIN_LIST, "%s %s %s %s", 
 			from, channel, FromUserHost, extra))
 		say("%s (%s) has joined channel %s%s", 
 			from, FromUserHost, 
 			check_channel_type(channel), extra);
-	pop_message_from(l);
+	pop_context(l);
 }
 
 static void 	p_invite (const char *from, const char *comm, const char **ArgList)
@@ -629,11 +629,11 @@ static void 	p_invite (const char *from, const char *comm, const char **ArgList)
 	set_server_invite_channel(from_server, invited_to);
 	set_server_recv_nick(from_server, from);
 
-	l = message_from(from, LEVEL_INVITE);
+	l = set_context(from_server, -1, from, invited_to, LEVEL_INVITE);
 	if (do_hook(INVITE_LIST, "%s %s %s", from, invited_to, FromUserHost))
 		say("%s (%s) invites you to channel %s", 
 			from, FromUserHost, invited_to);
-	pop_message_from(l);
+	pop_context(l);
 }
 
 /* 
@@ -830,24 +830,24 @@ static void	p_nick (const char *from, const char *comm, const char **ArgList)
 
 	for (chan = walk_channels(1, from); chan; chan = walk_channels(0, from))
 	{
-		l = message_from(chan, LEVEL_NICK);
+		l = set_context(from_server, -1, from, chan, LEVEL_NICK);
 		if (!do_hook(CHANNEL_NICK_LIST, "%s %s %s", chan, from, new_nick))
 			been_hooked = 1;
-		pop_message_from(l);
+		pop_context(l);
 	}
 
 	if (!been_hooked /* && !ignored */)
 	{
 		if (its_me)
-			l = message_from(NULL, LEVEL_NICK);
+			l = set_context(from_server, -1, from, NULL, LEVEL_NICK);
 		else
-			l = message_from(what_channel(from, from_server), 
+			l = set_context(from_server, -1, from, what_channel(from, from_server), 
 						LEVEL_NICK);
 
 		if (do_hook(NICKNAME_LIST, "%s %s", from, new_nick))
 			say("%s is now known as %s", from, new_nick);
 
-		pop_message_from(l);
+		pop_context(l);
 	}
 
 	rename_nick(from, new_nick, from_server);
@@ -883,10 +883,10 @@ static void	p_mode (const char *from, const char *comm, const char **ArgList)
 		type = "for user";
 	}
 
-	l = message_from(m_target, LEVEL_MODE);
+	l = set_context(from_server, -1, from, m_target, LEVEL_MODE);
 	if (do_hook(MODE_LIST, "%s %s %s", from, target, changes))
 	    say("Mode change \"%s\" %s %s by %s", changes, type, target, from);
-	pop_message_from(l);
+	pop_context(l);
 
 	if (is_channel(target))
 		update_channel_mode(target, changes);
@@ -909,7 +909,7 @@ static void strip_modes (const char *from, const char *channel, const char *line
 
 	if (is_channel(channel))
 	{
-	    l = message_from(channel, LEVEL_MODE);
+	    l = set_context(from_server, -1, from, channel, LEVEL_MODE);
 
 	    for (pointer = mode; *pointer; pointer++)
 	    {
@@ -946,12 +946,12 @@ static void strip_modes (const char *from, const char *channel, const char *line
 				from,channel,mag,c);
 	    }
 
-	    pop_message_from(l);
+	    pop_context(l);
 	}
 
 	else /* User mode */
 	{
-	    l = message_from(NULL, LEVEL_MODE);
+	    l = set_context(from_server, -1, from, NULL, LEVEL_MODE);
 
 	    for (pointer = mode; *pointer; pointer++)
 	    {
@@ -969,7 +969,7 @@ static void strip_modes (const char *from, const char *channel, const char *line
 		}
 	    }
 
-	    pop_message_from(l);
+	    pop_context(l);
 	}
 
 }
@@ -1017,7 +1017,7 @@ static void	p_kick (const char *from, const char *comm, const char **ArgList)
 		/* XXX A POX ON ANYONE WHO ASKS ME TO MOVE THIS AGAIN XXX */
 		ocw = get_window_refnum(0);
 		make_window_current_informally(window);
-		l = message_setall(window, channel, LEVEL_KICK);
+		l = set_context(from_server, window, from, channel, LEVEL_KICK);
 
 		if (do_hook(KICK_LIST, "%s %s %s %s", victim, from, 
 					check_channel_type(channel), comment))
@@ -1025,7 +1025,7 @@ static void	p_kick (const char *from, const char *comm, const char **ArgList)
 					check_channel_type(channel), from, 
 					comment);
 
-		pop_message_from(l);
+		pop_context(l);
 		make_window_current_informally(ocw);
 
 		remove_channel(channel, from_server);
@@ -1033,12 +1033,12 @@ static void	p_kick (const char *from, const char *comm, const char **ArgList)
 		return;
 	}
 
-	l = message_from(channel, LEVEL_KICK);
+	l = set_context(from_server, -1, from, channel, LEVEL_KICK);
 	if (do_hook(KICK_LIST, "%s %s %s %s", 
 			victim, from, channel, comment))
 		say("%s has been kicked off channel %s by %s (%s)", 
 			victim, check_channel_type(channel), from, comment);
-	pop_message_from(l);
+	pop_context(l);
 
 	/*
 	 * The placement of this is purely ergonomic.  When someone is
@@ -1063,7 +1063,7 @@ static void	p_part (const char *from, const char *comm, const char **ArgList)
 	if (!(reason = ArgList[1])) { }
 
 	{
-		l = message_from(channel, LEVEL_PART);
+		l = set_context(from_server, -1, from, channel, LEVEL_PART);
 		if (reason)		/* Dalnet part messages */
 		{
 			if (do_hook(PART_LIST, "%s %s %s %s", 
@@ -1078,7 +1078,7 @@ static void	p_part (const char *from, const char *comm, const char **ArgList)
 			    say("%s has left channel %s", 
 				from, check_channel_type(channel));
 		}
-		pop_message_from(l);
+		pop_context(l);
 	}
 
 	if (is_me(from_server, from))
@@ -1131,7 +1131,7 @@ static int 	p_killmsg (const char *from, const char *to, const char *cline)
 	char *line;
 	int   l, retval;
 
-	l = message_from(to, LEVEL_OPNOTE);
+	l = set_context(from_server, -1, from, to, LEVEL_OPNOTE);
 	line = LOCAL_COPY(cline);
 	if (!(poor_sap = next_arg(line, &line)))
 		return 0;		/* MALFORMED - IGNORED */
@@ -1145,7 +1145,7 @@ static int 	p_killmsg (const char *from, const char *to, const char *cline)
 	{
 		yell("Attempted to parse an ill-formed KILL request [%s %s]",
 			poor_sap, line);
-		pop_message_from(l);
+		pop_context(l);
 		return 0;
 	}
 	line += 5;
@@ -1167,7 +1167,7 @@ static int 	p_killmsg (const char *from, const char *to, const char *cline)
 
 	retval = do_hook(KILL_LIST, "%s %s %s %s %s", from, poor_sap, bastard,
 					path_to_bastard, reason);
-	pop_message_from(l);
+	pop_context(l);
 	return !retval;
 }
 
@@ -1196,14 +1196,14 @@ static 	void 	p_snotice (const char *from, const char *to, const char *line)
 				return;
 		}
 
-		l = message_from(to, LEVEL_OPNOTE);
+		l = set_context(from_server, -1, from, to, LEVEL_OPNOTE);
 		retval = do_hook(OPER_NOTICE_LIST, "%s %s", f, line + 14);
-		pop_message_from(l);
+		pop_context(l);
 		if (!retval)
 			return;
 	}
 
-	l = message_from(to, LEVEL_SNOTE);
+	l = set_context(from_server, -1, from, to, LEVEL_SNOTE);
 
 	/* Check to see if the notice already has its own header... */
 	if (do_hook(GENERAL_NOTICE_LIST, "%s %s %s", f, to, line))
@@ -1218,7 +1218,7 @@ static 	void 	p_snotice (const char *from, const char *to, const char *line)
 			say("%s", line);
 	}
 
-	pop_message_from(l);
+	pop_context(l);
 }
 
 /*
@@ -1286,7 +1286,7 @@ static void 	p_notice (const char *from, const char *comm, const char **ArgList)
 	}
 
 	/* Go ahead and throw it to the user */
-	l = message_from(target, LEVEL_NOTICE);
+	l = set_context(from_server, -1, from, target, LEVEL_NOTICE);
 
 	if (do_hook(GENERAL_NOTICE_LIST, "%s %s %s", from,real_target, message))
 	{
@@ -1303,7 +1303,7 @@ static void 	p_notice (const char *from, const char *comm, const char **ArgList)
 	}
 
 	/* Clean up and go home. */
-	pop_message_from(l);
+	pop_context(l);
 	set_server_doing_notice(from_server, 0);
 }
 

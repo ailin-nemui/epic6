@@ -1,5 +1,21 @@
 EPIC6-0.0.1
 
+*** News 05/26/2025 -- New /ON, /ON CONTEXT, new command /SSH
+	This one takes more explanation than normal.  See the file 'doc/set_context'.
+
+	The /ON CONTEXT event is thrown each time a new output context is set up.
+	This happens a lot more than you might think!
+	The only officially supported operation is /SSH, which will set the
+	"suppress display" flag for the lifetime of the context.
+	It's expected this will create a foundation for a new /IGNORE
+	Using /SSH outside of an /on context has unspecified behavior.
+
+		$0      The server (usually from_server)
+		$1      The window override (usually -1 meaning "no override")
+		$2      The sender (could be "*" meaning "no sender")
+		$3      The target (could be "*" meaning "no target")
+		$4      The level
+
 *** News 05/16/2025 -- SASL handling, /load sasl
 	There is now a unified sasl handling script that will do all
 	the sasl things in one place.

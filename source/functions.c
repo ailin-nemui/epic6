@@ -6734,25 +6734,33 @@ BUILT_IN_FUNCTION(function_wordtoindex, input)
 
 BUILT_IN_FUNCTION(function_iptolong, word)
 {
-	char *  dotted_quad;
-	struct in_addr	addr;
+	char *  	dotted_quad;
+	SSu		ssu;
 
 	GET_FUNC_ARG(dotted_quad, word);
-	if (inet_aton(dotted_quad, &addr))
-		return malloc_sprintf(NULL, "%lu", (unsigned long)ntohl(addr.s_addr));
-	RETURN_EMPTY;
+
+	memset(&ssu, 0, sizeof(ssu));
+	ssu.si.sin_family = AF_INET;
+	if ((paddr_to_ssu(dotted_quad, &ssu, 0)))
+		RETURN_EMPTY;
+	return malloc_sprintf(NULL, "%lu", (unsigned long)ntohl(ssu.si.sin_addr.s_addr));
 }
 
 BUILT_IN_FUNCTION(function_longtoip, word)
 {
 	char *  	ip32;
-	struct in_addr	addr;
-	const char *	retval;
+	SSu 		ssu;
+	char		host[256];
 
 	GET_FUNC_ARG(ip32, word);
-	addr.s_addr = (unsigned long)ntohl(strtoul(ip32, NULL, 10));
-	retval = inet_ntoa(addr);
-	RETURN_FSTR(retval);
+
+	memset(&ssu, 0, sizeof(ssu));
+	ssu.si.sin_family = AF_INET;
+	ssu.si.sin_addr.s_addr = (unsigned long)ntohl(strtoul(ip32, NULL, 10));
+	if ((ssu_to_paddr(&ssu, host, sizeof(host), NULL, 0, NI_NUMERICHOST)))
+		RETURN_EMPTY;
+
+	RETURN_FSTR(host);
 }
 
 BUILT_IN_FUNCTION(function_isencrypted, input)

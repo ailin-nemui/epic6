@@ -963,12 +963,12 @@ void	channel_not_waiting (const char *channel, int server)
 	if (tmp)
 	{
 		tmp->waiting = 0;
-		l = message_from(channel, LEVEL_OTHER);
+		l = set_context(from_server, -1, channel, channel, LEVEL_OTHER);
 		do_hook(CHANNEL_SYNC_LIST, "%s %f %d",
 			tmp->channel, 
 			time_diff(tmp->join_time, get_time(NULL)),
 			tmp->server);
-		pop_message_from(l);
+		pop_context(l);
 	}
 	else
 		yell("Channel_sync -- didn't find [%s:%d]",
@@ -1455,10 +1455,10 @@ void 	set_channel_window (const char *channel, int server, int window_, int as_c
 		    channel_hold_election(old_window);
 		    if (!(old_window_new_curchan = get_window_echannel(old_window)))
 			old_window_new_curchan = zero;
-		    l = message_from(channel, LEVEL_OTHER);
+		    l = set_context(from_server, -1, NULL, channel, LEVEL_OTHER);
 		    do_hook(SWITCH_CHANNELS_LIST, "%d %s %s",
 				get_window_user_refnum(old_window), channel, old_window_new_curchan);
-		    pop_message_from(l);
+		    pop_context(l);
 		}
 
 		/* 
@@ -1469,10 +1469,10 @@ void 	set_channel_window (const char *channel, int server, int window_, int as_c
 		if (as_current)
 		{
 			channel_hold_election(window);
-		        l = message_from(channel, LEVEL_OTHER);
+		        l = set_context(from_server, -1, channel, channel, LEVEL_OTHER);
 			do_hook(SWITCH_CHANNELS_LIST, "%d %s %s",
 				get_window_user_refnum(window), new_window_old_curchan, channel);
-		        pop_message_from(l);
+		        pop_context(l);
 		}
 	}
 	else

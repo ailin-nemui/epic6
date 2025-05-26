@@ -194,9 +194,23 @@ int	init_screen (void)
 }
 
 /*
- * put_echo: a display routine for echo that doesnt require an snprintf,
- * so it doesnt have that overhead, and it also doesnt have any size 
- * limitations.  The sky's the limit!
+ * put_echo - The chokepoint for all output everywhere
+ *
+ * Arguments:
+ *	str	- A string to display on the screen, of any length
+ *
+ * History:
+ *	Historically, the main entry to add_to_screen() was put_it(), which
+ *	had size limits, and required everything to be expressed as a printf
+ *	format.  Unfortunately, put_it() still has line limits,
+ *	(although they're higher than they used to be), but it is no longer 
+ *	the entry point to add_to_screen().  
+ *	This function lets you output an unlimited length string.
+ *
+ * Notes:
+ *	THIS IS THE ONLY FUNCTION PERMITTED TO CALL ADD_TO_SCREEN().
+ *	ALL OUTPUT OF EVERY KIND EVERYWHERE WHATSOEVER MUST RESOLVE
+ *	TO A CALL TO THIS FUNCTION.
  */
 void	put_echo (const char *str)
 {
@@ -205,17 +219,21 @@ void	put_echo (const char *str)
 }
 
 /*
- * put_it: the primary irc display routine.  This routine can be used to
- * display output to a user window.  Its ok to have newlines or tabs in
- * the output, but you should be careful not to overflow the 10k buffer
- * used to hold the output (use put_echo if you just want to output an
- * unbounded string).
+ * put_it - The primary irc display routine for anything requiring printf
  *
- * Some systems (notorously Ultrix) cannot gracefully convert float
- * variables through "..." into va_list, and attempting to do so will 
- * cause a crash on dereference (in vsnprintf()), so don't do that.  You'll
- * have to snprintf() the floats into strings and then pass the string 
- * in with %s.  Ugh.  This is not a bug on our part.
+ * Arguments:
+ *	format	- A printf() type format
+ *	...	- Things that fulfill the 'format'.
+ *
+ * Notes:
+ *	Because put_it() honors window_display, the output will be
+ *	shown only if the user is not suppressing it.
+ *
+ * Bogons:
+ *	Regretably, this function still has a 10k size limit.
+ *	I should do something about that.  The reason it still
+ *	exists was because of ancient OSs that had problems with 
+ *	floats in va_lists.
  */
 void	put_it (const char *format, ...)
 {
@@ -229,6 +247,17 @@ void	put_it (const char *format, ...)
 	}
 }
 
+/*
+ * file_put_it - Output something to a file, and maybe the screen
+ *
+ * Arguments:
+ *	fp	- A file to output to
+ *	format	- A printf() type format
+ *	...	- Things that fulfill the 'format'.
+ *
+ * Notes:
+ *	This is only used by /lastlog -file.
+ */
 void	file_put_it (FILE *fp, const char *format, ...)
 {
 	if (format)
@@ -247,9 +276,19 @@ void	file_put_it (FILE *fp, const char *format, ...)
 	}
 }
 
-/* 
- * This is an alternative form of put_it which writes three asterisks
- * before actually putting things out.
+/*
+ * vsay - A put_it() wrapper that adds the /set banner
+ *
+ * Arguments:
+ *	format	- A printf() type format
+ *	args	- Things that fulfill the 'format'.
+ *
+ * Notes:
+ *	Because put_it() honors window_display, the output will be
+ *	shown only if the user is not suppressing it.
+ *
+ * Bogons:
+ *	Regretably, this function also has size limits.
  */
 static void 	vsay (const char *format, va_list args)
 {
@@ -282,6 +321,20 @@ static void 	vsay (const char *format, va_list args)
 	}
 }
 
+/*
+ * say - The trivial wrapper around vsay() [and put_it()]
+ *
+ * Arguments:
+ *	format	- A printf() type format
+ *	...	- Things that fulfill the 'format'.
+ *
+ * Notes:
+ *	Because put_it() honors window_display, the output will be
+ *	shown only if the user is not suppressing it.
+ *
+ * Bogons:
+ *	Regretably, this function also has size limits.
+ */
 void	say (const char *format, ...)
 {
 	va_list args;
@@ -290,6 +343,22 @@ void	say (const char *format, ...)
 	va_end(args);
 }
 
+/*
+ * yell - A way to output important info that the user might veto
+ *
+ * Arguments:
+ *	format	- A printf() type format
+ *	...	- Things that fulfill the 'format'.
+ *
+ * Notes:
+ *	- The message is offered to the user via /on yell.
+ *	  This is helpful for suppressing unwanted chatter.
+ *	- Because this uses put_echo() and not put_it(), it will always
+ *	  output the message unless the user vetos it.
+ *
+ * Bogons:
+ *	Regretably, this function also has size limits.
+ */
 void	yell (const char *format, ...)
 {
 	if (format)
@@ -303,6 +372,20 @@ void	yell (const char *format, ...)
 	}
 }
 
+/*
+ * privileged_yell - A way to output important info that is never suppressed
+ *
+ * Arguments:
+ *	format	- A printf() type format
+ *	...	- Things that fulfill the 'format'.
+ *
+ * Notes:
+ *	- Because this uses put_echo() and not put_it(), it will always
+ *	  output the message, and the user cannot suppress it.
+ *
+ * Bogons:
+ *	Regretably, this function also has size limits.
+ */
 void	privileged_yell (const char *format, ...)
 {
 	if (format)
@@ -318,10 +401,22 @@ void	privileged_yell (const char *format, ...)
 	}
 }
 
-
 /*
- * Error is exactly like yell, except that if the error occured while
- * you were loading a script, it tells you where it happened.
+ * my_error - A yell() replacement to be used during /LOADs
+ *
+ * Arguments:
+ *	format	- A printf() type format
+ *	...	- Things that fulfill the 'format'.
+ *
+ * Notes:
+ *	- This function will output status info about the /LOAD.
+ *	- The message is offered to the user via /on yell.
+ *	  This is helpful for suppressing unwanted chatter.
+ *	- Because this uses put_echo() and not put_it(), it will always
+ *	  output the message unless the user vetos it.
+ *
+ * Bogons:
+ *	Regretably, this function also has size limits.
  */
 void 	my_error (const char *format, ...)
 {
@@ -339,17 +434,35 @@ void 	my_error (const char *format, ...)
 
 /******************************************************************/
 /*
- * syserr is exactly like say, except that if the error occured while
- * you were loading a script, it tells you where it happened.
+ * vsyserr - A mix between say() and yell() for diagnostic errors
+ *
+ * Arguments:
+ *	server	- The server that generated this diagnostic
+ *	format	- A printf() type format
+ *	...	- Things that fulfill the 'format'.
+ *
+ * Notes:
+ *	- Like say(), this will not output if the user is suppressing output
+ *	- Like say(), this will prefix /SET BANNER
+ *	- It also adds the "INFO --" badge.
+ *	- The output is always output at level SYSERR
+ *	- Like yell(), the user can veto the output with /on yell
+ *
+ * Bogons:
+ *	Regretably, this function also has size limits.
  */
 static void     vsyserr (int server, const char *format, va_list args)
 {
-	const char *  str;
-	int     l, old_from_server = from_server;
-	int	i_set_from_server = 0;
+	const char *  	str;
+	int     	l, 
+			old_from_server,
+			i_set_from_server;
 
         if (!get_window_display() || !format)
 		return;
+
+	old_from_server = from_server;
+	i_set_from_server = 0;
 
 	*putbuf = 0;
 	if ((str = get_string_var(BANNER_VAR)))
@@ -379,10 +492,10 @@ static void     vsyserr (int server, const char *format, va_list args)
 		i_set_from_server = 1;
 	}
 
-	l = message_from(NULL, LEVEL_SYSERR);
+	l = set_context(from_server, -1, get_who_sender(), get_who_from(), LEVEL_SYSERR);
 	if (do_hook(YELL_LIST, "%s", putbuf))
 		put_echo(putbuf);
-	pop_message_from(l);
+	pop_context(l);
 
 	if (i_set_from_server)
 		from_server = old_from_server;

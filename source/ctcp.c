@@ -188,7 +188,7 @@ CTCP_HANDLER(do_atmosphere)
 
 	if (is_channel(to))
 	{
-		l = message_from(to, LEVEL_ACTION);
+		l = set_context(from_server, -1, from, to, LEVEL_ACTION);
 		if (do_hook(ACTION_LIST, "%s %s %s", from, to, args))
 		{
 			if (is_current_channel(to, from_server))
@@ -199,12 +199,12 @@ CTCP_HANDLER(do_atmosphere)
 	}
 	else
 	{
-		l = message_from(from, LEVEL_ACTION);
+		l = set_context(from_server, -1, from, to, LEVEL_ACTION);
 		if (do_hook(ACTION_LIST, "%s %s %s", from, to, args))
 			put_it("*> %s %s", from, args);
 	}
 
-	pop_message_from(l);
+	pop_context(l);
 	return NULL;
 }
 
@@ -308,9 +308,9 @@ char *	do_ctcp (int request, const char *from, const char *to, char *str)
 
 	/* Set up the window level/logging */
 	if (im_on_channel(to, from_server))
-		l = message_from(to, LEVEL_CTCP);
+		l = set_context(from_server, -1, from, to, LEVEL_CTCP);
 	else
-		l = message_from(from, LEVEL_CTCP);
+		l = set_context(from_server, -1, from, from, LEVEL_CTCP);
 
 
 	/* For each CTCP we extract from 'local_ctcp_buffer'.... */
@@ -529,7 +529,7 @@ char *	do_ctcp (int request, const char *from, const char *to, char *str)
 	 *
 	 * 'str' is required to be BIG_BUFFER_SIZE + 1 or bigger per the API.
 	 */
-	pop_message_from(l);
+	pop_context(l);
 	strlcpy(str, local_ctcp_buffer, BIG_BUFFER_SIZE);
 	return str;
 }
@@ -602,7 +602,7 @@ static	time_t	last_ctcp_reply = 0;
 		}
 	}
 
-	l = message_from(to, LEVEL_CTCP);
+	l = set_context(from_server, -1, NULL, to, LEVEL_CTCP);
 	if (format)
 	{
 		const char *pb;
@@ -643,7 +643,7 @@ static	time_t	last_ctcp_reply = 0;
 	putbuf2[len - 1] = 0;
 
 	send_text(from_server, to, putbuf2, protocol, 0, 1);
-	pop_message_from(l);
+	pop_context(l);
 }
 
 

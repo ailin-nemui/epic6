@@ -269,7 +269,7 @@ lastlog.o: lastlog.c ../include/irc.h ../include/defs.h \
   ../include/debug.h ../include/levels.h ../include/lastlog.h \
   ../include/window.h ../include/status.h ../include/screen.h \
   ../include/vars.h ../include/ircaux.h \
-  ../include/network.h ../include/words.h \
+  ../include/network.h ../include/words.h ../include/server.h \
   ../include/output.h ../include/numbers.h ../include/functions.h \
   ../include/reg.h ../include/alias.h ../include/timer.h
 levels.o: levels.c ../include/irc.h ../include/defs.h ../include/config.h \

@@ -45,6 +45,7 @@ struct	window_stack_stru *	next;
 extern	unsigned 	current_window_priority;
 
 	BUILT_IN_COMMAND(windowcmd);
+	BUILT_IN_COMMAND(shhcmd);
 	int		new_window 			(int);
 	int		window_is_holding		(int);
 	int		unhold_a_window			(int);
@@ -72,10 +73,10 @@ extern	unsigned 	current_window_priority;
 
 	char *		get_window_status_line		(int, int);
 	void		update_all_status		(void);
-	const char *		get_window_target		(int);
-	const char *		get_window_equery		(int);
+	const char *	get_window_target		(int);
+	const char *	get_window_equery		(int);
 	int		is_current_channel		(const char *, int);
-	const char *		get_window_echannel		(int);
+	const char *	get_window_echannel		(int);
 	void		destroy_waiting_channels	(int);
 	int     	claim_waiting_channel 		(const char *chan, int servref);
 	int		get_window_server		(int);
@@ -83,16 +84,18 @@ extern	unsigned 	current_window_priority;
 	void		change_window_server		(int, int);
 	void		window_check_servers		(void);
 	int		renormalize_window_levels	(int, Mask);
-#define message_from(x, y) real_message_from(x, y, __FILE__, __LINE__)
-	int		real_message_from		(const char *, int, const char *, int);
-#define message_setall(x, y, z) real_message_setall(x, y, z, __FILE__, __LINE__)
-	int     	real_message_setall		(int , const char *, int, const char *, int);
-	void		pop_message_from		(int);
-	const char *		get_who_from			(void);
+
+#define set_context(s, w, f, t, y) real_set_context(s, w, f, t, y, __FILE__, __LINE__)
+	int     	real_set_context		(int, int , const char *, const char *, int, const char *, int);
+	void		pop_context			(int);
+	const char *	get_who_sender			(void);
+	const char *	get_who_from			(void);
 	int		get_who_level			(void);
-	const char *		get_who_file			(void);
+	const char *	get_who_file			(void);
 	int		get_who_line			(void);
+	int     	get_who_output_suppressed 	(void);
 	int		get_to_window			(void);
+	void		check_context_queue 		(int);
 
 	void		clear_all_windows		(int, int);
 	void		clear_window_by_refnum		(int);
@@ -119,7 +122,6 @@ extern	unsigned 	current_window_priority;
 
 	char *		windowctl				(char *);
 	void    	window_scrollback_needs_rebuild 	(int);
-	void		check_message_from_queue 		(int);
 
 	/* * * * */
 	int		clear_window_lastlog_mask		(int);

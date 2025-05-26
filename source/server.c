@@ -133,7 +133,6 @@ static	int	serverinfo_to_servref (ServerInfo *s);
 static	int	serverinfo_to_newserv (ServerInfo *s);
 static 	void 	remove_from_server_list (int i);
 static	char *	shortname (const char *oname);
-static void	set_server_uh_addr (int refnum);
 static void	discard_dns_results (int refnum);
 static	int	grab_server_address (int server);
 
@@ -853,8 +852,6 @@ static	int	serverinfo_to_newserv (ServerInfo *si)
 	s->userhost_max = 1;
 	s->userhost_queue = NULL;
 	s->userhost_wait = NULL;
-	s->uh_addr_set = 0;
-	memset(&s->uh_addr.ss, 0, sizeof(s->uh_addr.ss));
 	memset(&s->local_sockname.ss, 0, sizeof(s->local_sockname.ss));
 	memset(&s->remote_sockname.ss, 0, sizeof(s->remote_sockname.ss));
 	s->remote_paddr = NULL;
@@ -1518,7 +1515,7 @@ static	void	do_server (int fd)
 		found = 1;			/* We found it */
 
 		from_server = i;
-		l = message_from(NULL, LEVEL_OTHER);
+		l = set_context(from_server, -1, NULL, NULL, LEVEL_OTHER);
 
 		/* - - - - */
 		/*
@@ -1656,7 +1653,7 @@ something_broke:
 				 */
 				set_server_state(i, SERVER_ERROR);
 				close_server(i, NULL);
-				pop_message_from(l);
+				pop_context(l);
 				continue;
 			}
 
@@ -1700,7 +1697,7 @@ something_broke:
 				 */
 				set_server_state(i, SERVER_SSL_CONNECTING);
 				new_open(des, do_server, NEWIO_SSL_CONNECT, POLLIN, 0, i);
-				pop_message_from(l);
+				pop_context(l);
 				break;
 			}
 
@@ -1923,7 +1920,7 @@ return_from_ssl_detour:
 			}
 		}
 
-		pop_message_from(l);
+		pop_context(l);
 		from_server = primary_server;
 	}
 
@@ -2578,8 +2575,6 @@ void	close_server (int refnum, const char *message)
 	 * ACTIVE rather than when we switched to CLOSED.  This permits 
 	 * you to call close_server() and then connect_to_server_next_addr()
 	 */
-
-	s->uh_addr_set = 0;
 
 	if (s->des == -1)
 		return;		/* Nothing to do here */
@@ -3287,22 +3282,6 @@ SSu	get_server_local_addr (int refnum)
 	return s->local_sockname;
 }
 
-SSu	get_server_uh_addr (int refnum)
-{
-	Server *s;
-
-	if (!(s = get_server(refnum)))
-		panic(1, "Refnum %d isn't valid in get_server_uh_addr", refnum);
-
-	if (s->uh_addr_set == 0)
-	{
-		set_server_uh_addr(refnum);
-		s->uh_addr_set = 1;
-	}
-
-	return s->uh_addr;
-}
-
 /* USERHOST */
 static void	set_server_userhost (int refnum, const char *uh)
 {
@@ -3312,50 +3291,6 @@ static void	set_server_userhost (int refnum, const char *uh)
 		return;
 
 	malloc_strcpy(&s->userhost, uh);
-}
-
-static void	set_server_uh_addr (int refnum)
-{
-	Server *	s;
-	char *		host;
-	const char *	uh;
-
-	if (!(s = get_server(refnum)))
-		return;
-
-	uh = s->userhost;
-
-	if (!(host = strchr(uh, '@')))
-	{
-		yell("Cannot set your userhost to [%s] because it does not"
-		      "contain a @ character!", uh);
-		return;
-	}
-
-	/* Ack!  Oh well, it used to be for DCC. */
-	s->uh_addr.sa.sa_family = AF_INET;
-#if 0
-	if (inet_any_to_ssu(host + 1, zero, &s->uh_addr, AI_ADDRCONFIG))
-        {
-		/* 
-		 * Once upon a time this warning was relevant to people
-		 * who put their machines in the DMZ of their router and
-		 * who needed the irc server to tell them what their
-		 * hostname was for DCC purposes.  But the message is 
-		 * annoying and the people who need to be told this won't
-		 * work is vanishingly small.
-		 *
-		 * An error message will only be output when a fake hostname
-		 * causes a listening socket to actually fail.
-		 */
-		yell("Ack.  The server says your userhost is [%s] and "
-		     "I can't figure out the IPv4 address of that host! "
-		     "Listening sockets might not work with this server "
-		     "connection!", host + 1);
-	}
-#else
-	(void) host;	/* Be quiet, clang */
-#endif
 }
 
 /*

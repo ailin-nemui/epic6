@@ -198,20 +198,20 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 	/* 
 	 * Numerics may have a channel target as 1st argument
 	 *
-	 * We must make a copy of ArgList[0] to pass to message_from
+	 * We must make a copy of ArgList[0] to pass to set_context
 	 * because display_message (above) will call PasteArgs which
 	 * will destroy ArgList[0].
 	 *
 	 * Please note that we don't consume the ArgList[0] argument,
 	 * we only peek at it to see if we should target a channel
-	 * with message_from().
+	 * with set_context().
 	 */
 	if (ArgList[0])
 		target = LOCAL_COPY(ArgList[0]);
 	if (target && is_channel(target))
-		l = message_from(target, LEVEL_OTHER);
+		l = set_context(from_server, -1, from, target, LEVEL_OTHER);
 	else
-		l = message_from(NULL, LEVEL_OTHER);
+		l = set_context(from_server, -1, from, NULL, LEVEL_OTHER);
 
 	current_numeric = numeric;	/* must be negative of numeric! */
 
@@ -507,8 +507,8 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 		funny_match = get_server_funny_match(from_server);
 
 		/* List messages NEVER go to a chanwin */
-		pop_message_from(l);
-		l = message_from(NULL, LEVEL_OTHER);
+		pop_context(l);
+		l = set_context(from_server, -1, from, NULL, LEVEL_OTHER);
 
 		/*
 		 * Do not display if the channel has no topic and the user asked
@@ -1352,8 +1352,8 @@ DISPLAY:
 		if (!(channel = ArgList[1]))
 			{ rfc1459_odd(from, comm, ArgList); goto END; }
 
-		pop_message_from(l);
-		l = message_from(channel, LEVEL_OTHER);
+		pop_context(l);
+		l = set_context(from_server, -1, from, channel, LEVEL_OTHER);
 		put_it("%s Inviting %s to channel %s", banner(), nick, channel);
 		break;
 	}
@@ -1395,8 +1395,8 @@ DISPLAY:
 		if (channel_is_syncing(channel, from_server))
 		{
 			/* If the user bites on /ON NAMES, then skip the rest */
-			pop_message_from(l);
-			l = message_from(channel, LEVEL_OTHER);
+			pop_context(l);
+			l = set_context(from_server, -1, from, channel, LEVEL_OTHER);
 			if (do_hook(NAMES_LIST, "%s %s", channel, line))
 			    if (get_int_var(SHOW_CHANNEL_NAMES_VAR))
 				say("Users on %s: %s",
@@ -1421,8 +1421,8 @@ DISPLAY:
 		else
 			strlcpy(format, "%s: %s\t%s", sizeof format);
 
-		pop_message_from(l);
-		l = message_from(channel, LEVEL_OTHER);
+		pop_context(l);
+		l = set_context(from_server, -1, from, channel, LEVEL_OTHER);
 		if (*type == '=') 
 		{
 		    if (last_width && ((int)strlen(channel) > last_width))
@@ -1640,7 +1640,7 @@ END:
 	}
 
 	current_numeric = old_current_numeric;
-	pop_message_from(l);
+	pop_context(l);
 }
 
 
