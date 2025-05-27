@@ -27,7 +27,7 @@ package sasl;
 #
 #	/sasl *.network.org external filename.pem
 #	/sasl *.network.org nistp256 username ec2key.pem
-#	/sasl *.network.org scram-sha512 username password
+#	/sasl *.network.org scram-sha-512 username password
 #	/sasl *.network.org plain username password
 #	/sasl *.network.org -external
 #	/sasl *.network.org -nistp256
@@ -35,20 +35,26 @@ package sasl;
 #	/sasl *.network.org -plain
 #
 
+# ECDSA-NIST256P-CHALLENGE
+# EXTERNAL
+# PLAIN
+# SCRAM-SHA-512
+
 #
 # THIS SCRIPT HAS OPINIONS...
 #
 # This script will only attempt one kind of SASL per server connection.
-# It prefers EXTERNAL, then NISTP256, then SCRAM-SHA-512, then PLAIN.
-# If that one attempt fails, EPIC will disconnect from the server.
+# It prefers EXTERNAL, then ECDSA-NIST256P-CHALLENGE, then SCRAM-SHA-512, 
+# then PLAIN.  If that one attempt fails, EPIC will disconnect from the server.
 # Because of how EPIC works, it will try the next IP address.
 #
 # If you are using EXTERNAL or PLAIN, then if necessary your server 
 # will connect via TLS even if you didn't specify that.  If TLS does
 # not work, then SASL won't be used.
 # 
-# If you are using NISTP256 or SCRAM-SHA-512, then you can connect with 
-# TLS or not.  EPIC will not force TLS if you use NISTP256 or SCRAM.
+# If you are using ECDSA-NIST256P-CHALLENGE or SCRAM-SHA-512, then you can 
+# connect with TLS or not.  EPIC will not force TLS if you use 
+# ECDSA-NIST256P-CHALLENGE or SCRAM-SHA-512.
 #
 
 @sasl_auth.next_rule = 0;
@@ -88,7 +94,7 @@ alias sasl (server, type, data) {
 };
 
 alias sasl_auth.which_rule {
-	fe (EXTERNAL NISTP256 SCRAM-SHA-512 PLAIN) t {
+	fe (EXTERNAL ECDSA-NIST256P-CHALLENGE SCRAM-SHA-512 PLAIN) t {
 		for (@:x = 0, x < sasl_auth.next_rule, @x++) {
 			if (sasl_rules[$x][type] == t) {
 				if ( (serverctl(get $0 name) =~ sasl_rules[$x][server]) ||
@@ -116,7 +122,7 @@ on #-server_state -100 "% % POLICY" {
 		@serverctl(SET $0 SSL IRC-SSL);
 		@serverctl(SET $0 PORT 6697);
 		@serverctl(SET $0 CERT $sasl_rules[$rule][data]);
-	} elsif (sasl_rules[$rule][type] == [NISTP256]) {
+	} elsif (sasl_rules[$rule][type] == [ECDSA-NIST256P-CHALLENGE]) {
 		# Nothing
 	} elsif (sasl_rules[$rule][type] == [SCRAM-SHA-512]) {
 		# Nothing
@@ -127,7 +133,11 @@ on #-server_state -100 "% % POLICY" {
 };
 
 # I do SASL here
+# XXX I should be deciding *which* SASL to do here.
 on #-cap -100 "% LS sasl *" {
+	if ([$3-]) {
+		@ sasl_auth[$servernum()][supported] = split(, $3-);
+	};
 	if (sasl_auth[$servernum()][rule] != []) {
 		@serverctl(SET $servernum() CAP_HOLD 1);
 		quote CAP REQ :sasl
@@ -143,25 +153,19 @@ on #-cap -100  "% NACK sasl" {
 # You are now welcome to do SASL
 on #-cap -100 "% ACK sasl" {
 	if ((:rule = sasl_auth[$servernum()][rule]) == []) {
+		xecho -b No SASL rule found for server $servernum();
 		return;
 	};
 
-	# TODO - Ensure the server supports what we want to use
+	# We stored the supported SASL types in $sasl_auth[$servernum()][supported]
 	# TODO - Reconsider what to use if the server doesn't support our first choice
 
-	if (sasl_rules[$rule][type] == [EXTERNAL]) {
-		xecho -b Now beginning SASL EXTERNAL negotiation;
-		quote AUTHENTICATE EXTERNAL;
-	} elsif (sasl_rules[$rule][type] == [NISTP256]) {
-		xecho -b Now beginning SASL ECDSA-NIST256P-CHALLENGE negotiation;
-		quote AUTHENTICATE ECDSA-NIST256P-CHALLENGE;
-	} elsif (sasl_rules[$rule][type] == [SCRAM-SHA-512]) {
-		xecho -b Now beginning SASL SCRAM-SHA-512 negotiation;
-		quote AUTHENTICATE SCRAM-SHA-512;
-	} elsif (sasl_rules[$rule][type] == [PLAIN]) {
-		xecho -b Now beginning SASL PLAIN negotiation;
-		quote AUTHENTICATE PLAIN;
+	# If the server says it supported the kind we want, then go with it.
+	if (findw($sasl_rules[$rule][type] $sasl_auth[$servernum()][supported]) >= 0) {
+		xecho -b Now beginning SASL $sasl_rules[$rule][type] negotiation;
+		quote AUTHENTICATE $sasl_rules[$rule][type];
 	} else {
+		xecho -b The server supports '$sasl_auth[$servernum()][supported]', but i wanted '$sasl_rules[$rule][type]'.
 		sasl_auth.failed;
 	};
 };
@@ -174,7 +178,7 @@ on #-authenticate -100 "% +" {
 
 	if (sasl_rules[$rule][type] == [EXTERNAL]) {
 		quote AUTHENTICATE +;
-	} elsif (sasl_rules[$rule][type] == [NISTP256]) {
+	} elsif (sasl_rules[$rule][type] == [ECDSA-NIST256P-CHALLENGE]) {
 		@ :nick = word(0 $sasl_rules[$rule][data]);
 		quote AUTHENTICATE $xform("-CTCP +B64" $^\nick\\0$^\nick\\0);
 	} elsif (sasl_rules[$rule][type] == [SCRAM-SHA-512]) {
@@ -195,7 +199,6 @@ on #-authenticate -100 "% +" {
 	};
 };
 
-# In the future, SCRAM auth has multiple passes through here....
 on #-authenticate -100 "% *" {
 	if ((:rule = sasl_auth[$servernum()][rule]) == []) {
 		sasl_auth.failed;
@@ -203,10 +206,11 @@ on #-authenticate -100 "% *" {
 
 	if (sasl_rules[$rule][type] == [EXTERNAL]) {
 		# Nothing -- this makes no sense
-	} elsif (sasl_rules[$rule][type] == [NISTP256]) {
+	} elsif (sasl_rules[$rule][type] == [ECDSA-NIST256P-CHALLENGE]) {
 		@ :pemfile = word(1 $sasl_rules[$rule][data]);
 		quote AUTHENTICATE $ecdsatool(sign $pemfile $1-);
 	} elsif (sasl_rules[$rule][type] == [SCRAM-SHA-512]) {
+		# SCRAM has multiple passes, but the scrambox handles that.
 		@ :x = scrambox(RESPONSE $xform("-B64" $1-));
 		if (!x) {
 			xecho -b Could not authenticate scrambox from server;

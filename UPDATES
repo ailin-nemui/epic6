@@ -1,5 +1,24 @@
 EPIC6-0.0.1
 
+*** News 05/27/2025 -- Clarification on SASL types and configuration
+	In a previous version of this file, I had used informal names
+	of SASL types, like "nistp256".  However, it seems better to
+	compel the user to use the same spellings as the server, because
+	otherwise we're just trying to be clever and that confuses people.
+	When you register a sasl rule, it must be spelled like the server
+	spells it, and it must be in the same case as the server has it.
+
+		/load sasl
+		sasl *.network.org EXTERNAL /path/to/cert.pem
+		sasl *.network.org ECDSA-NIST256P-CHALLENGE <nick> /path/to/eckey.pem
+		sasl *.network.org SCRAM-SHA-512 <nick> <password>
+		sasl *.network.org PLAIN <nick> <password>
+
+	If SASL isn't working for you, make sure you have it spelled and cased
+	the same way as the server.  The sasl script does not support trying
+	multiple rules per server -- it will use the "best" one, in the above
+	order.
+
 *** News 05/26/2025 -- SASL SCRAM-SHA-512 support
 	The /load sasl script now supports SCRAM-SHA-512.  I can support other
 	kinds of SHAs, contact me for details.  I only tested this with libera.
@@ -30,10 +49,7 @@ EPIC6-0.0.1
 	There is now a unified sasl handling script that will do all
 	the sasl things in one place.
 
-		/load sasl
-		sasl *.network.org external /path/to/cert.pem
-		sasl *.network.org nistp256 <nick> /path/to/eckey.pem
-		sasl *.network.org plain <nick> <password>
+		[see examples above]
 
 	It's kind of assumed you know what to do with this.  If you don't,
 	then it probably won't affect you.  I may write more on this in
