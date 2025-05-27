@@ -125,7 +125,7 @@ on #-server_state -100 "% % POLICY" {
 	} elsif (sasl_rules[$rule][type] == [ECDSA-NIST256P-CHALLENGE]) {
 		# Nothing
 	} elsif (sasl_rules[$rule][type] == [SCRAM-SHA-512]) {
-		# Nothing
+		@ scrambox(RESET);
 	} elsif (sasl_rules[$rule][type] == [PLAIN]) {
 		@serverctl(SET $0 SSL IRC-SSL);
 		@serverctl(SET $0 PORT 6697);

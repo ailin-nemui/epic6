@@ -298,5 +298,12 @@ const 	char *	inbound_recode 		(const char *, int, const char *, const char *, c
 	char *  digest_hexstr 		(const char *type, const char *input, size_t inputlen, char *output, size_t outputlen);
 	char *  digest 			(const char *type, const char *input, size_t inputlen, char *output, size_t outputlen);
 
+#ifndef HAVE_STRLCPY
+	size_t  strlcpy 		(char *dst, const char *src, size_t dsize);
+#endif
+#ifndef HAVE_STRLCAT
+	size_t  strlcat 		(char *dst, const char *src, size_t dsize);
+#endif
+
 #endif /* _IRCAUX_H_ */
 
