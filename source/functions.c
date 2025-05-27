@@ -81,6 +81,7 @@
 #include "extlang.h"
 #include "ctcp.h"
 #include "cJSON.h"
+#include "scrambox.h"
 
 static	char	
 	*alias_detected 	(void), *alias_sent_nick 	(void),
@@ -680,6 +681,7 @@ static BuiltInFunctions	built_in_functions[] =
 	{ "RPATTERN",           function_rpattern 	},
 	{ "RSUBSTR",		function_rsubstr	},
 	{ "SAR",		function_sar 		},
+	{ "SCRAMBOX",		function_scrambox	}, /* scrambox.c */
 	{ "SEQUENCE_POINT",	function_sequence_point	},
 	{ "SERVERCTL",		function_serverctl	},
 	{ "SERVERWIN",		function_serverwin	},

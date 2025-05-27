@@ -77,6 +77,7 @@ static struct debug_opts opts[] =
 	{ "DWORD",        	DEBUG_DWORD },
 	{ "RECODE",		DEBUG_RECODE },
 	{ "SEQUENCE_POINTS",	DEBUG_SEQUENCE_POINTS },
+	{ "SCRAM",		DEBUG_SCRAM },
 	{ "ALL",		~0},
 	{ NULL,			0 },
 };

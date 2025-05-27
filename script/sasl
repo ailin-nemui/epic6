@@ -27,9 +27,11 @@ package sasl;
 #
 #	/sasl *.network.org external filename.pem
 #	/sasl *.network.org nistp256 username ec2key.pem
+#	/sasl *.network.org scram-sha512 username password
 #	/sasl *.network.org plain username password
 #	/sasl *.network.org -external
 #	/sasl *.network.org -nistp256
+#	/sasl *.network.org -scram-sha512
 #	/sasl *.network.org -plain
 #
 
@@ -37,7 +39,7 @@ package sasl;
 # THIS SCRIPT HAS OPINIONS...
 #
 # This script will only attempt one kind of SASL per server connection.
-# It prefers EXTERNAL, then NISTP256, then PLAIN.
+# It prefers EXTERNAL, then NISTP256, then SCRAM-SHA-512, then PLAIN.
 # If that one attempt fails, EPIC will disconnect from the server.
 # Because of how EPIC works, it will try the next IP address.
 #
@@ -45,8 +47,8 @@ package sasl;
 # will connect via TLS even if you didn't specify that.  If TLS does
 # not work, then SASL won't be used.
 # 
-# If you are using NISTP256 then you can connect with TLS or not.
-# EPIC will not force TLS if you use NISTP256.
+# If you are using NISTP256 or SCRAM-SHA-512, then you can connect with 
+# TLS or not.  EPIC will not force TLS if you use NISTP256 or SCRAM.
 #
 
 @sasl_auth.next_rule = 0;
@@ -86,7 +88,7 @@ alias sasl (server, type, data) {
 };
 
 alias sasl_auth.which_rule {
-	fe (EXTERNAL NISTP256 PLAIN) t {
+	fe (EXTERNAL NISTP256 SCRAM-SHA-512 PLAIN) t {
 		for (@:x = 0, x < sasl_auth.next_rule, @x++) {
 			if (sasl_rules[$x][type] == t) {
 				if ( (serverctl(get $0 name) =~ sasl_rules[$x][server]) ||
@@ -115,6 +117,8 @@ on #-server_state -100 "% % POLICY" {
 		@serverctl(SET $0 PORT 6697);
 		@serverctl(SET $0 CERT $sasl_rules[$rule][data]);
 	} elsif (sasl_rules[$rule][type] == [NISTP256]) {
+		# Nothing
+	} elsif (sasl_rules[$rule][type] == [SCRAM-SHA-512]) {
 		# Nothing
 	} elsif (sasl_rules[$rule][type] == [PLAIN]) {
 		@serverctl(SET $0 SSL IRC-SSL);
@@ -146,10 +150,16 @@ on #-cap -100 "% ACK sasl" {
 	# TODO - Reconsider what to use if the server doesn't support our first choice
 
 	if (sasl_rules[$rule][type] == [EXTERNAL]) {
+		xecho -b Now beginning SASL EXTERNAL negotiation;
 		quote AUTHENTICATE EXTERNAL;
 	} elsif (sasl_rules[$rule][type] == [NISTP256]) {
+		xecho -b Now beginning SASL ECDSA-NIST256P-CHALLENGE negotiation;
 		quote AUTHENTICATE ECDSA-NIST256P-CHALLENGE;
+	} elsif (sasl_rules[$rule][type] == [SCRAM-SHA-512]) {
+		xecho -b Now beginning SASL SCRAM-SHA-512 negotiation;
+		quote AUTHENTICATE SCRAM-SHA-512;
 	} elsif (sasl_rules[$rule][type] == [PLAIN]) {
+		xecho -b Now beginning SASL PLAIN negotiation;
 		quote AUTHENTICATE PLAIN;
 	} else {
 		sasl_auth.failed;
@@ -167,6 +177,16 @@ on #-authenticate -100 "% +" {
 	} elsif (sasl_rules[$rule][type] == [NISTP256]) {
 		@ :nick = word(0 $sasl_rules[$rule][data]);
 		quote AUTHENTICATE $xform("-CTCP +B64" $^\nick\\0$^\nick\\0);
+	} elsif (sasl_rules[$rule][type] == [SCRAM-SHA-512]) {
+		@ :nick = word(0 $sasl_rules[$rule][data]);
+		@ :pass = word(1 $sasl_rules[$rule][data]);
+		@ :x = scrambox(BEGIN "$nick" "$pass");
+		if (!x) {
+			xecho -b Could not initialize scrambox;
+			disconnect;
+		} else {
+			quote AUTHENTICATE $xform("+B64" n,,$x);
+		}
 	} elsif (sasl_rules[$rule][type] == [PLAIN]) {
 		@ :nick = word(0 $sasl_rules[$rule][data]);
 		@ :pass = word(1 $sasl_rules[$rule][data]);
@@ -186,6 +206,15 @@ on #-authenticate -100 "% *" {
 	} elsif (sasl_rules[$rule][type] == [NISTP256]) {
 		@ :pemfile = word(1 $sasl_rules[$rule][data]);
 		quote AUTHENTICATE $ecdsatool(sign $pemfile $1-);
+	} elsif (sasl_rules[$rule][type] == [SCRAM-SHA-512]) {
+		@ :x = scrambox(RESPONSE $xform("-B64" $1-));
+		if (!x) {
+			xecho -b Could not authenticate scrambox from server;
+			disconnect;
+		} else {
+			#echo x here is: $x;
+			quote AUTHENTICATE $xform("+B64" $x);
+		};
 	} elsif (sasl_rules[$rule][type] == [PLAIN]) {
 		# Nothing -- this makes no sense
 	};
@@ -207,4 +236,5 @@ alias sasl_auth.failed {
 	xecho -b SASL Auth failed to server $servernum() - disconnecting.;
 	disconnect;
 };
+
 

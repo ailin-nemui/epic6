@@ -13,6 +13,7 @@ extern 	unsigned long 	x_debug;
 #define DEBUG_LOCAL_VARS	(1UL << 0)
 #define DEBUG_NEWIO		(1UL << 1)
 #define DEBUG_CTCPS		(1UL << 2)
+#define DEBUG_SCRAM		(1UL << 3)
 #define DEBUG_OUTBOUND		(1UL << 4)
 #define DEBUG_INBOUND		(1UL << 5)
 #define DEBUG_WAITS		(1UL << 7)

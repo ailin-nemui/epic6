@@ -289,15 +289,23 @@ typedef struct addrinfo		AI;		/* Issue 6 */
 
 
 /* Everybody needs these OpenSSL headers */
+#define OPENSSL_SUPPRESS_DEPRECATED 1
+#define OPENSSL_SUPPRESS_DEPRECATED_3_0 1
+
 #include <openssl/crypto.h>			/* Non-standard */
+#include <openssl/err.h>			/* Non-standard */
+#include <openssl/evp.h>			/* Non-standard */
+#include <openssl/hmac.h>			/* Non-standard */
+#include <openssl/opensslconf.h>		/* Non-standard */
+#include <openssl/pem.h>			/* Non-standard */
+#include <openssl/rand.h>			/* Non-standard */
+#include <openssl/sha.h>			/* Non-standard */
+#include <openssl/ssl.h>			/* Non-standard */
 #include <openssl/x509.h>			/* Non-standard */
 #include <openssl/x509v3.h>			/* Non-standard */
-#include <openssl/evp.h>			/* Non-standard */
-#include <openssl/pem.h>			/* Non-standard */
-#include <openssl/ssl.h>			/* Non-standard */
-#include <openssl/err.h>			/* Non-standard */
-#include <openssl/opensslconf.h>		/* Non-standard */
-#include <openssl/rand.h>			/* Non-standard */
+
+/* Everybody needs these libsodium headers */
+#include <sodium.h>
 
 /* Everytbody needs these c-ares headers */
 #include <ares.h>				/* Non-standard */
