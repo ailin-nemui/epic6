@@ -257,3 +257,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Add $scrambox() for the sasl support
 * Fix /load sasl to match sasl rules with server support [see UPDATES]
 * Provide decls for strlcpy()/strlcat() if needed (rb fudd)
+* Fix some compiler warnings. (rb fro)

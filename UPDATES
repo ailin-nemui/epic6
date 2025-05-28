@@ -190,9 +190,9 @@ EPIC6-0.0.1
 	expected to reteurn.  If you strongly disagree with the retirement 
 	of these features, please contact us and we can talk about it!
 		C90-only environs	Shebang support
-		/REDIRECT and /FLUSH	/QUEUE
+		/REDIRECT and /FLUSH	(/queue was removed but put back)
 		CPU Saver		Flood Control
-		Pthreads/poll/kqueue/etc
+		Pthreads/select/kqueue/etc
 		Ruby			Perl 		
 		External cryptography	Blowfish, FiSH, SED, CAST5
 		ircII's original math parser

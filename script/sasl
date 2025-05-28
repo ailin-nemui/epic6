@@ -25,20 +25,15 @@ package sasl;
 #
 # We support three kinds of SASL.  
 #
-#	/sasl *.network.org external filename.pem
-#	/sasl *.network.org nistp256 username ec2key.pem
-#	/sasl *.network.org scram-sha-512 username password
-#	/sasl *.network.org plain username password
-#	/sasl *.network.org -external
-#	/sasl *.network.org -nistp256
-#	/sasl *.network.org -scram-sha512
-#	/sasl *.network.org -plain
+#	/sasl *.network.org EXTERNAL filename.pem
+#	/sasl *.network.org ECDSA-NIST256P-CHALLENGE username ec2key.pem
+#	/sasl *.network.org SCRAM-SHA-512 username password
+#	/sasl *.network.org PLAIN username password
+#	/sasl *.network.org -EXTERNAL
+#	/sasl *.network.org -ECDSA-NIST256P-CHALLENGE
+#	/sasl *.network.org -SCRAM-SHA-512
+#	/sasl *.network.org -PLAIN
 #
-
-# ECDSA-NIST256P-CHALLENGE
-# EXTERNAL
-# PLAIN
-# SCRAM-SHA-512
 
 #
 # THIS SCRIPT HAS OPINIONS...

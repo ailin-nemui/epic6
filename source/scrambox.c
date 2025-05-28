@@ -130,7 +130,7 @@ scram_state_t *		scrambox[128] = { NULL};	/* XXX hardcoded limit is bogus. */
 
 static scram_state_t *	get_scrambox (int refnum)
 {
-	if (refnum < 0 && refnum >= 128)
+	if (refnum < 0 || refnum >= 128)
 		return NULL;
 	if (!scrambox[refnum])
 	{
@@ -143,7 +143,7 @@ static scram_state_t *	get_scrambox (int refnum)
 
 static	void	reset_scrambox (int refnum)
 {
-	if (refnum < 0 && refnum >= 128)
+	if (refnum < 0 || refnum >= 128)
 		return;
 	if (scrambox[refnum])
 	{
@@ -301,6 +301,9 @@ static int	scram_process_server_first_message(scram_state_t *state, const char *
 
 static int	scram_client_final_message (scram_state_t *state, char *output_buffer, size_t output_buffer_len) 
 {
+	HMAC_CTX *hmac_ctx = NULL;
+	EVP_MD_CTX *md_ctx = NULL;
+
     if (!state || !output_buffer) {
         yell("Error: Invalid arguments to scram_client_final_message");
         return -1;
@@ -339,8 +342,6 @@ static int	scram_client_final_message (scram_state_t *state, char *output_buffer
     }
 
     // 3. Derive ClientKey, StoredKey, ClientSignature, ClientProof
-    HMAC_CTX *hmac_ctx = NULL;
-
     // ClientKey = HMAC(SaltedPassword, "Client Key")
     hmac_ctx = HMAC_CTX_new();
     if (!hmac_ctx) {
@@ -365,7 +366,7 @@ static int	scram_client_final_message (scram_state_t *state, char *output_buffer
 
 
     // StoredKey = H(ClientKey) (where H is SHA512)
-    EVP_MD_CTX *md_ctx = EVP_MD_CTX_new();
+    md_ctx = EVP_MD_CTX_new();
     if (!md_ctx) {
         yell("Error: EVP_MD_CTX_new failed");
         goto err;
