@@ -1,5 +1,21 @@
 EPIC6-0.0.1
 
+*** News 06/01/2025 -- New xform, base85 -- $xform(+B85 ...)
+	You can now transform strings to and from base85 with the "B85"
+	transform with $xform().  Technically these are "ascii85" strings,
+	because they have the <~...~> wrapper and they use the ascii85
+	alphabet.  I have in mind to use these for encrypted strings in
+	the future.  I haven't tested this extensively for edge cases.
+
+	Example:
+		$xform(+B85 this is a string)
+	would return
+		<~FD,B0+DGm>@3BZ'F*%~>
+	and 	
+		$xform(-B85 <~FD,B0+DGm>@3BZ'F*%~>)
+	would return
+		this is a string
+
 *** News 05/27/2025 -- Clarification on SASL types and configuration
 	In a previous version of this file, I had used informal names
 	of SASL types, like "nistp256".  However, it seems better to

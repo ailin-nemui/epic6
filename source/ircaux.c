@@ -4913,6 +4913,223 @@ static ssize_t	b64_decoder (const char *orig, size_t orig_len, const void *meta,
 
 /* End BSD licensed stuff (see compat.c!) */
 
+
+/*
+ * base85_encode -- Convert a binary blob to a base85 ascii string
+ * Well, technically it's "ascii85", with the <~...~> wrapper.
+ *
+ * Arguments:
+ *	input 		- (INPUT) A blob of binary data
+ *	input_len	- (INPUT) How many bytes are in 'data'
+ *	output		- (OUTPUT) Where to place the output
+ *			  Encoded buffer should be 2x'data_len' + 7, just to be safe.
+ *
+ * Return value:
+ *	-1		- Any error (should do better on this)
+ *	 0		- All is well
+ *
+ * Notes:
+ *	The output (in encoded_buffer) is a nul-terminated C string
+ *	XXX - This should take an 'output_len' param.
+ */
+static ssize_t	base85_encode (const unsigned char *input, size_t input_len, char *output) 
+{
+	char *	current_output;
+	size_t 	i, j;
+	size_t	s;
+
+	if (!input || !output) 
+		return -1; 
+
+	current_output = output;
+	*current_output++ = '<'; 
+	*current_output++ = '~';
+
+	for (i = 0; i < input_len; )
+	{
+		unsigned	value = 0;
+		size_t		num_bytes_in_group = 0;
+
+		/*
+		 * Read up to 4 bytes -- 
+		 * This implicitly zero-fills extra bytes
+		 */
+		for (j = 0; j < 4; ++j) 
+		{
+			value <<= 8;
+			if (i < input_len) {
+				value |= input[i++];
+				num_bytes_in_group++;
+			}
+		}
+
+		/* As a special case, four nuls becomes 'z' */
+		if (value == 0 && num_bytes_in_group == 4) 
+		{
+			*current_output++ = 'z';
+			continue;
+		}
+		else
+		{
+			/* 
+			 * Otherwise, convert this 32 bit value to 5 base-85 chars.
+			 * We calculate 5 chars, even if this is a short set (we will
+			 * truncate it at the bottom
+			 */
+			unsigned char encoded_chars[5];
+
+			encoded_chars[4] = (value % 85) + '!';
+			value /= 85;
+			encoded_chars[3] = (value % 85) + '!';
+			value /= 85;
+			encoded_chars[2] = (value % 85) + '!';
+			value /= 85;
+			encoded_chars[1] = (value % 85) + '!';
+			value /= 85;
+			encoded_chars[0] = (value % 85) + '!';
+
+			/* Copy only the chars we need to the output string */
+			for (s = 0; s < num_bytes_in_group + 1; ++s)
+				*current_output++ = encoded_chars[s];
+		}
+	}
+
+	*current_output++ = '~';
+	*current_output++ = '>';
+	*current_output = 0;
+
+	return current_output - output;
+}
+
+static ssize_t	b85_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+{
+	return base85_encode((const unsigned char *)orig, orig_len, dest);
+}
+
+/*
+ * base85_decode -- Convert a C string with base85 data into a binary blob
+ * Well, technically it's "ascii85", with the <~...~> wrapper.
+ *
+ * Arguments:
+ *	encoded_string	- (INPUT) A C string with base85 wrapped data
+ *	decoded_buffer	- (OUTPUT) A binary blob -- should be as big as 'encoded_string"
+ *
+ * Return value:
+ *	-1		- Any error occurred (should do better)
+ *	 0		- All is well
+ */
+static ssize_t	base85_decode (const char *input, unsigned char *output) 
+{
+	const char *	current_input;
+	unsigned char *	current_output;
+	unsigned 	value = 0;
+	int 		char_count = 0, 
+			extra = 0;;
+	unsigned char 	decoded_chars[5]; 
+
+	if (!input || !output)
+		return -1;
+
+	current_input = input;
+	if (*current_input++ != '<' || *current_input++ != '~') 
+		return -1; 
+
+	current_output = output;
+	while (*current_input)
+	{
+		char c;
+
+		/* 
+		 * If we reach the end of the string, just pretend
+		 * we have 'u's as far as the eye can see.
+		 */
+		if (*current_input == '~' && current_input[1] == '>') 
+			c = 'u', extra++;
+		else
+			c = *current_input++;
+
+		/*
+		 * If we see a 'z', decide what to do with it.
+		 * Either it is a 0 + reset, or a failure.
+		 */
+		if (c == 'z' && char_count != 0)
+			return -1;
+		else if (c == 'z' && char_count == 0)
+		{
+			// Output 4 zero bytes
+			*current_output++ = 0x00;
+			*current_output++ = 0x00;
+			*current_output++ = 0x00;
+			*current_output++ = 0x00;
+			continue;
+		}
+		else if (c < '!' || c > 'u')
+			return -1; // Invalid Ascii85 character
+		/* If it's a valid character, stash it in the accumulator */
+		else
+			decoded_chars[char_count++] = c - '!';
+
+		/*
+		 * Now when we have accumulated 5 characters,
+		 * that is one "set" of 32 bits.
+		 */
+		if (char_count == 5) 
+		{
+			/* Convert them to a 32 bit value */
+			value = (unsigned int)decoded_chars[0] * 85 * 85 * 85 * 85 +
+				(unsigned int)decoded_chars[1] * 85 * 85 * 85 +
+				(unsigned int)decoded_chars[2] * 85 * 85 +
+				(unsigned int)decoded_chars[3] * 85 +
+				(unsigned int)decoded_chars[4];
+
+			/* 
+			 * Then convert the 32 bit value back to 4 bytes.
+			 * Note that we use division here, to avoid endian 
+			 * issues.
+			 */
+			current_output[3] = value & 255U;
+			value -= current_output[3];
+			value /= 256U;
+			current_output[2] = value & 255U;
+			value -= current_output[2];
+			value /= 256U;
+			current_output[1] = value & 255U;
+			value -= current_output[1];
+			value /= 256U;
+			current_output[0] = value;
+
+			/*
+			 * If this is the final set in the string, 
+			 * then we might need to truncate the output
+			 * a little bit early.
+			 */
+			if (*current_input == '~' && current_input[1] == '>') 
+			{
+				current_output[4-extra] = 0;
+				current_output += (4 - extra);
+				break;
+			}
+
+			/* If it's not the final set of the string, then continue on... */
+			current_output += 4;
+			char_count = 0;
+			value = 0;
+			extra = 0;
+		}
+	}
+
+	/* Return the number of bytes we wrote */
+	return current_output - output;
+}
+
+static ssize_t	b85_decoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+{
+	return base85_decode(orig, (unsigned char *)dest);
+}
+
+
+/**********************************************/
+
 /*
  * RFC1459 messages are ALMOST 8-bit clean.
  * However, the RFC1459 syntax reserves these three characters, which may not be
@@ -5276,6 +5493,7 @@ struct Transformer default_transformers[] = {
 {	0,	"ENC",		0, 2, 8,  enc_encoder,	  enc_decoder	 },
 {	0,	"LEN",		0, 1, 0,  len_encoder,	  len_encoder	 },
 {	0,	"B64",		0, 2, 8,  b64_encoder,	  b64_decoder	 },
+{	0,	"B85",		0, 2, 8,  b85_encoder,	  b85_decoder	 },
 {	0,	"CTCP",		0, 2, 8,  ctcp_encoder,	  ctcp_decoder	 },
 {	0,	"NONE",		0, 1, 8,  null_encoder,	  null_encoder	 },
 {	0,	"SHA256",	0, 0, 65, sha256_encoder, sha256_encoder },
@@ -6651,3 +6869,4 @@ size_t	strlcat (char *dst, const char *src, size_t dsize)
 	return(dlen + (src - osrc));	/* count does not include NUL */
 }
 #endif
+
