@@ -267,3 +267,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Sunset the "hold/unhold" stuff in newio.  I feel a refactor coming on!
 * Add comments, move functions, refactors in parse.c
 * Reorganize/refactor newio.c.  Fixed a bug rb wcarson along the way!
+* Fix off-by-one error (rb fro)

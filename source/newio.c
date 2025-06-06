@@ -182,8 +182,8 @@ static	int	polls = 0;
 	ms += (timeout->tv_nsec / 1000000);
 
 	/* What shall we sleep waiting for? */
-	pollers = new_malloc(sizeof(struct pollfd) * global_max_fd);
-	memset(pollers, 0, (sizeof(struct pollfd) * global_max_fd));
+	pollers = new_malloc(sizeof(struct pollfd) * (global_max_fd + 2));
+	memset(pollers, 0, (sizeof(struct pollfd) * (global_max_fd + 1)));
 	for (i = j = 0; i <= global_max_fd; i++)
 	{
 		if (io_rec[i])
