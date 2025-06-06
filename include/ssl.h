@@ -22,7 +22,7 @@ typedef	struct	ssl_cert_error {
 
 #if 0
 typedef struct ssl_metadata {
-	int	vfd;
+	int	fd;
 	int	verify_result;
 	char *	pem;
 	char *	cert_hash;
@@ -37,7 +37,7 @@ typedef struct ssl_metadata {
 
 	void	set_ssl_root_certs_location (void *);
 
-	int     ssl_startup (int vfd, int channel, const char *hostname, const char *cert);
+	int     ssl_startup (int fd, int channel, const char *hostname, const char *cert);
 	int	ssl_connect (int nfd, int quiet, int revents);
 	int	ssl_connected (int nfd);
 	int	ssl_write (int nfd, const void *, size_t);
@@ -48,20 +48,20 @@ typedef struct ssl_metadata {
 	int	client_ssl_enabled (void);
 
 	const char *	get_ssl_cipher (int nfd);
-	const char *	get_ssl_pem (int vfd);
-	const char *	get_ssl_cert_hash (int vfd);
-	int		get_ssl_pkey_bits (int vfd);
-	const char *	get_ssl_subject (int vfd);
-	const char *	get_ssl_u_cert_subject (int vfd);
-	const char *	get_ssl_issuer (int vfd);
-	const char *	get_ssl_u_cert_issuer (int vfd);
-	const char *	get_ssl_ssl_version (int vfd);
-	int     	get_ssl_strict_status (int vfd, int *retval);
-	const char *	get_ssl_sans (int vfd);
-	int		get_ssl_verify_error (int vfd); 
-	int		get_ssl_checkhost_error (int vfd);
-	int		get_ssl_self_signed_error (int vfd);
-	int		get_ssl_other_error (int vfd);
-	int		get_ssl_most_serious_error (int vfd);
+	const char *	get_ssl_pem (int fd);
+	const char *	get_ssl_cert_hash (int fd);
+	int		get_ssl_pkey_bits (int fd);
+	const char *	get_ssl_subject (int fd);
+	const char *	get_ssl_u_cert_subject (int fd);
+	const char *	get_ssl_issuer (int fd);
+	const char *	get_ssl_u_cert_issuer (int fd);
+	const char *	get_ssl_ssl_version (int fd);
+	int     	get_ssl_strict_status (int fd, int *retval);
+	const char *	get_ssl_sans (int fd);
+	int		get_ssl_verify_error (int fd); 
+	int		get_ssl_checkhost_error (int fd);
+	int		get_ssl_self_signed_error (int fd);
+	int		get_ssl_other_error (int fd);
+	int		get_ssl_most_serious_error (int fd);
 
 #endif

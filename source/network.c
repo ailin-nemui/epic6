@@ -44,7 +44,7 @@ static	int	Connect (int fd, SSu *addr);
 static  int     Getaddrinfo (const char *nodename, const char *servname, AI *hints, AI **res);
 static  void    Freeaddrinfo (AI *ai);
 static	int	Getnameinfo (SSu *ssu, socklen_t ssulen, char *host, size_t hostlen, char *serv, size_t servlen, int flags);
-static  void    do_ares_callback (int vfd);
+static  void    do_ares_callback (int fd);
 static  void    ares_sock_state_cb_ (void *data, ares_socket_t socket_fd, int readable, int writable);
 	int	paddr_to_ssu (const char *host, SSu *storage_, int flags);
 static	void	ares_addrinfo_callback_ (void *arg, int status, int timeouts, struct ares_addrinfo *result);
@@ -415,27 +415,27 @@ static	ares_channel_t *	ares_channel_;
 static	struct ares_options	ares_options_;
 static	int			ares_optmask_;
 
-static	void	do_ares_callback (int vfd)
+static	void	do_ares_callback (int fd)
 {
 	char	datastr[128];
 	int	revents, readable = 0, writable = 0;;
 
-	if ((dgets(vfd, datastr, sizeof(datastr), 1)) <= 0)
+	if ((dgets(fd, datastr, sizeof(datastr), 1)) <= 0)
 	{
 		if (x_debug & DEBUG_SERVER_CONNECT)
-			yell("I closed ares_callback fd %d.", vfd);
-		new_close(vfd);
+			yell("I closed ares_callback fd %d.", fd);
+		new_close(fd);
 		return;
 	}
 
 	revents = atol(datastr);
 
 	if (revents & POLLIN)
-		readable = vfd;
+		readable = fd;
 	if (revents & POLLOUT)
-		writable = vfd;
+		writable = fd;
 	if (x_debug & DEBUG_SERVER_CONNECT)
-		yell("ares_process_fd: vfd=%d, readable=%d, writable=%d", vfd, readable, writable);
+		yell("ares_process_fd: fd=%d, readable=%d, writable=%d", fd, readable, writable);
 	ares_process_fd(ares_channel_, readable, writable);
 }
 
@@ -448,7 +448,10 @@ static	void	ares_sock_state_cb_ (void *data, ares_socket_t socket_fd, int readab
 	if (writable)
 		revents |= POLLOUT;
 
-	new_open(socket_fd, do_ares_callback, NEWIO_PASSTHROUGH, revents, 0, -2);
+	if (revents)
+		new_open(socket_fd, do_ares_callback, NEWIO_PASSTHROUGH, revents, 0, -2);
+	else
+		new_close_with_option(socket_fd, 1);
 }
 
 void	init_ares (void)

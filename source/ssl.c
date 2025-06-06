@@ -51,7 +51,7 @@
 
 /* * * SSL INFO STUFF * * * */
 typedef struct ssl_metadata {
-	int	vfd;
+	int	fd;
 	int	verify_error;
 	char *	pem;
 	char *	cert_hash;
@@ -73,8 +73,8 @@ typedef struct ssl_metadata {
 typedef struct	ssl_info_T {
 	struct ssl_info_T *next;
 	int	active;
-	int	vfd;		/* The Virtual File Descriptor (new_open()) */
-	int	channel;	/* The physical connection for the vfd */
+	int	fd;		/* The Virtual File Descriptor (new_open()) */
+	int	channel;	/* The physical connection for the fd */
 
 	SSL_CTX	*ctx;		/* All SSLs share the same ConTeXt */
 	SSL *	ssl;		/* Each of our SSLs have their own (SSL *) */
@@ -350,17 +350,17 @@ static SSL_CTX	*SSL_CTX_init (int server)
  * get_ssl_info -- Get the data object for an SSL-enabled connection
  *
  * ARGS:
- *	vfd -- A virtual file descriptor, previously returned by new_open().
+ *	fd -- A virtual file descriptor, previously returned by new_open().
  * RETURN VALUE:
- *	If the vfd has been set up to use SSL, an (ssl_info *) to its data.
- *	If the vfd has not been se tup to use SSL, NULL.
+ *	If the fd has been set up to use SSL, an (ssl_info *) to its data.
+ *	If the fd has not been se tup to use SSL, NULL.
  */
-static ssl_info *	get_ssl_info (int vfd)
+static ssl_info *	get_ssl_info (int fd)
 {
 	ssl_info *x;
 
 	for (x = ssl_list; x; x = x->next)
-		if (x->vfd == vfd)
+		if (x->fd == fd)
 			return x;
 
 	return NULL;
@@ -370,20 +370,20 @@ static ssl_info *	get_ssl_info (int vfd)
  * new_ssl_info -- Create a data object for an SSL-enabled connection
  *
  * ARGS: 
- *	vfd -- A virtual file descriptor, previously returned by new_open().
+ *	fd -- A virtual file descriptor, previously returned by new_open().
  * RETURN VALUE:
- *	If the vfd has never been previously set up to use SSL, a pointer to
- *		metadata for the vfd.  The 'channel', 'ctx' and 'ssl_obj'
+ *	If the fd has never been previously set up to use SSL, a pointer to
+ *		metadata for the fd.  The 'channel', 'ctx' and 'ssl_obj'
  *		fields will not be filled in yet!
- *	If the vfd has previously been set up to use SSL, a pointer to the
- *		metadata for that vfd.  Existing information about the SSL
- *		connection on that vfd will be discarded!
+ *	If the fd has previously been set up to use SSL, a pointer to the
+ *		metadata for that fd.  Existing information about the SSL
+ *		connection on that fd will be discarded!
  */
-static ssl_info *	new_ssl_info (int vfd)
+static ssl_info *	new_ssl_info (int fd)
 {
 	ssl_info *x;
 
-	if (!(x = get_ssl_info(vfd)))
+	if (!(x = get_ssl_info(fd)))
 	{
 		x = new_malloc(sizeof(*x));
 		x->next = ssl_list;
@@ -391,13 +391,13 @@ static ssl_info *	new_ssl_info (int vfd)
 	}
 
 	x->active = 0;
-	x->vfd = vfd;
+	x->fd = fd;
 	x->channel = -1;
 	x->ctx = NULL;
 	x->ssl = NULL;
 	x->hostname = NULL;
 
-	x->md.vfd = vfd;
+	x->md.fd = fd;
 	x->md.pem = NULL;
 	x->md.cert_hash = NULL;
 	x->md.pkey_bits = 0;
@@ -418,21 +418,21 @@ static ssl_info *	new_ssl_info (int vfd)
 }
 
 /*
- * unlink_ssl_info -- Unregister vfd as an ssl-using connection.
+ * unlink_ssl_info -- Unregister fd as an ssl-using connection.
  *
  * ARGS:
- *	vfd -- A virtual file descriptor, previously returned by new_open().
+ *	fd -- A virtual file descriptor, previously returned by new_open().
  * RETURN VALUE:
- *	If the vfd has been previously set up to use SSL, the ssl_info for it.
- *	If the vfd has never been previously set up to use SSL, NULL.
+ *	If the fd has been previously set up to use SSL, the ssl_info for it.
+ *	If the fd has never been previously set up to use SSL, NULL.
  *	You _MUST_ tear down the SSL connection and free the metadata of the retval.
  *	Use ssl_shutdown() to close an ssl connection instead of calling here.
  */
-static ssl_info *	unlink_ssl_info (int vfd)
+static ssl_info *	unlink_ssl_info (int fd)
 {
 	ssl_info *x = NULL;
 
-	if (ssl_list->vfd == vfd)
+	if (ssl_list->fd == fd)
 	{
 		x = ssl_list;
 		ssl_list = x->next;
@@ -442,7 +442,7 @@ static ssl_info *	unlink_ssl_info (int vfd)
 	{
 		for (x = ssl_list; x->next; x = x->next)
 		{
-			if (x->next->vfd == vfd)
+			if (x->next->fd == fd)
 			{
 				ssl_info *y = x->next;
 				x->next = x->next->next;
@@ -456,11 +456,11 @@ static ssl_info *	unlink_ssl_info (int vfd)
 
 
 /*
- * ssl_startup -- Create an ssl connection on a vfd using a certain channel.
+ * ssl_startup -- Create an ssl connection on a fd using a certain channel.
  *
  * ARGS:
- *	vfd -- A virtual file descriptor, previously returned by new_open().
- *	channel -- The channel that is mapped to the vfd (passed to new_open())
+ *	fd -- A virtual file descriptor, previously returned by new_open().
+ *	channel -- The channel that is mapped to the fd (passed to new_open())
  *	hostname -- The hostname we intend to connect to.  This is used for
  *		    hostname checking in the SSL certificate
  *	cert -- The client certificate (must be a filename containing a PEM cert)
@@ -470,15 +470,15 @@ static ssl_info *	unlink_ssl_info (int vfd)
  *	 0	SSL negotiation is pending
  *	 1	SSL negotiation is complete (not supported)
  */
-int	ssl_startup (int vfd, int channel, const char *hostname, const char *cert)
+int	ssl_startup (int fd, int channel, const char *hostname, const char *cert)
 {
 	ssl_info *	x;
 
-	if (!(x = new_ssl_info(vfd)))
+	if (!(x = new_ssl_info(fd)))
 	{
-		syserr(SRV(vfd), "Could not make new ssl info "
-				 "(vfd [%d]/channel [%d])",
-				vfd, channel);
+		syserr(SRV(fd), "Could not make new ssl info "
+				 "(fd [%d]/channel [%d])",
+				fd, channel);
 		errno = EINVAL;
 		return -1;
 	}
@@ -490,10 +490,10 @@ int	ssl_startup (int vfd, int channel, const char *hostname, const char *cert)
 	if (!(x->ssl = SSL_new(x->ctx)))
 	{
 		/* Get rid of the 'x' we just created */
-		ssl_shutdown(vfd);
-		syserr(SRV(vfd), "Could not make new SSL "
-				 "(vfd [%d]/channel [%d])",
-				vfd, channel);
+		ssl_shutdown(fd);
+		syserr(SRV(fd), "Could not make new SSL "
+				 "(fd [%d]/channel [%d])",
+				fd, channel);
 		errno = EINVAL;
 		return -1;
 	}
@@ -504,13 +504,13 @@ int	ssl_startup (int vfd, int channel, const char *hostname, const char *cert)
 			yell("Using client certificate file %s", cert);
 		if (SSL_use_certificate_file(x->ssl, cert, SSL_FILETYPE_PEM) <= 0)
 		{
-			syserr(SRV(vfd), "SSL_use_certificate_file(%s) for fd %d failed", cert, vfd);
+			syserr(SRV(fd), "SSL_use_certificate_file(%s) for fd %d failed", cert, fd);
 			errno = EINVAL;
 			return -1;
 		}
 		if (SSL_use_PrivateKey_file(x->ssl, cert, SSL_FILETYPE_PEM) <= 0)
 		{
-			syserr(SRV(vfd), "SSL_use_PrivateKey_file(%s) for fd %d failed", cert, vfd);
+			syserr(SRV(fd), "SSL_use_PrivateKey_file(%s) for fd %d failed", cert, fd);
 			errno = EINVAL;
 			return -1;
 		}
@@ -520,46 +520,46 @@ int	ssl_startup (int vfd, int channel, const char *hostname, const char *cert)
 
 	if (SSL_set_fd(x->ssl, channel) <= 0)
 	{
-		syserr(SRV(vfd), "SSL_set_fd(%d) for fd %d failed", channel, vfd);
+		syserr(SRV(fd), "SSL_set_fd(%d) for fd %d failed", channel, fd);
 		errno = EINVAL;
 		return -1;
 	}
 	if (SSL_set_ex_data(x->ssl, mydata_index, x) <= 0)
 	{
-		syserr(SRV(vfd), "SSL_set_ex_data(%d) for fd %d failed", mydata_index, vfd);
+		syserr(SRV(fd), "SSL_set_ex_data(%d) for fd %d failed", mydata_index, fd);
 		errno = EINVAL;
 		return -1;
 	}
 	if (SSL_set1_host(x->ssl, hostname) <= 0) 
 	{
-		syserr(SRV(vfd), "SSL_set1_host(%s) for fd %d failed", hostname, vfd);
+		syserr(SRV(fd), "SSL_set1_host(%s) for fd %d failed", hostname, fd);
 		errno = EINVAL;
 		return -1;
 	}
 
 	set_non_blocking(channel);
-	ssl_connect(vfd, 0, 0);
+	ssl_connect(fd, 0, 0);
 	return 0;
 }
 
 /*
- * ssl_shutdown -- Destroy an ssl connection on a vfd.
+ * ssl_shutdown -- Destroy an ssl connection on a fd.
  * ARGS:
- *	vfd -- A virtual file descriptor, previously passed to startup_ssl().
+ *	fd -- A virtual file descriptor, previously passed to startup_ssl().
  * RETURN VALUE:
- *	-1	The vfd is not set up to do ssl. (errno is set to EINVAL)
- *	 0	The SSL session on the vfd has been shut down.
+ *	-1	The fd is not set up to do ssl. (errno is set to EINVAL)
+ *	 0	The SSL session on the fd has been shut down.
  * Any errors occuring during the shutdown are ignored.
  */
-int	ssl_shutdown (int vfd)
+int	ssl_shutdown (int fd)
 {
 	ssl_info *	x;
 
-	if (!(x = unlink_ssl_info(vfd)))
+	if (!(x = unlink_ssl_info(fd)))
 		return -1;
 
 	x->active = 0;
-	x->vfd = -1;
+	x->fd = -1;
 	x->channel = -1;
 	if (x->ssl)
 	{
@@ -568,7 +568,7 @@ int	ssl_shutdown (int vfd)
 		x->ssl = NULL;
 	}
 
-	x->md.vfd = -1;
+	x->md.fd = -1;
 	x->md.verify_error = -1;
 	x->md.checkhost_error = -1;
 	x->md.self_signed_error = -1;
@@ -592,22 +592,22 @@ int	ssl_shutdown (int vfd)
 
 /* * * SSL I/O FUNCTIONS * * * */
 /*
- * ssl_write -- Write some binary data over an ssl connection on vfd.
+ * ssl_write -- Write some binary data over an ssl connection on fd.
  *		The data is unbuffered with BIO_flush() before returning.
  * ARGS:
- *	vfd -- A virtual file descriptor, previously passed to startup_ssl().
- *	data -- Any binary data you wish to send over 'vfd'.
+ *	fd -- A virtual file descriptor, previously passed to startup_ssl().
+ *	data -- Any binary data you wish to send over 'fd'.
  *	len -- The number of bytes in 'data' to send.
  * RETURN VALUE:
- *	-1 / EINVAL -- The vfd is not set up for ssl.
+ *	-1 / EINVAL -- The fd is not set up for ssl.
  *	Anything else -- The return value of SSL_write().
  */
-int	ssl_write (int vfd, const void *data, size_t len)
+int	ssl_write (int fd, const void *data, size_t len)
 {
 	ssl_info *x;
 	int	err;
 
-	if (!(x = get_ssl_info(vfd)))
+	if (!(x = get_ssl_info(fd)))
 	{
 		errno = EINVAL;
 		return -1;
@@ -626,23 +626,23 @@ int	ssl_write (int vfd, const void *data, size_t len)
 }
 
 /*
- * read_ssl -- Post whatever data is available on 'vfd' to the newio system.
+ * read_ssl -- Post whatever data is available on 'fd' to the newio system.
  *		This operation may block if the SSL operations block.
  * ARGS:
- *	vfd -- A virtual file descriptor, previously passed to startup_ssl().
+ *	fd -- A virtual file descriptor, previously passed to startup_ssl().
  *	quiet -- Should errors silently ignored (1) or displayed? (0)
  * RETURN VALUE:
- *	-1 / EINVAL -- The vfd is not set up for ssl.
+ *	-1 / EINVAL -- The fd is not set up for ssl.
  *	Anything else -- The final return value of SSL_read().
  */
-int	ssl_read (int vfd, int quiet, int revents)
+int	ssl_read (int fd, int quiet, int revents)
 {
 	ssl_info *x;
 	int	c;
 	int	failsafe = 0;
 	char	buffer[8192];
 
-	if (!(x = get_ssl_info(vfd)))
+	if (!(x = get_ssl_info(fd)))
 	{
 		errno = EINVAL;
 		return -1;
@@ -658,7 +658,7 @@ int	ssl_read (int vfd, int quiet, int revents)
 	{
 		/* This is to prevent an impossible deadlock */
 		if (failsafe++ > 1000)
-			panic(1, "Caught in SSL_pending() loop! (%d)", vfd);
+			panic(1, "Caught in SSL_pending() loop! (%d)", fd);
 
 		c = SSL_read(x->ssl, buffer, sizeof(buffer));
 		if (c < 0)
@@ -666,7 +666,7 @@ int	ssl_read (int vfd, int quiet, int revents)
 		    int ssl_error = SSL_get_error(x->ssl, c);
 		    if (ssl_error == SSL_ERROR_NONE)
 			if (!quiet)
-			   syserr(SRV(vfd), "SSL_read failed with [%d]/[%d]", 
+			   syserr(SRV(fd), "SSL_read failed with [%d]/[%d]", 
 					c, ssl_error);
 		}
 
@@ -682,13 +682,13 @@ int	ssl_read (int vfd, int quiet, int revents)
 	return c;
 }
 
-int	ssl_connect (int vfd, int quiet, int revents)
+int	ssl_connect (int fd, int quiet, int revents)
 {
 	ssl_info *	x;
 	int		errcode;
 	int		ssl_err;
 
-	if (!(x = get_ssl_info(vfd)))
+	if (!(x = get_ssl_info(fd)))
 	{
 		errno = EINVAL;
 		return -1;
@@ -704,7 +704,7 @@ int	ssl_connect (int vfd, int quiet, int revents)
 		else
 		{
 			/* Post the error */
-			syserr(SRV(vfd), "ssl_connect: posting error %d", 
+			syserr(SRV(fd), "ssl_connect: posting error %d", 
 						ssl_err);
 			dgets_buffer(x->channel, &ssl_err, sizeof(ssl_err));
 			return 1;
@@ -713,7 +713,7 @@ int	ssl_connect (int vfd, int quiet, int revents)
 
 	/* Post the success */
 	ssl_err = 0;
-	syserr(SRV(vfd), "ssl_connect: connection successful!");
+	syserr(SRV(fd), "ssl_connect: connection successful!");
 	dgets_buffer(x->channel, &ssl_err, sizeof(ssl_err));
 	return 1;
 }
@@ -774,7 +774,7 @@ static char *get_x509_name(X509_NAME *nm)
  * ssl_connected - Finalize the SSL metadata object for policy evaluation
  *
  * Arguments:
- *	vfd	 - The Virtual File Descriptor for the SSL connection
+ *	fd	 - The Virtual File Descriptor for the SSL connection
  *		   (as returned by new_open())
  *
  * A brief review of history:
@@ -807,7 +807,7 @@ static char *get_x509_name(X509_NAME *nm)
  * Ideally, you should only call this once.
  * Ideally, you shouldn't try to use an SSL before you've called this.
  */
-int	ssl_connected (int vfd)
+int	ssl_connected (int fd)
 {
 	X509 *	 	server_cert;	/* X509 in SSL internal fmt */
 	ssl_info *	x;		/* EPIC info about the conn */
@@ -819,7 +819,7 @@ int	ssl_connected (int vfd)
 	/*
 	 * First off -- do I think this is even an SSL enabled connection?
 	 */
-	if (!(x = get_ssl_info(vfd)))
+	if (!(x = get_ssl_info(fd)))
 	{
 		errno = EINVAL;
 		return -1;
@@ -841,7 +841,7 @@ int	ssl_connected (int vfd)
 	 */
 	if (!(server_cert = SSL_get_peer_certificate(x->ssl)))
 	{
-		syserr(SRV(vfd), "SSL negotiation failed - reporting as error");
+		syserr(SRV(fd), "SSL negotiation failed - reporting as error");
 		x->ctx = NULL;
 		SSL_free(x->ssl);
 		x->ssl = NULL;
@@ -961,7 +961,7 @@ int	ssl_connected (int vfd)
 	 * changed between connections.   Or something clever.
 	 */
 	if (do_hook(SSL_SERVER_CERT_LIST, "%d %s %s %d %d %s %s %d %d %d %d", 
-			x->md.vfd, 
+			x->md.fd, 
 			x->md.u_cert_subject, x->md.u_cert_issuer, 
 			x->md.pkey_bits, x->md.most_serious_error,
 			x->md.ssl_version, x->md.cert_hash,
@@ -1001,9 +1001,9 @@ int	ssl_connected (int vfd)
 
 
 /* * * AUXILLARY (EXTERNAL) API FUNCTIONS * * * */
-int	is_fd_ssl_enabled (int vfd)
+int	is_fd_ssl_enabled (int fd)
 {
-	if (get_ssl_info(vfd))
+	if (get_ssl_info(fd))
 		return 1;
 	else
 		return 0;
@@ -1015,102 +1015,102 @@ int	client_ssl_enabled (void)
 }
 
 /* * * * * * */
-#define LOOKUP_SSL(vfd, missingval)	\
+#define LOOKUP_SSL(fd, missingval)	\
 	ssl_info *x;			\
 					\
-	if (!(x = get_ssl_info(vfd)))	\
+	if (!(x = get_ssl_info(fd)))	\
 		return missingval ;	\
 	if (!x->ssl)			\
 		return missingval ;	\
 
 
-const char *	get_ssl_cipher (int vfd)
+const char *	get_ssl_cipher (int fd)
 {
-	LOOKUP_SSL(vfd, empty_string)
+	LOOKUP_SSL(fd, empty_string)
 	return SSL_get_cipher_name(x->ssl);
 }
 
-int	get_ssl_verify_error (int vfd)
+int	get_ssl_verify_error (int fd)
 {
-	LOOKUP_SSL(vfd, 0)
+	LOOKUP_SSL(fd, 0)
 	return x->md.verify_error;
 }
 
-const char *	get_ssl_pem (int vfd)
+const char *	get_ssl_pem (int fd)
 {
-	LOOKUP_SSL(vfd, empty_string)
+	LOOKUP_SSL(fd, empty_string)
 	return x->md.pem;
 }
 
-const char *	get_ssl_cert_hash (int vfd)
+const char *	get_ssl_cert_hash (int fd)
 {
-	LOOKUP_SSL(vfd, empty_string)
+	LOOKUP_SSL(fd, empty_string)
 	return x->md.cert_hash;
 }
 
-int	get_ssl_pkey_bits (int vfd)
+int	get_ssl_pkey_bits (int fd)
 {
-	LOOKUP_SSL(vfd, 0)
+	LOOKUP_SSL(fd, 0)
 	return x->md.pkey_bits;
 }
 
-const char *	get_ssl_subject (int vfd)
+const char *	get_ssl_subject (int fd)
 {
-	LOOKUP_SSL(vfd, empty_string)
+	LOOKUP_SSL(fd, empty_string)
 	return x->md.subject;
 }
 
-const char *	get_ssl_u_cert_subject (int vfd)
+const char *	get_ssl_u_cert_subject (int fd)
 {
-	LOOKUP_SSL(vfd, empty_string)
+	LOOKUP_SSL(fd, empty_string)
 	return x->md.u_cert_subject;
 }
 
-const char *	get_ssl_issuer (int vfd)
+const char *	get_ssl_issuer (int fd)
 {
-	LOOKUP_SSL(vfd, empty_string)
+	LOOKUP_SSL(fd, empty_string)
 	return x->md.issuer;
 }
 
-const char *	get_ssl_u_cert_issuer (int vfd)
+const char *	get_ssl_u_cert_issuer (int fd)
 {
-	LOOKUP_SSL(vfd, empty_string)
+	LOOKUP_SSL(fd, empty_string)
 	return x->md.u_cert_issuer;
 }
 
-const char *	get_ssl_ssl_version (int vfd)
+const char *	get_ssl_ssl_version (int fd)
 {
-	LOOKUP_SSL(vfd, empty_string)
+	LOOKUP_SSL(fd, empty_string)
 	return x->md.ssl_version;
 }
 
-const char *	get_ssl_sans (int vfd)
+const char *	get_ssl_sans (int fd)
 {
-	LOOKUP_SSL(vfd, empty_string)
+	LOOKUP_SSL(fd, empty_string)
 	return x->md.sans;
 }
 
-int	get_ssl_checkhost_error (int vfd)
+int	get_ssl_checkhost_error (int fd)
 {
-	LOOKUP_SSL(vfd, -1);
+	LOOKUP_SSL(fd, -1);
 	return x->md.checkhost_error;
 }
 
-int	get_ssl_self_signed_error (int vfd)
+int	get_ssl_self_signed_error (int fd)
 {
-	LOOKUP_SSL(vfd, -1);
+	LOOKUP_SSL(fd, -1);
 	return x->md.self_signed_error;
 }
 
-int	get_ssl_other_error (int vfd)
+int	get_ssl_other_error (int fd)
 {
-	LOOKUP_SSL(vfd, -1);
+	LOOKUP_SSL(fd, -1);
 	return x->md.other_error;
 }
 
-int	get_ssl_most_serious_error (int vfd)
+int	get_ssl_most_serious_error (int fd)
 {
-	LOOKUP_SSL(vfd, -1);
+	LOOKUP_SSL(fd, -1);
 	return x->md.most_serious_error;
 }
 

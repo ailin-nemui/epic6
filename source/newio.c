@@ -40,93 +40,425 @@
 #include "ssl.h"
 #include "timer.h"
 
+/*
+ * Issue 3 defines _SC_OPEN_MAX as the maximum number of file descriptors 
+ * a process may have at runtime.  Because this is controlled by ulimits, 
+ * we can't hardcode any number for this.  We ask for it at startup and 
+ * then go with that.
+ */
 #define IO_ARRAYLEN 	sysconf(_SC_OPEN_MAX)
 
-#define MAX_SEGMENTS 16
+/*
+ * Long ago there used to be a DOS attack where a remote peer would
+ * send one byte every <1s and the client would block waiting for the 
+ * data to stop.  We (1) don't block on incomplete lines and (2) shut 
+ * off a remote peer that is just yanking our chain.
+ */
+#define MAX_SEGMENTS 	16
 
+
+/*
+ * The main event looper uses a two-cycle engine, seperating the physical
+ * I/O from the application's consumption of the data.  We coordinate this 
+ * buffering through this data structure.  
+ * It contains:
+ *	1) A file descriptor
+ *	2) A data buffer and metadata about the buffer
+ *	3) Application callback functions to consume the buffer
+ *	4) Metadata about the fd itself.
+ *
+ * Cycle 1:
+ *	I/O is possible on the file descriptor
+ *	Data is read from the fd, and placed into the buffer
+ *		with dgets_buffer().
+ *	The fd is "dirty" ("clean == 0")
+ * Cycle 2:
+ *	For any dirty fd's, the application callback is called.
+ *	Data is consumed from the buffer with dgets().
+ *	Once all the data is consumed, the fd is "clean"
+ */
 typedef	struct	myio_struct
 {
-	/* 
-	 * On Unix, "Channel" means "fd".
-	 * On VMS, "Channel" is a random 32 bit int.
-	 */
-	int	channel;	
-	char *	buffer;
-	size_t	buffer_size,
-		read_pos,
-		write_pos;
-	short	segments,
-		error,
-		clean,
-		eof,
-		held;
-	void	(*callback) (int vfd);
-	int	(*io_callback) (int vfd, int quiet, int revents);
-	void	(*failure_callback) (int channel, int error);
-	int	quiet;
-	int	server;			/* For message routing */
-	int	poll_events;
+	/* Cycle 1 members */
+	int		fd;
+	char *		buffer;
+	size_t		buffer_size,
+			read_pos,
+			write_pos;
+	short		clean;
+	short		segments,
+			error,
+			eof;
+	int		(*io_callback) 	(int fd, int quiet, int revents);
+
+	/* Cycle 2 members */
+	void		(*callback) 		(int fd);
+	void		(*failure_callback) 	(int fd, int error);
+
+	/* Poll(2) members */
+	struct pollfd	poll;
+	int		poll_events;
+
+	/* Metadata members */
+	int		quiet;
+	int		server;			/* For message routing */
 }           MyIO;
 
 static	MyIO **	io_rec = NULL;
-static	int	global_max_vfd = -1;
+static	int	global_max_fd = -1;
 
-/* These functions should be exposed by your i/o strategy */
-static  void    kread (int vfd);
-static  void    knoread (int vfd);
-static  void    kwrite (int vfd);
-static  void    knowrite (int vfd);
-static	int	kdoit (Timespec *timeout);
-static	void	kinit (void);
-static	void	kcleaned (int vfd);
-static	void	klock (void);
-static	void	kunlock (void);
-
-static	int	ksleep (double dur);
-static	int	kreadable (int vfd, double);
-static	int	kwritable (int vfd, double);
-
-/* These functions implement basic i/o operations for unix */
-static int	unix_read (int channel, int, int);
-static int	unix_recv (int channel, int, int);
-static int	unix_accept (int channel, int, int);
-static int	unix_connect (int channel, int, int);
-static int	unix_close (int channel, int);
-static int	passthrough_event (int channel, int quiet, int);
-
-
-/* XXX Please refactor these away */
-#define VFD(channel) channel
-#define CHANNEL(vfd) vfd
-
-int	get_server_by_vfd (int vfd)
-{
-	if (!io_rec[vfd])
-		panic(1, "get_server_by_vfd(%d): vfd is not set up!", vfd);
-	return io_rec[vfd]->server;
-}
-/* #define SRV(vfd) get_server_by_vfd(vfd) */ /* Defined in newio.h */
-#define CSRV(channel) get_server_by_vfd(VFD(channel))
+static	void	new_io_event (int fd, int revents);
+static	void	fd_is_invalid (int fd);
+static	int	unix_close (int fd, int quiet);
 
 /**************************************************************************/
+/**************************************************************************/
+
+/*************************************************************************/
+/*                             CYCLE 1                                   */
+/*************************************************************************/
 /*
- * Call this function when an I/O operation completes and data is available
- * to be given to the user.  On systems where channel != vfd, it is expected
- * that you would more likely have the channel than the vfd, so we require
- * that.
+ * do_wait -- The main sleeping routine.  When all of the fd's are clean,
+ *	      go to sleep until an fd is dirty or a /TIMER goes off.
+ *
+ * Arguments:
+ *	timeout	- A value previously returned by TimerTimeout().
+ *		  'Timeout' is decremented by the time spent waiting.
+ *
+ * Return Value:
+ *	-1	Interrupted System Call (ie, EINTR caused by ^C)
+ *	 0	The timeout has expired (ie, call ExecuteTimers())
+ *	 1	An fd is dirty (ie, call do_filedesc())
  */
-int	dgets_buffer (int channel, const void *data, ssize_t len)
+int 	do_wait (Timespec *timeout)
+{
+static	int	polls = 0;
+	int	fd;
+	int	ms;
+	int	retval;
+	int	i, j, k;
+	struct pollfd	*pollers;
+
+	if (!timeout)
+		panic(1, "do_wait: timeout is NULL.");
+
+	/*
+	 * Sanity Check -- A polling loop is caused when the
+	 * timeout is 0, and occurs whenever timer needs to go off.  The
+	 * main io() loop depends on us to tell it when a timer wants to go
+	 * off by returning 0, so we check for that here.
+	 *
+	 * If we get more than 10,000 polls in a row, then something is 
+	 * broken somewhere else, and we need to abend.
+	 */
+	if (timeout)
+	{
+	    if (timeout->tv_sec == 0 && timeout->tv_nsec == 0)
+	    {
+		if (polls++ > 10000)
+		{
+		    dump_timers();
+		    panic(1, "Stuck in a polling loop. Help!");
+		}
+		return 0;		/* Timers are more important */
+	    }
+	    else
+		polls = 0;
+	}
+
+	/* 
+	 * It is possible that as a result of the previous I/O run, we are
+	 * running recursively in io(). (/WAIT, /REDIRECT, etc).  This will
+	 * obviously result in the IO buffers not being cleaned yet.  So we
+	 * check for whether there are any dirty buffers, and if there are,
+	 * we shall just return and allow them to be cleaned.
+	 */
+	for (fd = 0; fd <= global_max_fd; fd++)
+		if (io_rec[fd] && !io_rec[fd]->clean)
+			return 1;
+
+	/* How long shall we sleep for? */
+	ms = timeout->tv_sec * 1000;
+	ms += (timeout->tv_nsec / 1000000);
+
+	/* What shall we sleep waiting for? */
+	pollers = new_malloc(sizeof(struct pollfd) * global_max_fd);
+	memset(pollers, 0, (sizeof(struct pollfd) * global_max_fd));
+	for (i = j = 0; i <= global_max_fd; i++)
+	{
+		if (io_rec[i])
+			pollers[j++] = io_rec[i]->poll;
+	}
+
+	/* Go to sleep */
+	retval = poll(pollers, j, ms);
+
+	/* What happened? */
+	if (retval < 0 && errno != EINTR)
+		syserr(-1, "do_wait: poll() failed: %s", strerror(errno));
+	else if (retval > 0)
+	{
+		for (k = 0; k < j; k++)
+		{
+		    if (pollers[k].revents)
+		    {
+			new_io_event(pollers[k].fd, pollers[k].revents);
+			break;
+		    }
+		}
+	}
+
+	new_free(&pollers);
+	return retval;
+}
+
+/*
+ * Perform a synchronous i/o operation on a file descriptor.  
+ * This function is called by do_wait() after we wake back up.
+ *
+ * The way I/O works in EPIC:
+ *	+ main loop calls do_wait()
+ *	  + If do_wait() decides an fd is ready, it looks at all fd's
+ *		and for any fd's that are "ready", calls new_io_event().
+ *	    + new_io_event() [us] does an I/O operation and queues up some
+ *		data using dgets_buffer(), and marks the fd as "dirty"
+ *	+ main loop calls do_filedesc() is called, and that calls the 
+ *		user's callback, which uses dgets() to return 
+ *		whatever was queued up here, and marks the fd as "clean".
+ */
+static void	new_io_event (int fd, int revents)
+{
+	MyIO *ioe;
+	int	c = 0;
+
+	if (!(ioe = io_rec[fd]))
+		panic(1, "new_io_event: fd [%d] isn't set up!", fd);
+
+	/* If it's dirty, something is wrong. */
+	if (!ioe->clean)
+		panic(1, "new_io_event: fd [%d] hasn't been cleaned yet", fd);
+
+	if (ioe->io_callback)
+	{
+#if 0
+		/* These flags tell us that further IO is pointless */
+		if (revents & POLLHUP)
+		{
+			ioe->eof = 1;
+			ioe->clean = 0;
+			syserr(SRV(fd), "new_io_event: fd %d POLLHUP", fd);
+			ioe->poll.events = 0;
+		}
+#endif
+		if (revents & POLLNVAL && !ioe->quiet)
+		{
+			ioe->eof = 1;
+			syserr(SRV(fd), "new_io_event: fd %d POLLNVAL - I will stop tracking this fd for io events", fd);
+			ioe->poll.events = 0;
+			fd_is_invalid(fd);
+			return;
+		}
+
+		/* 
+		 * We may expect ioe->io_callback() to either call dgets_buffer
+		 * (which sets ioe->clean = 0) or to return an error (in which
+		 * case we do it ourselves right here)
+		 */
+		else if ((c = ioe->io_callback(fd, ioe->quiet, revents)) <= 0)
+		{
+			ioe->error = -1;
+			ioe->clean = 0;
+			if (!ioe->quiet)
+				syserr(SRV(fd), "new_io_event: fd %d must be closed", fd);
+
+			if (x_debug & DEBUG_INBOUND) 
+				yell("FD [%d] FAILED [%d] [%d]", fd, revents, c);
+			return;
+		}
+
+		if (x_debug & DEBUG_INBOUND) 
+			yell("FD [%d], did [%d]", fd, c);
+	}
+	else
+	{
+		/* 
+		 * XXX It might have been more elegant to create a passthrough
+		 * callback that just sets ioe->clean instead of having special
+		 * handling here.  Oh well.
+		 */
+		ioe->clean = 0;
+		if (x_debug & DEBUG_INBOUND) 
+			yell("FD [%d], did pass-through", fd);
+	}
+}
+
+/* 
+ * These are the functions that get called above in "ioe->io_callback".
+ * They are expected to "handle" the fd and dgets_buffer() whatever 
+ * is appropriate for the application.
+ */
+
+static int	unix_read (int fd, int quiet, int revents)
+{
+	ssize_t	c;
+	char	buffer[8192];
+
+	c = read(fd, buffer, sizeof buffer);
+	if (c == 0)
+	{
+		if (!quiet)
+		   syserr(SRV(fd), "unix_read: EOF for fd %d ", fd);
+		return 0;
+	}
+	else if (c < 0)
+	{
+		if (!quiet)
+		   syserr(SRV(fd), "unix_read: read(%d) failed: %s", 
+				fd, strerror(errno));
+		return -1;
+	}
+
+	if (dgets_buffer(fd, buffer, c))
+	{
+		if (!quiet)
+		   syserr(SRV(fd), "unix_read: dgets_buffer(%d, %*s) failed",
+				fd, (int)c, buffer);
+		return -1;
+	}
+
+	return c;
+}
+
+static int	unix_recv (int fd, int quiet, int revents)
+{
+	ssize_t	c;
+	char	buffer[8192];
+
+	c = recv(fd, buffer, sizeof buffer, 0);
+	if (c == 0)
+	{
+		if (!quiet)
+		   syserr(SRV(fd), "unix_recv: EOF for fd %d ", fd);
+		return 0;
+	}
+	else if (c < 0)
+	{
+		if (!quiet)
+		   syserr(SRV(fd), "unix_recv: read(%d) failed: %s", 
+				fd, strerror(errno));
+		return -1;
+	}
+
+	if (dgets_buffer(fd, buffer, c))
+	{
+		if (!quiet)
+		   syserr(SRV(fd), "unix_recv: dgets_buffer(%d, %*s) failed",
+				fd, (int)c, buffer);
+		return -1;
+	}
+
+	return c;
+}
+
+static int	unix_accept (int fd, int quiet, int revents)
+{
+	int	newfd;
+	SSu	addr;
+	socklen_t len;
+
+	memset(&addr.ss, 0, sizeof(addr.ss));
+	len = sizeof(addr.ss);
+	if ((newfd = Accept(fd, &addr, &len)) < 0)
+	{
+	    if (!quiet)
+		syserr(SRV(fd), 
+			"unix_accept: Accept(%d) failed: %s", fd, strerror(errno));
+	}
+
+	dgets_buffer(fd, &newfd, sizeof(newfd));
+	dgets_buffer(fd, &addr.ss, sizeof(addr.ss));
+	return sizeof(newfd) + sizeof(addr);
+}
+
+static int	unix_connect (int fd, int quiet, int revents)
+{
+	int	sockerr;
+	int	gso_result;
+	int	gsn_result;
+	SSu	localaddr;
+	int	gpn_result;
+	SSu	remoteaddr;
+	socklen_t len;
+
+	/* * */
+	len = sizeof(sockerr);
+	errno = 0;
+	getsockopt(fd, SOL_SOCKET, SO_ERROR, &sockerr, &len);
+	gso_result = errno;
+
+	dgets_buffer(fd, &gso_result, sizeof(gso_result));
+	dgets_buffer(fd, &sockerr, sizeof(sockerr));
+
+	/* * */
+	len = sizeof(localaddr.ss);
+	errno = 0;
+	getsockname(fd, &localaddr.sa, &len);
+	gsn_result = errno;
+
+	dgets_buffer(fd, &gsn_result, sizeof(gsn_result));
+	dgets_buffer(fd, &localaddr.ss, sizeof(localaddr.ss));
+
+	/* * */
+	len = sizeof(remoteaddr.ss);
+	errno = 0;
+	getpeername(fd, &remoteaddr.sa, &len);
+	gpn_result = errno;
+
+	dgets_buffer(fd, &gpn_result, sizeof(gpn_result));
+	dgets_buffer(fd, &remoteaddr.ss, sizeof(localaddr));
+
+	return (sizeof(int) + sizeof(localaddr.ss)) * 2;
+}
+
+static int	passthrough_event (int fd, int quiet, int revents)
+{
+	char	revents_str[1024];
+
+	/* Tell the caller what the revents are */
+	snprintf(revents_str, 1024, "%d\n", revents);
+	dgets_buffer(fd, revents_str, strlen(revents_str));
+	return 1;
+}
+
+/*
+ * dgets_buffer: Cycle 1 -- Buffer some data from a file descriptor
+ *
+ * Arguments:
+ *	fd	- A file descriptor that was ready, and generated data
+ *	data	- The data from the file descriptor
+ *	len	- The number of bytes in 'data'.
+ *
+ * Return value:
+ *	-1 	- I call shenanigans!  The fd is to be aborted.
+ *	 0	- The data was buffered
+ *
+ * Notes:
+ *	- Calling this function with len == 0 is a no-op.
+ *	- Calling this function with len > 0 marks the fd as "not clean".
+ *	  This will later cause the fd's Cycle 2 callback to be called
+ *	  so they can consume this data.
+ *	- Writing more than MAX_SEGMENTS segments without cycle 2 being
+ *	  interested in what you have to say is an error.
+ */
+int	dgets_buffer (int fd, const void *data, ssize_t len)
 {
 	MyIO *	ioe;
-	int	vfd;
 
 	if (len < 0)
 		return 0;			/* XXX ? */
 
-	klock();
-	vfd = VFD(channel);
-	if (!(ioe = io_rec[vfd]))
-		panic(1, "dgets called on unsetup channel %d", channel);
+	if (!(ioe = io_rec[fd]))
+		panic(1, "dgets called on unsetup fd %d", fd);
 
 	/* 
 	 * An old exploit just sends us characters every .8 seconds without
@@ -136,11 +468,10 @@ int	dgets_buffer (int channel, const void *data, ssize_t len)
 	{
 		if (!ioe->quiet)
 		    syserr(ioe->server, 
-			"dgets_buffer: Too many read()s on channel [%d] "
-			"without a newline -- shutting off bad peer", channel);
+			"dgets_buffer: Too many read()s on fd [%d] "
+			"without a newline -- shutting off bad peer", fd);
 		ioe->error = -1;
 		ioe->clean = 0;
-		kunlock();
 		return -1;
 	}
 	/* If the buffer completely empties, then clean it.  */
@@ -179,30 +510,57 @@ int	dgets_buffer (int channel, const void *data, ssize_t len)
 	ioe->write_pos += len;
 	ioe->clean = 0;
 	ioe->segments++;
-	kunlock();
 	return 0;
 }
 
+
+
+
+/*************************************************************************/
+/*                             CYCLE 2                                   */
+/*************************************************************************/
 /*
- * All new dgets -- no more trap doors!
+ * do_filedesc -- Call application callbacks for dirty fd's.
  *
- * dgets() returns the next buffered unit of data from the buffers.
- * "buffer" controls what "buffered unit of data" means.  This function
- * should only be called from within a new_open() callback function!
+ * Notes:
+ *	An fd is "dirty" if cycle 1 buffered data for it (with dgets_buffer())
+ *	We call the application callback for that fd, which is expected to
+ *	call dgets() until dgets() marks the fd as clean.
+ *	If the callback does not clean the buffer, this will busy-loop!
+ *	(Perhaps there should be a failsafe for that...)
+ */
+void	do_filedesc (void)
+{
+	int	fd;
+
+	for (fd = 0; fd <= global_max_fd; fd++)
+	{
+		/* Then tell the user they have data ready for them. */
+		while (io_rec[fd] && !io_rec[fd]->clean)
+			io_rec[fd]->callback(fd);
+	}
+}
+
+/*
+ * dgets - Cycle 2 - Return the next logical chonk of data to the application
  *
  * Arguments:
- * 1) vfd    - A "dirty" newio file descriptor.  You know that a newio file 
- *	       descriptor is dirty when your new_open() callback is called.
- * 2) buf    - A buffer into which to copy the data from the file descriptor
- * 3) buflen - The size of 'buf'.
- * 4) buffer - The type of buffering to perform.
- *	-2	Fully buffered.  Don't return anything if there aren't buflen
-		bytes free.
- *	-1	No line buffering, return everything.
- *	 0	Partial line buffering.  Return a line of data if there is
- *		one; Return everything if there isn't one.
- *	 1	Full line buffering.  Return a line of data if there is one,
- *		Return nothing if there isn't one.
+ * 	fd    	- A "dirty" newio file descriptor.  You know that a newio file 
+ *	          descriptor is dirty when your new_open() callback is called.
+ * 	buf    	- A buffer into which to copy the data from the file descriptor
+ * 	buflen 	- The size of 'buf'.
+ * 	buffer 	- The type of buffering to perform.
+ *		-2	Fully buffered.  
+ *			   - Give me buflen bytes if you have it.
+ *			   - Don't give me anything if you don't have buflen bytes.
+ *		-1	Fully unbuffered.  
+ *			   - Give me whatever you have.
+ *		 0	Partial line buffering.  
+ *			   - Give me a line of data if you have one.
+ *			   - Give me everything if it's not a complete line.
+ *		 1	Full line buffering.  
+ *			   - Give me a line of data if you have one.
+ *			   - Don't give me anything if you don't have a complete line
  *
  * Return values:
  *	buffer == -2		(The results are NOT null terminated)
@@ -221,8 +579,12 @@ int	dgets_buffer (int channel, const void *data, ssize_t len)
  *		-1	The file descriptor is dead
  *		 0	No data was returned.
  *		>0	A full line of data was returned.
+ *
+ * Notes:
+ * 	This function should only be called from the function we called above
+ *	in do_filedesc()  [io_rec[fd]->callback(fd)]
  */
-ssize_t	dgets (int vfd, char *buf, size_t buflen, int buffer)
+ssize_t	dgets (int fd, char *buf, size_t buflen, int buffer)
 {
 	size_t	cnt = 0;
 	size_t	consumed = 0;
@@ -231,19 +593,20 @@ ssize_t	dgets (int vfd, char *buf, size_t buflen, int buffer)
 
 	if (buflen == 0)
 	{
-	    syserr(SRV(vfd),
-			"dgets: Destination buffer for vfd [%d] is zero length."
-			" This is surely a bug.", vfd);
+	    syserr(SRV(fd),
+			"dgets: Destination buffer for fd [%d] is zero length."
+			" This is surely a bug.", fd);
 	    return -1;
 	}
 
-	if (!(ioe = io_rec[vfd]))
-		panic(1, "dgets called on unsetup vfd %d", vfd);
+	if (!(ioe = io_rec[fd]))
+		panic(1, "dgets called on unsetup fd %d", fd);
 
-	if (ioe->error && !ioe->quiet)
+	if (ioe->error)
 	{
-	    syserr(SRV(vfd), "dgets: fd [%d] must be closed", vfd);
-	    return -1;
+		if (!ioe->quiet)
+		    syserr(SRV(fd), "dgets: fd [%d] must be closed", fd);
+		return -1;
 	}
 
 
@@ -256,7 +619,6 @@ ssize_t	dgets (int vfd, char *buf, size_t buflen, int buffer)
 					ioe->write_pos - ioe->read_pos))
 	{
 		ioe->clean = 1;
-		kcleaned(vfd);
 		return 0;
 	}
 
@@ -270,7 +632,6 @@ ssize_t	dgets (int vfd, char *buf, size_t buflen, int buffer)
 			yell("dgets: Wanted %ld bytes, have %ld bytes", 
 				(long)(ioe->write_pos - ioe->read_pos), (long)buflen);
 		ioe->clean = 1;
-		kcleaned(vfd);
 		return 0;
 	}
 
@@ -308,7 +669,6 @@ ssize_t	dgets (int vfd, char *buf, size_t buflen, int buffer)
 	{
 		ioe->read_pos = ioe->write_pos = 0;
 		ioe->clean = 1;
-		kcleaned(vfd);
 	}
 
 	/* Remember, you can't use 'ioe' after this point! */
@@ -324,8 +684,8 @@ ssize_t	dgets (int vfd, char *buf, size_t buflen, int buffer)
 	if (cnt < consumed)
 	{
 		if (x_debug & DEBUG_INBOUND) 
-			yell("VFD [%d], Truncated (did [%ld], max [%ld])", 
-					vfd, (long)consumed, (long)cnt);
+			yell("FD [%d], Truncated (did [%ld], max [%ld])", 
+					fd, (long)consumed, (long)cnt);
 
 		/* If the line had a newline, then put the newline in. */
 		if (buffer >= 0 && h == '\n')
@@ -353,138 +713,31 @@ ssize_t	dgets (int vfd, char *buf, size_t buflen, int buffer)
 	    return 0;
 }
 
-/*************************************************************************/
-/*
- * do_wait -- The main sleeping routine.  When all of the fd's are clean,
- *	      go to sleep until an fd is dirty or a /TIMER goes off.
- *
- * Arguments:
- *	timeout	- A value previously returned by TimerTimeout().
- *		  'Timeout' is decremented by the time spent waiting.
- *
- * Return Value:
- *	-1	Interrupted System Call (ie, EINTR caused by ^C)
- *	 0	The timeout has expired (ie, call ExecuteTimers())
- *	 1	An fd is dirty (ie, call do_filedesc())
- */
-int 	do_wait (Timespec *timeout)
-{
-static	int	polls = 0;
-	int	vfd;
-
-	if (!timeout)
-		panic(1, "do_wait: timeout is NULL.");
-
-	/*
-	 * Sanity Check -- A polling loop is caused when the
-	 * timeout is 0, and occurs whenever timer needs to go off.  The
-	 * main io() loop depends on us to tell it when a timer wants to go
-	 * off by returning 0, so we check for that here.
-	 *
-	 * If we get more than 10,000 polls in a row, then something is 
-	 * broken somewhere else, and we need to abend.
-	 */
-	if (timeout)
-	{
-	    if (timeout->tv_sec == 0 && timeout->tv_nsec == 0)
-	    {
-		if (polls++ > 10000)
-		{
-		    dump_timers();
-		    panic(1, "Stuck in a polling loop. Help!");
-		}
-		return 0;		/* Timers are more important */
-	    }
-	    else
-		polls = 0;
-	}
-
-	/* 
-	 * It is possible that as a result of the previous I/O run, we are
-	 * running recursively in io(). (/WAIT, /REDIRECT, etc).  This will
-	 * obviously result in the IO buffers not being cleaned yet.  So we
-	 * check for whether there are any dirty buffers, and if there are,
-	 * we shall just return and allow them to be cleaned.
-	 */
-	for (vfd = 0; vfd <= global_max_vfd; vfd++)
-		if (io_rec[vfd] && !io_rec[vfd]->clean)
-			return 1;
-
-	/*
-	 * Now we go to sleep!  kdoit() doesn't return until either
-	 * 	1) The timeout expires, or
-	 *	2) Some fd is dirty
-	 */
-	return kdoit(timeout);
-}
-
-/*
- * do_filedesc -- called when fds are dirty, and we want to process them 
- * until they are clean!
- */
-void	do_filedesc (void)
-{
-	int	vfd;
-
-	for (vfd = 0; vfd <= global_max_vfd; vfd++)
-	{
-		/* Then tell the user they have data ready for them. */
-		while (io_rec[vfd] && !io_rec[vfd]->clean)
-			io_rec[vfd]->callback(vfd);
-	}
-}
 
 
 /***********************************************************************/
+/*               NEWIO UTILITY FUNCTIONS                               */
+/***********************************************************************/
 void	init_newio (void)
 {
-	int	vfd;
+	int	fd;
 	int	max_fd = IO_ARRAYLEN;
 
 	if (io_rec)
 		panic(1, "init_newio() called twice.");
 
 	io_rec = (MyIO **)new_malloc(sizeof(MyIO *) * max_fd);
-	for (vfd = 0; vfd < max_fd; vfd++)
-		io_rec[vfd] = NULL;
-
-	kinit();
+	for (fd = 0; fd < max_fd; fd++)
+		io_rec[fd] = NULL;
 }
 
-/*
- * Get_pending_bytes: What do you think it does?
- */
-size_t 	get_pending_bytes (int vfd)
-{
-	if (vfd >= 0 && io_rec[vfd] && io_rec[vfd]->buffer)
-		return io_rec[vfd]->write_pos - io_rec[vfd]->read_pos;
-
-	return 0;
-}
-
-int	my_sleep (double seconds)
-{
-	return ksleep(seconds);
-}
-
-int	my_isreadable (int vfd, double seconds)
-{
-	return kreadable(vfd, seconds);
-}
-
-int	my_iswritable (int vfd, double seconds)
-{
-	return kwritable(vfd, seconds);
-}
-
-/****************************************************************************/
 /*
  * new_open - Register an fd with the event looper for callbacks.
  *
  * Arguments:
- *	channel - A file descriptor that you got from somewhere [forgive the name]
+ *	fd - A file descriptor that you got from somewhere [forgive the name]
  *	callback - A function that will be called when you have data ready
- *		int fd	- The channel/fd you registered
+ *		int fd	- The fd you registered
  *		int revents - The events returned by poll(2)
  *	io_type - The OS-level handler you want performed on this fd
  *		You can use NEWIO_PASSTHROUGH if you just want to be notified
@@ -503,42 +756,37 @@ int	my_iswritable (int vfd, double seconds)
  *	    If you use NEWIO_PASSTHROUGH, then dgets() will buffer dummy data
  *	    -- You still need to consume it!
  *
- * Return value:  'channel' is returned.
+ * Return value:  'fd' is returned.
  */
-int 	new_open (int channel, void (*callback) (int), int io_type, int poll_events, int quiet, int server)
+int 	new_open (int fd, void (*callback) (int), int io_type, int poll_events, int quiet, int server)
 {
 	MyIO *ioe;
-	int	vfd;
 
-	if (channel < 0)
-		return channel;		/* Invalid */
+	if (fd < 0)
+		return fd;		/* Invalid */
 
 	if (x_debug & DEBUG_NEWIO)
-		yell("new_open: vfd = %d, io_type = %d, poll_events = %d, quiet = %d, server = %d",
-			channel, io_type, poll_events, quiet, server);
-
-	vfd = channel;
+		yell("new_open: fd = %d, io_type = %d, poll_events = %d, quiet = %d, server = %d",
+			fd, io_type, poll_events, quiet, server);
 
 	/*
 	 * Keep track of the highest fd in use.
 	 */
-	if (vfd > global_max_vfd)
-		global_max_vfd = vfd;
+	if (fd > global_max_fd)
+		global_max_fd = fd;
 
-	if (!(ioe = io_rec[vfd]))
+	if (!(ioe = io_rec[fd]))
 	{
-		ioe = io_rec[vfd] = (MyIO *)new_malloc(sizeof(MyIO));
+		ioe = io_rec[fd] = (MyIO *)new_malloc(sizeof(MyIO));
 		ioe->buffer_size = IO_BUFFER_SIZE;
 		ioe->buffer = (char *)new_malloc(ioe->buffer_size + 2);
 	}
 
-	ioe->channel = channel;
+	ioe->fd = fd;
 	ioe->read_pos = ioe->write_pos = 0;
 	ioe->segments = 0;
 	ioe->error = 0;
 	ioe->clean = 1;
-	ioe->eof = 0;
-	ioe->held = 0;
 	ioe->quiet = quiet;
 	ioe->server = server;
 
@@ -579,39 +827,32 @@ int 	new_open (int channel, void (*callback) (int), int io_type, int poll_events
 	ioe->callback = callback;
 	ioe->failure_callback = NULL;
 
-	knowrite(vfd);
-	knoread(vfd);
-	if (ioe->poll_events & POLLIN)
-		kread(vfd);
-	if (ioe->poll_events & POLLOUT)
-		kwrite(vfd);
-	kcleaned(vfd);
+	ioe->poll.fd = fd;
+	ioe->poll.events = ioe->poll_events;
 
-	return vfd;
+	return fd;
 }
 
 /*
- * On a VFD registered with new_open(), you may want a callback when the
+ * On a FD registered with new_open(), you may want a callback when the
  * fd has gone bad, so you can do your own cleanup.
  * This is intended for the Python support.
  * 
  * The callback provides two arguments:
- *	1 - channel - the channel (fd) passed to new_open()
+ *	1 - fd - the fd passed to new_open()
  *	2 - error - this is reserved for future expansion
  */
-int 	new_open_failure_callback (int channel, void (*failure_callback) (int, int))
+int 	new_open_failure_callback (int fd, void (*failure_callback) (int, int))
 {
 	MyIO *	ioe;
-	int	vfd;
 
-	vfd = VFD(channel);
-	if (vfd >= 0 && vfd <= global_max_vfd && (ioe = io_rec[vfd]))
+	if (fd >= 0 && fd <= global_max_fd && (ioe = io_rec[fd]))
 	{
 		ioe->failure_callback = failure_callback;
 		return 0;
 	}
 
-	syserr(-1, "new_open_failure_callback: Called for Channel %d that is not set up", channel);
+	syserr(-1, "new_open_failure_callback: Called for fd %d that is not set up", fd);
 	return -1;		/* Oh well. */
 }
 
@@ -619,23 +860,22 @@ int 	new_open_failure_callback (int channel, void (*failure_callback) (int, int)
  * Unregister a filedesc for readable events 
  * and close it down and free its input buffer
  */
-int	new_close_with_option (int vfd, int virtual)
+int	new_close_with_option (int fd, int virtual)
 {
 	MyIO *	ioe;
 
-	if (vfd < 0)
+	if (fd < 0)
 		return -1;		/* Oh well. */
 
-	if (vfd >= 0 && vfd <= global_max_vfd && (ioe = io_rec[vfd]))
+	if (fd >= 0 && fd <= global_max_fd && (ioe = io_rec[fd]))
 	{
 		if (x_debug & DEBUG_NEWIO)
-			yell("new_close: vfd = %d", vfd);
+			yell("new_close: fd = %d", fd);
 
 		if (ioe->io_callback == ssl_read)	/* XXX */
-			ssl_shutdown(ioe->channel);
+			ssl_shutdown(ioe->fd);
 
-		knoread(vfd);
-		knowrite(vfd);
+		ioe->poll.events = 0;
 
 		/* 
 		 * If virtual == 1, then the caller is managing the 
@@ -643,377 +883,87 @@ int	new_close_with_option (int vfd, int virtual)
 		 * (ie, fd's from external languages)
 		 */
 		if (virtual == 0)
-			unix_close(ioe->channel, ioe->quiet);
+			unix_close(ioe->fd, ioe->quiet);
 
 		new_free(&ioe->buffer); 
-		new_free((char **)&(io_rec[vfd]));
+		new_free((char **)&(io_rec[fd]));
 
 		/*
 		 * If we're closing the highest fd in use, then we
-		 * want to adjust global_max_vfd downward to the next 
+		 * want to adjust global_max_fd downward to the next 
 		 * highest fd.
 		 */
-		if (vfd == global_max_vfd)
-		    while (global_max_vfd >= 0 && !io_rec[global_max_vfd])
-			global_max_vfd--;
+		if (fd >= global_max_fd)
+		{
+			/* Just in case global_max_fd got lost */
+			global_max_fd = fd;
+			while (global_max_fd >= 0 && !io_rec[global_max_fd])
+				global_max_fd--;
+		}
 	}
 	else if (virtual == 0)
-		unix_close(vfd, 0);
+		unix_close(fd, 0);
 
 	return -1;
 }
 
 /* 
- * The lower level IO functions call us when an channel (fd) is found dead,
+ * The lower level IO functions call us when an fd is found dead,
  * and has been untracked (FD_CLR) and unregistered (new_close()), so we
  * may tell any owner of this.
  */
-static	void	fd_is_invalid (int channel)
+static	void	fd_is_invalid (int fd)
 {
-	int	vfd;
 	MyIO *	ioe;
 
-	vfd = VFD(channel);
-	if (vfd >= 0 && vfd <= global_max_vfd && (ioe = io_rec[vfd]))
+	if (fd >= 0 && fd <= global_max_fd && (ioe = io_rec[fd]))
 	{
 		if (ioe->failure_callback)
-			ioe->failure_callback(channel, 0);
+			ioe->failure_callback(fd, 0);
 	}
 	else
 	{
-		syserr(-1, "fd_is_invalid called on unsetup channel %d", channel);
+		syserr(-1, "fd_is_invalid called on unsetup fd %d", fd);
 		return;
 	}
-
-
 }
 
-
-/***********************************************************************/
-/******************** Start of unix-specific code here ******************/
-/************************************************************************/
-static int	unix_close (int channel, int quiet)
+/* This is the guts of the SRV() macro */
+int	get_server_by_fd	(int fd)
 {
-	if (close(channel))
+	if (!io_rec[fd])
+		panic(1, "get_server_by_fd(%d): fd is not set up!", fd);
+	return io_rec[fd]->server;
+}
+
+static int	unix_close (int fd, int quiet)
+{
+	if (close(fd))
 	{
 		if (!quiet)
-		   syserr(CSRV(channel), "unix_close: close(%d) failed: %s", 
-			channel, strerror(errno));
+		   syserr(SRV(fd), "unix_close: close(%d) failed: %s", 
+			fd, strerror(errno));
 		return -1;
 	}
 	return 0;
 }
 
-static int	unix_read (int channel, int quiet, int revents)
-{
-	ssize_t	c;
-	char	buffer[8192];
-
-	c = read(channel, buffer, sizeof buffer);
-	if (c == 0)
-	{
-		if (!quiet)
-		   syserr(CSRV(channel), "unix_read: EOF for fd %d ", channel);
-		return 0;
-	}
-	else if (c < 0)
-	{
-		if (!quiet)
-		   syserr(CSRV(channel), "unix_read: read(%d) failed: %s", 
-				channel, strerror(errno));
-		return -1;
-	}
-
-	if (dgets_buffer(channel, buffer, c))
-	{
-		if (!quiet)
-		   syserr(CSRV(channel), "unix_read: dgets_buffer(%d, %*s) failed",
-				channel, (int)c, buffer);
-		return -1;
-	}
-
-	return c;
-}
-
-static int	unix_recv (int channel, int quiet, int revents)
-{
-	ssize_t	c;
-	char	buffer[8192];
-
-	c = recv(channel, buffer, sizeof buffer, 0);
-	if (c == 0)
-	{
-		if (!quiet)
-		   syserr(CSRV(channel), "unix_recv: EOF for fd %d ", channel);
-		return 0;
-	}
-	else if (c < 0)
-	{
-		if (!quiet)
-		   syserr(CSRV(channel), "unix_recv: read(%d) failed: %s", 
-				channel, strerror(errno));
-		return -1;
-	}
-
-	if (dgets_buffer(channel, buffer, c))
-	{
-		if (!quiet)
-		   syserr(CSRV(channel), "unix_recv: dgets_buffer(%d, %*s) failed",
-				channel, (int)c, buffer);
-		return -1;
-	}
-
-	return c;
-}
-
-static int	unix_accept (int channel, int quiet, int revents)
-{
-	int	newfd;
-	SSu	addr;
-	socklen_t len;
-
-	memset(&addr.ss, 0, sizeof(addr.ss));
-	len = sizeof(addr.ss);
-	if ((newfd = Accept(channel, &addr, &len)) < 0)
-	{
-	    if (!quiet)
-		syserr(CSRV(channel), 
-			"unix_accept: Accept(%d) failed: %s", channel, strerror(errno));
-	}
-
-	dgets_buffer(channel, &newfd, sizeof(newfd));
-	dgets_buffer(channel, &addr.ss, sizeof(addr.ss));
-	return sizeof(newfd) + sizeof(addr);
-}
-
-static int	unix_connect (int channel, int quiet, int revents)
-{
-	int	sockerr;
-	int	gso_result;
-	int	gsn_result;
-	SSu	localaddr;
-	int	gpn_result;
-	SSu	remoteaddr;
-	socklen_t len;
-
-	/* * */
-	len = sizeof(sockerr);
-	errno = 0;
-	getsockopt(channel, SOL_SOCKET, SO_ERROR, &sockerr, &len);
-	gso_result = errno;
-
-	dgets_buffer(channel, &gso_result, sizeof(gso_result));
-	dgets_buffer(channel, &sockerr, sizeof(sockerr));
-
-	/* * */
-	len = sizeof(localaddr.ss);
-	errno = 0;
-	getsockname(channel, &localaddr.sa, &len);
-	gsn_result = errno;
-
-	dgets_buffer(channel, &gsn_result, sizeof(gsn_result));
-	dgets_buffer(channel, &localaddr.ss, sizeof(localaddr.ss));
-
-	/* * */
-	len = sizeof(remoteaddr.ss);
-	errno = 0;
-	getpeername(channel, &remoteaddr.sa, &len);
-	gpn_result = errno;
-
-	dgets_buffer(channel, &gpn_result, sizeof(gpn_result));
-	dgets_buffer(channel, &remoteaddr.ss, sizeof(localaddr));
-
-	return (sizeof(int) + sizeof(localaddr.ss)) * 2;
-}
-
-static int	passthrough_event (int channel, int quiet, int revents)
-{
-	char	revents_str[1024];
-
-	/* Tell the caller what the revents are */
-	snprintf(revents_str, 1024, "%d\n", revents);
-	dgets_buffer(channel, revents_str, strlen(revents_str));
-	return 1;
-}
-
 /*
- * Perform a synchronous i/o operation on a file descriptor.  
- * This function is called by kdoit(), which is called by do_wait().
+ * my_sleep - Block, waiting for a timeout
  *
- * The way I/O works in EPIC:
- *	+ main loop calls do_wait()
- *	  + do_wait() calls kdoit() [there are several of these]
- *	  + If kdoit() decides an fd is ready, it looks at all fd's
- *		and for any fd's that are "ready", calls new_io_event().
- *	    + new_io_event() [us] does an I/O operation and queues up some
- *		data using dgets_buffer(), and marks the fd as "dirty"
- *	+ main loop calls do_filedesc() is called, and that calls the 
- *		user's callback, which uses dgets() to return 
- *		whatever was queued up here, and marks the fd as "clean".
+ * Arguments:
+ *	timeout	- How many seconds to wait before returning
+ *
+ * Return value:
+ *	< 0	- Something went wrong with poll()
+ *	  1	- The fd is readable.
+ *
+ * Notes:
+ *	This is a blocking function, so do not use it in any situation
+ *	where blocking might be noticible by the user; or wherever the
+ *	user has asked you to block (ie, /sleep)
  */
-static void	new_io_event (int vfd, int revents)
-{
-	MyIO *ioe;
-	int	c = 0;
-
-	if (!(ioe = io_rec[vfd]))
-		panic(1, "new_io_event: vfd [%d] isn't set up!", vfd);
-
-	/* If it's dirty, something is wrong. */
-	if (!ioe->clean)
-		panic(1, "new_io_event: vfd [%d] hasn't been cleaned yet", vfd);
-
-	if (ioe->io_callback)
-	{
-#if 0
-		/* These flags tell us that further IO is pointless */
-		if (revents & POLLHUP)
-		{
-			ioe->eof = 1;
-			ioe->clean = 0;
-			syserr(SRV(vfd), "new_io_event: fd %d POLLHUP", vfd);
-			knoread(vfd);
-			knowrite(vfd);
-		}
-#endif
-		if (revents & POLLNVAL && !ioe->quiet)
-		{
-			ioe->eof = 1;
-			syserr(SRV(vfd), "new_io_event: fd %d POLLNVAL - I will stop tracking this fd for io events", vfd);
-			knoread(vfd);
-			knowrite(vfd);
-			return;
-		}
-
-		/* 
-		 * We may expect ioe->io_callback() to either call dgets_buffer
-		 * (which sets ioe->clean = 0) or to return an error (in which
-		 * case we do it ourselves right here)
-		 */
-		else if ((c = ioe->io_callback(vfd, ioe->quiet, revents)) <= 0)
-		{
-			ioe->error = -1;
-			ioe->clean = 0;
-			if (!ioe->quiet)
-				syserr(SRV(vfd), "new_io_event: fd %d must be closed", vfd);
-
-			if (x_debug & DEBUG_INBOUND) 
-				yell("VFD [%d] FAILED [%d] [%d]", vfd, revents, c);
-			return;
-		}
-
-		if (x_debug & DEBUG_INBOUND) 
-			yell("VFD [%d], did [%d]", vfd, c);
-	}
-	else
-	{
-		/* 
-		 * XXX It might have been more elegant to create a passthrough
-		 * callback that just sets ioe->clean instead of having special
-		 * handling here.  Oh well.
-		 */
-		ioe->clean = 0;
-		if (x_debug & DEBUG_INBOUND) 
-			yell("VFD [%d], did pass-through", vfd);
-	}
-}
-
-static	int	is_fd_valid (int fd)
-{
-	int	retval;
-
-	/* 
-	 * This may be too conservative -- 
-	 * if F_GETFL fails, maybe it's just bad 
-	 */
-	retval = fcntl(fd, F_GETFL);
-	if (retval == -1 && errno == EBADF)
-		return 0;
-	else
-		return 1;
-}
-
-
-/************************************************************************/
-/************************************************************************/
-/*
- * Implementation of poll() front-end to synchronous unix system calls
- */
-struct pollfd *	polls = NULL;
-
-static void kinit (void)
-{ 
-	int	vfd;
-	int	max_fd = IO_ARRAYLEN;
-
-	polls = (struct pollfd *)new_malloc(sizeof(struct pollfd) * max_fd);
-	for (vfd = 0; vfd < max_fd; vfd++)
-	{
-		polls[vfd].fd = -1;
-		polls[vfd].events = 0;
-		polls[vfd].revents = 0;
-	}
-}
- 
-static  void    kread (int vfd)
-{
-	polls[vfd].fd = CHANNEL(vfd);
-	polls[vfd].events |= POLLIN;
-}
- 
-static  void    knoread (int vfd)
-{
-	polls[vfd].events &= ~(POLLIN);
-	if (polls[vfd].events == 0)
-		polls[vfd].fd = -1;
-}
- 
-static  void    kwrite (int vfd)
-{
-	polls[vfd].fd = CHANNEL(vfd);
-	polls[vfd].events |= POLLOUT;
-}
-
-static  void    knowrite (int vfd)
-{
-	polls[vfd].events &= ~(POLLOUT);
-	if (polls[vfd].events == 0)
-		polls[vfd].fd = -1;
-}
-
-static	void	kcleaned (int vfd) { return; }
-
-static	int	kdoit (Timespec *timeout)
-{
-	int	ms;
-	int	vfd;
-	int	retval;
-
-	ms = timeout->tv_sec * 1000;
-	ms += (timeout->tv_nsec / 1000000);
-	retval = poll(polls, global_max_vfd + 1, ms);
-
-	if (retval < 0 && errno != EINTR)
-		syserr(-1, "kdoit(poll): poll() failed: %s", strerror(errno));
-	else if (retval > 0)
-	{
-		for (vfd = 0; vfd <= global_max_vfd; vfd++)
-		{
-		    if (polls[vfd].revents)
-		    {
-			new_io_event(vfd, polls[vfd].revents);
-			break;
-		    }
-		}
-	}
-
-	return retval;
-}
-
-static	void	klock (void) { return; }
-static	void	kunlock (void) { return; }
-
-static	int	ksleep (double timeout)
+int	my_sleep (double timeout)
 {
 	struct pollfd	pfd;
 	int		e;
@@ -1027,12 +977,28 @@ static	int	ksleep (double timeout)
 	return 1;
 }
 
-static	int	kreadable (int vfd, double timeout)
+/*
+ * my_isreadable - Block, waiting for an fd to be readable
+ *
+ * Arguments:
+ *	fd	- A file descriptor that is to become readable
+ *	timeout	- How many seconds to wait for it to become readable
+ *
+ * Return value:
+ *	< 0	- Something went wrong with poll()
+ *	  0	- The fd is not ready and the timeout occurred
+ *	  1	- The fd is readable.
+ *
+ * Notes:
+ *	This is a blocking function, so do not use it in any situation
+ *	where blocking might be noticible by the user.
+ */
+int	my_isreadable (int fd, double timeout)
 {
 	struct pollfd	pfd;
 	int		e;
 
-	pfd.fd = vfd;
+	pfd.fd = fd;
 	pfd.events = POLLIN;
 	pfd.revents = 0;
 	e = poll(&pfd, 1, (long)(timeout * 1000) + 1);
@@ -1040,23 +1006,6 @@ static	int	kreadable (int vfd, double timeout)
 	if (e < 0)
 		return e;
 	if (e > 0 && (pfd.revents & POLLIN))
-		return 1;
-	return 0;		/* Hrm? */
-}
-
-static	int	kwritable (int vfd, double timeout)
-{
-	struct pollfd	pfd;
-	int		e;
-
-	pfd.fd = vfd;
-	pfd.events = POLLOUT;
-	pfd.revents = 0;
-	e = poll(&pfd, 1, timeout * 1000 + 1);		/* Wait for >1ms */
-
-	if (e < 0)
-		return e;
-	if (e > 0 && (pfd.revents & POLLOUT))
 		return 1;
 	return 0;		/* Hrm? */
 }

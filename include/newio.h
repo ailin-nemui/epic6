@@ -84,11 +84,11 @@
 	void	do_filedesc		(void);
 	void	init_newio		(void);
 	size_t	get_pending_bytes	(int);
-	int	get_server_by_vfd	(int);
-#define SRV(vfd) get_server_by_vfd(vfd)
+	int	get_server_by_fd	(int);
+#define SRV(fd) get_server_by_fd(fd)
 
 	int	new_open		(int, void (*) (int), int, int, int, int);
-	int     new_open_failure_callback (int vfd, void (*) (int, int));
+	int     new_open_failure_callback (int fd, void (*) (int, int));
 	int	new_hold_fd		(int);
 	int	new_unhold_fd		(int);
 	int 	new_close_with_option	(int, int);

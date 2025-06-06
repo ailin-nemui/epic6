@@ -266,4 +266,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Refactor base85 converter to use pure math and no bit extracts
 * Sunset the "hold/unhold" stuff in newio.  I feel a refactor coming on!
 * Add comments, move functions, refactors in parse.c
-
+* Reorganize/refactor newio.c.  Fixed a bug rb wcarson along the way!

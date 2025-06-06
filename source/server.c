@@ -1672,8 +1672,8 @@ something_broke:
 			const char *x = get_server_type(i);
 			if (!my_stricmp(x, "IRC-SSL"))
 			{
-				/* XXX 'des' might not be both the vfd and channel! */
-				/* (ie, on systems where vfd != channel) */
+				/* XXX 'des' might not be both the fd and channel! */
+				/* (ie, on systems where fd != channel) */
 				int	ssl_err;
 
 				ssl_err =  ssl_startup(des, des, get_server_name(i), get_server_cert(i));
@@ -2192,7 +2192,7 @@ static	int	grab_server_address (int server)
 {
 	Server *s;
 	AI	hints;
-	int	xvfd[2];
+	int	xfd[2];
 
 	if (x_debug & DEBUG_SERVER_CONNECT)
 		yell("Grabbing server addresses for server [%d]", server);
@@ -2215,10 +2215,10 @@ static	int	grab_server_address (int server)
 	set_server_state(server, SERVER_DNS);
 
 	say("Performing DNS lookup for [%s] (server %d)", s->info->host, server);
-	xvfd[0] = xvfd[1] = -1;
-	if (socketpair(PF_UNIX, SOCK_STREAM, 0, xvfd))
+	xfd[0] = xfd[1] = -1;
+	if (socketpair(PF_UNIX, SOCK_STREAM, 0, xfd))
 		yell("socketpair: %s", strerror(errno));
-	new_open(xvfd[1], do_server, NEWIO_READ, POLLIN, 1, server);
+	new_open(xfd[1], do_server, NEWIO_READ, POLLIN, 1, server);
 
 	memset(&hints, 0, sizeof(hints));
 	if (empty(s->info->proto_type))
@@ -2245,8 +2245,8 @@ static	int	grab_server_address (int server)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_ADDRCONFIG;
 
-	hostname_to_json(xvfd[0], hints.ai_family, s->info->host, ltoa(s->info->port), 0);
-	s->des = xvfd[1];
+	hostname_to_json(xfd[0], hints.ai_family, s->info->host, ltoa(s->info->port), 0);
+	s->des = xfd[1];
 	return 0;
 }
 
