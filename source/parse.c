@@ -60,18 +60,26 @@
 #define space 		' '	/* Taken from rfc 1459 */
 #define	MAXPARA		20	/* RFC1459 says 15, but RusNet uses more */
 
-static	void	strip_modes (const char *, const char *, const char *);
+static	void		strip_modes (const char *, const char *, const char *);
 
 /* User and host information from server 2.7 */
-const char	*FromUserHost = empty_string;
+	const char *	FromUserHost = empty_string;
 
 /* CAP tags information */
-const char	*Tags = empty_string;
+	const char *	Tags = empty_string;
 
 /*
- * is_channel: determines if the argument is a channel.  If it's a number,
- * begins with MULTI_CHANNEL and has no '*', or STRING_CHANNEL, then its a
- * channel 
+ * is_channel - Is a target a channel name, or not?
+ *
+ * Arguments:
+ *	to	- The target of an rfc1459 message
+ *
+ * Return value:
+ *	1	- 'to' is a channel name
+ *		  Channels begin with a character in 005 CHANTYPES.
+ *		  Or, alternatively, they begin with +, #, &, or !
+ *	0	- 'to' is not a channel
+ *		   - possibly because it is empty or missing
  */
 int 	is_channel (const char *to)
 {
@@ -89,8 +97,22 @@ int 	is_channel (const char *to)
 }
 
 /*
- * is_to_channel: determines if the argument is a channel target for
- * privmsg/notice.  STATUSMSG can appear before CHANTYPES on 005 servers.
+ * is_target_channel_wall - Is this a message to people within a channel
+ *		but not to the channel itself? ("/msg @#channel")
+ *
+ * Arguments:
+ *	to	- The target of an rfc1459 message
+ *
+ * Return value:
+ *	1	- 'to' is a channel-oriented group messages
+ *		  - Channel wall targets begin with a character in 
+ *		    005 STATUSMSG ("@+")
+ *	0	- 'to' is not a channel-oriented group message
+ *		  - possibly because it is empty or missing
+ *
+ * Notes: 
+ *	This can only be used for processing rfc1459 messages,
+ *	because epic uses @ as a target prefix for logfiles.
  */
 static int	is_target_channel_wall (const char *to)
 {
@@ -108,9 +130,26 @@ static int	is_target_channel_wall (const char *to)
 
 
 /*
- * This function reverses the action of BreakArgs but only after a certain
- * token.   You shall not call this function with an 'arg_list' that was
- * not previously passed to BreakArgs.
+ * PasteArgs - Partially reassemble a message tokenized by BreakArgs
+ *
+ * Arguments:
+ *	arg_list	- A tokenized arglist populated by BreakArgs
+ *			  This must be a  char *x[MAXPARA]!
+ *			  This must have previouly been passed to BreakArgs!
+ *	paste_point	- Reassemble args starting at the 'N'th word.
+ *
+ * Return value:
+ *	NULL		- failure 
+ *			  - There were not 'paste_point' args in 'arg_list'
+ *	anything else	- success - the reassembled argument
+ *
+ * Notes: 
+ *	The behavior of this function is closely coordinated with 
+ *	BreakArgs(), which tokenizes a C string by changing spaces
+ *	to nuls and keeping an array of pointers within that string.
+ *	This function changes those nuls back to spaces and updates
+ *	that array of pointers.  If you need to paste together a
+ *	bunch of random strings, use malloc_strcat_wordlist().
  */
 const char *	PasteArgs (const char **arg_list, int paste_point)
 {
@@ -158,12 +197,19 @@ const char *	PasteArgs (const char **arg_list, int paste_point)
 }
 
 /*
- * BreakArgs: breaks up the line from the server, in to where its from,
- * setting FromUserHost if it should be, and returns all the arguements
- * that are there.   Re-written by phone, dec 1992.
- *		     Re-written again by esl, april 1996.
+ * BreakArgs - Tokenize an RFC1459 message 
  *
- * This doesnt strip out extraneous spaces any more.
+ * Arguments:
+ *	Input	- (INPUT) An RFC1459 message - which may contain @Tags.
+ *	Sender	- (OUTPUT) The "prefix" of an RFC1459 message (if any)
+ *			This must be a pointer to a (char *)!
+ *	Output	- (OUTPUT) The tokenized message 
+ *			This must be a char *x[MAXPARA]!
+ *
+ * Notes:
+ *	This sets some global variables (sigh)
+ *		FromUserHost
+ *		Tags
  */
 static void 	BreakArgs (char *Input, const char **Sender, const char **OutPut)
 {
@@ -192,7 +238,7 @@ static void 	BreakArgs (char *Input, const char **Sender, const char **OutPut)
 		Tags = empty_string;
 
 	/*
-	 * The RFC describes it fully, but in a short form, a line looks like:
+	 * RFC1459 describes it fully, but in a short form, a line looks like:
 	 * [:sender[!user@host]] COMMAND ARGUMENT [[:]ARGUMENT]{0..14}
 	 */
 

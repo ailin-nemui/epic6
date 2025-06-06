@@ -513,8 +513,7 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 			new_w->who_target,
 			(new_w->who_mask & WHO_OPS) ?  "o" : "",
 			(new_w->who_mask & WHO_INVISIBLE) ? "x" : "",
-			new_w->undernet_extended_args ? 
-				new_w->undernet_extended_args : "");
+			coalesce(new_w->undernet_extended_args, empty_string));
 	}
 	else if (new_w->dalnet_extended)
 	{
@@ -1712,7 +1711,7 @@ void	userhost_returned (int refnum, const char *from, const char *comm, const ch
 						item.nick, item.user, item.host, 
 						item.oper ?  " (Is an IRC operator)" : empty_string,
 						item.away ? " (away)" : empty_string,
-						item.extra ? item.extra : empty_string);
+						coalesce(item.extra, empty_string));
 		}
 
 		/*
@@ -1756,14 +1755,14 @@ void	userhost_cmd_returned (int refnum, UserhostItem *stuff, const char *nick, c
 	char	*args = NULL;
 
 	/* This should be safe, though its playing it fast and loose */
-	malloc_strcat(&args, stuff->nick ? stuff->nick : empty_string);
+	malloc_strcat(&args, coalesce(stuff->nick, empty_string));
 	malloc_strcat(&args, stuff->oper ? " + " : " - ");
 	malloc_strcat(&args, stuff->away ? "+ " : "- ");
-	malloc_strcat(&args, stuff->user ? stuff->user : empty_string);
+	malloc_strcat(&args, coalesce(stuff->user, empty_string));
 	malloc_strcat(&args, space);
-	malloc_strcat(&args, stuff->host ? stuff->host : empty_string);
+	malloc_strcat(&args, coalesce(stuff->host, empty_string));
 	malloc_strcat(&args, space);
-	malloc_strcat(&args, stuff->extra ? stuff->extra : empty_string);
+	malloc_strcat(&args, coalesce(stuff->extra, empty_string));
 	call_lambda_command("USERHOST", text, args);
 
 	new_free(&args);

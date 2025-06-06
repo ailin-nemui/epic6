@@ -336,16 +336,16 @@ static Logfile *	logfile_describe (Logfile *log, char **args)
 
 	say(" Logfile refnum %d is %s", log->refnum, onoff[log->active]);
 	say("\t Logical name: %s", log->name);
-	say("\t     Filename: %s", log->filename ? log->filename : "<NONE>");
+	say("\t     Filename: %s", coalesce(log->filename, "<NONE>"));
 	say("\t         Type: %s", logtype[log->type]);
 	if (log->servref == NOSERV)
 		say("\t       Server: ALL");
 	else
 		say("\t       Server: %d", log->servref);
-	say("\tTarget/Refnum: %s", targets ? targets : "<NONE>");
+	say("\tTarget/Refnum: %s", coalesce(targets, "<NONE>"));
 	say("\t        Level: %s", mask_to_str(&log->mask));
-	say("\t Rewrite Rule: %s", log->rewrite ? log->rewrite : "<NONE>");
-	say("\t Mangle rules: %s", log->mangle_desc ? log->mangle_desc : "<NONE>");
+	say("\t Rewrite Rule: %s", coalesce(log->rewrite, "<NONE>"));
+	say("\t Mangle rules: %s", coalesce(log->mangle_desc, "<NONE>"));
 
 	new_free(&targets);
 	return log;
@@ -418,11 +418,13 @@ static Logfile *	logfile_list (Logfile *log, char **args)
 	{
 		targets = logfile_get_targets(l);
 		say("Log %2d [%s] logging %s is %s, file %s server %s targets %s",
-			l->refnum, l->name, logtype[l->type],
+			l->refnum, 
+			l->name, 
+			logtype[l->type],
 			onoff[l->active],
-			l->filename ? l->filename : "<NONE>", 
+			coalesce(l->filename, "<NONE>"),
 			l->servref == NOSERV ?  "ALL" : ltoa(l->servref),
-			targets ? targets : "<NONE>");
+			coalesce(targets, "NONE"));
 		new_free(&targets);
 	}
 	return log;

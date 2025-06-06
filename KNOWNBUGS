@@ -12,8 +12,7 @@ reimagined and brought back in a better form later.
 Things to remove
 =================
 *our glob (globi) - Not sure if appropriate
-*queue		  - Easily scriptable
-*pthreads, etc	  - Just use select
+*pthreads, etc	  - Just use poll
 *our SHA2	  - We can get this from openssl
 our sdbm (dbmctl) - Use a modern key-value store (sqlite)
 *ruby		  - Incomplete/unloved
@@ -38,12 +37,13 @@ Things to support
 *Auto-ssl for ssl ports
 *tcgetwinsize() instead of ioctl()
 *c-ares
+*Base85
+libsodium
 sqlite
+*Targeting
 ZNC
 Emojis (incl ZWJ)
-CHACHA20
 Arena allocation
-libsodium
 
 Actual bugs
 ================
@@ -259,3 +259,11 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Provide decls for strlcpy()/strlcat() if needed (rb fudd)
 * Fix some compiler warnings. (rb fro)
 * Base85 string transformation (see UPDATES)
+* Introduce internal "coalesce()" function: coalesce(x,y) is like x ?? y
+* Convert is_string_empty() users to empty().
+* Allow base85 internally; switch $regcomp() et al to use base85.
+* Add coments, move functions, refactors in ircaux.c
+* Refactor base85 converter to use pure math and no bit extracts
+* Sunset the "hold/unhold" stuff in newio.  I feel a refactor coming on!
+* Add comments, move functions, refactors in parse.c
+

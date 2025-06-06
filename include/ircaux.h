@@ -248,6 +248,7 @@ extern	int	NONE_xform;
 extern	int	URL_xform;
 extern	int	ENC_xform;
 extern	int	B64_xform;
+extern	int	B85_xform;
 extern	int	CTCP_xform;
 extern	int	SHA256_xform;
 #define XFORM_ENCODE 1

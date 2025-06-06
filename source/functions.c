@@ -1061,18 +1061,18 @@ static	char	*alias_time 		(void) { return malloc_strdup(get_clock()); }
 static	char	*alias_dollar 		(void) { return malloc_strdup("$"); }
 static	char	*alias_nick 		(void) { return malloc_strdup((get_window_server(0) != NOSERV) ? get_server_nickname(get_window_server(0)) : empty_string); }
 static	char	*alias_away 		(void) { return malloc_strdup(get_server_away_message(from_server)); }
-static  char    *alias_sent_nick        (void) { return malloc_strdup((get_server_sent_nick(from_server)) ? get_server_sent_nick(from_server) : empty_string); }
-static  char    *alias_recv_nick        (void) { return malloc_strdup((get_server_recv_nick(from_server)) ? get_server_recv_nick(from_server) : empty_string); }
-static  char    *alias_msg_body         (void) { return malloc_strdup((get_server_sent_body(from_server)) ? get_server_sent_body(from_server) : empty_string); }
-static  char    *alias_joined_nick      (void) { return malloc_strdup((get_server_joined_nick(from_server)) ? get_server_joined_nick(from_server) : empty_string); }
-static  char    *alias_public_nick      (void) { return malloc_strdup((get_server_public_nick(from_server)) ? get_server_public_nick(from_server) : empty_string); }
+static  char    *alias_sent_nick        (void) { return malloc_strdup(coalesce(get_server_sent_nick(from_server), empty_string)); }
+static  char    *alias_recv_nick        (void) { return malloc_strdup(coalesce(get_server_recv_nick(from_server), empty_string)); }
+static  char    *alias_msg_body         (void) { return malloc_strdup(coalesce(get_server_sent_body(from_server), empty_string)); }
+static  char    *alias_joined_nick      (void) { return malloc_strdup(coalesce(get_server_joined_nick(from_server), empty_string)); }
+static  char    *alias_public_nick      (void) { return malloc_strdup(coalesce(get_server_public_nick(from_server), empty_string)); }
 static  char    *alias_show_realname 	(void) { 
 	return malloc_strdup(
 		(get_window_server(0) != NOSERV) ? 
 		get_server_realname(get_window_server(0)) : 
 		empty_string); }
 static	char	*alias_version_str 	(void) { return malloc_strdup(irc_version); }
-static  char    *alias_invite           (void) { return malloc_strdup((get_server_invite_channel(from_server)) ? get_server_invite_channel(from_server) : empty_string); }
+static  char    *alias_invite           (void) { return malloc_strdup(coalesce(get_server_invite_channel(from_server), empty_string)); }
 static	char	*alias_oper 		(void) { return malloc_strdup((from_server != -1) ? get_server_operator(from_server) ?  get_string_var(STATUS_OPER_VAR) : empty_string : empty_string); }
 static	char	*alias_version 		(void) { return malloc_strdup(internal_version); }
 static  char    *alias_show_userhost 	(void) { return malloc_strdup(get_server_userhost(from_server)); }
@@ -1091,39 +1091,37 @@ static	char	*alias_currdir  	(void)
 
 static	char	*alias_channel 		(void) 
 { 
-	const char	*tmp; 
-	return malloc_strdup((tmp = get_window_echannel(0)) ? tmp : zero);
+	return malloc_strdup(coalesce(get_window_echannel(0), zero));
 }
 
 static	char	*alias_server 		(void)
 {
-	return malloc_strdup((parsing_server_index != NOSERV) ?
-		         get_server_itsname(parsing_server_index) :
-		         (get_window_server(0) != NOSERV) ?
-			        get_server_itsname(get_window_server(0)) : 
-				empty_string);
+	int	i;
+
+	if ((i = parsing_server_index) == NOSERV)
+		if ((i = get_window_server(0)) == NOSERV)
+			RETURN_EMPTY;
+
+	return malloc_strdup(get_server_itsname(i));
 }
 
 static	char	*alias_query_nick 	(void)
 {
-	const char	*tmp;
-	return malloc_strdup((tmp = get_window_equery(0)) ? tmp : empty_string);
+	return malloc_strdup(coalesce(get_window_equery(0), empty_string));
 }
 
 static	char	*alias_target 		(void)
 {
-	const char	*tmp;
-	return malloc_strdup((tmp = get_window_target(0)) ? tmp : empty_string);
+	return malloc_strdup(coalesce(get_window_target(0), empty_string));
 }
 
 static	char	*alias_cmdchar 		(void)
 {
-	const char *cmdchars;
-	char tmp[2];
+	const char *	cmdchars;
+	char 		tmp[2];
 
-	if ((cmdchars = get_string_var(CMDCHARS_VAR)) == (char *) 0)
-		cmdchars = DEFAULT_CMDCHARS;
-	tmp[0] = cmdchars[0];
+	cmdchars = coalesce(get_string_var(CMDCHARS_VAR), DEFAULT_CMDCHARS);
+	*tmp = *cmdchars;
 	tmp[1] = 0;
 	return malloc_strdup(tmp);
 }
@@ -1131,15 +1129,21 @@ static	char	*alias_cmdchar 		(void)
 static	char	*alias_chanop 		(void)
 {
 	const char	*tmp;
-	return malloc_strdup(((tmp = get_window_echannel(0)) && get_channel_oper(tmp, get_window_server(0))) ?
-		"@" : empty_string);
+
+	if (!(tmp = get_window_echannel(0)))
+		RETURN_EMPTY;
+	if (!get_channel_oper(tmp, get_window_server(0)))
+		RETURN_EMPTY;
+	RETURN_STR("@");
 }
 
 static	char	*alias_modes 		(void)
 {
 	const char	*tmp;
-	return malloc_strdup((tmp = get_window_echannel(0)) ?
-		get_channel_mode(tmp, get_window_server(0)) : empty_string);
+
+	if (!(tmp = get_window_echannel(0)))
+		RETURN_EMPTY;
+	return malloc_strdup(coalesce(get_channel_mode(tmp, get_window_server(0)), empty_string));
 }
 
 static	char	*alias_server_version  (void)
@@ -1148,13 +1152,12 @@ static	char	*alias_server_version  (void)
 
 	if (s == NOSERV)
 	{
-		if (primary_server != NOSERV)
-			s = primary_server;
-		else
-			return malloc_strdup(empty_string);
+		if (primary_server == NOSERV)
+			RETURN_EMPTY;
+		s = primary_server;
 	}
 
-	return malloc_strdup(get_server_version_string(s));
+	return malloc_strdup(coalesce(get_server_version_string(s), empty_string));
 }
 
 
@@ -4545,7 +4548,7 @@ BUILT_IN_FUNCTION(function_winchan, input)
 		int	win = -1;
 
 		chan = arg1;
-		if (is_string_empty(input))
+		if (empty(input))
 			servnum = from_server;
 		else
 			servnum = str_to_servref(input);
@@ -4854,7 +4857,7 @@ BUILT_IN_FUNCTION(function_regcomp_cs, input)
 	memset(&preg, 0, sizeof(preg)); 	/* make valgrind happy */
 	last_regex_error = regcomp(&preg, input, flag);
 
-	dest = transform_string_dyn("+ENC", (char *)&preg, 
+	dest = transform_string_dyn("+B85", (char *)&preg, 
 					sizeof(regex_t), NULL);
 	RETURN_MSTR(dest);
 }
@@ -4873,7 +4876,7 @@ BUILT_IN_FUNCTION(function_regcomp, input)
 	memset(&preg, 0, sizeof(preg)); 	/* make valgrind happy */
 	last_regex_error = regcomp(&preg, input, flag);
 
-	dest = transform_string_dyn("+ENC", (char *)&preg, 
+	dest = transform_string_dyn("+B85", (char *)&preg, 
 					sizeof(regex_t), NULL);
 	RETURN_MSTR(dest);
 }
@@ -4884,14 +4887,17 @@ BUILT_IN_FUNCTION(function_regexec, input)
 	regex_t preg;
 
 	GET_FUNC_ARG(unsaved, input);
+#if 0
 	if (strlen(unsaved) != sizeof(regex_t) * 2)
 	{
 		yell("First argument to $regexec() isn't proper length");
 		RETURN_EMPTY;
 	}
+#endif
 
+	memset(&preg, 0, sizeof(preg));
 	/* XXX - What if this fails? */
-	transform_string(ENC_xform, XFORM_DECODE, NULL,
+	transform_string(B85_xform, XFORM_DECODE, NULL,
 			 unsaved, strlen(unsaved),
 			 (char *)&preg, sizeof(preg));
 	last_regex_error = regexec(&preg, input, 0, NULL, 0);
@@ -4916,7 +4922,7 @@ BUILT_IN_FUNCTION(function_regmatches, input)
 	}
 
 	/* XXX - What if this fails? */
-	transform_string(ENC_xform, XFORM_DECODE, NULL,
+	transform_string(B85_xform, XFORM_DECODE, NULL,
 			 unsaved, strlen(unsaved),
 			 (char *)&preg, sizeof(preg));
 
@@ -4955,14 +4961,16 @@ BUILT_IN_FUNCTION(function_regerror, input)
 	regex_t	preg;
 
 	GET_FUNC_ARG(unsaved, input);
+#if 0
 	if (strlen(unsaved) != sizeof(regex_t) * 2)
 	{
 		yell("First argument to $regmatches() isn't proper length");
 		RETURN_EMPTY;
 	}
+#endif
 
 	/* XXX - What if this fails? */
-	transform_string(ENC_xform, XFORM_DECODE, NULL,
+	transform_string(B85_xform, XFORM_DECODE, NULL,
 			 unsaved, strlen(unsaved),
 			 (char *)&preg, sizeof(preg));
 
@@ -4985,7 +4993,7 @@ BUILT_IN_FUNCTION(function_regfree, input)
 	}
 
 	/* XXX - What if this fails? */
-	transform_string(ENC_xform, XFORM_DECODE, NULL,
+	transform_string(B85_xform, XFORM_DECODE, NULL,
 			 unsaved, strlen(unsaved),
 			 (char *)&preg, sizeof(preg));
 

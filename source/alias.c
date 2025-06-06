@@ -1771,8 +1771,7 @@ static void	list_var_alias (const char *orig_name)
 
 	    if (!name || !strncmp(item->name, name, len))
 	    {
-		script = empty(item->user_variable_package) ? "*" :
-				  item->user_variable_package;
+		script = coalesce(item->user_variable_package, "*");
 
 		if ((s = strchr(item->name + len, '.')))
 		{
@@ -1835,8 +1834,7 @@ static void	list_cmd_alias (const char *orig_name)
 
 	    if (!name || !strncmp(item->name, name, len))
 	    {
-		script = empty(item->user_command_package) ? "*" :
-				  item->user_command_package;
+		script = coalesce(item->user_command_package, "*");
 
 		if ((s = strchr(item->name + len, '.')))
 		{
@@ -2440,7 +2438,7 @@ void 	dump_call_stack 	(void)
 
 	yell("Call stack");
 	for (i = wind_index; i >= 0; i--)
-		yell("[%3d] %s", i, call_stack[i].current ? call_stack[i].current : "<async>");
+		yell("[%3d] %s", i, coalesce(call_stack[i].current, "<async>"));
 	yell("End of call stack");
 }
 
@@ -2453,7 +2451,7 @@ void 	panic_dump_call_stack 	(void)
 		fprintf(stderr, "Call stack\n");
 		for (i = wind_index; i >= 0; i--)
 			fprintf(stderr, "[%3d] %s\n", i, 
-				call_stack[i].current ? call_stack[i].current : "<async>");
+				coalesce(call_stack[i].current, "<async>"));
 		fprintf(stderr, "End of call stack\n");
 	}
 	else

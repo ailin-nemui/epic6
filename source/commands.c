@@ -1374,8 +1374,8 @@ BUILT_IN_COMMAND(e_hostname)
 	}
 	else
 		say("Local Host name is (IPv4: %s, IPv6: %s)",
-			LocalIPv4HostName ? LocalIPv4HostName : "<default>",
-			LocalIPv6HostName ? LocalIPv6HostName : "<default>");
+			coalesce(LocalIPv4HostName, "<default>"),
+			coalesce(LocalIPv6HostName, "<default>"));
 }
 
 
@@ -1412,7 +1412,7 @@ BUILT_IN_COMMAND(info)
 		say("	    Contact the EPIC project (%s)", EMAIL_CONTACT);
 		say("	    for problems with this or any other EPIC client");
 	}
-	send_to_server("INFO %s", args?args:empty_string);
+	send_to_server("INFO %s", coalesce(args, empty_string));
 }
 
 /*
@@ -2542,7 +2542,7 @@ BUILT_IN_COMMAND(send_kick)
                 return;
 	}
 
-	comment = args?args:empty_string;
+	comment = coalesce(args, empty_string);
 	if (!strcmp(channel, "*"))
 		channel = get_window_echannel(0);
 
@@ -2568,12 +2568,12 @@ BUILT_IN_COMMAND(send_channel_com)
 	if (ptr && !strcmp(ptr, "*"))
 	{
 		if ((s = get_window_echannel(0)) != NULL)
-			send_to_server("%s %s %s", command, s, args?args:empty_string);
+			send_to_server("%s %s %s", command, s, coalesce(args, empty_string));
 		else
 			say("%s * is not valid since you are not on a channel", command);
 	}
 	else if (ptr)
-		send_to_server("%s %s %s", command, ptr, args?args:empty_string);
+		send_to_server("%s %s %s", command, ptr, coalesce(args, empty_string));
 	else
 		yell(usage, command);
 }
@@ -2837,9 +2837,9 @@ BUILT_IN_COMMAND(whois)
 	if (!strcmp(command, "WHOWAS"))
 	{
 		char *word_one = next_arg(args, &args);
-		if (!is_string_empty(args))
+		if (!empty(args))
 			malloc_sprintf(&stuff, "%s %s", word_one, args);
-		else if (!is_string_empty(word_one))
+		else if (!empty(word_one))
 			malloc_sprintf(&stuff, "%s", word_one);
 		else
 			malloc_sprintf(&stuff, "%s", get_server_nickname(from_server));
@@ -2848,9 +2848,7 @@ BUILT_IN_COMMAND(whois)
 		new_free(&stuff);
 	}
 	else /* whois command */
-		send_to_server("WHOIS %s", is_string_empty(args) ? 
-					get_server_nickname(from_server) : 
-					args);
+		send_to_server("WHOIS %s", coalesce(args, get_server_nickname(from_server)));
 }
 
 /*
@@ -3344,7 +3342,7 @@ static char *	parse_line_alias_special (const char *name, const char *what, cons
 	if (localvars && !make_local_stack(name))
 	{
 		yell("Could not run (%s) [%s]; too much recursion", 
-				name ? name : "<unnamed>", what);
+				coalesce(name, "<unnamed>"), what);
 		if (function)
 			return malloc_strdup(empty_string);
 		else

@@ -2902,12 +2902,7 @@ void	register_server (int refnum, const char *nick)
 		new_free(&dequoted);
 	}
 
-	malloc_strcpy (&s->realname, 
-		(s->default_realname == NULL) ?
-			(get_string_var(DEFAULT_REALNAME_VAR) ?
-		 		get_string_var(DEFAULT_REALNAME_VAR) : 
-				space) :
-		s->default_realname);
+	malloc_strcpy(&s->realname, coalesce(s->default_realname, get_string_var(DEFAULT_REALNAME_VAR)));
 
 	/* 
 	 * Use the correct vhost for the socket type
@@ -3450,8 +3445,8 @@ static void 	reset_nickname (int refnum)
 		old_pending = LOCAL_COPY(s->s_nickname);
 
 	do_hook(NEW_NICKNAME_LIST, "%d %s %s", refnum, 
-			s->nickname ? s->nickname : "*", 
-			s->s_nickname ? s->s_nickname : "*");
+			coalesce(s->nickname, "*"), 
+			coalesce(s->s_nickname, "*"));
 
 	if (!(s = get_server(refnum)))
 		return;			/* Just in case the user punted */
@@ -4442,7 +4437,10 @@ static char *	get_server_005s (int refnum, const char *str)
 		if (!str || !*str || wild_match(str, s->a005.list[i]->name))
 			malloc_strcat_wordlist(&ret, space, s->a005.list[i]->name);
 	}
-	return ret ? ret : malloc_strdup(empty_string);
+
+	if (ret)
+		return ret;
+	RETURN_EMPTY;
 }
 
 /*

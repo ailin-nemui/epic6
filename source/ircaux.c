@@ -3303,14 +3303,6 @@ char 	*strextend (char *str, char app, int num)
 	return str;
 }
 
-int 	empty (const char *str)
-{
-	if (str && *str)
-		return 0;
-
-	return 1;
-}
-
 
 /* makes foo[one][two] look like tmp.one.two -- got it? */
 char *	remove_brackets (const char *name, const char *args)
@@ -3634,6 +3626,19 @@ char *	strlpcat (char *source, size_t size, const char *format, ...)
 	return source;
 }
 
+/*
+ * random_number - Return a random number represented as an unsigned long.
+ *
+ * Arguments:
+ *	l	- (INPUT) Must be 0.  Don't ask why.
+ *
+ * Return value:
+ *	64 bits of randomness packed into an (unsigned long).
+ *	You could memcpy() those bits out if you wanted to.
+ *
+ * Notes:
+ *	Uses OpenSSL's RNG.  Should use libsodium's.
+ */
 unsigned long	random_number (unsigned long l)
 {
 	unsigned char	bytes[sizeof(unsigned long)];
@@ -3654,6 +3659,41 @@ unsigned long	random_number (unsigned long l)
 
 }
 
+/*
+ * XXX HAHA~! how clever. Bah.
+ */
+
+/*
+ * empty - Is this string empty (type 1)?
+ *
+ * Arguments
+ *	str	- A string to inquire as to its empty-ness
+ *
+ * Return value
+ *	1	- The string is NULL or is a zero-length string
+ *	0 	- The string is not NULL and is not a zero-length string
+ */
+int 	empty (const char *str)
+{
+	if (str && *str)
+		return 0;
+
+	return 1;
+}
+
+
+/*
+ * is_string_empty - Is this string empty (type 2)?
+ *
+ * Arguments
+ *	str	- A string to inquire as to its empty-ness
+ *
+ * Return value
+ *	1	- The string is NULL or is a zero-length string, 
+ *		  or it contains only spaces (defined by isspace(3))
+ *	0	- The string is not NULL and contains something that
+ *		  is not a space (defined by (isspace(3))
+ */
 int     is_string_empty (const char *str) 
 {
         while (str && *str && isspace(*str))
@@ -3691,7 +3731,7 @@ int     is_string_empty (const char *str)
  *      defined by your locale's "isspace(3)" rules.  A "standard word" 
  *      is separated from other "standard words" by spaces, as defined 
  *      by "isspace(3)".  "Standard words" do not contain any spaces.
- *  A "double quoted word" is one or more characters that are surrounded
+ *  A "double quoted word" is zero or more characters that are surrounded
  *	by double quotes (").  A word is considered "double quoted" if it
  *	begins with a double quote that occurs at the start of the string,
  *	or immediately after one or more spaces as defined by isspace(3);
@@ -4920,9 +4960,9 @@ static ssize_t	b64_decoder (const char *orig, size_t orig_len, const void *meta,
  *
  * Arguments:
  *	input 		- (INPUT) A blob of binary data
- *	input_len	- (INPUT) How many bytes are in 'data'
+ *	input_len	- (INPUT) How many bytes are in 'input'
  *	output		- (OUTPUT) Where to place the output
- *			  Encoded buffer should be 2x'data_len' + 7, just to be safe.
+ *			  Encoded buffer should be 2x'input_len' + 7, just to be safe.
  *
  * Return value:
  *	-1		- Any error (should do better on this)
@@ -4958,7 +4998,7 @@ static ssize_t	base85_encode (const unsigned char *input, size_t input_len, char
 		{
 			value <<= 8;
 			if (i < input_len) {
-				value |= input[i++];
+				value += (unsigned)(unsigned char)input[i++];
 				num_bytes_in_group++;
 			}
 		}
@@ -5013,12 +5053,21 @@ static ssize_t	b85_encoder (const char *orig, size_t orig_len, const void *meta,
  * Arguments:
  *	encoded_string	- (INPUT) A C string with base85 wrapped data
  *	decoded_buffer	- (OUTPUT) A binary blob -- should be as big as 'encoded_string"
+ *				Note -- **This is not nul terminated**.  You need to handle
+ *				that as may be appropriate for your situation.
  *
  * Return value:
  *	-1		- Any error occurred (should do better)
  *	 0		- All is well
+ *
+ * Note:
+ *	The first time I tried to do this, i "vibe coded" and gemini gave me a solution
+ *	that used bit manipulation.  It never worked right, so I implemented the algorithm
+ *	using straight arithmetic to rebase a number, like we were taught as youths.
+ *	It's quite possible using multiply, divide, and modulous is slower than bit manips, 
+ *	but at least I know this way is correct.
  */
-static ssize_t	base85_decode (const char *input, unsigned char *output) 
+static ssize_t	base85_decode (const char *input, unsigned char *output, size_t output_size) 
 {
 	const char *	current_input;
 	unsigned char *	current_output;
@@ -5026,6 +5075,7 @@ static ssize_t	base85_decode (const char *input, unsigned char *output)
 	int 		char_count = 0, 
 			extra = 0;;
 	unsigned char 	decoded_chars[5]; 
+	const unsigned char *	last_output_byte;
 
 	if (!input || !output)
 		return -1;
@@ -5035,6 +5085,8 @@ static ssize_t	base85_decode (const char *input, unsigned char *output)
 		return -1; 
 
 	current_output = output;
+	last_output_byte = output + (output_size - 1);
+
 	while (*current_input)
 	{
 		char c;
@@ -5076,27 +5128,28 @@ static ssize_t	base85_decode (const char *input, unsigned char *output)
 		if (char_count == 5) 
 		{
 			/* Convert them to a 32 bit value */
-			value = (unsigned int)decoded_chars[0] * 85 * 85 * 85 * 85 +
-				(unsigned int)decoded_chars[1] * 85 * 85 * 85 +
-				(unsigned int)decoded_chars[2] * 85 * 85 +
-				(unsigned int)decoded_chars[3] * 85 +
+			value = (unsigned int)decoded_chars[0] * 85U * 85U * 85U * 85U +
+				(unsigned int)decoded_chars[1] * 85U * 85U * 85U +
+				(unsigned int)decoded_chars[2] * 85U * 85U +
+				(unsigned int)decoded_chars[3] * 85U +
 				(unsigned int)decoded_chars[4];
 
 			/* 
 			 * Then convert the 32 bit value back to 4 bytes.
-			 * Note that we use division here, to avoid endian 
-			 * issues.
+			 * We use division here because I don't trust endian
+			 * issues with bit manipulations.
 			 */
-			current_output[3] = value & 255U;
-			value -= current_output[3];
+			if (current_output + 3 <= last_output_byte)
+				current_output[3] = value % 256U;
 			value /= 256U;
-			current_output[2] = value & 255U;
-			value -= current_output[2];
+			if (current_output + 2 <= last_output_byte)
+				current_output[2] = value % 256U;
 			value /= 256U;
-			current_output[1] = value & 255U;
-			value -= current_output[1];
+			if (current_output + 1 <= last_output_byte)
+				current_output[1] = value % 256U;
 			value /= 256U;
-			current_output[0] = value;
+			if (current_output <= last_output_byte)
+				current_output[0] = value;
 
 			/*
 			 * If this is the final set in the string, 
@@ -5105,7 +5158,7 @@ static ssize_t	base85_decode (const char *input, unsigned char *output)
 			 */
 			if (*current_input == '~' && current_input[1] == '>') 
 			{
-				current_output[4-extra] = 0;
+				/* XXX Not sure about this */
 				current_output += (4 - extra);
 				break;
 			}
@@ -5124,7 +5177,7 @@ static ssize_t	base85_decode (const char *input, unsigned char *output)
 
 static ssize_t	b85_decoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
 {
-	return base85_decode(orig, (unsigned char *)dest);
+	return base85_decode(orig, (unsigned char *)dest, dest_len);
 }
 
 
@@ -5162,7 +5215,7 @@ static ssize_t	b85_decoder (const char *orig, size_t orig_len, const void *meta,
  * Some non-IRC servers (such as ircv3) have it in their mind to censor messages
  * which do not comply with some other regime (such as well-formed utf-8 sequences).
  * For those chat systems, you'd need to use another serde, that outputs utf-8 
- * sequences -- perhaps RFC1421 ("base64").  That won't help you with CTCP, though.
+ * sequences -- in the future CTCP may support base85 messages.  Maybe.
  */
 static ssize_t	ctcp_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
 {
@@ -5303,22 +5356,89 @@ static ssize_t	all_encoder (const char *orig, size_t orig_len, const void *meta,
 	return strlen(dest);
 }
 
+/*
+ * sha256_digest -- Return the SHA256 digest of a binary blob
+ *
+ * Arguments:
+ *	type		- Must always be NULL.  Unused for now.
+ *	hexstr		- (INPUT) 1 if you want the digest in hex digits (output must be 66 bytes); 
+ *			          0 if you want it straight (output must be 34 bytes)
+ *				  Both cases allow for 2 extra bytes (don't ask)
+ *	input		- (INPUT) A binary blob
+ *	inputlen	- (INPUT) The size of 'input'
+ *	output		- (OUTPUT) Where to put the digest
+ *	outputlen	- (INPUT) how big 'output' is.  See 'hexstr'
+ *
+ * Return value:
+ *	NULL		- Something went wrong
+ *			  - 'type' had an unsupported value
+ *			  - OpenSSL objected to something or another
+ *	output		- The parameter 'output' is returned on success.
+ */
+char *  sha256_digest (const char *type, int hexstr, const char *input, size_t inputlen, char *output, size_t outputlen)
+{
+	unsigned char *	local_output;
+	unsigned int	local_output_len;
+	char *		s;
+	EVP_MD_CTX *	ctx;
+	unsigned int	i;
+
+	if (type != NULL)
+		return NULL;
+	if ((ctx = EVP_MD_CTX_new()) == NULL)
+		return NULL;
+	if (!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL))
+		return NULL;
+	if (!EVP_DigestUpdate(ctx, input, inputlen))
+		return NULL;
+
+	local_output = alloca(EVP_MAX_MD_SIZE);
+	local_output_len = 0;
+	if (!EVP_DigestFinal_ex(ctx, local_output, &local_output_len))
+		return NULL;
+	EVP_MD_CTX_free(ctx);
+
+	for (s = output, i = 0; i < local_output_len; i++)
+	{
+		if (hexstr)
+		{
+			if (s - output >= (ptrdiff_t) outputlen - 3)	
+				return output;
+			hex256(local_output[i], &s);
+		}
+		else
+		{
+			if (s - output >= (ptrdiff_t) outputlen - 2)
+				return output;
+			*s++ = local_output[i];
+			*s = 0;	
+		}
+	}
+	return output;
+}
+
 static ssize_t	sha256_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
 {
         if (!orig || !dest || dest_len <= 0)
                 return -1;
 
-	digest_hexstr(NULL, orig, orig_len, dest, dest_len);
+	sha256_digest(NULL, 1, orig, orig_len, dest, dest_len);
 	return strlen(dest);
 }
 
+/*********************************************************************************/
 ssize_t iconv_list_size = 0;
 struct Iconv_stuff **iconv_list = NULL;
 
-int my_iconv_open (iconv_t *forward, iconv_t *reverse, const char *stuff2)
+int	my_iconv_open (iconv_t *forward, iconv_t *reverse, const char *stuff2)
 {
-	size_t pos, len;
-	char *stuff, *fromcode, *tocode, *option, *tmp;
+	size_t 	pos, 
+		len;
+	char 	*stuff, 
+		*fromcode, 
+		*tocode, 
+		*option, 
+		*tmp;
 	int	size;
 
 	stuff = LOCAL_COPY(stuff2);
@@ -5404,19 +5524,27 @@ static ssize_t	iconv_recoder (const char *orig, size_t orig_len, const void *met
 	dest_ptr = dest;
 
 	/* 
-	 * Old libiconv(), esp as used by FreeBSD expects the 2nd argument
-	 * to iconv() to be (const char **), but POSIX iconv() requires
-	 * it to be (char **), and these cannot be reconciled through a 
-	 * cast [see the comp.lang.c faq for a good explanation], so I chose
-	 * to have non-standard iconv() result in the warning.
+	 * Older iconv()s, especially FreeBSD's, expect the 2nd argument
+	 * to iconv() to be (const char **), but Issue 6+ requires it to 
+	 * be (char **), and these cannot be reconciled through a cast, 
+	 * so I chose to have non-standard iconv() result in the warning.
 	 *
 	 * The xform subsystem requires all inputs to be treated
 	 * as const, so as a special case, I cast away the cast for
 	 * iconv because i trust it to behave itself.
+	 *
+	 * If you read the rationale in Issue 6: 
+	 * https://pubs.opengroup.org/onlinepubs/9799919799/
+	 * you see it says that 'orig_ptr' is actually considered to
+	 * be a (void *) (ie, it's not a C string), but a binary blob.
+	 * ISO C does not permit (void **), and it does permit (char *)
+	 * to be used as a proxy for (void *), so the obvious solution
+	 * is to require it to be a (char **).  But since it does not
+	 * change anything, I don't know why they didn't const it.
 	 */
 	orig_ptr = (char *)(intptr_t)orig;
 
-	if ((*(const char *)meta) == '+' || (*(const char*)meta) == '-')
+	if ((*(const char *)meta) == '+' || (*(const char *)meta) == '-')
 	{
 		if (strlen((const char *)meta) <= 1)
 			return 0;
@@ -5473,40 +5601,56 @@ static ssize_t	iconv_recoder (const char *orig, size_t orig_len, const void *met
 		break;
 	}
 	if (close_it)
+	{
+#if 0
+		/* 
+		 * Issue 6 says that "the application [must] ensure that [...] the output buffer
+		 * is returned to its initial shift state when the conversion is copmleted,
+		 * This can be accomplished by calling iconv() with inbuf as a null pointer, 
+		 * [...] before calling iconv_close().
+		 */
+		iconv(encodingx, NULL, &orig_left, &dest_ptr, &dest_left);
+#endif
 		iconv_close(encodingx);
+	}
 	return dest_len - dest_left;
 }
 
 struct Transformer
 {
-	int	refnum;
+	int		refnum;
 	const char *	name;
-	int	takes_meta;
-	int	recommended_size;
-	int	recommended_overhead;
-	ssize_t	(*encoder) (const char *, size_t, const void *, size_t, char *, size_t);
-	ssize_t	(*decoder) (const char *, size_t, const void *, size_t, char *, size_t);
+	int		takes_meta;
+	int		recommended_size;
+	int		recommended_overhead;
+	ssize_t		(*encoder) (const char *, size_t, const void *, size_t, char *, size_t);
+	ssize_t		(*decoder) (const char *, size_t, const void *, size_t, char *, size_t);
 };
 
 struct Transformer default_transformers[] = {
-{	0,	"URL",		0, 3, 8,  url_encoder,	  url_decoder	 },
-{	0,	"ENC",		0, 2, 8,  enc_encoder,	  enc_decoder	 },
-{	0,	"LEN",		0, 1, 0,  len_encoder,	  len_encoder	 },
-{	0,	"B64",		0, 2, 8,  b64_encoder,	  b64_decoder	 },
-{	0,	"B85",		0, 2, 8,  b85_encoder,	  b85_decoder	 },
-{	0,	"CTCP",		0, 2, 8,  ctcp_encoder,	  ctcp_decoder	 },
-{	0,	"NONE",		0, 1, 8,  null_encoder,	  null_encoder	 },
-{	0,	"SHA256",	0, 0, 65, sha256_encoder, sha256_encoder },
-{	0,	"ICONV",	1, 4, 16, iconv_recoder,  iconv_recoder },
-{	0,	"ALL",		0, 0, 256, all_encoder,	  all_encoder	},
-{	-1,	NULL,		0, 0, 0,   NULL,	  NULL		}
+{	0,	"URL",		0, 3, 8,	url_encoder,	url_decoder	},
+{	0,	"ENC",		0, 2, 8,	enc_encoder,	enc_decoder	},
+{	0,	"LEN",		0, 1, 0,	len_encoder,	len_encoder	},
+{	0,	"B64",		0, 2, 8,	b64_encoder,	b64_decoder	},
+{	0,	"B85",		0, 2, 8,	b85_encoder,	b85_decoder	},
+{	0,	"CTCP",		0, 2, 8,	ctcp_encoder,	ctcp_decoder	},
+{	0,	"NONE",		0, 1, 8,	null_encoder,	null_encoder	},
+{	0,	"SHA256",	0, 0, 66,	sha256_encoder, sha256_encoder	},
+{	0,	"ICONV",	1, 4, 16,	iconv_recoder,  iconv_recoder	},
+{	0,	"ALL",		0, 0, 256,	all_encoder,	all_encoder	},
+{	-1,	NULL,		0, 0, 0,	NULL,	  	NULL		}
 };
 
-int	max_transform;
-int	max_number_of_transforms = 256;
-struct Transformer transformers[256];		/* XXX */
-int	NONE_xform, URL_xform, ENC_xform, B64_xform;
-int	CTCP_xform, SHA256_xform;
+	int		max_transform;
+	int		max_number_of_transforms = 256;
+struct Transformer	transformers[256];		/* XXX */
+	int		NONE_xform, 
+			URL_xform, 
+			ENC_xform, 
+			B64_xform;
+	int		CTCP_xform, 
+			SHA256_xform,
+			B85_xform;
 
 /*
  * transform_string -- Transform some bytes from one form into another form
@@ -5741,6 +5885,7 @@ void	init_transforms (void)
 	URL_xform = lookup_transform("URL", &numargs, &d1, &d2);
 	ENC_xform = lookup_transform("ENC", &numargs, &d1, &d2);
 	B64_xform = lookup_transform("B64", &numargs, &d1, &d2);
+	B85_xform = lookup_transform("B85", &numargs, &d1, &d2);
 	CTCP_xform = lookup_transform("CTCP", &numargs, &d1, &d2);
 	SHA256_xform = lookup_transform("SHA256", &numargs, &d1, &d2);
 }
@@ -5926,6 +6071,10 @@ int	recode_with_iconv (const char *from, const char *to, char **data, size_t *nu
 
 			break;
 		}
+#if 0
+		/* Issue 6 requires this (see comment above) */
+		iconv(encodingx, NULL, &numbytes, &dest_ptr, &dest_left);
+#endif
 		iconv_close (iref);
 		*numbytes = (dest_size - dest_left);
 	}
@@ -6701,72 +6850,6 @@ const char *	coalesce (const char *one_, ...)
 
 
 /*********************************************************************************/
-char *  digest_hexstr (const char *type, const char *input, size_t inputlen, char *output, size_t outputlen)
-{
-	unsigned char *	local_output;
-	unsigned int	local_output_len;
-	char *		s;
-	EVP_MD_CTX *	ctx;
-	unsigned int	i;
-
-	if (type != NULL)
-		return NULL;
-	if ((ctx = EVP_MD_CTX_new()) == NULL)
-		return NULL;
-	if (!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL))
-		return NULL;
-	if (!EVP_DigestUpdate(ctx, input, inputlen))
-		return NULL;
-
-	local_output = alloca(EVP_MAX_MD_SIZE);
-	local_output_len = 0;
-	if (!EVP_DigestFinal_ex(ctx, local_output, &local_output_len))
-		return NULL;
-	EVP_MD_CTX_free(ctx);
-
-	for (s = output, i = 0; i < local_output_len; i++)
-	{
-		if (s - output >= (ptrdiff_t) outputlen - 3)	
-			return output;
-		hex256(local_output[i], &s);
-	}
-	return output;
-}
-
-
-char *  digest (const char *type, const char *input, size_t inputlen, char *output, size_t outputlen)
-{
-	unsigned char *	local_output;
-	unsigned int	local_output_len;
-	char *		s;
-	EVP_MD_CTX *	ctx;
-	unsigned int	i;
-
-	if (type != NULL)
-		return NULL;
-	if ((ctx = EVP_MD_CTX_new()) == NULL)
-		return NULL;
-	if (!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL))
-		return NULL;
-	if (!EVP_DigestUpdate(ctx, input, inputlen))
-		return NULL;
-
-	local_output = alloca(EVP_MAX_MD_SIZE);
-	local_output_len = 0;
-	if (!EVP_DigestFinal_ex(ctx, local_output, &local_output_len))
-		return NULL;
-	EVP_MD_CTX_free(ctx);
-
-	for (s = output, i = 0; i < local_output_len; i++)
-	{
-		if (s - output >= (ptrdiff_t) outputlen - 2)
-			return output;
-		s[0] = local_output[i];
-		s[1] = 0;
-	}
-	return output;
-}
-
 #ifndef HAVE_STRLCPY
 /*	$OpenBSD: strlcpy.c,v 1.16 2019/01/25 00:19:25 millert Exp $	*/
 

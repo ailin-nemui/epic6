@@ -70,13 +70,10 @@ typedef	struct	myio_struct
 
 static	MyIO **	io_rec = NULL;
 static	int	global_max_vfd = -1;
-static	int	global_max_channel = -1;
 
 /* These functions should be exposed by your i/o strategy */
 static  void    kread (int vfd);
 static  void    knoread (int vfd);
-static  void    kholdread (int vfd);
-static  void    kunholdread (int vfd);
 static  void    kwrite (int vfd);
 static  void    knowrite (int vfd);
 static	int	kdoit (Timespec *timeout);
@@ -101,7 +98,6 @@ static int	passthrough_event (int channel, int quiet, int);
 /* XXX Please refactor these away */
 #define VFD(channel) channel
 #define CHANNEL(vfd) vfd
-#define get_new_vfd(channel) channel
 
 int	get_server_by_vfd (int vfd)
 {
@@ -521,15 +517,13 @@ int 	new_open (int channel, void (*callback) (int), int io_type, int poll_events
 		yell("new_open: vfd = %d, io_type = %d, poll_events = %d, quiet = %d, server = %d",
 			channel, io_type, poll_events, quiet, server);
 
-	vfd = get_new_vfd(channel);
+	vfd = channel;
 
 	/*
 	 * Keep track of the highest fd in use.
 	 */
 	if (vfd > global_max_vfd)
 		global_max_vfd = vfd;
-	if (channel > global_max_channel)
-		global_max_channel = channel;
 
 	if (!(ioe = io_rec[vfd]))
 	{
@@ -585,27 +579,13 @@ int 	new_open (int channel, void (*callback) (int), int io_type, int poll_events
 	ioe->callback = callback;
 	ioe->failure_callback = NULL;
 
-	if (io_type == NEWIO_CONNECT || io_type == NEWIO_PASSTHROUGH_WRITE)
-	{
-		knowrite(vfd);
-		knoread(vfd);
-		kwrite(vfd);
-		kcleaned(vfd);
-	}
-	else if (io_type == NEWIO_NULL)
-	{
-		knowrite(vfd);
-		knoread(vfd);
-		knowrite(vfd);
-		kcleaned(vfd);
-	}
-	else
-	{
-		knoread(vfd);
-		knowrite(vfd);
+	knowrite(vfd);
+	knoread(vfd);
+	if (ioe->poll_events & POLLIN)
 		kread(vfd);
-		kcleaned(vfd);
-	}
+	if (ioe->poll_events & POLLOUT)
+		kwrite(vfd);
+	kcleaned(vfd);
 
 	return vfd;
 }
@@ -633,42 +613,6 @@ int 	new_open_failure_callback (int channel, void (*failure_callback) (int, int)
 
 	syserr(-1, "new_open_failure_callback: Called for Channel %d that is not set up", channel);
 	return -1;		/* Oh well. */
-}
-
-
-/*
- * This isn't really new, but what the hey..
- *
- * Remove the fd from the poll fd sets so
- * that it won't bother us until we unhold it.
- *
- * Note that this is meant to be a read/write
- * hold and that this only operates on read
- * sets because that's all the client uses.
- */
-int	new_hold_fd (int vfd)
-{
-	if (vfd >= 0 && vfd <= global_max_vfd && io_rec[vfd]->held == 0)
-	{
-		io_rec[vfd]->held = 1;
-		kholdread(vfd);
-	}
-
-	return vfd;
-}
-
-/*
- * Add the fd again.
- */
-int	new_unhold_fd (int vfd)
-{
-	if (vfd >= 0 && vfd <= global_max_vfd && io_rec[vfd]->held == 1)
-	{
-		kunholdread(vfd);
-		io_rec[vfd]->held = 0;
-	}
-
-	return vfd;
 }
 
 /*
@@ -1024,16 +968,6 @@ static  void    knoread (int vfd)
 		polls[vfd].fd = -1;
 }
  
-static  void    kholdread (int vfd)
-{
-	polls[vfd].events &= ~(POLLIN);
-}
-
-static  void    kunholdread (int vfd)
-{
-	polls[vfd].events |= POLLIN;
-}
-
 static  void    kwrite (int vfd)
 {
 	polls[vfd].fd = CHANNEL(vfd);

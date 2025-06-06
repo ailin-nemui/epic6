@@ -49,7 +49,7 @@ static  void    ares_sock_state_cb_ (void *data, ares_socket_t socket_fd, int re
 	int	paddr_to_ssu (const char *host, SSu *storage_, int flags);
 static	void	ares_addrinfo_callback_ (void *arg, int status, int timeouts, struct ares_addrinfo *result);
 static	void	ares_nameinfo_callback_ (void *arg, int status, int timeouts, char *host, char *port);
-	void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares_addrinfo *result);
+static	void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares_addrinfo *result);
 	int	json_to_sockaddr_array (const char *json_string, int *error_code, SSu **addr_array) ;
 
 /****************************************************************************/
@@ -871,7 +871,7 @@ int	one_to_another (int family, const char *what, char *retval, int size)
 
 // Helper function to convert sockaddr to string
 // Returns the buffer 's' on success, NULL on failure
-char *	sockaddr_to_string (const struct sockaddr *sa, char *s, size_t maxlen) 
+static char *	sockaddr_to_string (const struct sockaddr *sa, char *s, size_t maxlen) 
 {
     if (!sa || !s || maxlen == 0) return NULL;
 
@@ -900,7 +900,7 @@ char *	sockaddr_to_string (const struct sockaddr *sa, char *s, size_t maxlen)
     }
 }
 
-cJSON *	convert_ares_addrinfo_to_json (const struct ares_addrinfo *result) 
+static cJSON *	convert_ares_addrinfo_to_json (const struct ares_addrinfo *result) 
 {
     if (!result) {
         return NULL; // Nothing to convert
@@ -1047,7 +1047,7 @@ cJSON *	convert_ares_addrinfo_to_json (const struct ares_addrinfo *result)
     return root; // Success! Return the created JSON object
 }
 
-void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares_addrinfo *result) 
+static void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares_addrinfo *result) 
 {
     char *json_string;
     int   fd;
@@ -1362,7 +1362,7 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 	*sl = 0;
 
 	if (x_debug & DEBUG_SERVER_CONNECT)
-		yell("Looking up [%s] vhost for %s", something?something:"<default>", familystr(family_));
+		yell("Looking up [%s] vhost for %s", coalesce(something, "<default>"), familystr(family_));
 
 	/*
 	 * Check to see if it's cached...
@@ -1385,7 +1385,7 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 		    !my_stricmp(something, vhosts[i].paddr))
 		{
 			if (x_debug & DEBUG_SERVER_CONNECT)
-				yell("Vhost %s is cached. yay.", something?something:"<default>");
+				yell("Vhost %s is cached. yay.", coalesce(something, "<default>"));
 			memcpy(ssu_, &vhosts[i].ssu, sizeof(SSu));
 			*sl = socklen(ssu_);
 			return 0;
