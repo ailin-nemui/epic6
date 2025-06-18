@@ -84,7 +84,7 @@
 #include "scrambox.h"
 
 static	char	
-	*alias_detected 	(void), *alias_sent_nick 	(void),
+	*alias_sent_nick 	(void),
 	*alias_recv_nick 	(void), *alias_msg_body 	(void),
 	*alias_joined_nick 	(void), *alias_public_nick 	(void),
 	*alias_dollar 		(void), *alias_channel 		(void),
@@ -217,7 +217,6 @@ static	char
 	*function_cos		(char *),
 	*function_cosh		(char *),
 	*function_count		(char *),
-	*function_crypt 	(char *),
 	*function_curcmd	(char *),
 	*function_currchans	(char *),
 	*function_dbmctl	(char *),

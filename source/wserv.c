@@ -182,7 +182,7 @@ int	main (int argc, char **argv)
 	my_exit(8);
 }
 
-static void 	ignore (int value)
+static void 	ignore (int __U(value))
 {
 	/* send a ^C */
 	char foo = 3;
@@ -190,7 +190,7 @@ static void 	ignore (int value)
 		(void) 0;
 }
 
-static void	sigwinch_func (int value)
+static void	sigwinch_func (int __U(value))
 {
 	got_sigwinch = 1;
 }

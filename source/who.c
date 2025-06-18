@@ -121,6 +121,7 @@ static char *who_item_full_desc (WhoEntry *item)
 	return retval;
 }
 
+#if 0
 static char *who_item_desc (WhoEntry *item)
 {
 	static char retval[10240];
@@ -135,6 +136,7 @@ static char *who_item_desc (WhoEntry *item)
 
 	return retval;
 }
+#endif
 
 static WhoEntry *who_queue_top (int refnum)
 {
@@ -1436,7 +1438,7 @@ BUILT_IN_COMMAND(usripcmd)
 	userhostbase(from_server, args, subargs, NULL, 2);
 }
 
-void userhostbase (int refnum, char *args, const char *subargs, void (*line) (int, UserhostItem *, const char *, const char *), int do_userhost)
+void	userhostbase (int refnum, char *args, const char *__U(subargs), void (*line) (int, UserhostItem *, const char *, const char *), int do_userhost)
 {
 	int	total = 0,
 		userhost_cmd = 0;
@@ -1456,7 +1458,7 @@ void userhostbase (int refnum, char *args, const char *subargs, void (*line) (in
 	*buffer = 0;
 	while ((nick = next_arg(args, &args)) != NULL)
 	{
-		if (check_nickname(nick, 1) || is_number(nick))
+		if (check_nickname(nick) || is_number(nick))
 		{
 			total++;
 			if (!fetch_userhost(refnum, NULL, nick))
@@ -1750,7 +1752,7 @@ void	userhost_returned (int refnum, const char *from, const char *comm, const ch
 	userhost_queue_send(refnum);
 }
 
-void	userhost_cmd_returned (int refnum, UserhostItem *stuff, const char *nick, const char *text)
+void	userhost_cmd_returned (int __U(refnum), UserhostItem *stuff, const char *__U(nick), const char *__U(text))
 {
 	char	*args = NULL;
 

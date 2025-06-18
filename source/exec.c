@@ -153,6 +153,7 @@ static size_t	summarize_process (Process *proc, char *outbuf, size_t outbufsize)
 		return 0;
 }
 
+#if 0
 /*
  * output_process
  */
@@ -168,6 +169,7 @@ static void	output_process (Process *process)
 static void	check_process_list (void)
 {
 }
+#endif
 
 /*************************************************************/
 /*
@@ -254,7 +256,7 @@ static void 		do_exec (int fd)
 /*
  * This is the back end to do_processes, saves some repeated code
  */
-static void 	handle_filedesc (Process *proc, int *fd, int hook_nonl, int hook_nl)
+static void 	handle_filedesc (Process *proc, int *fd, int __U(hook_nonl), int hook_nl)
 {
 	char 	exec_buffer[IO_BUFFER_SIZE + 1];
 	ssize_t	len;
@@ -940,27 +942,6 @@ static int 	get_process_refnum (const char *desc)
 
 	return 0;
 }
-
-static  Process *       get_process_by_description (const char *desc)
-{
-       	int	i;
-
-	if (!desc || *desc != '%')
-		return NULL;
-
-	for (i = 0; i < process_list_size; i++)
-	{
-		if (process_list[i])
-		{
-			if (process_list[i]->refnum_desc && !my_stricmp(process_list[i]->refnum_desc, desc))
-				return process_list[i];
-			else if (process_list[i]->logical_desc && !my_stricmp(process_list[i]->logical_desc, desc))
-				return process_list[i];
-		}
-	}
-	return NULL;
-}
-
 
 /*
  * is_valid_process: convert a %procdesc into a process index.

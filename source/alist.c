@@ -121,7 +121,7 @@ void *	alist_pop (alist *a, int which)
 	return ret;
 }
 
-void *	alist_lookup (alist *a, const char *name, int wild, int rem)
+void *	alist_lookup (alist *a, const char *name, int rem)
 {
 	int 	count, 
 		location;

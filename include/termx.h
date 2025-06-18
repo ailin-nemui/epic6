@@ -636,7 +636,9 @@ int	tputs_x(char *);
 	void		term_gotoxy		(int, int);
 	void		term_reset		(void);
 	void		set_automargin_override	(void *);
+#if 0
 	const char *	term_getsgr		(int, int, int);
+#endif
 	const char *	get_term_capability	(const char *, int, int);
 
 #endif /* _TERM_H_ */

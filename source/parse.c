@@ -784,10 +784,10 @@ static void	p_silence (const char *from, const char *comm, const char **ArgList)
 
 static void	p_cap (const char *from, const char *comm, const char **ArgList)
 {
-	const char *disp, *cmd, *args;
+	const char /**disp,*/ *cmd, *args;
 
 	PasteArgs(ArgList, 2);
-	if (!(disp = ArgList[0]))
+	if (!(/* disp = */ ArgList[0]))
 		{ rfc1459_odd(from, comm, ArgList); return; }
 	if (!(cmd = ArgList[1]))
 		{ rfc1459_odd(from, comm, ArgList); return; }
@@ -816,6 +816,8 @@ static void	p_cap (const char *from, const char *comm, const char **ArgList)
 				*value++ = 0;
 				set_server_005(from_server, key, value);
 			}
+			else
+				value = LOCAL_COPY(empty_string);
 
 			do_hook(CAP_LIST, "%s LS %s %s", from, key, value);
 		}
@@ -1451,7 +1453,7 @@ static int 	num_protocol_cmds = -1;
  * parse_server: parses messages from the server, doing what should be done
  * with them 
  */
-void 	parse_server (const char *orig_line, size_t orig_line_size)
+void 	parse_server (const char *__U(orig_line), size_t __U(orig_line_size))
 {
 	const char	*from;
 	const char	*comm;

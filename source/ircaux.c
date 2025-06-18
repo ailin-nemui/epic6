@@ -47,6 +47,7 @@
 #include "server.h"
 #include "list.h"
 #include "elf.h"
+#include "cJSON.h"
 
 /*
  * This is the basic overhead for every malloc allocation (8 bytes).
@@ -1569,7 +1570,7 @@ int	server_strnicmp (const char *str1, const char *str2, size_t n, int servref)
 		return utf8_strnicmp(str1, str2, n);
 }
 
-int	alist_stricmp (const char *str1, const char *str2, size_t ignored)
+int	alist_stricmp (const char *str1, const char *str2, size_t __U(ignored))
 {
 	return my_stricmp(str1, str2);
 }
@@ -1775,7 +1776,7 @@ struct	passwd 	scratch,
  * rewritten, with help from do_nick_name() from the server code (2.8.5),
  * phone, april 1993.
  */
-char *	check_nickname (char *nick, int unused)
+char *	check_nickname (char *nick)
 {
 	char	*s;
 
@@ -2218,7 +2219,7 @@ size_t	escape_chars (const char *input, const char *stuff, char *output, size_t 
 	return output_fullsize;
 }
 
-void	panic (int quitmsg, const char *format, ...)
+void	panic (int __U(quitmsg), const char *format, ...)
 {
 	char buffer[BIG_BUFFER_SIZE * 10 + 1];
 static	int recursion = 0;		/* Recursion is bad */
@@ -3987,7 +3988,7 @@ void	dequoter (char **str, int full, int extended, const char *delims)
 }
 
 
-char *	new_new_next_arg_count (char *str, char **new_ptr, char *type, int count)
+char *	new_new_next_arg_count (char *str, char **new_ptr, char *type)
 {
 	char kludge[2];
 
@@ -4657,14 +4658,19 @@ char *	fix_string_width (const char *orig_str, int justify, int fillchar, size_t
 }
 
 /****************************************************************************/
-static ssize_t	len_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+#define ENCODER(x) \
+static ssize_t	x ## _encoder (const char *__U(orig), size_t __U(orig_len), const void *__U(meta), size_t __U(meta_len), char *__U(dest), size_t __U(dest_len))
+#define DECODER(x) \
+static ssize_t	x ## _decoder (const char *__U(orig), size_t __U(orig_len), const void *__U(meta), size_t __U(meta_len), char *__U(dest), size_t __U(dest_len))
+
+ENCODER(len)
 {
 	snprintf(dest, dest_len, "%ld", (long)orig_len);
 	return strlen(dest);
 }
 
 /* Based in whole or in part on code contributed by SrFrOg in 1999 */
-static ssize_t	url_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+ENCODER(url)
 {
 	static const char safe[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 				   "abcdefghijklmnopqrstuvwxyz"
@@ -4719,7 +4725,7 @@ static ssize_t	url_encoder (const char *orig, size_t orig_len, const void *meta,
 )
 
 /* Based in whole or in part on code contributed by SrFrOg in 1999 */
-static ssize_t	url_decoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+DECODER(url)
 {
 	size_t	orig_i, dest_i;
 	int	val1, val2;
@@ -4757,7 +4763,7 @@ static ssize_t	url_decoder (const char *orig, size_t orig_len, const void *meta,
         return dest_i;
 }
 
-static ssize_t	enc_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+ENCODER(enc)
 {
 	size_t	orig_i, dest_i;
 
@@ -4780,7 +4786,7 @@ static ssize_t	enc_encoder (const char *orig, size_t orig_len, const void *meta,
         return dest_i;
 }
 
-static ssize_t	enc_decoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+DECODER(enc)
 {
 	size_t	orig_i, dest_i;
 
@@ -4830,7 +4836,7 @@ static int      posfunc (const char *base, char c)
     return -1;
 }
 
-static ssize_t	b64_general_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len, const char *base)
+static ssize_t	b64_general_encoder (const char *__U(orig), size_t __U(orig_len), const void *__U(meta), size_t __U(meta_len), char *__U(dest), size_t __U(dest_len), const char *__U(base))
 {
 	size_t	orig_i, dest_i;
 
@@ -4873,7 +4879,7 @@ static ssize_t	b64_general_encoder (const char *orig, size_t orig_len, const voi
         return dest_i;
 }
 
-static ssize_t	b64_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+ENCODER(b64)
 {
 	return b64_general_encoder(orig, orig_len, meta, meta_len, dest, dest_len, base64_chars);
 }
@@ -4907,7 +4913,7 @@ static unsigned int     token_decode (const char *base, const char *token)
     return (marker << 24) | val;
 }
 
-static ssize_t	b64_general_decoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len, const char *base)
+static ssize_t	b64_general_decoder (const char *__U(orig), size_t __U(orig_len), const void *__U(meta), size_t __U(meta_len), char *__U(dest), size_t __U(dest_len), const char *__U(base))
 {
 	size_t	orig_i, dest_i;
 
@@ -4946,7 +4952,7 @@ static ssize_t	b64_general_decoder (const char *orig, size_t orig_len, const voi
         return dest_i;
 }
 
-static ssize_t	b64_decoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+DECODER(b64)
 {
 	return b64_general_decoder(orig, orig_len, meta, meta_len, dest, dest_len, base64_chars);
 }
@@ -5041,7 +5047,7 @@ static ssize_t	base85_encode (const unsigned char *input, size_t input_len, char
 	return current_output - output;
 }
 
-static ssize_t	b85_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+ENCODER(b85)
 {
 	return base85_encode((const unsigned char *)orig, orig_len, dest);
 }
@@ -5071,7 +5077,6 @@ static ssize_t	base85_decode (const char *input, unsigned char *output, size_t o
 {
 	const char *	current_input;
 	unsigned char *	current_output;
-	unsigned 	value = 0;
 	int 		char_count = 0, 
 			extra = 0;;
 	unsigned char 	decoded_chars[5]; 
@@ -5127,6 +5132,8 @@ static ssize_t	base85_decode (const char *input, unsigned char *output, size_t o
 		 */
 		if (char_count == 5) 
 		{
+			unsigned 	value;
+
 			/* Convert them to a 32 bit value */
 			value = (unsigned int)decoded_chars[0] * 85U * 85U * 85U * 85U +
 				(unsigned int)decoded_chars[1] * 85U * 85U * 85U +
@@ -5166,7 +5173,6 @@ static ssize_t	base85_decode (const char *input, unsigned char *output, size_t o
 			/* If it's not the final set of the string, then continue on... */
 			current_output += 4;
 			char_count = 0;
-			value = 0;
 			extra = 0;
 		}
 	}
@@ -5175,7 +5181,7 @@ static ssize_t	base85_decode (const char *input, unsigned char *output, size_t o
 	return current_output - output;
 }
 
-static ssize_t	b85_decoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+DECODER(b85)
 {
 	return base85_decode(orig, (unsigned char *)dest, dest_len);
 }
@@ -5217,7 +5223,7 @@ static ssize_t	b85_decoder (const char *orig, size_t orig_len, const void *meta,
  * For those chat systems, you'd need to use another serde, that outputs utf-8 
  * sequences -- in the future CTCP may support base85 messages.  Maybe.
  */
-static ssize_t	ctcp_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+ENCODER(ctcp)
 {
 	size_t	orig_i, dest_i;
 
@@ -5271,7 +5277,7 @@ static ssize_t	ctcp_encoder (const char *orig, size_t orig_len, const void *meta
         return dest_i;
 }
 
-static ssize_t	ctcp_decoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+DECODER(ctcp)
 {
 	size_t	orig_i, dest_i;
 
@@ -5316,7 +5322,7 @@ static ssize_t	ctcp_decoder (const char *orig, size_t orig_len, const void *meta
         return dest_i;
 }
 
-static ssize_t	null_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+ENCODER(null)
 {
 	size_t	orig_i, dest_i;
 
@@ -5343,7 +5349,7 @@ static ssize_t	null_encoder (const char *orig, size_t orig_len, const void *meta
         return dest_i;
 }
 
-static ssize_t	all_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+ENCODER(all)
 {
 	char	*all_xforms;
 
@@ -5417,7 +5423,7 @@ char *  sha256_digest (const char *type, int hexstr, const char *input, size_t i
 	return output;
 }
 
-static ssize_t	sha256_encoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+ENCODER(sha256)
 {
         if (!orig || !dest || dest_len <= 0)
                 return -1;
@@ -5508,7 +5514,7 @@ int	my_iconv_open (iconv_t *forward, iconv_t *reverse, const char *stuff2)
 	return 0;
 }
 
-static ssize_t	iconv_recoder (const char *orig, size_t orig_len, const void *meta, size_t meta_len, char *dest, size_t dest_len)
+ENCODER(iconv)
 {
 	size_t	orig_left = orig_len, 
 		dest_left = dest_len, 
@@ -5636,7 +5642,7 @@ struct Transformer default_transformers[] = {
 {	0,	"CTCP",		0, 2, 8,	ctcp_encoder,	ctcp_decoder	},
 {	0,	"NONE",		0, 1, 8,	null_encoder,	null_encoder	},
 {	0,	"SHA256",	0, 0, 66,	sha256_encoder, sha256_encoder	},
-{	0,	"ICONV",	1, 4, 16,	iconv_recoder,  iconv_recoder	},
+{	0,	"ICONV",	1, 4, 16,	iconv_encoder,  iconv_encoder	},
 {	0,	"ALL",		0, 0, 256,	all_encoder,	all_encoder	},
 {	-1,	NULL,		0, 0, 0,	NULL,	  	NULL		}
 };
@@ -5843,6 +5849,8 @@ static int	register_transform (const char *name, int takes_meta, int expansion_s
 	return -1;
 }
 
+/* I do not currently have any use cases for unregistering a transform */
+#if 0
 static int	unregister_transform (int i)
 {
 	/* We don't change 'refnum' so this entry doesn't get re-used! */
@@ -5853,6 +5861,7 @@ static int	unregister_transform (int i)
 	transformers[i].decoder = NULL;
 	return i;
 }
+#endif
 
 void	init_transforms (void)
 {
@@ -6175,6 +6184,11 @@ int	ucs_to_utf8 (uint32_t key, char *utf8str_, size_t utf8strsiz)
 
 	if (key <= 0x007F)
 	{
+		if (utf8strsiz < 2)
+		{
+			*utf8str = 0;
+			return 0;
+		}
 		utf8str[0] = key;
 		utf8str[1] = 0;
 		return 1;
@@ -6182,6 +6196,11 @@ int	ucs_to_utf8 (uint32_t key, char *utf8str_, size_t utf8strsiz)
 
 	else if (key <= 0x07FF)
 	{
+		if (utf8strsiz < 3)
+		{
+			*utf8str = 0;
+			return 0;
+		}
 		utf8str[0] = key / 64 + 192;
 		utf8str[1] = key % 64 + 128;
 		utf8str[2] = 0;
@@ -6190,6 +6209,11 @@ int	ucs_to_utf8 (uint32_t key, char *utf8str_, size_t utf8strsiz)
 
 	else if (key <= 0xD7FF || (key >= 0xE000 && key <= 0xFFFF))
 	{
+		if (utf8strsiz < 4)
+		{
+			*utf8str = 0;
+			return 0;
+		}
 		utf8str[0] = key / 4096 + 224;
 		utf8str[1] = (key % 4096) / 64 + 128;
 		utf8str[2] = key % 64 + 128;
@@ -6199,6 +6223,11 @@ int	ucs_to_utf8 (uint32_t key, char *utf8str_, size_t utf8strsiz)
 
 	else
 	{
+		if (utf8strsiz < 5)
+		{
+			*utf8str = 0;
+			return 0;
+		}
 		utf8str[0] = key / 262144 + 240;
 		utf8str[1] = (key % 262144) / 4096 + 128;
 		utf8str[2] = (key % 4096) / 64 + 128;
@@ -6847,6 +6876,483 @@ const char *	coalesce (const char *one_, ...)
 	va_end(args);
 	return one_;
 }
+
+const char *	coalesce_empty (const char *one_, ...)
+{
+	va_list	args;
+
+	va_start(args, one_);
+	while (one_ == NULL || *one_ == 0)
+		one_ = va_arg(args, const char *);
+	va_end(args);
+	return one_;
+}
+
+/*********************************************************************************/
+/* Vibe coded -- Gemini 2.5 Flash - 2025/06/07 - Copyright disclaimed - Blah blah blah */
+
+// --- next_field function (MODIFIED for backslash escape) ---
+// Function to extract the next field from the string.
+// Handles bracket-protected colons and backslash-escaped colons (\:).
+// Advances the inputptr.
+// Populates field_name and value with newly allocated strings.
+// Assigns default_field_name if no key is found.
+// Returns true on success, false if no more fields or on error.
+bool	next_field(char **inputptr, char **field_name, char **value, const char *default_field_name) {
+    if (inputptr == NULL || *inputptr == NULL || field_name == NULL || value == NULL || default_field_name == NULL) {
+        fprintf(stderr, "Error: next_field received NULL input parameters.\n");
+        if (field_name) *field_name = NULL;
+        if (value) *value = NULL;
+        return false;
+    }
+
+    // Reset output pointers
+    *field_name = NULL;
+    *value = NULL;
+
+    char *current_pos = *inputptr;
+    char *start_of_scan = current_pos; // Marks the start of the current scan iteration
+    int bracket_level = 0;
+
+    // --- Part 1: Determine the length and content of the raw field string ---
+
+    // Handle initial empty field if string starts with ':' or if there are consecutive '::'
+    if (current_pos == *inputptr && *current_pos == ':') {
+        *inputptr = current_pos + 1; // Consume the leading colon for the next field search
+        // For an empty field, field_name will be default_field_name and value will be ""
+        *field_name = strdup(default_field_name);
+        if (*field_name == NULL) {
+            perror("Failed to allocate memory for empty field parts");
+            *field_name = NULL; *value = NULL;
+            return false;
+	}
+        *value = strdup("");
+        if (*value == NULL) {
+            perror("Failed to allocate memory for empty field parts");
+            free(*field_name); // Free the one that might have been allocated
+            *field_name = NULL; *value = NULL;
+            return false;
+        }
+        return true; // Successfully processed an empty leading field
+    }
+
+    // Find the end of the field (first unescaped, un-bracketed colon)
+    size_t temp_field_len = 0; // Length of the field including escapes temporarily
+    char *copy_buffer = NULL; // Buffer to build the field string without escapes
+    size_t copy_buffer_capacity = 64; // Initial capacity, will realloc if needed
+
+    copy_buffer = (char *)malloc(copy_buffer_capacity);
+    if (copy_buffer == NULL) {
+        perror("Failed to allocate initial copy buffer");
+        return false;
+    }
+
+    while (*current_pos != '\0') {
+        if (*current_pos == '\\' && bracket_level == 0) { // Only handle escape outside brackets
+            if (*(current_pos + 1) == ':') {
+                // Found an escaped colon, treat it as literal content, skip the backslash
+                // Add ':' to the copy buffer
+                if (temp_field_len + 1 >= copy_buffer_capacity) {
+                    copy_buffer_capacity *= 2;
+                    char *new_buffer = (char *)realloc(copy_buffer, copy_buffer_capacity);
+                    if (new_buffer == NULL) {
+                        perror("Failed to reallocate copy buffer");
+                        free(copy_buffer);
+                        return false;
+                    }
+                    copy_buffer = new_buffer;
+                }
+                copy_buffer[temp_field_len++] = ':';
+                current_pos += 2; // Skip both '\' and ':'
+            } else {
+                // Other escaped characters (e.g., '\\', '\[', '\]') - keep both
+                // Add '\' to the copy buffer
+                if (temp_field_len + 1 >= copy_buffer_capacity) {
+                    copy_buffer_capacity *= 2;
+                    char *new_buffer = (char *)realloc(copy_buffer, copy_buffer_capacity);
+                    if (new_buffer == NULL) {
+                        perror("Failed to reallocate copy buffer");
+                        free(copy_buffer);
+                        return false;
+                    }
+                    copy_buffer = new_buffer;
+                }
+                copy_buffer[temp_field_len++] = *current_pos;
+                current_pos++; // Move to the character after '\'
+                 // Add the character after '\' to the copy buffer
+                if (*current_pos != '\0') {
+                    if (temp_field_len + 1 >= copy_buffer_capacity) {
+                        copy_buffer_capacity *= 2;
+                        char *new_buffer = (char *)realloc(copy_buffer, copy_buffer_capacity);
+                        if (new_buffer == NULL) {
+                            perror("Failed to reallocate copy buffer");
+                            free(copy_buffer);
+                            return false;
+                        }
+                        copy_buffer = new_buffer;
+                    }
+                    copy_buffer[temp_field_len++] = *current_pos;
+                    current_pos++;
+                }
+            }
+        } else if (*current_pos == '[') {
+            bracket_level++;
+            // Add '[' to the copy buffer
+            if (temp_field_len + 1 >= copy_buffer_capacity) {
+                copy_buffer_capacity *= 2;
+                char *new_buffer = (char *)realloc(copy_buffer, copy_buffer_capacity);
+                if (new_buffer == NULL) {
+                    perror("Failed to reallocate copy buffer");
+                    free(copy_buffer);
+                    return false;
+                }
+                copy_buffer = new_buffer;
+            }
+            copy_buffer[temp_field_len++] = *current_pos;
+            current_pos++;
+        } else if (*current_pos == ']') {
+            if (bracket_level > 0) {
+                bracket_level--;
+            }
+            // Add ']' to the copy buffer
+            if (temp_field_len + 1 >= copy_buffer_capacity) {
+                copy_buffer_capacity *= 2;
+                char *new_buffer = (char *)realloc(copy_buffer, copy_buffer_capacity);
+                if (new_buffer == NULL) {
+                    perror("Failed to reallocate copy buffer");
+                    free(copy_buffer);
+                    return false;
+                }
+                copy_buffer = new_buffer;
+            }
+            copy_buffer[temp_field_len++] = *current_pos;
+            current_pos++;
+        } else if (*current_pos == ':' && bracket_level == 0) {
+            // Found a field delimiter outside of brackets and not escaped
+            break;
+        } else {
+            // Regular character, add it to the copy buffer
+            if (temp_field_len + 1 >= copy_buffer_capacity) {
+                copy_buffer_capacity *= 2;
+                char *new_buffer = (char *)realloc(copy_buffer, copy_buffer_capacity);
+                if (new_buffer == NULL) {
+                    perror("Failed to reallocate copy buffer");
+                    free(copy_buffer);
+                    return false;
+                }
+                copy_buffer = new_buffer;
+            }
+            copy_buffer[temp_field_len++] = *current_pos;
+            current_pos++;
+        }
+    }
+
+    // Null-terminate the raw_field_str
+    if (temp_field_len >= copy_buffer_capacity) { // Ensure space for null terminator
+        char *new_buffer = (char *)realloc(copy_buffer, copy_buffer_capacity + 1);
+        if (new_buffer == NULL) {
+            perror("Failed to reallocate copy buffer for null terminator");
+            free(copy_buffer);
+            return false;
+        }
+        copy_buffer = new_buffer;
+    }
+    copy_buffer[temp_field_len] = '\0';
+    char *raw_field_str = copy_buffer; // Renaming for clarity
+
+    // Advance the inputptr for the next call
+    if (*current_pos == ':') {
+        *inputptr = current_pos + 1; // Skip the delimiter
+    } else {
+        *inputptr = current_pos; // End of string or no delimiter found
+    }
+
+    // If the raw field string is empty, check if it's due to end of string or a specific empty field.
+    if (raw_field_str[0] == '\0' && *inputptr == start_of_scan) {
+         // This condition means no characters were consumed and we are at the end of the string.
+         // This typically happens if the original inputptr was already at '\0' or at the end
+         // after processing the last field.
+         free(raw_field_str);
+         return false;
+    }
+
+
+    // --- Part 2: Parse the raw field for key and value (logic largely unchanged) ---
+
+    char *key_part = NULL;
+    char *value_part = NULL;
+    char *equals_sign = NULL;
+    int inner_bracket_level = 0;
+
+    // Find the first '=' that is not inside brackets within the raw_field_str
+    for (char *c = raw_field_str; *c != '\0'; c++) {
+        // Here, we specifically need to handle '\=' if it's within a key or value part
+        // and prevent it from being seen as an assignment operator.
+        // However, the current problem states '\:' is for field delimiters,
+        // so we'll assume '\=' should NOT escape the '=' for key/value.
+        // If '\=' should escape the equals, this parsing logic would need to change.
+        // For now, only colons are escapeable *outside* brackets.
+        if (*c == '[') {
+            inner_bracket_level++;
+        } else if (*c == ']') {
+            if (inner_bracket_level > 0) {
+                inner_bracket_level--;
+            }
+        } else if (*c == '=' && inner_bracket_level == 0) {
+            equals_sign = c;
+            break; // Found the key-value separator
+        }
+    }
+
+    if (equals_sign != NULL) {
+        // It's a key=value pair
+        size_t key_len = equals_sign - raw_field_str;
+        key_part = (char *)malloc(key_len + 1);
+        if (key_part == NULL) {
+            perror("Failed to allocate memory for key_part");
+            free(raw_field_str);
+            return false;
+        }
+        strncpy(key_part, raw_field_str, key_len);
+        key_part[key_len] = '\0';
+
+        value_part = strdup(equals_sign + 1); // Value is everything after '='
+        if (value_part == NULL) {
+            perror("Failed to allocate memory for value_part");
+            free(key_part);
+            free(raw_field_str);
+            return false;
+        }
+    } else {
+        // It's just a value, use default_field_name as the key
+        key_part = strdup(default_field_name);
+        if (key_part == NULL) {
+            perror("Failed to allocate memory for default key");
+            free(raw_field_str);
+            return false;
+        }
+        value_part = strdup(raw_field_str); // The whole raw field is the value
+        if (value_part == NULL) {
+            perror("Failed to allocate memory for value_part");
+            free(key_part);
+            free(raw_field_str);
+            return false;
+        }
+    }
+
+    // Assign the allocated strings to the output pointers
+    *field_name = key_part;
+    *value = value_part;
+
+    // Clean up the temporary raw_field_str
+    free(raw_field_str);
+
+    return true; // Successfully extracted and parsed a field
+}
+
+// --- parse_string_to_json function (UNCHANGED) ---
+cJSON *parse_string_to_json(char *input_string, const char *default_field_name) {
+    if (input_string == NULL) {
+        fprintf(stderr, "Error: parse_string_to_json received NULL input string.\n");
+        return NULL;
+    }
+    if (default_field_name == NULL) {
+        fprintf(stderr, "Error: parse_string_to_json received NULL default_field_name.\n");
+        return NULL;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        fprintf(stderr, "Error: Failed to create cJSON object.\n");
+        return NULL;
+    }
+
+    char *remaining_string = input_string;
+    char *field_name = NULL;
+    char *value = NULL;
+    int field_count = 0;
+
+    // Loop until next_field returns false (end of string or error)
+    while (next_field(&remaining_string, &field_name, &value, default_field_name)) {
+        // Increment count even for empty fields if next_field considers them valid
+        field_count++;
+
+        // Add the field_name (key) and value to the cJSON object
+        if (field_name != NULL && value != NULL) {
+            // cJSON_AddStringToObject makes copies of the strings, so it's safe
+            // to free field_name and value after this call.
+            cJSON_AddStringToObject(root, field_name, value);
+        } else {
+            // This case should ideally not be hit if next_field works correctly,
+            // as it always assigns non-NULL values to field_name and value on success.
+            fprintf(stderr, "Warning: next_field returned NULL field_name or value for field %d.\n", field_count);
+        }
+
+        // IMPORTANT: Free the memory allocated by next_field for field_name and value
+        free(field_name);
+        free(value);
+        field_name = NULL; // Reset to NULL to avoid double-free or dangling pointers
+        value = NULL;
+    }
+
+    // Handling of trailing empty field:
+    // If the string ended with a colon, `next_field` might have advanced `remaining_string` to '\0'.
+    // If the very last character of the *original* string was a colon, it implies a final empty field.
+    // We add this explicitly because the `while` loop condition might exit before processing an *implied* empty last field.
+    // This is to correctly handle inputs like "a:b:" where the last field is implicitly empty.
+    // However, with the new `next_field` handling of initial empty fields and advancing `inputptr`,
+    // this check might be partially redundant or need slight adjustment depending on the exact
+    // behavior with a single trailing colon vs. multiple empty fields.
+    // The previous implementation already handled `a:b:` creating an empty field.
+    // Let's refine this to be more robust, avoiding duplicates if `next_field` already handled it.
+    // A simpler check might be: if the `remaining_string` is empty AND the last character was a colon
+    // AND `next_field` did not return a field in the last iteration that accounted for it.
+    // Given the new `next_field` behavior, `a:b:` should result in `b` then a final empty field.
+    // So the explicit trailing empty field handling for the JSON might be too aggressive or redundant now.
+    // Let's remove the complex trailing check and trust the new `next_field` behavior.
+    // It should produce an empty field when `inputptr` is at a colon.
+
+    // A simpler check to ensure a final empty field if `input_string` ends with ':' and isn't just an empty string:
+    if (input_string[0] != '\0' && input_string[strlen(input_string) - 1] == ':') {
+        // If the last character was a colon, and the string wasn't initially empty,
+        // and we haven't already added a final field for it, add one.
+        // This is a safety net for cases like "a:" which should yield "a" and then an empty field.
+        // `next_field` handles `::` correctly as two empty fields.
+        // The issue is whether `next_field` returns `true` for a final implied empty field.
+        // With `next_field` modified to handle `current_pos == *inputptr && *current_pos == ':'`,
+        // it should pick up an empty field if `remaining_string` is `""` due to a trailing colon.
+        // Let's rely on the `next_field`'s `if (current_pos == *inputptr && *current_pos == ':')` logic.
+        // The current loop should correctly iterate through `a:b:` and add 3 fields.
+        // The `if (raw_field_str[0] == '\0' && *inputptr == start_of_scan)` block handles the "no more data" case.
+        // The `if (current_pos == *inputptr && *current_pos == ':')` handles empty fields.
+        // So, the explicit `if (*remaining_string == '\0' ...)` in `parse_string_to_json` might indeed be removed.
+
+        // Re-evaluating the trailing colon for JSON output:
+        // Consider "a:b:".
+        // 1. next_field("a:b:") -> field_name="UNNAMED_FIELD", value="a", remaining="b:"
+        // 2. next_field("b:")   -> field_name="UNNAMED_FIELD", value="b", remaining=""
+        // 3. next_field("")     -> This is where it gets tricky.
+        //    My `next_field`'s `if (current_pos == *inputptr && *current_pos == ':')` block would not be hit.
+        //    The `if (raw_field_str[0] == '\0' && *inputptr == start_of_scan)` would likely return `false`.
+        //    This means a trailing empty field from `a:b:` would *not* be added.
+
+        // So, we DO need explicit handling for the *last* empty field if `input_string` ends with a colon.
+        // Let's reinstate a more robust trailing empty field check.
+        // This check should only apply if the string was non-empty and indeed ended with a colon.
+        if (input_string[0] != '\0' && input_string[strlen(input_string) - 1] == ':' && field_count > 0) {
+            // We need to add one more empty field. Ensure unique key.
+            char empty_field_key[64];
+            // Use the base default_field_name to avoid key conflicts, appending an index
+            snprintf(empty_field_key, sizeof(empty_field_key), "%s_%d", default_field_name, ++field_count);
+            cJSON_AddStringToObject(root, empty_field_key, ""); // Empty string value
+        }
+    }
+
+
+    return root;
+}
+
+#if 0
+// --- Main function (UNCHANGED - just using new test cases) ---
+int main() {
+    // Define a default field name
+    const char *default_field_name = "UNNAMED_FIELD";
+
+    // Test cases with backslash escapes
+    char test_string_backslash1[] = "field1\\:value:[complex:value]:field3";
+    char test_string_backslash2[] = "key\\=value:another_field:key2=\\[value:with=equals\\]"; // Test \=, \[, \] literal
+    char test_string_backslash3[] = "field_with_escaped_colon\\:and_more:last_field";
+    char test_string_backslash4[] = "\\:leading_escaped_colon:middle\\::trailing\\:";
+    char test_string_backslash5[] = "a:b\\::c"; // b\:: is one field
+    char test_string_backslash6[] = "no_escape_still_works";
+    char test_string_backslash7[] = "test\\\\backslash:test\\[bracket:test\\]bracket"; // Test literal backslash, bracket escapes (though brackets protect anyway)
+    char test_string_backslash8[] = "field_ending_with_backslash\\:"; // This should be a field with a trailing colon
+    char test_string_backslash9[] = "literal_backslash\\\\:next_field";
+    char test_string_backslash10[] = "a:b\\:c:d"; // `b:c` is one field due to escape
+    char test_string_backslash11[] = "just_one_field_with_escaped_colon\\:val";
+    char test_string_backslash12[] = "key=value\\:with\\:colon"; // Escaped colons within value
+
+    cJSON *json_obj = NULL;
+    char *json_string_pretty = NULL;
+
+    printf("--- Generating JSON from test cases with backslash escapes ---\n\n");
+
+    // Helper macro for testing
+    #define RUN_TEST_CASE(str) \
+        printf("Input: \"%s\"\n", str); \
+        json_obj = parse_string_to_json(str, default_field_name); \
+        if (json_obj) { \
+            json_string_pretty = cJSON_Print(json_obj); \
+            printf("JSON Output:\n%s\n", json_string_pretty); \
+            cJSON_Delete(json_obj); \
+            free(json_string_pretty); \
+        } else { \
+            printf("JSON Output: (NULL - Parsing failed)\n"); \
+        } \
+        printf("\n");
+
+    RUN_TEST_CASE(test_string_backslash1);
+    RUN_TEST_CASE(test_string_backslash2);
+    RUN_TEST_CASE(test_string_backslash3);
+    RUN_TEST_CASE(test_string_backslash4);
+    RUN_TEST_CASE(test_string_backslash5);
+    RUN_TEST_CASE(test_string_backslash6);
+    RUN_TEST_CASE(test_string_backslash7);
+    RUN_TEST_CASE(test_string_backslash8);
+    RUN_TEST_CASE(test_string_backslash9);
+    RUN_TEST_CASE(test_string_backslash10);
+    RUN_TEST_CASE(test_string_backslash11);
+    RUN_TEST_CASE(test_string_backslash12);
+
+    // Re-test previous non-backslash cases to ensure no regressions
+    char test_string1[] = "field1:[complex:value]:field3";
+    char test_string2[] = "[key=value:with:colon]:another_field:key2=[value:with=equals]";
+    char test_string3[] = "simple:another:yet_another";
+    char test_string4[] = "[only_one_field:with:colon]";
+    char test_string5[] = "::empty_leading:empty_middle::empty_trailing:";
+    char test_string6[] = "key=value:just_value:another_key=[another_value:with:colon]";
+    char test_string7[] = "no_colon_at_all";
+    char test_string8[] = "[unclosed_bracket:";
+    char test_string9[] = "[:]:a:b"; // Empty field in brackets - means value is ""
+    char test_string10[] = "a:b:c"; // Basic test
+    char test_string11[] = "a::c"; // Empty middle field
+    char test_string12[] = ":a:b"; // Leading empty field
+    char test_string13[] = "a:b:"; // Trailing empty field
+    char test_string14[] = "key=[value:with=equals:and_colon]:next_field"; // Key with bracketed value, complex
+    char test_string15[] = "k=[v]:just_v";
+    char test_string16[] = ""; // Empty input string
+    char test_string17[] = ":"; // Single empty field
+    char test_string18[] = "k=:v"; // Empty value
+    char test_string19[] = "=v"; // Empty key
+
+    printf("--- Re-testing original cases for regression ---\n\n");
+    RUN_TEST_CASE(test_string1);
+    RUN_TEST_CASE(test_string2);
+    RUN_TEST_CASE(test_string3);
+    RUN_TEST_CASE(test_string4);
+    RUN_TEST_CASE(test_string5);
+    RUN_TEST_CASE(test_string6);
+    RUN_TEST_CASE(test_string7);
+    RUN_TEST_CASE(test_string8);
+    RUN_TEST_CASE(test_string9);
+    RUN_TEST_CASE(test_string10);
+    RUN_TEST_CASE(test_string11);
+    RUN_TEST_CASE(test_string12);
+    RUN_TEST_CASE(test_string13);
+    RUN_TEST_CASE(test_string14);
+    RUN_TEST_CASE(test_string15);
+    RUN_TEST_CASE(test_string16);
+    RUN_TEST_CASE(test_string17);
+    RUN_TEST_CASE(test_string18);
+    RUN_TEST_CASE(test_string19);
+    RUN_TEST_CASE(NULL); // Test null input
+
+    return 0;
+}
+#endif
+
+/* End vibe coding */
+/*********************************************************************************/
 
 
 /*********************************************************************************/

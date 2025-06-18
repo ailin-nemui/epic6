@@ -55,7 +55,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3061;
+const unsigned long	commit_id = 3062;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -784,7 +784,7 @@ static	void	parse_args (int argc, char **argv)
 		exit(1);
 	}
 
-	if (!check_nickname(nickname, 1))
+	if (!check_nickname(nickname))
 	{
 		fprintf(stderr, "Invalid nickname: [%s]\n", nickname);
 		fprintf(stderr, "Please restart EPIC with a valid nickname\n");

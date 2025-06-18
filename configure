@@ -5244,60 +5244,6 @@ esac
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether your compiler supports -Wno-unused-parameter" >&5
-printf %s "checking whether your compiler supports -Wno-unused-parameter... " >&6; }
-old_cflags="$CFLAGS"
-CFLAGS="$CFLAGS -Wno-unused-parameter"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-int
-main (void)
-{
- return 0;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-else case e in #(
-  e) { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-	CFLAGS="$old_cflags" ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether your compiler supports -Wno-unused-function" >&5
-printf %s "checking whether your compiler supports -Wno-unused-function... " >&6; }
-old_cflags="$CFLAGS"
-CFLAGS="$CFLAGS -Wno-unused-function"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-int
-main (void)
-{
- return 0;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-else case e in #(
-  e) { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-	CFLAGS="$old_cflags" ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-
 
 
 

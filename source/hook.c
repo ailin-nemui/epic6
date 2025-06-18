@@ -662,7 +662,7 @@ static int show_list (int which)
 	return (cnt);
 }
 
-static int show_all_numerics (int numeric)
+static int show_all_numerics (void)
 {
 	int	cnt = 0;
 	int	tot = 0;
@@ -1162,7 +1162,7 @@ BUILT_IN_COMMAND(oncmd)
 			 * trying to register the hook, then they've already
 			 * gotten the error message, just return;
 			 */
-			if (new_new_next_arg_count(args, &args, &type, 1))
+			if (new_new_next_arg_count(args, &args, &type))
 				return;
 
 			/*
@@ -1214,7 +1214,7 @@ BUILT_IN_COMMAND(oncmd)
 		/*
 		 * Grab the "nick"
 		 */
-		if ((nick = new_new_next_arg_count(args, &args, &type, 1)))
+		if ((nick = new_new_next_arg_count(args, &args, &type)))
 		{
 			char *exp;
 
@@ -1374,7 +1374,7 @@ BUILT_IN_COMMAND(oncmd)
 			 */
 			if (!strcmp(func, "0"))
 			{
-				if (!show_all_numerics(0))
+				if (!show_all_numerics())
 				    say("All numeric ON lists are empty.");
 			}
 			else if (!show_list(which))

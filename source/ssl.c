@@ -319,7 +319,7 @@ void	set_ssl_ciphers (void *stuff)
  *	The global SSL_CTX you can use with an SSL connection.
  *	You _!*!_MUST NOT_!*!_ call SSL_CTX_free() on the return value later!
  */
-static SSL_CTX	*SSL_CTX_init (int server)
+static SSL_CTX	*SSL_CTX_init (int __U(server))
 {
 	if (ctx != NULL)
 		return ctx;
@@ -635,7 +635,7 @@ int	ssl_write (int fd, const void *data, size_t len)
  *	-1 / EINVAL -- The fd is not set up for ssl.
  *	Anything else -- The final return value of SSL_read().
  */
-int	ssl_read (int fd, int quiet, int revents)
+int	ssl_read (int fd, int __U(quiet), int __U(revents))
 {
 	ssl_info *x;
 	int	c;
@@ -682,7 +682,7 @@ int	ssl_read (int fd, int quiet, int revents)
 	return c;
 }
 
-int	ssl_connect (int fd, int quiet, int revents)
+int	ssl_connect (int fd, int __U(quiet), int __U(revents))
 {
 	ssl_info *	x;
 	int		errcode;

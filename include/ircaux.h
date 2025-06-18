@@ -51,7 +51,7 @@ struct metric_time {
 	char *  malloc_vsprintf		(char **, const char *, va_list);
 
 	/* - - - - Functions dealing with irc things - - - - */
-	char *	check_nickname 		(char *, int);
+	char *	check_nickname 		(char *);
 	int	figure_out_address	(const char *, char **, char **, char **);
 
 	/* - - - - Functions dealing with ircII syntax - - - - */
@@ -64,7 +64,7 @@ struct metric_time {
 
 	/* - - - - Functions dealing with words - - - - */
 	char *  universal_next_arg_count (char *, char **, int, int, int, const char *);
-	char *	new_new_next_arg_count 	(char *, char **, char *, int);
+	char *	new_new_next_arg_count 	(char *, char **, char *);
 	char *	last_arg 		(char **, int);
 	int	split_args		(char *, char **to, size_t);
 	int	split_wordlist 		(char *, char ***, int);
@@ -82,6 +82,9 @@ struct 	epic_loadfile *	uzfopen 	(char **, const char *, int, struct stat *);
 #if 0
 	int	isdir2			(const char *, const void * const);
 #endif
+
+	bool next_field(char **inputptr, char **field_name, char **value, const char *default_field_name);
+
 
 	/* - - - - - - */
 #define my_isspace(x) isspace(x)

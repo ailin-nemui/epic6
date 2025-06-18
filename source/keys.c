@@ -142,7 +142,7 @@ static List *	find_binding 		(const char *name) ;
 static void	key_exec 		(Key *key);
 static void	key_exec_bt 		(Key *);
 static void *	timeout_keypress 	(void *, Timespec);
-static int	do_input_timeouts	(void *ignored);
+static int	do_input_timeouts	(void *__U(ignored));
 
 static Key *	construct_keymap 	(Key *);
 static int	clean_keymap 		(Key *);
@@ -752,7 +752,7 @@ static void *	timeout_keypress (void *lastp, Timespec pressed)
  * Return Value:
  *	This function returns 0, which is ignored by the TIMER system.
  */
-static int	do_input_timeouts (void *ignored)
+static int	do_input_timeouts (void *__U(ignored))
 {
 	int	oldscreen = last_input_screen;
 	int 	server = from_server;

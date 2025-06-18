@@ -400,7 +400,7 @@ size_t	slurp_elf_file (struct epic_loadfile *elf, char **file_contents, off_t *f
 	return next_byte;
 }
 
-int	string_feof(const char *file_contents, off_t file_contents_size)
+int	string_feof(const char *__U(file_contents), off_t file_contents_size)
 {
 	if (file_contents_size > 0)
 		return 0;

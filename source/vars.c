@@ -1257,7 +1257,7 @@ static	void	set_mangle_display (void *stuff)
  * Several /SETs change what appears on the status bar, so update_all_status()
  * recalculates the status bar and updates it
  */
-static void	update_all_status_wrapper (void *stuff)
+static void	update_all_status_wrapper (void *__U(stuff))
 {
 	update_all_status();
 }
@@ -1265,7 +1265,7 @@ static void	update_all_status_wrapper (void *stuff)
 /*
  * update_all_windows_wrapper - call update_all_windows() from a /SET callback
  */
-static void	update_all_windows_wrapper (void *stuff)
+static void	update_all_windows_wrapper (void *__U(stuff))
 {
 	need_redraw = 1;
 }

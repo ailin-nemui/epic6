@@ -9,6 +9,7 @@ int main (int argc, char **argv)
 	int	count = 0;
 	int	byte;
 
+	(void)argc;
 	printf("const char %s[] = {", argv[1]);
 	while ((byte = getchar()) != EOF)
 	{

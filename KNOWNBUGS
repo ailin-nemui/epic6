@@ -268,3 +268,14 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Add comments, move functions, refactors in parse.c
 * Reorganize/refactor newio.c.  Fixed a bug rb wcarson along the way!
 * Fix off-by-one error (rb fro)
+* Remove -Wno-unused-parameter and -Wno-unused-function warnings
+* Mostly, this entails adding __attribute__((unused)) to a lot of things.
+* Although I did find a few problems here and there.
+* Add (vibe) code to parse out the server descriptions, WIP for now.
+* Convert A005 data structure to "OPTION" data, shoehorn 005s into it.
+* This will lead to storing CAPs in there eventually
+* Start fussing around with ServerInfo data structure...
+* Fix bugs found by clang static analyzer.
+* Fix /whois without arg (rb wcarson, fudd)
+* Add $serverctl(RESET <x>) for znc resets (for wcarson)
+

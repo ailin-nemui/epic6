@@ -202,10 +202,12 @@ static	void	list_var_alias     (const char *name);
 static	void	list_local_alias   (const char *name);
 static	void 	destroy_cmd_aliases    (alist *);
 static	void 	destroy_var_aliases    (alist *);
+#if 0
 static	void 	destroy_builtin_commands    (alist *);
 static	void 	destroy_builtin_functions   (alist *);
 static	void 	destroy_builtin_variables   (alist *);
 static	void 	destroy_builtin_expandos    (alist *);
+#endif
 
 
 static	char *	get_variable_with_args (const char *str, const char *args);
@@ -1873,6 +1875,7 @@ static void	list_cmd_alias (const char *orig_name)
 	new_free(&name);
 }
 
+#if 0
 static void	list_builtin_commands (const char *orig_name)
 {
 }
@@ -1888,6 +1891,7 @@ static void	list_builtin_expandos (const char *orig_name)
 static void	list_builtin_variables (const char *orig_name)
 {
 }
+#endif
 
 /************************* UNLOADING SCRIPTS ************************/
 static void	unload_cmd_alias (const char *package)
@@ -1928,6 +1932,7 @@ static void	unload_var_alias (const char *package)
 	}
 }
 
+#if 0
 static void	unload_builtin_commands (const char *filename)
 {
 }
@@ -1943,6 +1948,7 @@ static	void	unload_builtin_expandos (const char *filename)
 static	void	unload_builtin_variables (const char *filename)
 {
 }
+#endif
 
 /* * */
 /*
@@ -1950,7 +1956,7 @@ static	void	unload_builtin_variables (const char *filename)
  *
  * Updated as per get_subarray_elements.
  */
-char **	glob_cmd_alias (const char *name, int *howmany, int maxret, int start, int rev)
+char **	glob_cmd_alias (const char *__U(name), int *__U(howmany), int __U(maxret), int __U(start), int __U(rev))
 {
 	int	pos, max;
 	int    	cnt;
@@ -1998,7 +2004,7 @@ char **	glob_cmd_alias (const char *name, int *howmany, int maxret, int start, i
  *
  * Updated as per get_subarray_elements.
  */
-char **	glob_assign_alias (const char *name, int *howmany, int maxret, int start, int rev)
+char **	glob_assign_alias (const char *__U(name), int *__U(howmany), int __U(maxret), int __U(start), int __U(rev))
 {
 	int	pos, max;
 	int    	cnt;
@@ -2236,6 +2242,7 @@ static	void	destroy_var_aliases (alist *my_alist)
 	}
 }
 
+#if 0
 static	void	destroy_builtin_commands (alist *my_alist)
 {
 	int cnt = 0;
@@ -2319,6 +2326,7 @@ static	void	destroy_builtin_variables (alist *my_alist)
 		    return;
 	}
 }
+#endif
 
 /******************* RUNTIME STACK SUPPORT **********************************/
 

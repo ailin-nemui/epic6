@@ -1248,7 +1248,7 @@ void	term_beep (void)
 	}
 }
 
-void	set_automargin_override (void *stuff)
+void	set_automargin_override (void *__U(stuff))
 {
 	if (dumb_mode)
 		return;
@@ -1503,6 +1503,7 @@ void	term_scroll (int top, int bot, int n)
 		tputs_x(final);
 }
 
+#if 0
 /*
  * term_getsgr(int opt, int fore, int back)
  * Return the string required to set the given mode. OPT defines what
@@ -1540,7 +1541,7 @@ void	term_scroll (int top, int bot, int n)
  * 14   - bright cyan (foreground only)
  * 15   - bright white (foreground only)
  */
-const char *	term_getsgr (int opt, int fore, int back)
+const char *	term_getsgr (int opt, int fore, int __U(back))
 {
 	const char *ret = empty_string;
 
@@ -1574,6 +1575,7 @@ const char *	term_getsgr (int opt, int fore, int back)
 	}
 	return (ret);
 }
+#endif
 
 static char *	control_mangle (char *text)
 {

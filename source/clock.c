@@ -139,7 +139,7 @@ static	long	last_milliday;
 	}
 }
 
-void	reset_clock (void *stuff)
+void	reset_clock (void *__U(stuff))
 {
 	const char *	sclock;
 
@@ -167,7 +167,7 @@ void	clock_systimer (void)
 	reset_clock(NULL);
 }
 
-void    set_clock_interval (void *stuff)
+void    set_clock_interval (void *__U(stuff))
 {
 	update_system_timer(clock_timeref);	/* XXX Oh heck, why not? */
 }
@@ -183,7 +183,7 @@ void     set_clock_format (void *stuff)
         reset_clock(NULL);
 }
 
-void	my_set_clock (void *stuff)
+void	my_set_clock (void *__U(stuff))
 {
 	update_system_timer(clock_timeref);
 	update_all_status();

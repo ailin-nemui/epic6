@@ -306,12 +306,14 @@ static	int	get_invisible_window 		(const char *name, char **args);
 static	int 	get_number 			(const char *name, char **args, int *var);
 static	int 	get_boolean 			(const char *name, char **args, short *var);
 static	int	new_search_term 		(const char *arg);
+#if 0
 static	void	update_scrollback_indicator 	(int window_);
 static	void	remove_scrollback_indicator 	(int window_);
 static	void	window_indicator_is_visible 	(int window_);
 static	void	cleanse_indicator 		(int window_);
 static	void	indicator_needs_update 		(int window_);
 static	void	go_back_to_indicator 		(int window_);
+#endif
 static	void 	delete_display_line 		(Display *stuff);
 static	Display *new_display_line 		(Display *prev, int window_);
 static	int	add_to_display 			(int window_, const char *str, intmax_t refnum);
@@ -325,7 +327,9 @@ static	void 	window_scrollback_forwards_lines (int window_, int my_lines);
 static	int	window_scroll_regex_tester 	(int window_, Display *line, void *meta);
 static	void 	window_scrollback_to_string 	(int window_, regex_t *preg);
 static	void 	window_scrollforward_to_string 	(int window_, regex_t *preg);
+#if 0
 static	int	window_scroll_time_tester 	(int window_, Display *line, void *meta);
+#endif
 static	void	window_scrollback_start 	(int window_);
 static	void	window_scrollback_end 		(int window_);
 static	void	window_scrollback_forward 	(int window_);
@@ -4999,7 +5003,7 @@ static int 	get_boolean (const char *name, char **args, short *var)
 }
 
 /* * * * * * * * * * * WINDOW OPERATIONS * * * * * * * * * */
-#define WINDOWCMD(x) static int windowcmd_ ## x (int refnum, char **args)
+#define WINDOWCMD(x) static int windowcmd_ ## x (int refnum __attribute__((unused)), char **args __attribute__((unused)))
 #define EXT_WINDOWCMD(x) int windowcmd_ ## x (int refnum, char **args)
 
 /*
@@ -7791,6 +7795,7 @@ WINDOWCMD(search_forward)
 	return refnum;
 }
 
+#if 0
 static	int	last_scroll_seconds_interval = 0;
 
 WINDOWCMD(scroll_seconds)
@@ -7827,7 +7832,6 @@ WINDOWCMD(scroll_seconds)
 	return refnum;
 }
 
-#if 0
 WINDOWCMD(scroll_toseconds)
 {
 	int	val;
@@ -8509,6 +8513,7 @@ BUILT_IN_COMMAND(windowcmd)
 }
 
 /************************** INDICATOR MAINTAINANCE **************************/
+#if 0
 /*
  * update_scrollback_indicator puts the scrollback indicator after the last 
  * line that is visible on the screen right now.  
@@ -8568,6 +8573,7 @@ static void	indicator_needs_update (int window_)
 static void	go_back_to_indicator (int window_)
 {
 }
+#endif
 
 /********************** SCROLLBACK BUFFER MAINTAINANCE **********************/
 /* 
@@ -9142,7 +9148,7 @@ static void	window_scrollback_forwards (int window_, int skip_lines, int abort_i
  * A scrollback tester that counts off the number of lines to move.
  * Returns -1 when the count has been reached.
  */
-static	int	window_scroll_lines_tester (int window_, Display *line, void *meta)
+static	int	window_scroll_lines_tester (int __U(window_), Display *__U(line), void *meta)
 {
 	if (*(int *)meta > 0)
 	{
@@ -9221,6 +9227,7 @@ static void 	window_scrollforward_to_string (int window_, regex_t *preg)
 }
 
 /* * * */
+#if 0
 /*
  * A scrollback tester that looks for the final line that is newer than the
  * given time.
@@ -9241,6 +9248,7 @@ static	int	window_scroll_time_tester (int window_, Display *line, void *meta)
 
 	return 0;	/* Keep going */
 }
+#endif
 
 /* * * */
 /*
@@ -10191,7 +10199,7 @@ int     set_window_lastlog_size_incr    (int window)
 
 static	int	list_check = 1;
 
-static int	set_window_list_check		(int window, int value)
+static int	set_window_list_check		(int __U(window), int value)
 {
 	int	old_value = list_check;
 

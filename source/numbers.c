@@ -1644,7 +1644,7 @@ END:
 }
 
 
-static void	add_user_who (int refnum, const char *from, const char *comm, const char **ArgList)
+static void	add_user_who (int refnum, const char *from, const char *__U(comm), const char **ArgList)
 {
 	const char 	*channel, *user, *host, /* *server, */ *nick;
 	size_t	size;
@@ -1667,7 +1667,7 @@ static void	add_user_who (int refnum, const char *from, const char *comm, const 
 	add_userhost_to_channel(channel, nick, refnum, uh);
 }
 
-static void	add_user_end (int refnum, const char *from, const char *comm, const char **ArgList)
+static void	add_user_end (int refnum, const char *from, const char *__U(comm), const char **ArgList)
 {
 	char *	copy;
 	char *	channel;

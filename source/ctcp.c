@@ -143,7 +143,7 @@ static int	lookup_ctcp (const char *name)
  * are always prototyped correctly.
  */
 #define CTCP_HANDLER(x) \
-static char * x (const char *from, const char *to, const char *cmd, char *args)
+static char * x (const char *__U(from), const char *__U(to), const char *__U(cmd), char *__U(args))
 
 static	void	add_ctcp (const char *name, int flag, const char *desc, CTCP_Handler func, CTCP_Handler repl, const char *user_func, const char *user_repl)
 {

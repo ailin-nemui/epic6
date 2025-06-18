@@ -129,6 +129,8 @@ typedef struct
 static cJSON_bool	cJSON_ParseValue (cJSON * item, cJSON_Parser *);
 
 /* * * * */
+/* I do not currently have a use case for this */
+#if 0
 static	cJSON_bool	cJSON_IsInt (double value)
 {
 	double	a;
@@ -139,6 +141,7 @@ static	cJSON_bool	cJSON_IsInt (double value)
 			return true_;
         return false_;
 }
+#endif
 
 /* Parse the input text to generate a number, and populate the result into item. */
 static cJSON_bool	cJSON_ParseNumber (cJSON *item, cJSON_Parser *input_buffer)
@@ -1044,6 +1047,8 @@ static cJSON_bool	compare_double (double a, double b)
 	return (fabs(a - b) <= maxVal * DBL_EPSILON);
 }
 
+/* I do not currently have a use case for this */
+#if 0
 static	cJSON_bool	is_double_an_int (double a1)
 {
 	double	a2;
@@ -1053,6 +1058,7 @@ static	cJSON_bool	is_double_an_int (double a1)
 		return true_;
 	return false_;
 }
+#endif
 
 
 /* Render the number nicely from the given item into a string. */

@@ -200,8 +200,10 @@ Karll on IRC
 #include "functions.h"
 #include "words.h"
 #include "reg.h"
+#if 0
 #undef BUILT_IN_FUNCTION
 #define BUILT_IN_FUNCTION(x, y) char * x (char * y)
+#endif
 #undef index			/* doh! */
 
 #define ARRAY_THRESHOLD	10

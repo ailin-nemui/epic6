@@ -700,8 +700,8 @@ BUILT_IN_COMMAND(e_nick)
  * and the key is accepted.  Thats probably not right, ill work on that.
  */
 static	int	e_pause_cb_throw = 0;
-static	void	e_pause_cb (const char *u1, const char *u2) { e_pause_cb_throw--; }
-static int e_pause_callback (void *ignored) { return 0; }
+static	void	e_pause_cb (const char *__U(u1), const char *__U(u2)) { e_pause_cb_throw--; }
+static int e_pause_callback (void *__U(ignored)) { return 0; }
 BUILT_IN_COMMAND(e_pause)
 {
 	char *		sec;
@@ -1803,14 +1803,14 @@ BUILT_IN_COMMAND(load)
 }
 
 /* The "WHICH" loader */
-static void	loader_which (const char *file_contents, off_t file_contents_size, const char *filename, const char *subargs, struct load_info *loadinfo)
+static void	loader_which (const char *__U(file_contents), off_t __U(file_contents_size), const char *filename, const char *__U(subargs), struct load_info *loadinfo)
 {
 	loadinfo->loader = "which";
 	yell("%s", filename);
 }
 
 /* The "Standard" (legacy) loader */
-static void	loader_std (const char *file_contents, off_t file_contents_size, const char *filename, const char *subargs, struct load_info *loadinfo)
+static void	loader_std (const char *file_contents, off_t file_contents_size, const char *filename, const char *__U(subargs), struct load_info *loadinfo)
 {
 	int	in_comment, comment_line, no_semicolon;
 	int	paste_level, paste_line;
@@ -2139,7 +2139,7 @@ static void	loader_std (const char *file_contents, off_t file_contents_size, con
  * and is "signficantly" faster than the standard loader.  This can be a 
  * big win for large scripts.
  */
-static void	loader_pf (const char *file_contents, off_t file_contents_size, const char *filename, const char *subargs, struct load_info *loadinfo)
+static void	loader_pf (const char *file_contents, off_t file_contents_size, const char *__U(filename), const char *subargs, struct load_info *loadinfo)
 {
 	char *	buffer;
 	int	bufsize, pos;

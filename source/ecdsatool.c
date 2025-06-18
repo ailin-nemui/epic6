@@ -50,8 +50,10 @@ static char *		tool_verify			(int argc, char *argv[]);
 
 static	ecdsa_key_t *	ecdsa_key__new          	(void);
 static	ecdsa_key_t *	ecdsa_key__load         	(const char *);
+#if 0
 static	ecdsa_key_t *	ecdsa_key__from_pubkey  	(char *, size_t);
 static	ecdsa_key_t *	ecdsa_key__from_base64_pubkey   (const char *);
+#endif
 static	void		ecdsa_key__free         	(ecdsa_key_t **);
 static	size_t		ecdsa_key__public_key_length    (ecdsa_key_t *);
 static	char *		ecdsa_key__public_key_blob      (ecdsa_key_t *);
@@ -108,7 +110,7 @@ BUILT_IN_FUNCTION(function_ecdsatool, args)
 }
 
 /* * */
-static char *	tool_keygen (int argc, char *argv[])
+static char *	tool_keygen (int __U(argc), char *argv[])
 {
 	FILE *		pubout;
 	ecdsa_key_t *	key;
@@ -132,12 +134,14 @@ static char *	tool_keygen (int argc, char *argv[])
 	if ((fileno_ = fileno(pubout)) < 0)
 	{
 		say("ecdsatool keygen: fileno() failed on %s: %s", argv[1], strerror(errno));
+		fclose(pubout);
 		RETURN_EMPTY;
 	}
 
 	if (fchmod(fileno_, S_IRUSR) < 0)
 	{
 		say("ecdsatool keygen: fchmod() failed on %s: %s", argv[1], strerror(errno));
+		fclose(pubout);
 		RETURN_EMPTY;
 	}
 
@@ -149,7 +153,7 @@ static char *	tool_keygen (int argc, char *argv[])
 	return pubkey;
 }
 
-static char *	tool_pubkey (int argc, char *argv[])
+static char *	tool_pubkey (int __U(argc), char *argv[])
 {
 	ecdsa_key_t *	key;
 	char *		pubkey;
@@ -302,6 +306,7 @@ static	ecdsa_key_t *	ecdsa_key__load (const char *filename)
 	if (check_permissions(in, S_IFREG|S_IRUSR))
 	{
 		say("ecdsatool: load_key: file %s had insecure permissions - not loaded", filename);
+		fclose(in);
 		return NULL;
 	}
 
@@ -318,6 +323,8 @@ static	ecdsa_key_t *	ecdsa_key__load (const char *filename)
 	return key;
 }
 
+/* I do not currently have use cases for these */
+#if 0
 /*
  * Deserialize a raw public key.
  */
@@ -354,6 +361,7 @@ static	ecdsa_key_t *	ecdsa_key__from_base64_pubkey (const char *keydata)
 	new_free(&workbuf);
 	return retval;
 }
+#endif
 
 /*
  * Free an ECC key.

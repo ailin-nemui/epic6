@@ -54,6 +54,7 @@
 #include "vars.h"
 #include "newio.h"
 #include "reg.h"
+#include "cJSON.h"
 
 /************************ SERVERLIST STUFF ***************************/
 
@@ -140,8 +141,8 @@ static	void	set_server_vhost (int servref, const char * param );
 static	void	set_server_itsname (int servref, const char * param );
 static	void	set_server_state (int servref, int param );
 static	void 	got_my_userhost (int refnum, UserhostItem *item, const char *nick, const char *stuff);
-static	void	make_005 (int refnum);
-static	void	destroy_005 (int refnum);
+static	void	make_options (int refnum);
+static	void	destroy_options (int refnum);
 static 	int	server_addrs_left (int refnum);
 static const char *	get_server_type (int servref);
 static	int	get_server_accept_cert (int refnum);
@@ -149,6 +150,8 @@ static	void	set_server_accept_cert (int refnum, int val);
 static	char *  get_my_fallback_userhost (void);
 static	void	set_server_server_type (int servref, const char * param );
 static void    set_server_port (int refnum, int port);
+
+
 
 
 /*
@@ -245,7 +248,6 @@ int	clear_serverinfo (ServerInfo *s)
 	s->cert = NULL;
 	s->freestr = NULL;		/* XXX ? */
 	s->fulldesc = NULL;		/* XXX ? */
-	s->clean = 1;
 	return 0;
 }
 
@@ -253,7 +255,7 @@ int	clear_serverinfo (ServerInfo *s)
  * --
  * A old-style "server description" looks like:
  *
- *   host:port:passwd:nick:group:type
+ *   host:port:passwd:nick:group:type:proto:vhost:cert
  *
  * 'host'     is a hostname, or an ipv4 p-addr ("192.168.0.1")
  *            or an ipv6 p-addr in square brackets ("[01::01]")
@@ -261,8 +263,8 @@ int	clear_serverinfo (ServerInfo *s)
  * 'passwd'   is the protocol passwd to log onto the server (usually blank)
  * 'nick'     is the nickname you want to use on this server
  * 'group'    is the server group this server belongs to
- * 'tls'      is whether you want to connect to the server with tls (or not)
- * 'family'   is the socket family, either 'tcp4' or 'tcp6' or neither.
+ * 'type'     is the type (ugh) -- IRC or IRC-SSL
+ * 'proto'    is the socket family, either 'tcp4' or 'tcp6' or neither.
  * 'vhost'    is the virtual hostname to use for this connection.
  * 'cert'     is the local certificate file (PEM) to use for SSL
  *
@@ -274,23 +276,21 @@ int	clear_serverinfo (ServerInfo *s)
  * A new-style server description is a colon separated list of values:
  *
  *   host=HOST	            port=PORTNUM   pass=PASSWORD 
- *   nick=NICK              group=GROUP    tls=YES|NO|AUTO
+ *   nick=NICK              group=GROUP    
  *   family=ipv4|ipv6|auto  vhost=HOST     cert=/path/to/file.pem
  *
  * for example:
- *	host=irc.server.com:group=efnet:tls=yes:cert=~/.certs/network.pem
+ *	host=irc.server.com:group=efnet:cert=~/.certs/network.pem
  * 
  * The command type ("host", "port") can be abbreviated as long as it's
  * not ambiguous:
- *	h=irc.server.com:po=6666:g=efnet:t=IRC-SSL
+ *	h=irc.server.com:po=6666:g=efnet:type=IRC
  *
  * --
  * You can mix and match (sort of) the types, but if the meaning of any
  * field that doesn't have a descriptor follows whatever was in the previous
  * field.  
  *	 irc.server.com:group=efnet:IRC-SSL
- *
- *   1. The default "port" depends on the value of "tls".
  *
  * XXX This should all be done with json instead of fields like this.
  */
@@ -314,6 +314,7 @@ enum serverinfo_fields { HOST, PORT, PASS, NICK, GROUP, TYPE, PROTO, VHOST, CERT
  *	cannot use the temporary serverinfo after the source 'str' goes out
  *	of scope!  You MUST call preserve_serverinfo() if you want to keep
  *	the serverinfo!
+ *
  * Return value:	
  *	This function returns 0
  */
@@ -326,9 +327,6 @@ int	str_to_serverinfo (char *str, ServerInfo *s)
 
 	if (!str)
 		panic(1, "str_to_serverinfo: str == NULL");
-
-	if (!s->clean)
-		panic(1, "str_to_serverinfo: serverinfo is not clean!");
 
 	/*
 	 * As a shortcut, we allow the string to be a number,
@@ -421,8 +419,6 @@ int	str_to_serverinfo (char *str, ServerInfo *s)
 		   * 		/server 0:group=efnet 
 		   *    or      /server efnet:type=irc-ssl
 		   */
-		  if (s->clean)
-		  {
 		    if (*descstr == '[')
 		    {
 			s->host = descstr + 1;
@@ -436,11 +432,10 @@ int	str_to_serverinfo (char *str, ServerInfo *s)
 		    }
 		    else
 			s->host = descstr;
-		  }
 		}
 		else if (fieldnum == PORT)
 		{
- 			s->port = atol(descstr);
+			s->port = atol(descstr);
 
 			/* Sigh -- port +6697 means "do ssl" */
 			if (*descstr == '+')
@@ -455,6 +450,7 @@ int	str_to_serverinfo (char *str, ServerInfo *s)
 				s->server_type = "IRC-SSL";
 			else
 				s->server_type = "IRC";
+
 		}
 		else if (fieldnum == PASS)
 			s->password = descstr;
@@ -550,25 +546,12 @@ static	int	preserve_serverinfo (ServerInfo *si)
 	clear_serverinfo(si);
 	malloc_strcpy(&si->fulldesc, resultstr);
 	si->freestr = resultstr;
+
 	str_to_serverinfo(si->freestr, si);
 
 	new_free(&host);
 	new_free(&vhost);
 	return 0;
-}
-
-/*
- * free_serverinfo - Destroy a permanent ServerInfo when you're done with it.
- *
- * Arguments:
- *	si	A permanent Serverinfo -- an 'si' that was previously 
- *		passed to preserve_serverinfo().
- */
-static	void	free_serverinfo (ServerInfo *si)
-{
-	new_free(&si->freestr);
-	new_free(&si->fulldesc);
-	clear_serverinfo(si);
 }
 
 /*
@@ -614,12 +597,27 @@ static	void	update_serverinfo (ServerInfo *old_si, ServerInfo *new_si)
 	return;
 }
 
-
 /*
- * serverinfo_matches_servref - See if a serverinfo could describe a server
+ * free_serverinfo - Destroy a permanent ServerInfo when you're done with it.
  *
  * Arguments:
- *	si	A temporary ServerInfo previously passed to str_to_serverinfo.
+ *	si	A permanent Serverinfo -- an 'si' that was previously 
+ *		passed to preserve_serverinfo().
+ */
+static	void	free_serverinfo (ServerInfo *si)
+{
+	new_free(&si->freestr);
+	new_free(&si->fulldesc);
+	clear_serverinfo(si);
+}
+
+/******************************************************************************/
+
+/*
+ * serverinfo_matches_servref - See if a query serverinfo could describe a server
+ *
+ * Arguments:
+ *	si	A query ServerInfo previously passed to str_to_serverinfo.
  *	servref	A server that might be correctly described by 'si'.
  *
  * Return value:
@@ -729,7 +727,7 @@ int	serverinfo_matches_servref (ServerInfo *si, int servref)
 
 
 /*
- * serverinfo_to_servref - Convert a temporary serverinfo into a server refnum
+ * serverinfo_to_servref - Convert a query serverinfo into a server refnum
  *			   Returns the FIRST server that seems a match.
  *
  * Arguments:
@@ -766,6 +764,29 @@ static	int	serverinfo_to_servref (ServerInfo *si)
 	return NOSERV;
 }
 
+/*
+ * Convert a serverdesc to a query serverinfo, 
+ * Then look up the query serverinfo to a servref
+ */
+int	str_to_servref (const char *desc)
+{
+	char *	ptr;
+	ServerInfo si;
+	int	retval;
+
+	ptr = LOCAL_COPY(desc);
+	clear_serverinfo(&si);
+	if (str_to_serverinfo(ptr, &si))
+		return NOSERV;
+
+	retval = serverinfo_to_servref(&si);
+	return retval;
+}
+
+
+/*
+ * Merge a server's serverinfo with a query serverinfo
+ */
 static	void	update_refnum_serverinfo (int refnum, ServerInfo *new_si)
 {
 	Server *s;
@@ -780,6 +801,10 @@ static	void	update_refnum_serverinfo (int refnum, ServerInfo *new_si)
 		malloc_strcpy(&s->d_nickname, new_si->nick);
 }
 
+/*
+ * Convert a serverdesc to a query serverinfo
+ * Then Merge a server's serverinfo with the query serverinfo
+ */
 static	int	update_server_from_raw_desc (int refnum, char *str)
 {
 	ServerInfo si;
@@ -792,6 +817,29 @@ static	int	update_server_from_raw_desc (int refnum, char *str)
 	update_refnum_serverinfo(refnum, &si);
 	return refnum;
 }
+
+/*
+ * Convert a serverdesc to a query serverinfo
+ * Then lookup the server for that query serverinfo
+ * Then merge that query serverinfo into that server
+ */
+int	str_to_servref_with_update (const char *desc)
+{
+	char *	ptr;
+	ServerInfo si;
+	int	retval;
+
+	ptr = LOCAL_COPY(desc);
+	clear_serverinfo(&si);
+	if (str_to_serverinfo(ptr, &si))
+		return NOSERV;
+
+	if ((retval = serverinfo_to_servref(&si)) != NOSERV)
+		update_refnum_serverinfo(retval, &si);
+
+	return retval;
+}
+
 
 /*
  * serverinfo_to_newserv - Add a server to the server list
@@ -889,45 +937,16 @@ static	int	serverinfo_to_newserv (ServerInfo *si)
 	else
 		malloc_strcpy(&s->d_nickname, nickname);
 
-	make_005(i);
+	make_options(i);
 
 	set_server_state(i, SERVER_RECONNECT);
 	return i;
 }
 
-/***************************************************************************/
-int	str_to_servref (const char *desc)
-{
-	char *	ptr;
-	ServerInfo si;
-	int	retval;
-
-	ptr = LOCAL_COPY(desc);
-	clear_serverinfo(&si);
-	if (str_to_serverinfo(ptr, &si))
-		return NOSERV;
-
-	retval = serverinfo_to_servref(&si);
-	return retval;
-}
-
-int	str_to_servref_with_update (const char *desc)
-{
-	char *	ptr;
-	ServerInfo si;
-	int	retval;
-
-	ptr = LOCAL_COPY(desc);
-	clear_serverinfo(&si);
-	if (str_to_serverinfo(ptr, &si))
-		return NOSERV;
-
-	if ((retval = serverinfo_to_servref(&si)) != NOSERV)
-		update_refnum_serverinfo(retval, &si);
-
-	return retval;
-}
-
+/*
+ * Convert a serverdesc into a canonical serverinfo
+ * Then convert that canonical serverinfo into a servref
+ */
 int	str_to_newserv (const char *desc)
 {
 	char *	ptr;
@@ -942,6 +961,208 @@ int	str_to_newserv (const char *desc)
 	retval = serverinfo_to_newserv(&si);
 	return retval;
 }
+
+/*
+ * Treat each line in a file as a serverdesc; add them all.
+ */
+static int 	read_server_file (const char *file_path)
+{
+	Filename expanded;
+	FILE 	*fp;
+	char	buffer[BIG_BUFFER_SIZE + 1];
+	char	*defaultgroup = NULL;
+
+	if (normalize_filename(file_path, expanded))
+		return -1;
+
+	if (!(fp = fopen(expanded, "r")))
+		return -1;
+
+	while (fgets(buffer, BIG_BUFFER_SIZE, fp))
+	{
+		chop(buffer, 1);
+		if (*buffer == '#')
+			continue;
+		else if (*buffer == '[')
+		{
+		    char *p;
+		    if ((p = strrchr(buffer, ']')))
+			*p++ = 0;
+		    malloc_strcpy(&defaultgroup, buffer + 1);
+		}
+		else if (*buffer == 0)
+			continue;
+		else
+			add_servers(buffer, defaultgroup);
+	}
+
+	fclose(fp);
+	new_free(&defaultgroup);
+	return 0;
+}
+
+/*
+ * Determine the default server file, and load it
+ */
+int 	read_default_server_file (void)
+{
+	Filename	file_path;
+	char *	clang_is_frustrating;
+
+	if ((clang_is_frustrating = getenv("IRC_SERVERS_FILE")))
+		strlcpy(file_path, clang_is_frustrating, sizeof file_path);
+	else
+	{
+#ifdef SERVERS_FILE
+		*file_path = 0;
+		if (SERVERS_FILE[0] != '/' && SERVERS_FILE[0] != '~')
+			strlcpy(file_path, irc_lib, sizeof file_path);
+		strlcat(file_path, SERVERS_FILE, sizeof file_path);
+#else
+		return -1;
+#endif
+	}
+
+	return read_server_file(file_path);
+}
+
+/*
+ * add_servers: Add a space-separated list of server descs to the server list.
+ *	If the server description does not set a port, use the default port.
+ *	If the server description does not set a group, use the provided group.
+ *  This function modifies "servers".
+ */
+void	add_servers (const char *servers_, const char *group)
+{
+	char	*host;
+	ServerInfo si;
+	int	refnum;
+	char *	servers;
+
+	if (!servers_)
+		return;
+	servers = LOCAL_COPY(servers_);
+
+	while ((host = next_arg(servers, &servers)))
+	{
+		clear_serverinfo(&si);
+		str_to_serverinfo(host, &si);
+		if (group && si.group == NULL)
+			si.group = group;
+
+		refnum = serverinfo_to_servref(&si);
+		if (refnum == NOSERV)
+			serverinfo_to_newserv(&si);
+		else
+			update_refnum_serverinfo(refnum, &si);
+	}
+}
+
+
+
+/***************************************************************************/
+#if 0
+static	const char *fields[] = {
+		"HOST",
+		"PORT",
+		"PASS",
+		"NICK",
+		"GROUP",
+		"TYPE",
+		"PROTO",
+		"VHOST",
+		"CERT",
+		"LASTFIELD"
+	};
+
+
+/*
+ * str_to_json:  Create or Modify a temporary ServerInfo based on string.
+ *
+ * Arguments:
+ *	str	A server description.  This string WILL BE POINTED TO 
+ *		by the ServerInfo until you call preserve_serverinfo (below).
+ *		This string WILL BE MODIFIED so it can't be a const.
+ *	cj	A pointer to a cJSON pointer.  It may already be filled in.
+ *
+ * Notes:
+ *	A "temporary serverinfo" points to the 'str' you pass here, so you
+ *	cannot use the temporary serverinfo after the source 'str' goes out
+ *	of scope!  You MUST call preserve_serverinfo() if you want to keep
+ *	the serverinfo!
+ * Return value:	
+ *	This function returns 0
+ */
+static int	server_str_to_json (char *str, cJSON **rootptr)
+{
+	enum serverinfo_fields	fieldnum;
+	cJSON *			root;
+	char *			field_name = NULL;
+	char *			value = NULL;
+
+	if (!str)
+		panic(1, "serverstr_to_json: str == NULL");
+
+	/*
+	 * As a shortcut, we allow the string to be a number,
+	 * which refers to an existing server.
+	 */
+	if (str && is_number(str))
+	{
+		int	i;
+		char *	after;
+
+		i = strtol(str, &after, 10);
+		if ((!after || !*after) && get_server(i))
+		{
+			/* TODO - Here we would return the json for the server */
+			return 0;
+		}
+	}
+
+	/*
+	 * Otherwise, we convert it by breaking down each component in turn.
+	 */
+	if (!(root = cJSON_CreateObject()))
+		return -1;
+
+	fieldnum = HOST;
+	while (str && *str)
+	{
+		const char *	default_field_name;
+
+		default_field_name = fields[fieldnum];
+		if (!next_field(&str, &field_name, &value, default_field_name))
+		{
+			cJSON_DeleteItem(&root);
+			*rootptr = NULL;
+			return -1;
+		}
+
+		cJSON_AddStringToObject(root, field_name, value);
+		new_free(&field_name);
+		new_free(&value);
+
+		for (int i = 0; i < LASTFIELD; i++)
+		{
+			if (!my_strnicmp(field_name, fields[i], strlen(field_name)))
+				fieldnum = (enum serverinfo_fields)i;
+		}
+		if (fieldnum == LASTFIELD)
+			fieldnum = HOST;
+		else
+			fieldnum++;
+	}
+
+	/* Here is where we would "normalize" the data structure */
+
+	*rootptr = root;
+	return 0;
+}
+#endif
+/***************************************************************************/
+
+
 
 void	destroy_server_list (void)
 {
@@ -994,7 +1215,7 @@ static 	void 	remove_from_server_list (int i)
 	new_free(&s->funny_match);
 	new_free(&s->default_realname);
 	new_free(&s->remote_paddr);
-	destroy_005(i);
+	destroy_options(i);
 	reset_server_altnames(i, NULL);
 	free_bucket(&s->altnames);
 	free_serverinfo(s->info);
@@ -1006,102 +1227,6 @@ static 	void 	remove_from_server_list (int i)
 
 
 /*****************************************************************************/
-/*
- * add_servers: Add a space-separated list of server descs to the server list.
- *	If the server description does not set a port, use the default port.
- *	If the server description does not set a group, use the provided group.
- *  This function modifies "servers".
- */
-void	add_servers (const char *servers_, const char *group)
-{
-	char	*host;
-	ServerInfo si;
-	int	refnum;
-	char *	servers;
-
-	if (!servers_)
-		return;
-	servers = LOCAL_COPY(servers_);
-
-	while ((host = next_arg(servers, &servers)))
-	{
-		clear_serverinfo(&si);
-		str_to_serverinfo(host, &si);
-		if (group && si.group == NULL)
-			si.group = group;
-
-		refnum = serverinfo_to_servref(&si);
-		if (refnum == NOSERV)
-			serverinfo_to_newserv(&si);
-		else
-			update_refnum_serverinfo(refnum, &si);
-	}
-}
-
-/*
- * read_server_file: Add servers from some file to the server list
- */
-static int 	read_server_file (const char *file_path)
-{
-	Filename expanded;
-	FILE 	*fp;
-	char	buffer[BIG_BUFFER_SIZE + 1];
-	char	*defaultgroup = NULL;
-
-	if (normalize_filename(file_path, expanded))
-		return -1;
-
-	if (!(fp = fopen(expanded, "r")))
-		return -1;
-
-	while (fgets(buffer, BIG_BUFFER_SIZE, fp))
-	{
-		chop(buffer, 1);
-		if (*buffer == '#')
-			continue;
-		else if (*buffer == '[')
-		{
-		    char *p;
-		    if ((p = strrchr(buffer, ']')))
-			*p++ = 0;
-		    malloc_strcpy(&defaultgroup, buffer + 1);
-		}
-		else if (*buffer == 0)
-			continue;
-		else
-			add_servers(buffer, defaultgroup);
-	}
-
-	fclose(fp);
-	new_free(&defaultgroup);
-	return 0;
-}
-
-/*
- * read_server_file: Add servers from "SERVERS FILE" to the server list.
- */
-int 	read_default_server_file (void)
-{
-	Filename	file_path;
-	char *	clang_is_frustrating;
-
-	if ((clang_is_frustrating = getenv("IRC_SERVERS_FILE")))
-		strlcpy(file_path, clang_is_frustrating, sizeof file_path);
-	else
-	{
-#ifdef SERVERS_FILE
-		*file_path = 0;
-		if (SERVERS_FILE[0] != '/' && SERVERS_FILE[0] != '~')
-			strlcpy(file_path, irc_lib, sizeof file_path);
-		strlcat(file_path, SERVERS_FILE, sizeof file_path);
-#else
-		return -1;
-#endif
-	}
-
-	return read_server_file(file_path);
-}
-
 
 /* display_server_list: just guess what this does */
 void 	display_server_list (void)
@@ -2140,7 +2265,7 @@ void	send_to_aserver_raw (int refnum, size_t len, const char *buffer)
 	}
 }
 
-void	flush_server (int servnum)
+void	flush_server (int __U(servnum))
 {
 	return;
 }
@@ -2191,7 +2316,7 @@ int	bootstrap_server_connection (int server)
 static	int	grab_server_address (int server)
 {
 	Server *s;
-	AI	hints;
+	int	family;
 	int	xfd[2];
 
 	if (x_debug & DEBUG_SERVER_CONNECT)
@@ -2220,32 +2345,29 @@ static	int	grab_server_address (int server)
 		yell("socketpair: %s", strerror(errno));
 	new_open(xfd[1], do_server, NEWIO_READ, POLLIN, 1, server);
 
-	memset(&hints, 0, sizeof(hints));
 	if (empty(s->info->proto_type))
-		hints.ai_family = AF_UNSPEC;
+		family = AF_UNSPEC;
 	else if (!my_stricmp(s->info->proto_type, "0")
 	      || !my_stricmp(s->info->proto_type, "any") 
 	      || !my_stricmp(s->info->proto_type, "ip") 
 	      || !my_stricmp(s->info->proto_type, "tcp") )
-		hints.ai_family = AF_UNSPEC;
+		family = AF_UNSPEC;
 	else if (!my_stricmp(s->info->proto_type, "4")
 	      || !my_stricmp(s->info->proto_type, "tcp4") 
 	      || !my_stricmp(s->info->proto_type, "ipv4") 
 	      || !my_stricmp(s->info->proto_type, "v4") 
 	      || !my_stricmp(s->info->proto_type, "ip4") )
-		hints.ai_family = AF_INET;
+		family = AF_INET;
 	else if (!my_stricmp(s->info->proto_type, "6")
 	      || !my_stricmp(s->info->proto_type, "tcp6") 
 	      || !my_stricmp(s->info->proto_type, "ipv6") 
 	      || !my_stricmp(s->info->proto_type, "v6") 
 	      || !my_stricmp(s->info->proto_type, "ip6") )
-		hints.ai_family = AF_INET6;
+		family = AF_INET6;
 	else
-		hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_ADDRCONFIG;
+		family = AF_UNSPEC;
 
-	hostname_to_json(xfd[0], hints.ai_family, s->info->host, ltoa(s->info->port), 0);
+	hostname_to_json(xfd[0], family, s->info->host, ltoa(s->info->port), 0);
 	s->des = xfd[1];
 	return 0;
 }
@@ -2534,13 +2656,25 @@ static void	discard_dns_results (int refnum)
 }
 
 
+void	my_close_server_soft (int refnum)
+{
+#if 0
+	Server *s;
+#endif
+
+	if (!(/* s = */ get_server(refnum)))
+		return;
+
+	my_close_server(refnum, NULL, 1);
+}
+
 /*
  * close_server: Given an index into the server list, this closes the
  * connection to the corresponding server.  If 'message' is anything other
  * than the NULL or the empty_string, it will send a protocol QUIT message
  * to the server before closing the connection.
  */
-void	close_server (int refnum, const char *message)
+void	my_close_server (int refnum, const char *message, int soft_reset)
 {
 	Server *s;
 	int	was_registered;
@@ -2569,37 +2703,39 @@ void	close_server (int refnum, const char *message)
 	s->any_data = 0;
 	s->cap_hold = 0;
 
-	/* 
-	 * XXX Previously here, we discarded the extra IP addresses.
-	 * but it was decided to do that only when we switched to
-	 * ACTIVE rather than when we switched to CLOSED.  This permits 
-	 * you to call close_server() and then connect_to_server_next_addr()
-	 */
-
 	if (s->des == -1)
 		return;		/* Nothing to do here */
 
-	if (was_registered)
+	/* Which do you choose, the hard or soft option? */
+	if (soft_reset)
 	{
-		if (!message)
-		    if (!(message = get_server_quit_message(refnum)))
-			message = "Leaving";
-		sub_format = convert_sub_format(message, 's');
-		snprintf(final_message, sizeof(final_message), sub_format, irc_version);
-		new_free(&sub_format);
-
-		if (x_debug & DEBUG_OUTBOUND)
-			yell("Closing server %d because [%s]", refnum, final_message);
-		if (*final_message)
-			send_to_aserver(refnum, "QUIT :%s\n", final_message);
-
-		server_is_unregistered(refnum);
+		say("Performing a soft reset on server %d", refnum);
+		set_server_state(refnum, SERVER_REGISTERING);
 	}
+	else
+	{
+		if (was_registered)
+		{
+			if (!message)
+			    if (!(message = get_server_quit_message(refnum)))
+				message = "Leaving";
+			sub_format = convert_sub_format(message, 's');
+			snprintf(final_message, sizeof(final_message), sub_format, irc_version);
+			new_free(&sub_format);
 
-	do_hook(SERVER_LOST_LIST, "%d %s %s", 
-			refnum, s->info->host, final_message);
-	s->des = new_close(s->des);
-	set_server_state(refnum, SERVER_CLOSED);
+			if (x_debug & DEBUG_OUTBOUND)
+				yell("Closing server %d because [%s]", refnum, final_message);
+			if (*final_message)
+				send_to_aserver(refnum, "QUIT :%s\n", final_message);
+
+			server_is_unregistered(refnum);
+		}
+
+		do_hook(SERVER_LOST_LIST, "%d %s %s", 
+				refnum, s->info->host, final_message);
+		s->des = new_close(s->des);
+		set_server_state(refnum, SERVER_CLOSED);
+	}
 }
 
 /********************* OTHER STUFF ************************************/
@@ -3075,7 +3211,7 @@ void	server_is_unregistered (int refnum)
 	if (!get_server(refnum))
 		return;
 
-	destroy_005(refnum);
+	destroy_options(refnum);
 	set_server_away_status(refnum, 0);
 	set_server_state(refnum, SERVER_EOF);
 }
@@ -4335,32 +4471,32 @@ static char *	shortname (const char *oname)
 /* 005 STUFF */
 
 /*
- * make_005 - Initialize the Bucket that will hold a server's 005 settings.
+ * make_options - Initialize the Bucket that will hold a server's 005 settings.
  *
  * Parameter:
- *	refnum	- A server whose 005 Bucket needs initializing
+ *	refnum	- A server whose options alist needs initializing
  *
  * This function must be called once and only one per refnum,
  *    and that call must be from servref_to_newserv().
  * If you call it elsewhere, it will leak memory (s->a005.list).
- * If you want to clean up/reset an 005 bucket, use destroy_005(refnum)
+ * If you want to clean up/reset an 005 alist, use destroy_005(refnum)
  */
-static void	make_005 (int refnum)
+static void	make_options (int refnum)
 {
 	Server *s;
 
 	if (!(s = get_server(refnum)))
 		return;
 
-	s->a005.list = NULL;
-	s->a005.max = 0;
-	s->a005.total_max = 0;
-	s->a005.func = (alist_func)strncmp;
-	s->a005.hash = HASH_SENSITIVE; /* One way to deal with rfc2812 */
+	s->options.list = NULL;
+	s->options.max = 0;
+	s->options.total_max = 0;
+	s->options.func = (alist_func)strncmp;
+	s->options.hash = HASH_SENSITIVE; /* One way to deal with rfc2812 */
 }
 
 /*
- * destroy_a_005 - Clean up after an unwanted 005 setting.
+ * destroy_an_option - Clean up after an unwanted 005 setting.
  *
  * Parameter:
  *	item	- An 005 item that has been previously removed from the server.
@@ -4368,9 +4504,10 @@ static void	make_005 (int refnum)
  * Once you have called this function, you must not make any reference to the
  * 'item' parameter you passed in.
  */
-static void	destroy_a_005 (A005_item *item)
+static void	destroy_an_option (OPTION_item *item)
 {
-	if (item) {
+	if (item) 
+	{
 		new_free(&((*item).name));
 		new_free(&((*item).value));
 		new_free(&item);
@@ -4378,7 +4515,7 @@ static void	destroy_a_005 (A005_item *item)
 }
 
 /*
- * destroy_005 - Remove all 005 settings for a server
+ * destroy_options - Remove all 005 settings for a server
  *
  * Parameters:
  *	refnum	- A server refnum
@@ -4391,19 +4528,19 @@ static void	destroy_a_005 (A005_item *item)
  * been called make_005(refnum) to set up the server's 005 Bucket.  This
  * would always be the case, but I'm just saying...
  */
-static void	destroy_005 (int refnum)
+static void	destroy_options (int refnum)
 {
-	Server *s;
-	A005_item *new_i;
+	Server *	s;
+	OPTION_item *	new_i;
 
 	if (!(s = get_server(refnum)))
 		return;
 
-	while ((new_i = (A005_item*)alist_pop((&s->a005), 0)))
-		destroy_a_005(new_i);
-	s->a005.max = 0;
-	s->a005.total_max = 0;
-	new_free(&s->a005.list);
+	while ((new_i = (OPTION_item *)alist_pop((&s->options), 0)))
+		destroy_an_option(new_i);
+	s->options.max = 0;
+	s->options.total_max = 0;
+	new_free(&s->options.list);
 }
 
 /*
@@ -4430,12 +4567,14 @@ static char *	get_server_005s (int refnum, const char *str)
 	if (!(s = get_server(refnum)))
 		return malloc_strdup(empty_string);
 
-	for (i = 0; i < s->a005.max; i++)
+	for (i = 0; i < s->options.max; i++)
 	{
-		if (s->a005.list[i]->name == NULL)
+		if (s->options.list[i]->name == NULL)
 			continue;	/* Ignore nulls */
-		if (!str || !*str || wild_match(str, s->a005.list[i]->name))
-			malloc_strcat_wordlist(&ret, space, s->a005.list[i]->name);
+		if (((OPTION_item *)(s->options.list[i]->data))->type != 0)
+			continue;	/* Ignore non-005s */
+		if (!str || !*str || wild_match(str, s->options.list[i]->name))
+			malloc_strcat_wordlist(&ret, space, s->options.list[i]->name);
 	}
 
 	if (ret)
@@ -4460,31 +4599,36 @@ static char *	get_server_005s (int refnum, const char *str)
 const char *	get_server_005 (int refnum, const char *setting)
 {
 	Server *s;
-	A005_item *item;
+	OPTION_item *item;
 	int cnt, loc;
 
 	if (!(s = get_server(refnum)))
 		return NULL;
-	item = (A005_item *)find_alist_item(&s->a005, setting, &cnt, &loc);
+	item = (OPTION_item *)find_alist_item(&s->options, setting, &cnt, &loc);
 	if (cnt < 0)
+	{
+		if (item->type != 0)
+			return NULL;
 		return item->value;	/* for backwards compat */
+	}
 	else
 		return NULL;
 }
 
-static A005_item *	new_005_item (int refnum, const char *setting)
+static OPTION_item *	new_005_item (int refnum, const char *setting)
 {
 	Server *	s;
-	A005_item *	new_005;
+	OPTION_item *	new_option;
 
 	if (!(s = get_server(refnum)))
 		return NULL;
 
-	new_005 = (A005_item *)new_malloc(sizeof(A005_item));
-	(*new_005).name = malloc_strdup(setting);
-	(*new_005).value = malloc_strdup(space);
-	add_to_alist((&s->a005), setting, new_005);
-	return new_005;
+	new_option = (OPTION_item *)new_malloc(sizeof(OPTION_item));
+	(*new_option).name = malloc_strdup(setting);
+	(*new_option).value = malloc_strdup(space);
+	(*new_option).type = 0;
+	add_to_alist((&s->options), setting, new_option);
+	return new_option;
 }
 
 /*
@@ -4520,24 +4664,25 @@ static A005_item *	new_005_item (int refnum, const char *setting)
 void	set_server_005 (int refnum, char *setting, const char *value)
 {
 	Server *	s;
-	A005_item *	new_005;
+	OPTION_item *	new_option;
 
 	if (!(s = get_server(refnum)))
 		return;
 
-	if (!(new_005 = (A005_item *)alist_lookup((&s->a005), setting, 0, 0)))
-		new_005 = new_005_item(refnum, setting);
-	malloc_strcpy(&(*new_005).value, malloc_strdup(value));
+	if (!(new_option = (OPTION_item *)alist_lookup((&s->options), setting, 0)))
+		new_option = new_005_item(refnum, setting);
+	malloc_strcpy(&(*new_option).value, malloc_strdup(value));
+	new_option->type = 0;
 
 	/* XXX This is a hack XXX */
 	/* We need to set up a table to handle 005 callbacks. */
 	if (!my_stricmp(setting, "CASEMAPPING"))
 	{
-	    if (!new_005->value)
+	    if (!new_option->value)
 		(void) 0; /* nothing */
-	    else if (!my_stricmp(new_005->value, "rfc1459"))
+	    else if (!my_stricmp(new_option->value, "rfc1459"))
 		set_server_stricmp_table(refnum, 1);
-	    else if (!my_stricmp(new_005->value, "ascii"))
+	    else if (!my_stricmp(new_option->value, "ascii"))
 		set_server_stricmp_table(refnum, 0);
 	    else
 		set_server_stricmp_table(refnum, 1);
@@ -4599,6 +4744,7 @@ sorry_wrong_number:
  * $serverctl(MATCH [pattern])
  * $serverctl(PMATCH [pattern])
  * $serverctl(GMATCH [group])
+ * $serverctl(RESET 0)
  *
  * [LIST] and [ITEM] are one of the following:
  *	NAME		"ourname" for the server connection
@@ -4911,10 +5057,8 @@ char 	*serverctl 	(char *input)
 			RETURN_INT(1);
 		} else if (!my_strnicmp(listc, "SSL", len)) {
 			set_server_server_type(refnum, input);
-			RETURN_INT(1);
 		} else if (!my_strnicmp(listc, "TLS", len)) {
 			set_server_server_type(refnum, input);
-			RETURN_INT(1);
 		} else if (!my_strnicmp(listc, "UMODE", len)) {
 			if (is_server_open(refnum) == 0) {
 				clear_user_modes(refnum);
@@ -4984,6 +5128,13 @@ char 	*serverctl 	(char *input)
 		RETURN_INT(number_of_servers);
 	} else if (!my_strnicmp(listc, "READ_FILE", len)) {
 		read_server_file(input);
+	} else if (!my_strnicmp(listc, "RESET", len)) {
+		GET_INT_ARG(refnum, input);
+		if (!get_server(refnum))
+			RETURN_EMPTY;
+
+		my_close_server_soft(refnum);
+		RETURN_INT(1);
 	} else
 		RETURN_EMPTY;
 
@@ -5006,7 +5157,7 @@ char 	*serverctl 	(char *input)
  * 
  * XXX I suppose this doesn't belong here.  But where else shall it go?
  */
-static void 	got_my_userhost (int refnum, UserhostItem *item, const char *nick, const char *stuff)
+static void 	got_my_userhost (int refnum, UserhostItem *__U(item), const char *__U(nick), const char *__U(stuff))
 {
 	char *freeme;
 

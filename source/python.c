@@ -142,6 +142,8 @@ static	PyObject *global_vars = NULL;
  */
 
 /********************** Higher level interface to things *********************/
+#define PYTHON(x) \
+static	PyObject *	epic_ ## x (PyObject *__U(self), PyObject *__U(args))
 
 /*
  * epic.echo("hello, world") -- Output something without a banner (like /echo)
@@ -155,7 +157,7 @@ static	PyObject *global_vars = NULL;
  *	NULL - PyArg_ParseTuple() didn't like your tuple
  *	   0 - The stuff was displayed successfully.
  */
-static	PyObject *	epic_echo (PyObject *self, PyObject *args)
+PYTHON(echo)
 {
 	char *	str;
 
@@ -190,7 +192,7 @@ static	PyObject *	epic_echo (PyObject *self, PyObject *args)
  *	NULL - PyArg_ParseTuple() didn't like your tuple (and threw exception)
  *	 0 - The stuff was displayed successfully.
  */
-static	PyObject *	epic_say (PyObject *self, PyObject *args)
+PYTHON(say)
 {
 	char *	str;
 
@@ -220,7 +222,7 @@ static	PyObject *	epic_say (PyObject *self, PyObject *args)
  *	NULL - PyArg_ParseTuple() didn't like your tuple (and threw exception)
  *	 0 - The stuff was run successfully.
  */
-static	PyObject *	epic_cmd (PyObject *self, PyObject *args)
+PYTHON(cmd)
 {
 	char *	str;
 
@@ -249,7 +251,7 @@ static	PyObject *	epic_cmd (PyObject *self, PyObject *args)
  *	NULL - PyArg_ParseTuple() didn't like your tuple (and threw exception)
  *	 0 - The stuff ran successfully.
  */
-static	PyObject *	epic_eval (PyObject *self, PyObject *args)
+PYTHON(eval)
 {
 	char *	str;
 
@@ -283,7 +285,7 @@ static	PyObject *	epic_eval (PyObject *self, PyObject *args)
  *		  string contains an integer or whatever.
  *		  ie, "2 + 2" is "4" == a string containing the number 4.
  */
-static	PyObject *	epic_expr (PyObject *self, PyObject *args)
+PYTHON(expr)
 {
 	char *	str;
 	char *	exprval;
@@ -319,7 +321,7 @@ static	PyObject *	epic_expr (PyObject *self, PyObject *args)
  *	NULL - Py_BuildValue() couldn't convert the retval to python string (throws exception)
  *	A string - The result of the expansion
  */
-static	PyObject *	epic_expand (PyObject *self, PyObject *args)
+PYTHON(expand)
 {
 	char *	str;
 	char *	expanded;
@@ -356,7 +358,7 @@ static	PyObject *	epic_expand (PyObject *self, PyObject *args)
  *		that string contains a number or a list of words.
  *		You may need to process the string in python.
  */
-static	PyObject *	epic_call (PyObject *self, PyObject *args)
+PYTHON(call)
 {
 	char *	str;
 	char *	funcval;
@@ -403,7 +405,7 @@ static	PyObject *	epic_call (PyObject *self, PyObject *args)
  *	NULL / NameError - The command you tried to run doesn't exist.
  *	None		 - The command was run successfully
  */
-static	PyObject *	epic_run_command (PyObject *self, PyObject *args)
+PYTHON(run_command)
 {
 	char *	symbol;
 	char *	my_args;
@@ -460,7 +462,7 @@ const 	char *	alias = NULL;
  *	NULL / NameError - The function you tried to run doesn't exist.
  *	A string - the return value of the function (which may be zero-length for its own reasons)
  */
-static	PyObject *	epic_call_function (PyObject *self, PyObject *args)
+PYTHON(call_function)
 {
 	char *	symbol;
 	char *	my_args;
@@ -508,7 +510,7 @@ static	PyObject *	epic_call_function (PyObject *self, PyObject *args)
  *	NULL / NameError - The set you tried to fetch doesn't exist.
  *	A string - the value of /SET SETNAME 
  */
-static	PyObject *	epic_get_set (PyObject *self, PyObject *args)
+PYTHON(get_set)
 {
 	char *	symbol;
 	PyObject *retval;
@@ -549,7 +551,7 @@ static	PyObject *	epic_get_set (PyObject *self, PyObject *args)
  *			assign should probably return None or throw an 
  *			exception or something.
  */
-static	PyObject *	epic_get_assign (PyObject *self, PyObject *args)
+PYTHON(get_assign)
 {
 	char *	symbol;
 	PyObject *retval;
@@ -597,7 +599,7 @@ static	PyObject *	epic_get_assign (PyObject *self, PyObject *args)
  *	If you need that level of granularity (which should be unusual)
  *	you should use epic.get_var(), epic.get_assign(), etc.
  */
-static	PyObject *	epic_get_var (PyObject *self, PyObject *args)
+PYTHON(get_var)
 {
 	char *	symbol;
 	PyObject *retval;
@@ -636,7 +638,7 @@ static	PyObject *	epic_get_var (PyObject *self, PyObject *args)
  *					(and threw exception)
  *	NULL / NotImplelmentedError	- This function is not implemented yet
  */
-static	PyObject *	epic_set_set (PyObject *self, PyObject *args)
+PYTHON(set_set)
 {
 	char *	symbol;
 	char *	value;
@@ -667,7 +669,7 @@ static	PyObject *	epic_set_set (PyObject *self, PyObject *args)
  *					(and threw exception)
  *	NULL / NotImplelmentedError	- This function is not implemented yet
  */
-static	PyObject *	epic_set_assign (PyObject *self, PyObject *args)
+PYTHON(set_assign)
 {
 	char *	symbol;
 	char *	value;
@@ -875,7 +877,7 @@ void	do_python_fd (int fd)
 }
 
 
-void	do_python_fd_failure (int fd, int error)
+void	do_python_fd_failure (int fd, int __U(error))
 {
 	PythonFDCallback *callback;
 
@@ -921,7 +923,7 @@ void	do_python_fd_failure (int fd, int error)
  *					(and threw exception)
  *	0		- The command succeeded
  */
-static	PyObject *	epic_callback_when_readable (PyObject *self, PyObject *args)
+static	PyObject *	epic_callback_when_readable (PyObject *__U(self), PyObject *__U(args))
 {
 	long	fd, flags;
 	PyObject *read_callback, *except_callback;
@@ -989,7 +991,7 @@ static	PyObject *	epic_callback_when_readable (PyObject *self, PyObject *args)
  *					(and threw exception)
  *	0		- The command succeeded
  */
-static	PyObject *	epic_callback_when_writable (PyObject *self, PyObject *args)
+static	PyObject *	epic_callback_when_writable (PyObject *__U(self), PyObject *__U(args))
 {
 	long	fd, flags;
 	PyObject *write_callback, *except_callback;
@@ -1042,7 +1044,7 @@ static	PyObject *	epic_callback_when_writable (PyObject *self, PyObject *args)
  *					(and threw exception)
  *	0		- The command succeeded
  */
-static	PyObject *	epic_cancel_callback (PyObject *self, PyObject *args)
+static	PyObject *	epic_cancel_callback (PyObject *__U(self), PyObject *args)
 {
 	long	fd;
 	PythonFDCallback *callback;
@@ -1112,7 +1114,7 @@ BUILT_IN_COMMAND(pyshim)
  *				(and threw exception)
  *	 None 	- The command was registered successfully
  */
-static	PyObject *	epic_builtin_cmd (PyObject *self, PyObject *args)
+static	PyObject *	epic_builtin_cmd (PyObject *__U(self), PyObject *args)
 {
 	char *	symbol;
 
@@ -1144,7 +1146,7 @@ static	PyMethodDef	epicMethods[] = {
 	{ "call_function", epic_call_function,	METH_VARARGS,	"Call an alias or builtin function" },
 	{ "get_set",       epic_get_set,	METH_VARARGS,	"Get a /SET value (only)" },
 	{ "get_assign",    epic_get_assign,	METH_VARARGS,	"Get a /ASSIGN value (only)" },
-	{ "get_var",       epic_get_assign,	METH_VARARGS,	"Get a variable (either /ASSIGN or /SET)" },
+	{ "get_var",       epic_get_var,	METH_VARARGS,	"Get a variable (either /ASSIGN or /SET)" },
 	{ "set_set",       epic_set_set,	METH_VARARGS,	"Set a /SET value (only)" },
 	{ "set_assign",    epic_set_assign,	METH_VARARGS,	"Set a /ASSIGN value (only)" },
 	{ "builtin_cmd",   epic_builtin_cmd,	METH_VARARGS,	"Make a Python function an EPIC builtin command" },
@@ -1174,7 +1176,7 @@ static	PyObject *	PyInit_epic (void)
 	return PyModule_Create(&epicModule);
 }
 
-void	initialize_python (int start)
+void	initialize_python (int __U(start))
 {
 	if (p_initialized == 0)
 	{

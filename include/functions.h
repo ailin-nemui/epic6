@@ -65,9 +65,9 @@
  * that can result in a memory leak, or worse.
  */
 #ifdef need_static_functions
-#define BUILT_IN_FUNCTION(x, y) static char * x (char * y)
+#define BUILT_IN_FUNCTION(x, y) static char * x (char * __U(y))
 #else
-#define BUILT_IN_FUNCTION(x, y) char * x (char * y)
+#define BUILT_IN_FUNCTION(x, y) char * x (char * __U(y))
 #endif
 
 struct kwargs {

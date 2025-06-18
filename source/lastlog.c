@@ -69,8 +69,10 @@ static	intmax_t global_lastlog_refnum = 0;
 static int	show_lastlog (Lastlog **l, int *skip, int *number, Mask *level_mask, char *match, regex_t *rex, char *nomatch, regex_t *norex, int *max, const char *target, int mangler, int window, int exempt, char **, int, int);
 static Lastlog *oldest_lastlog_for_window (int window);
 static Lastlog *newer_lastlog_entry (Lastlog *item, int window);
+#if 0
 static Lastlog *older_lastlog_entry (Lastlog *item, int window);
 static Lastlog *newest_lastlog_for_window (int window);
+#endif
 static void	remove_lastlog_item (Lastlog *item);
 static void	move_lastlog_item (Lastlog *item, int newwin);
 static void	expire_lastlog_entries (void);
@@ -1297,7 +1299,7 @@ bail:
  * This returns 1 if the current item pointed to by 'l' is something that
  * should be displayed based on the criteron provided.
  */
-static int	show_lastlog (Lastlog **l, int *skip, int *number, Mask *level_mask, char *match, regex_t *rex, char *nomatch, regex_t *norex, int *max, const char *target, int mangler, int window, int exempt, char **result, int global, int this_server)
+static int	show_lastlog (Lastlog **l, int *skip, int *__U(number), Mask *level_mask, char *match, regex_t *rex, char *nomatch, regex_t *norex, int *max, const char *target, int mangler, int window, int exempt, char **result, int global, int this_server)
 {
 	const char *str = NULL;
 	int	retval = 1;
@@ -1666,6 +1668,8 @@ static Lastlog *newer_lastlog_entry (Lastlog *item, int window)
 	return i;
 }
 
+/* Apparently I do not yet have a use case for this yet */
+#if 0
 static Lastlog *older_lastlog_entry (Lastlog *item, int window)
 {
 	Lastlog *i;
@@ -1682,6 +1686,7 @@ static Lastlog *newest_lastlog_for_window (int window)
 {
 	return older_lastlog_entry(NULL, window);
 }
+#endif
 
 int	recount_window_lastlog (int window)
 {
@@ -1834,7 +1839,7 @@ void	move_lastlog_item_by_regex (int oldwin, int newwin, const char *str)
 }
 
 /************************************************************************/
-int	do_expire_lastlog_entries (void *ignored)
+int	do_expire_lastlog_entries (void *__U(ignored))
 {
 	expire_lastlog_entries();
 	return 0;

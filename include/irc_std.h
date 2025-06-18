@@ -66,6 +66,7 @@
 #include <stddef.h>		/* C99 */
 #include <locale.h>		/* C99 */
 #include <float.h>		/* C99 */
+#include <stdbool.h>		/* C99 */
 
 /*
  * Everybody needs these POSIX headers...
@@ -147,6 +148,7 @@
 
 #define __A(x) __attribute__((format (printf, x, x + 1)))
 #define __N    __attribute__((noreturn))
+#define __U(x) x __attribute__((unused))
 
 #ifdef HAVE_ATTRIBUTE_MAY_ALIAS
 #define MAY_ALIAS __attribute__((may_alias))
@@ -220,7 +222,7 @@ typedef void 		sigfunc 		(int);
 	int		block_signal 		(int);
 	int		unblock_signal 		(int);
 	sigfunc *	my_signal 		(int, sigfunc *);
-#define SIGNAL_HANDLER(x) void x 		(int unused)
+#define SIGNAL_HANDLER(x) void x 		(int __U(unused))
 	sigfunc *	init_signals		(void);
 	void		init_signal_names	(void);
 	const char *	get_signal_name 	(int);
@@ -228,8 +230,8 @@ typedef void 		sigfunc 		(int);
 
 extern	volatile sig_atomic_t	signals_caught[NSIG];
 
-#define BUILT_IN_COMMAND(x)	void x 	(const char *command, char *args, const char *subargs)
-#define BUILT_IN_KEYBINDING(x)	void x 	(unsigned int key, char *string)
+#define BUILT_IN_COMMAND(x)	void x 	(const char *__U(command), char *__U(args), const char *__U(subargs))
+#define BUILT_IN_KEYBINDING(x)	void x 	(unsigned int __U(key), char *__U(string))
 
 typedef char Filename[PATH_MAX + 1];
 

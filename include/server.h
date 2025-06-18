@@ -13,7 +13,6 @@
 #include "who.h"
 
 #ifdef NEED_SERVER_LIST
-/* To get definition of Notify */
 #include "alist.h"
 
 typedef struct
@@ -21,6 +20,18 @@ typedef struct
 	char	*name;
 	char	*value;
 } A005_item;
+
+/*
+ * An option item is either an 005 (which is always on)
+ * or a CAP (which is opt-in)
+ */
+typedef struct
+{
+	int	type;
+	char *	name;
+	char *	value;
+	int	enabled;
+} OPTION_item;
 
 typedef struct WaitCmdstru
 {
@@ -30,19 +41,18 @@ typedef struct WaitCmdstru
 
 typedef struct ServerInfo 
 {
-	int	clean;
-        char *  freestr;
-	char *	fulldesc;
-        int     refnum;
-        const char *  host;
-        int     port;
-        const char *  password;
-        const char *  nick;
-        const char *  group;
-        const char *  server_type;
-        const char *  proto_type;
-	const char *  vhost;
-	const char *  cert;
+        char *  	freestr;
+	char *		fulldesc;
+        int     	refnum;
+        const char *  	host;
+        int     	port;
+        const char *  	password;
+        const char * 	nick;
+        const char *  	group;
+        const char *  	server_type;
+        const char *  	proto_type;
+	const char *  	vhost;
+	const char *  	cert;
 } ServerInfo;
 typedef ServerInfo SI;
 
@@ -57,13 +67,8 @@ typedef	struct
 	Bucket *	altnames;		/* Alternate handles for the server */
 
 	/* state = DNS */
-#if 0
-	AI *		addrs;			/* Returned by getaddrinfo */
-const	AI *		next_addr;		/* The next one to try upon failure */
-#else
-	SSu *		addrs;
-	int		addrs_total;
-#endif
+	SSu *		addrs;			/* Returned by ares_getaddrinfo */
+	int		addrs_total;		/* How many addrs there are! */
 	int		addr_counter;		/* How far we're into "addrs" */
 	ssize_t		addr_len;
 	ssize_t		addr_offset;
@@ -93,7 +98,10 @@ const	AI *		next_addr;		/* The next one to try upon failure */
 		/* metadata about the server */
 	char *		itsname;		/* the server's idea of its name */
 	char *		version_string;		/* what is says */
+#if 0
 	alist		a005;			/* 005 settings kept kere. */
+#endif
+	alist		options;		/* 005/CAP settings kept kere. */
 	int		stricmp_table;		/* Which case insensitive map to use */
 	int		line_length;		/* How long a protocol command may be */
 	int		max_cached_chan_size;	/* Bigger channels won't cache U@H */
@@ -221,7 +229,8 @@ const	AI *		next_addr;		/* The next one to try upon failure */
 	int	bootstrap_server_connection	(int);
 	int	connect_to_server_next_addr	(int);
 	int	close_all_servers		(const char *);
-	void	close_server			(int, const char *);
+	void	my_close_server			(int, const char *, int);
+#define close_server(x, y) my_close_server(x, y, 0);
 
 	void	set_server_away_message		(int, const char *);
 const	char *	get_server_away_message		(int);

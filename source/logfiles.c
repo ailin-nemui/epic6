@@ -220,6 +220,8 @@ static char *logfile_get_targets (Logfile *log)
 
 /************************************************************************/
 typedef Logfile *(*logfile_func) (Logfile *, char **);
+#define LOGFILE(x) \
+static Logfile *logfile_ ## x (Logfile *__U(log), char **__U(args))
 
 static Logfile *logfile_activity (Logfile *log, char **args);
 static Logfile *logfile_add (Logfile *log, char **args);
@@ -237,7 +239,7 @@ static Logfile *logfile_remove (Logfile *log, char **args);
 static Logfile *logfile_rewrite (Logfile *log, char **args);
 static Logfile *logfile_type (Logfile *log, char **args);
 
-static Logfile *	logfile_activity (Logfile *log, char **args)
+LOGFILE(activity)
 {
 	if (!log)
 	{
@@ -249,7 +251,7 @@ static Logfile *	logfile_activity (Logfile *log, char **args)
 	return log;
 }
 
-static Logfile *	logfile_add (Logfile *log, char **args)
+LOGFILE(add)
 {
         char            *ptr;
         char            *arg = next_arg(*args, args);
@@ -322,7 +324,7 @@ static Logfile *	logfile_add (Logfile *log, char **args)
         return log;
 }
 
-static Logfile *	logfile_describe (Logfile *log, char **args)
+LOGFILE(describe)
 {
 	char *targets = NULL;
 
@@ -351,7 +353,7 @@ static Logfile *	logfile_describe (Logfile *log, char **args)
 	return log;
 }
 
-static Logfile *	logfile_filename (Logfile *log, char **args)
+LOGFILE(filename)
 {
 	char *	arg = next_arg(*args, args);
 
@@ -380,7 +382,7 @@ static Logfile *	logfile_filename (Logfile *log, char **args)
 	return log;
 }
 
-static Logfile *	logfile_kill (Logfile *log, char **args)
+LOGFILE(kill)
 {
 	if (!log)
 	{
@@ -392,7 +394,7 @@ static Logfile *	logfile_kill (Logfile *log, char **args)
 	return NULL;
 }
 
-static Logfile *	logfile_level (Logfile *log, char **args)
+LOGFILE(level)
 {
         char *arg = new_next_arg(*args, args);
 	char *rejects = NULL;
@@ -408,7 +410,7 @@ static Logfile *	logfile_level (Logfile *log, char **args)
 	return log;
 }
 
-static Logfile *	logfile_list (Logfile *log, char **args)
+LOGFILE(list)
 {
 	Logfile *l;
 	char *targets = NULL;
@@ -430,7 +432,7 @@ static Logfile *	logfile_list (Logfile *log, char **args)
 	return log;
 }
 
-static Logfile *	logfile_mangle (Logfile *log, char **args)
+LOGFILE(mangle)
 {
 	char *	arg = next_arg(*args, args);
 
@@ -451,7 +453,7 @@ static Logfile *	logfile_mangle (Logfile *log, char **args)
 	return log;
 }
 
-static Logfile *	logfile_name (Logfile *log, char **args)
+LOGFILE(name)
 {
         char *arg;
 
@@ -483,12 +485,12 @@ static Logfile *	logfile_name (Logfile *log, char **args)
         return log;
 }
 
-static Logfile *	logfile_new (Logfile *log, char **args)
+LOGFILE(new)
 {
 	return new_logfile();
 }
 
-static Logfile *	logfile_off (Logfile *log, char **args)
+LOGFILE(off)
 {
 	if (!log)
 	{
@@ -508,7 +510,7 @@ static Logfile *	logfile_off (Logfile *log, char **args)
 	return log;
 }
 
-static Logfile *	logfile_on (Logfile *log, char **args)
+LOGFILE(on)
 {
 	if (!log)
 	{
@@ -528,7 +530,7 @@ static Logfile *	logfile_on (Logfile *log, char **args)
 	return log;
 }
 
-static Logfile *	logfile_refnum (Logfile *log, char **args)
+LOGFILE(refnum)
 {
 	char *arg = next_arg(*args, args);
 
@@ -536,7 +538,7 @@ static Logfile *	logfile_refnum (Logfile *log, char **args)
 	return log;
 }
 
-static Logfile *	logfile_remove (Logfile *log, char **args)
+LOGFILE(remove)
 {
 	char 		*arg = next_arg(*args, args);
 	char            *ptr;
@@ -591,7 +593,7 @@ static Logfile *	logfile_remove (Logfile *log, char **args)
         return log;
 }
 
-static Logfile *	logfile_rewrite (Logfile *log, char **args)
+LOGFILE(rewrite)
 {
         char *arg = new_next_arg(*args, args);
 
@@ -605,7 +607,7 @@ static Logfile *	logfile_rewrite (Logfile *log, char **args)
 	return log;
 }
 
-static Logfile *	logfile_server (Logfile *log, char **args)
+LOGFILE(server)
 {
         char *arg = new_next_arg(*args, args);
 
@@ -625,7 +627,7 @@ static Logfile *	logfile_server (Logfile *log, char **args)
 	return log;
 }
 
-static Logfile *	logfile_type (Logfile *log, char **args)
+LOGFILE(type)
 {
         char *arg = new_next_arg(*args, args);
 
@@ -978,7 +980,7 @@ char *logctl	(char *input)
  * The /WINDOW NUMBER command actually swaps the refnums of two windows:
  * It's possible that 'newref' isn't in use, so that's ok.
  */
-void    logfiles_swap_windows (int oldref, int newref)
+void    logfiles_swap_windows (int __U(oldref), int __U(newref))
 {
 #if 0
 	Logfile *log;
@@ -1000,7 +1002,7 @@ void    logfiles_swap_windows (int oldref, int newref)
 #endif
 }
 
-void    logfiles_merge_windows (int oldref, int newref)
+void    logfiles_merge_windows (int __U(oldref), int __U(newref))
 {
 #if 0
 	Logfile *log;

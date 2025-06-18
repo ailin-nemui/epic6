@@ -298,7 +298,7 @@ static void	new_io_event (int fd, int revents)
  * is appropriate for the application.
  */
 
-static int	unix_read (int fd, int quiet, int revents)
+static int	unix_read (int fd, int quiet, int __U(revents))
 {
 	ssize_t	c;
 	char	buffer[8192];
@@ -329,7 +329,7 @@ static int	unix_read (int fd, int quiet, int revents)
 	return c;
 }
 
-static int	unix_recv (int fd, int quiet, int revents)
+static int	unix_recv (int fd, int quiet, int __U(revents))
 {
 	ssize_t	c;
 	char	buffer[8192];
@@ -360,7 +360,7 @@ static int	unix_recv (int fd, int quiet, int revents)
 	return c;
 }
 
-static int	unix_accept (int fd, int quiet, int revents)
+static int	unix_accept (int fd, int __U(quiet), int __U(revents))
 {
 	int	newfd;
 	SSu	addr;
@@ -380,7 +380,7 @@ static int	unix_accept (int fd, int quiet, int revents)
 	return sizeof(newfd) + sizeof(addr);
 }
 
-static int	unix_connect (int fd, int quiet, int revents)
+static int	unix_connect (int fd, int __U(quiet), int __U(revents))
 {
 	int	sockerr;
 	int	gso_result;
@@ -420,7 +420,7 @@ static int	unix_connect (int fd, int quiet, int revents)
 	return (sizeof(int) + sizeof(localaddr.ss)) * 2;
 }
 
-static int	passthrough_event (int fd, int quiet, int revents)
+static int	passthrough_event (int fd, int __U(quiet), int __U(revents))
 {
 	char	revents_str[1024];
 

@@ -58,7 +58,7 @@
  * Maximum number of "%" expressions in a status line format.  If you change
  * this number, you must manually change the snprintf() in make_status 
  */
-#define STATUS_FUNCTION(x) const char * x (int window_, short map, char key)
+#define STATUS_FUNCTION(x) const char * x (int __U(window_), short __U(map), char __U(key))
 #define MAX_FUNCTIONS 40
 #define MAX_STATUS_USER 39
 
@@ -937,7 +937,7 @@ static void	destroy_status (Status **s)
  * This function is a /SET callback, so it must always take a (void *) as an
  * argument even though we don't care about it.
  */
-void	build_status	(void *stuff)
+void	build_status	(void *__U(stuff))
 {
 	int	window = 0;
 

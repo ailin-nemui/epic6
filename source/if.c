@@ -697,7 +697,7 @@ static void	for_fe_cmd (int argc, char **argv, const char *subargs)
 	new_free(&x);
 }
 
-static void	for_pattern_cmd (int argc, char **argv, const char *subargs)
+static void	for_pattern_cmd (int __U(argc), char **__U(argv), const char *__U(subargs))
 {
 	my_error("/FOR var IN <pattern> {commands} reserved for future use");
 }

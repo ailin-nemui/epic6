@@ -41,8 +41,6 @@ static socklen_t sasocklen (const struct sockaddr *sockaddr);
 static int	safamily (const struct sockaddr *sa);
 static	int	Socket (int domain, int type, int protocol);
 static	int	Connect (int fd, SSu *addr);
-static  int     Getaddrinfo (const char *nodename, const char *servname, AI *hints, AI **res);
-static  void    Freeaddrinfo (AI *ai);
 static	int	Getnameinfo (SSu *ssu, socklen_t ssulen, char *host, size_t hostlen, char *serv, size_t servlen, int flags);
 static  void    do_ares_callback (int fd);
 static  void    ares_sock_state_cb_ (void *data, ares_socket_t socket_fd, int readable, int writable);
@@ -234,19 +232,6 @@ static int Connect (int fd, SSu *addr)
 }
 
 /* * * * * */
-/*
- * This may ONLY be used to convert p-addrs to an SSU, which is nonblocking.
- */
-static	int	Getaddrinfo (const char *nodename, const char *servname, AI *hints, AI **res)
-{
-	hints->ai_flags |= AI_NUMERICHOST;
-	return getaddrinfo(nodename, servname, hints, res);
-}
-
-static	void	Freeaddrinfo (AI *ai)
-{
-	freeaddrinfo(ai);
-}
 
 /*
  * This may ONLY be used to convert SSUs to p-addrs, which is nonblocking.
@@ -439,7 +424,7 @@ static	void	do_ares_callback (int fd)
 	ares_process_fd(ares_channel_, readable, writable);
 }
 
-static	void	ares_sock_state_cb_ (void *data, ares_socket_t socket_fd, int readable, int writable)
+static	void	ares_sock_state_cb_ (void *__U(data), ares_socket_t socket_fd, int readable, int writable)
 {
 	int	revents = 0;
 
@@ -518,16 +503,17 @@ int	paddr_to_ssu (const char *host, SSu *storage_, int flags)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = 0;
 
-	if ((retval = Getaddrinfo(host, NULL, &hints, &results))) 
+	hints.ai_flags |= AI_NUMERICHOST;
+	if ((retval = getaddrinfo(host, NULL, &hints, &results)))
 	{
-		syserr(-1, "paddr_to_ssu: Getaddrinfo(%s) failed: %s", host, gai_strerror(retval));
+		syserr(-1, "paddr_to_ssu: getaddrinfo(%s) failed: %s", host, gai_strerror(retval));
 		return -1;
 	}
 
-	/* memcpy can bite me. */
+	/* It's wild to me that C prefers this over type punning... */
 	memcpy(&(storage_->ss), results->ai_addr, results->ai_addrlen);
 
-	Freeaddrinfo(results);
+	freeaddrinfo(results);
 	return 0;
 }
 
@@ -1050,9 +1036,9 @@ static cJSON *	convert_ares_addrinfo_to_json (const struct ares_addrinfo *result
     return root; // Success! Return the created JSON object
 }
 
-static void	my_addrinfo_json_callback (void *arg, int status, int timeouts, struct ares_addrinfo *result) 
+static void	my_addrinfo_json_callback (void *arg, int status, int __U(timeouts), struct ares_addrinfo *result) 
 {
-    char *json_string;
+    char *json_string = NULL;
     int   fd;
 
     fd = *(int *)arg;
@@ -1075,6 +1061,7 @@ static void	my_addrinfo_json_callback (void *arg, int status, int timeouts, stru
 		if (x_debug & DEBUG_SERVER_CONNECT)
                 	yell("my_addrinfo_json_callback: JSON Result: %s", json_string);
             } else {
+		malloc_sprintf(&json_string, "{\"failure\":%d}", status);
 		if (x_debug & DEBUG_SERVER_CONNECT)
 			yell("my_addrinfo_json_callback: Failed to print JSON.");
             }
@@ -1082,10 +1069,10 @@ static void	my_addrinfo_json_callback (void *arg, int status, int timeouts, stru
             // IMPORTANT: Free the cJSON object when you are done
             cJSON_DeleteItem(&json_output);
         } else {
-	    if (x_debug & DEBUG_SERVER_CONNECT)
-                yell("my_addrinfo_json_callback: Failed to convert ares_addrinfo to JSON.");
+		malloc_sprintf(&json_string, "{\"failure\":%d}", status);
+		if (x_debug & DEBUG_SERVER_CONNECT)
+			yell("my_addrinfo_json_callback: Failed to convert ares_addrinfo to JSON.");
         }
-
     } else {
         yell("my_addrinfo_json_callback: DNS lookup failed with status: %d (%s)", status, ares_strerror(status));
         // Handle the error appropriately

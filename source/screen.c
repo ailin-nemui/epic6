@@ -525,9 +525,11 @@ static size_t	write_ircii_attributes (char *output, size_t output_size, Attribut
 
 	if (old_a == NULL)
 	{
+
 		zero_attribute(&dummy);
 		old_a = &dummy;
-		*str++ = ALL_OFF, count++;
+		if (count + 1 < output_size)
+			*str++ = ALL_OFF, count++;
 	}
 
 	/* If the new attribute is ALL_OFF... */
@@ -543,7 +545,8 @@ static size_t	write_ircii_attributes (char *output, size_t output_size, Attribut
 		)
 	    {
 		/* ... Collapse it to an ALL_OFF, and we're done here */
-		*str++ = ALL_OFF;
+		if (count + 1 < output_size)
+			*str++ = ALL_OFF;
 		*old_a = *a;
 		return 1;
 	    }
@@ -552,74 +555,108 @@ static size_t	write_ircii_attributes (char *output, size_t output_size, Attribut
 	if (a->fg != old_a->fg || a->bg != old_a->bg)
 	{
 		if (IS_COLOR_NONE(a->fg)) {
-			*str++ = '\030', count++;
-			*str++ = '-', count++;
-			*str++ = '1', count++;
+			if (count + 3 < output_size)
+			{
+				*str++ = '\030', count++;
+				*str++ = '-', count++;
+				*str++ = '1', count++;
+			}
 		} else if (IS_COLOR_ANSI(a->fg)) {
-			*str++ = '\030', count++;
-			count += hex256(GET_ANSI_COLOR(a->fg), &str);
+			if (count + 3 < output_size)
+			{
+				*str++ = '\030', count++;
+				count += hex256(GET_ANSI_COLOR(a->fg), &str);
+			}
 		} else if (IS_COLOR_C(a->fg)) {
-			*str++ = '\003', count++;
-			*str++ = GET_C_COLOR(a->fg) / 10 + '0', count++;
-			*str++ = GET_C_COLOR(a->fg) % 10 + '0', count++;
+			if (count + 3 < output_size)
+			{
+				*str++ = '\003', count++;
+				*str++ = GET_C_COLOR(a->fg) / 10 + '0', count++;
+				*str++ = GET_C_COLOR(a->fg) % 10 + '0', count++;
+			}
 		} else if (IS_COLOR_X(a->fg)) {
-			*str++ = '\030', count++;
-			count += hex256(GET_X_COLOR(a->fg), &str);
+			if (count + 3 < output_size)
+			{
+				*str++ = '\030', count++;
+				count += hex256(GET_X_COLOR(a->fg), &str);
+			}
 		} else if (IS_COLOR_RGB(a->fg)) {
 			int	r, g, b;
 
-			*str++ = '\030', count++;
-			*str++ = '{', count++;
-			*str++ = '#', count++;
-			GET_RGB_COLOR(a->fg, r, g, b);
-			count += hex256(r & 0xFFU, &str);
-			count += hex256(g & 0xFFU, &str);
-			count += hex256(b & 0xFFU, &str);
-			*str++ = '}', count++;
+			if (count + 10 < output_size)
+			{
+				*str++ = '\030', count++;
+				*str++ = '{', count++;
+				*str++ = '#', count++;
+				GET_RGB_COLOR(a->fg, r, g, b);
+				count += hex256(r & 0xFFU, &str);
+				count += hex256(g & 0xFFU, &str);
+				count += hex256(b & 0xFFU, &str);
+				*str++ = '}', count++;
+			}
 		} 
 
 		if (IS_COLOR_NONE(a->bg)) {
 			/* */ (void) 0;
 		} else if (IS_COLOR_ANSI(a->bg)) {
-			*str++ = '\030', count++;
-			*str++ = ',', count++;
-			count += hex256(GET_ANSI_COLOR(a->bg), &str);
+			if (count + 4 < output_size)
+			{
+				*str++ = '\030', count++;
+				*str++ = ',', count++;
+				count += hex256(GET_ANSI_COLOR(a->bg), &str);
+			}
 		} else if (IS_COLOR_C(a->bg)) {
-			*str++ = '\003', count++;
-			*str++ = ',', count++;
-			*str++ = GET_C_COLOR(a->bg) / 10 + '0', count++;
-			*str++ = GET_C_COLOR(a->bg) % 10 + '0', count++;
+			if (count + 4 < output_size)
+			{
+				*str++ = '\003', count++;
+				*str++ = ',', count++;
+				*str++ = GET_C_COLOR(a->bg) / 10 + '0', count++;
+				*str++ = GET_C_COLOR(a->bg) % 10 + '0', count++;
+			}
 		} else if (IS_COLOR_X(a->bg)) {
-			*str++ = '\030', count++;
-			*str++ = ',', count++;
-			count += hex256(GET_X_COLOR(a->bg), &str);
+			if (count + 4 < output_size)
+			{
+				*str++ = '\030', count++;
+				*str++ = ',', count++;
+				count += hex256(GET_X_COLOR(a->bg), &str);
+			}
 		} else if (IS_COLOR_RGB(a->bg)) {
-			int	r, g, b;
+			if (count + 11 < output_size)
+			{
+				int	r, g, b;
 
-			*str++ = '\030', count++;
-			*str++ = '{', count++;
-			*str++ = '#', count++;
-			*str++ = ',', count++;
-			GET_RGB_COLOR(a->bg, r, g, b);
-			count += hex256(r & 0xFFU, &str);
-			count += hex256(g & 0xFFU, &str);
-			count += hex256(b & 0xFFU, &str);
-			*str++ = '}', count++;
+				*str++ = '\030', count++;
+				*str++ = '{', count++;
+				*str++ = '#', count++;
+				*str++ = ',', count++;
+				GET_RGB_COLOR(a->bg, r, g, b);
+				count += hex256(r & 0xFFU, &str);
+				count += hex256(g & 0xFFU, &str);
+				count += hex256(b & 0xFFU, &str);
+				*str++ = '}', count++;
+			}
 		} 
 	}
 
-	if (old_a->bold != a->bold)
-		*str++ = BOLD_TOG, count++;
-	if (old_a->blink != a->blink)
-		*str++ = BLINK_TOG, count++;
-	if (old_a->reverse != a->reverse)
-		*str++ = REV_TOG, count++;
-	if (old_a->underline != a->underline)
-		*str++ = UND_TOG, count++;
-	if (old_a->altchar != a->altchar)
-		*str++ = ALT_TOG, count++;
-	if (old_a->italic != a->italic)
-		*str++ = ITALIC_TOG, count++;
+	if (old_a->bold != a->bold) {
+		if (count + 1 < output_size)
+			*str++ = BOLD_TOG, count++;
+	} if (old_a->blink != a->blink) {
+		if (count + 1 < output_size)
+			*str++ = BLINK_TOG, count++;
+	} if (old_a->reverse != a->reverse) {
+		if (count + 1 < output_size)
+			*str++ = REV_TOG, count++;
+	} if (old_a->underline != a->underline) {
+		if (count + 1 < output_size)
+			*str++ = UND_TOG, count++;
+	} if (old_a->altchar != a->altchar) {
+		if (count + 1 < output_size)
+			*str++ = ALT_TOG, count++;
+	} if (old_a->italic != a->italic) {
+		if (count + 1 < output_size)
+			*str++ = ITALIC_TOG, count++;
+	}
 
 	*old_a = *a;
 	return count;
@@ -644,7 +681,7 @@ static size_t	write_ircii_attributes (char *output, size_t output_size, Attribut
  * Errors:
  *	This function always succeeds
  */
-static size_t	ignore_attributes (char *output, size_t output_size, Attribute *old_a, Attribute *a)
+static size_t	ignore_attributes (char *__U(output), size_t __U(output_size), Attribute *__U(old_a), Attribute *__U(a))
 {
 	/* XXX Should 'a' be written to 'old_a' ? */
 	return 0;
@@ -4435,7 +4472,7 @@ void 	add_wait_prompt (const char *prompt, void (*func)(const char *data, const 
 	last_input_screen = old_last_input_screen;
 }
 
-static void	destroy_prompt (int s_, WaitPrompt **oldprompt)
+static void	destroy_prompt (int __U(s_), WaitPrompt **oldprompt)
 {
 	destroy_input_line((*oldprompt)->my_input_line);
 	(*oldprompt)->my_input_line = NULL;

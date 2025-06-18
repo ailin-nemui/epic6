@@ -97,7 +97,7 @@ typedef struct
 
 void *	add_to_alist 		(alist *, const char *, void *);
 void *	remove_from_alist 	(alist *, const char *);
-void *	alist_lookup 		(alist *, const char *, int, int);
+void *	alist_lookup 		(alist *, const char *, int);
 void *	find_alist_item 	(alist *, const char *, int *, int *);
 void *	alist_pop		(alist *, int);
 void *  get_alist_item 		(alist *, int);
