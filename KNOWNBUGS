@@ -278,4 +278,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Fix bugs found by clang static analyzer.
 * Fix /whois without arg (rb wcarson, fudd)
 * Add $serverctl(RESET <x>) for znc resets (for wcarson)
-
+* Fix $winchan() when chanwin is -1 (rb roar)

@@ -4553,7 +4553,7 @@ BUILT_IN_FUNCTION(function_winchan, input)
 			servnum = str_to_servref(input);
 
 		/* Now return window for *any* channel. */
-		if ((win = get_channel_window(chan, servnum)))
+		if ((win = get_channel_window(chan, servnum)) >= 1)
 			RETURN_INT(get_window_user_refnum(win));
 
 		RETURN_INT(-1);
