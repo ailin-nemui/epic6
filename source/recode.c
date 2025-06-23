@@ -312,8 +312,7 @@ static RecodeRule *	create_recoding_rule (const char *target, const char *encodi
 		if (r->target_part && !*r->target_part)
 			r->target_part = NULL;
 
-		if (x_debug & DEBUG_RECODE)
-			yell("Server part [%s], target part [%s]", 
+		debug(DEBUG_RECODE, "Server part [%s], target part [%s]", 
 				r->server_part, r->target_part);
 
 		/**********************************************************/
@@ -640,15 +639,13 @@ static const char *	decide_encoding (const char *from, const char *target, int s
 		if (!(r = recode_rules[i]))
 			continue;	/* XXX or break;? */
 
-		if (x_debug & DEBUG_RECODE)
-			yell(">> Considering rule %d: %s", i, r->target);
+		debug(DEBUG_RECODE, ">> Considering rule %d: %s", i, r->target);
 
 		/* Skip rules without targets */
 		/* BTW, this is "impossible", so a panic may be better */
 		if (r->target == NULL)
 		{
-			if (x_debug & DEBUG_RECODE)
-				yell("<< Rule has no target.");
+			debug(DEBUG_RECODE, "<< Rule has no target.");
 			continue;
 		}
 
@@ -660,14 +657,12 @@ static const char *	decide_encoding (const char *from, const char *target, int s
 		 */
 		if (from && !my_stricmp(r->target, "irc"))
 		{
-			if (x_debug & DEBUG_RECODE)
-				yell("__ irc magic rule works for inbound msg");
+			debug(DEBUG_RECODE, "__ irc magic rule works for inbound msg");
 			goto target_ok;
 		}
 
 		/**********************************************************/
-		if (x_debug & DEBUG_RECODE)
-			yell("-- Server part [%s], target part [%s]", 
+		debug(DEBUG_RECODE, "-- Server part [%s], target part [%s]", 
 				r->server_part, r->target_part);
 
 		/**********************************************************/
@@ -682,13 +677,11 @@ static const char *	decide_encoding (const char *from, const char *target, int s
 		{
 			if (!serverinfo_matches_servref(&r->si, server))
 			{
-				if (x_debug & DEBUG_RECODE)
-					yell("<< Server part does not match expectations for %d", server);
+				debug(DEBUG_RECODE, "<< Server part does not match expectations for %d", server);
 				continue;
 			}
 		}
-		if (x_debug & DEBUG_RECODE)
-			yell("-- Server part is acceptable");
+		debug(DEBUG_RECODE, "-- Server part is acceptable");
 
 		/*
 		 *
@@ -699,8 +692,7 @@ static const char *	decide_encoding (const char *from, const char *target, int s
 		/* If the rule doesn't limit the target, then it's ok */
 		if (r->target_part == NULL)
 		{
-			if (x_debug & DEBUG_RECODE)
-				yell("__ No target part -- ok");
+			debug(DEBUG_RECODE, "__ No target part -- ok");
 			goto target_ok;
 		}
 
@@ -712,14 +704,12 @@ static const char *	decide_encoding (const char *from, const char *target, int s
 		{
 			if (!my_stricmp(r->target_part, target))
 			{
-				if (x_debug & DEBUG_RECODE)
-					yell("__ Outbound message - Target matches sender -- ok");
+				debug(DEBUG_RECODE, "__ Outbound message - Target matches sender -- ok");
 				goto target_ok;
 			}
 
 			/* Not acceptable */
-			if (x_debug & DEBUG_RECODE)
-				yell("<< Outbound message - Target [%s] does not match sender [%s]", r->target_part, target);
+			debug(DEBUG_RECODE, "<< Outbound message - Target [%s] does not match sender [%s]", r->target_part, target);
 			continue;
 		}
 
@@ -732,26 +722,22 @@ static const char *	decide_encoding (const char *from, const char *target, int s
 		{
 			if (!my_stricmp(r->target_part, target))
 			{
-				if (x_debug & DEBUG_RECODE)
-					yell("__ Inbound message - Target matches recipient -- ok");
+				debug(DEBUG_RECODE, "__ Inbound message - Target matches recipient -- ok");
 				goto target_ok;
 			}
 
 			if (!my_stricmp(r->target_part, from))
 			{
-				if (x_debug & DEBUG_RECODE)
-					yell("__ inbound message - target matches sender -- ok");
+				debug(DEBUG_RECODE, "__ inbound message - target matches sender -- ok");
 				goto target_ok;
 			}
 
-			if (x_debug & DEBUG_RECODE)
-				yell("<< Inbound message - not applicable");
+			debug(DEBUG_RECODE, "<< Inbound message - not applicable");
 			/* Not acceptable */
 			continue;
 		}
 
-		if (x_debug & DEBUG_RECODE)
-			yell("<< Other - Not acceptable");
+		debug(DEBUG_RECODE, "<< Other - Not acceptable");
 
 		/* Not acceptable */
 		continue;
@@ -790,8 +776,7 @@ target_ok:
 			this_score = -100;
 
 		/**********************************************************/
-		if (x_debug & DEBUG_RECODE)
-			yell("++ Rule %d has score %d", i, this_score);
+		debug(DEBUG_RECODE, "++ Rule %d has score %d", i, this_score);
 
 		/*
 		 * 
@@ -802,11 +787,9 @@ target_ok:
 		{
 			winner = i;
 			winning_score = this_score;
-			if (x_debug & DEBUG_RECODE)
-				yell("!! This is the best rule so far");
+			debug(DEBUG_RECODE, "!! This is the best rule so far");
 		}
-		if (x_debug & DEBUG_RECODE)
-			yell("<< Done evaluating rule %d: %s", i, r->target);
+		debug(DEBUG_RECODE, "<< Done evaluating rule %d: %s", i, r->target);
 	}
 
 
@@ -816,16 +799,14 @@ target_ok:
 	 */
 	if (winner == -1 && from == NULL)
 	{
-		if (x_debug & DEBUG_RECODE)
-			yell("// I decided there was no winner - UTF-8 it is");
+		debug(DEBUG_RECODE, "// I decided there was no winner - UTF-8 it is");
 		return NULL;
 	}
 	if (winner == -1)
 		panic(1, "Did not find a recode rule for %d/%s/%s", 
 					server, from, target);
 
-	if (x_debug & DEBUG_RECODE)
-		yell("// The winning rule was %d, %s, %s",
+	debug(DEBUG_RECODE, "// The winning rule was %d, %s, %s",
 				winner,
 				recode_rules[winner]->target,
 				recode_rules[winner]->encoding);
@@ -873,27 +854,23 @@ const char *	outbound_recode (const char *to, int server, const char *message, c
 	/* If there is no place to put the retval, don't do anything */
 	if (!extra)
 	{
-		if (x_debug & DEBUG_RECODE)
-			yell("ob: extra == null, so i can't recode");
+		debug(DEBUG_RECODE, "ob: extra == null, so i can't recode");
 		return message;
 	}
 
 	/* If no recoding is necessary, then we're done. */
 	if (!decide_encoding(NULL, to, server, &i))
 	{
-		if (x_debug & DEBUG_RECODE)
-			yell("ob: I can't decide on an encoding, so i can't recode");
+		debug(DEBUG_RECODE, "ob: I can't decide on an encoding, so i can't recode");
 		return message;
 	}
 	if (i == (iconv_t) -1)
 	{
-		if (x_debug & DEBUG_RECODE)
-			yell("ob: The encoding rule didn't give me an iconv to work with.");
+		debug(DEBUG_RECODE, "ob: The encoding rule didn't give me an iconv to work with.");
 		return message;
 	}
 
-	if (x_debug & DEBUG_RECODE)
-		yell("ob: Here we go, I'm recoding the ob message!");
+	debug(DEBUG_RECODE, "ob: Here we go, I'm recoding the ob message!");
 
 	new_buffer = malloc_strdup(message);
 	new_buffer_len = strlen(message) + 1;
@@ -948,16 +925,14 @@ const char *	inbound_recode (const char *from, int server, const char *to, const
 	msg = LOCAL_COPY(message);
 	if (!invalid_utf8str(msg))
 	{
-		if (x_debug & DEBUG_RECODE)
-			yell("ib: This message is valid UTF-8, so it's fine.");
+		debug(DEBUG_RECODE, "ib: This message is valid UTF-8, so it's fine.");
 		return message;
 	}
 
 	/* If there is no place to put the retval, don't do anything */
 	if (!extra)
 	{
-		if (x_debug & DEBUG_RECODE)
-			yell("ib: I'd have recoded this, but extra == NULL, so I won't.");
+		debug(DEBUG_RECODE, "ib: I'd have recoded this, but extra == NULL, so I won't.");
 		return message;
 	}
 
@@ -967,20 +942,17 @@ const char *	inbound_recode (const char *from, int server, const char *to, const
 	 */
 	if (!decide_encoding(from, to, server, &i))
 	{
-		if (x_debug & DEBUG_RECODE)
-			yell("ib: I couldn't figure out what encoding rule to use.  This is supposed to be impossible.");
+		debug(DEBUG_RECODE, "ib: I couldn't figure out what encoding rule to use.  This is supposed to be impossible.");
 		return message;
 	}
 
 	if (i == (iconv_t) -1)
 	{
-		if (x_debug & DEBUG_RECODE)
-			yell("ib: The encoding rule didn't seem to have an iconv handle to use. strange ");
+		debug(DEBUG_RECODE, "ib: The encoding rule didn't seem to have an iconv handle to use. strange ");
 		return message;
 	}
 
-	if (x_debug & DEBUG_RECODE)
-		yell("ib: OK.  I'm recoding this message!");
+	debug(DEBUG_RECODE, "ib: OK.  I'm recoding this message!");
 
 	new_buffer = malloc_strdup(message);
 	new_buffer_len = strlen(message) + 1;

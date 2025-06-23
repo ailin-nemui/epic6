@@ -279,3 +279,18 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Fix /whois without arg (rb wcarson, fudd)
 * Add $serverctl(RESET <x>) for znc resets (for wcarson)
 * Fix $winchan() when chanwin is -1 (rb roar)
+* Replace vibe code for kwarg handling with code that actually works
+* Sunset the legacy ircII regex matcher.
+* Sunset /xdebug regex and /xdebug no_color.  
+* Add /xdebug kwarg_parse and /xdebug rfc1459
+* Add coalesce_empty() to get a non-"empty" string
+* Add "kwarg_string_to_json()" -- server descriptions to json
+* Add debug() which replaces if (x_debug & XXX) yell(...)
+* Put a cJSON "root" item in the ServerInfo.
+* Migrate all debug output to use debug()
+* Actually fix /whois this time
+* Explicitly handle 'localhost' special, to work around c-ares weirdness 
+* Begin major refactor of "ServerInfo" data structure.
+* We are moving away from a C struct to a cJSON Object.  One step at a time.
+* Finalize the API to get ServerInfo values, and constrain ServerInfo use
+* Start storing the ServerInfo in the json object as well as the struct

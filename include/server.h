@@ -53,6 +53,8 @@ typedef struct ServerInfo
         const char *  	proto_type;
 	const char *  	vhost;
 	const char *  	cert;
+
+	cJSON *		root;
 } ServerInfo;
 typedef ServerInfo SI;
 
@@ -65,6 +67,7 @@ typedef	struct
 	/* status = CREATED, RECONNECT */
 	SI *		info;			/* Canonical information */
 	Bucket *	altnames;		/* Alternate handles for the server */
+	cJSON *		info_;
 
 	/* state = DNS */
 	SSu *		addrs;			/* Returned by ares_getaddrinfo */

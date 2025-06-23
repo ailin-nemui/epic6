@@ -17,12 +17,12 @@ extern 	unsigned long 	x_debug;
 #define DEBUG_OUTBOUND		(1UL << 4)
 #define DEBUG_INBOUND		(1UL << 5)
 #define DEBUG_WAITS		(1UL << 7)
-#define DEBUG_8			(1UL << 8)
+#define DEBUG_RECODE		(1UL << 8)
 #define DEBUG_SERVER_CONNECT	(1UL << 9)
 #define DEBUG_CRASH		(1UL << 10)
-#define DEBUG_NO_COLOR		(1UL << 11)
+#define DEBUG_RFC1459		(1UL << 11)
 #define DEBUG_NOTIFY		(1UL << 12)
-#define DEBUG_REGEX		(1UL << 13)
+#define DEBUG_KWARG_PARSE	(1UL << 13)
 #define DEBUG_REGEX_DEBUG	(1UL << 14)
 #define DEBUG_BROKEN_CLOCK	(1UL << 15)
 #define DEBUG_CHANNELS		(1UL << 16)
@@ -40,6 +40,5 @@ extern 	unsigned long 	x_debug;
 #define DEBUG_WHO_QUEUE		(1UL << 28)
 #define DEBUG_UNICODE		(1UL << 29)
 #define DEBUG_DWORD 		(1UL << 30)
-#define DEBUG_RECODE            (1UL << 31)
 
 #endif

@@ -3534,8 +3534,7 @@ void 	window_check_servers (void)
 	    if (status == SERVER_RECONNECT)
 	    {
 	        int 	l = set_context(get_window_server(window), window, NULL, NULL, LEVEL_OTHER);
-		if (x_debug & DEBUG_SERVER_CONNECT)
-		    yell("window_check_servers() is bringing up server %d", i);
+		debug(DEBUG_SERVER_CONNECT, "window_check_servers() is bringing up server %d", i);
 
 		/* This bootstraps the reconnect process */
 		bootstrap_server_connection(i);
@@ -3549,8 +3548,7 @@ void 	window_check_servers (void)
 	    else if (status == SERVER_CLOSED && server_more_addrs(i))
 	    {
 	        int	l = set_context(get_window_server(window), window, NULL, NULL, LEVEL_OTHER);
-		if (x_debug & DEBUG_SERVER_CONNECT)
-		    yell("window_check_servers() is restarting server %d", i);
+		debug(DEBUG_SERVER_CONNECT, "window_check_servers() is restarting server %d", i);
 		connect_to_server_next_addr(i);
 		pop_context(l);
 	    }
@@ -3713,8 +3711,7 @@ int	real_set_context (int servref, int refnum, const char *sender, const char *t
 		RESIZE(contexts, struct output_context, context_max);
 	}
 
-	if (x_debug & DEBUG_MESSAGE_FROM)
-		yell("Setting context %d [%d:%s:%s:%s] {%s:%d}", context_counter, 
+	debug(DEBUG_MESSAGE_FROM, "Setting context %d [%d:%s:%s:%s] {%s:%d}", context_counter, 
 								refnum, 
 								coalesce(sender, "<null>"),
 								coalesce(target, "<null>"), 
@@ -3773,8 +3770,7 @@ int	real_set_context (int servref, int refnum, const char *sender, const char *t
 
 void	pop_context (int context)
 {
-	if (x_debug & DEBUG_MESSAGE_FROM)
-		yell("popping message context %d", context);
+	debug(DEBUG_MESSAGE_FROM, "popping message context %d", context);
 
 	if (context != context_counter - 1)
 		panic(1, "Output context from %s:%d was not released", 

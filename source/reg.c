@@ -30,25 +30,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-/*
- * [Original note from Troy]
- * The original was spagetti. I have replaced Michael's code with some of
- * my own which is a thousand times more readable and can also handle '%',
- * which substitutes anything except a space. This should enable people
- * to position things better based on argument. I have also added '?', which
- * substitutes to any single character. And of course it still handles '*'.
- * this should be more efficient than the previous version too.
- */
-/*
- * [Note from EPIC Software Labs]
- * I had seen that phone had written a non-recursive pattern matcher for ircII,
- * so I decided to see if I could write one too without peeking at his 
- * implementation.  The matcher I came up with ("new_match") is iterative and 
- * is bug-for-bug compatable with troy's recursive matcher ("old_match"). 
- * It's a lot more complicated, but it's also a lot faster.  (jfn)
- */
-
 #include "irc.h"
 #include "ircaux.h"
 #include "output.h"
@@ -56,62 +37,7 @@
 
 static	int	total_explicit;
 
-/*
- * The following #define is here because we *know* its behaviour.
- * The behaviour of toupper tends to be undefined when it's given
- * a non lower case letter.
- * All the systems supported by IRCII should be ASCII
- */
-#define	mkupper(c)	(((c) >= 'a' && (c) <= 'z') ? ((c) - 'a' + 'A') : c)
-
-static int	old_match(const char *pattern, const char *string)
-{
-	char	type = 0;
-
-	while (*string && *pattern && *pattern != '*' && *pattern != '%')
-	{
-		if (*pattern == '\\' && pattern[1])
-		{
-			if (!*++pattern || !(mkupper(*pattern) == mkupper(*string)))
-				return 0;
-			else
-				pattern++, string++, total_explicit++;
-			continue;	/* Erf! try $match(\\* *) */
-		}
-
-		if (*pattern == '?')
-			pattern++, string++;
-		else if (mkupper(*pattern) == mkupper(*string))
-			pattern++, string++, total_explicit++;
-		else
-			break;
-	}
-	if (*pattern == '*' || *pattern == '%')
-	{
-		type = (*pattern++);
-		while (*string)
-		{
-			if (old_match(pattern, string))
-				return 1;
-			else if (type == '*' || !isspace(*string))
-				string++;
-			else
-				break;
-		}
-	}
-
-	/* Slurp up any trailing *'s or %'s... */
-	if (!*string && (type == '*' || type == '%'))
-		while (*pattern && (*pattern == '*' || *pattern == '%'))
-			pattern++;
-
-	if (!*string && !*pattern)
-		return 1;
-
-	return 0;
-}
-
-static int new_match (const char *pattern, const char *string)
+static int	new_match (const char *pattern, const char *string)
 {
 	int		count = 1;
 	int 		asterisk = 0;
@@ -123,8 +49,7 @@ static int new_match (const char *pattern, const char *string)
 	const char	*after_wildcard = NULL;
 	int		sanity = 0;
 
-	if (x_debug & DEBUG_REGEX_DEBUG)
-		privileged_yell("Matching [%s] against [%s]", pattern, string);
+	debug(DEBUG_REGEX_DEBUG, "Matching [%s] against [%s]", pattern, string);
 
 	for (;;)
 	{
@@ -158,22 +83,19 @@ static int new_match (const char *pattern, const char *string)
 			 */
 			if (!*string)
 			{
-				if (x_debug & DEBUG_REGEX_DEBUG)
-					privileged_yell("More pattern, no source, Failure.  Returning [0]");
+				debug(DEBUG_REGEX_DEBUG, "More pattern, no source, Failure.  Returning [0]");
 				return 0;
 			}
 
 			if (*pattern == '\\')
 			{
-                          if (x_debug & DEBUG_REGEX_DEBUG)
-                             privileged_yell("Trying to match [%d] after the backslash "
+                          debug(DEBUG_REGEX_DEBUG, "Trying to match [%d] after the backslash "
                                    "against [%d]", (int)*(pattern + 1), 
                                                   (int)*string);
 
                           if (tolower(*string) == tolower(*(pattern+1)))
                           {
-                               if (x_debug & DEBUG_REGEX_DEBUG)
-                                  privileged_yell("It matches!  Releasing the backslash");
+                               debug(DEBUG_REGEX_DEBUG, "It matches!  Releasing the backslash");
 
                                pattern++;
                                asterisk = 0;
@@ -201,8 +123,7 @@ static int new_match (const char *pattern, const char *string)
 			else if (*pattern == '?' || 
 				(tolower(*string) == tolower(*pattern)))
 			{
-				if (x_debug & DEBUG_REGEX_DEBUG)
-					privileged_yell("Found a [%d] in the source", *pattern);
+				debug(DEBUG_REGEX_DEBUG, "Found a [%d] in the source", *pattern);
 
 				asterisk = 0;
 				last_asterisk_point = string;
@@ -235,14 +156,12 @@ static int new_match (const char *pattern, const char *string)
 			{
 				if (*pattern)
 				{
-					if (x_debug & DEBUG_REGEX_DEBUG)
-						privileged_yell("Ran out of source matching after %%.  Returning [0]");
+					debug(DEBUG_REGEX_DEBUG, "Ran out of source matching after %%.  Returning [0]");
 					return 0;
 				}
 				else
 				{
-					if (x_debug & DEBUG_REGEX_DEBUG)
-						privileged_yell("Success!  Returning [%d]", count);
+					debug(DEBUG_REGEX_DEBUG, "Success!  Returning [%d]", count);
 					return count;
 				}
 			}
@@ -252,15 +171,13 @@ static int new_match (const char *pattern, const char *string)
 			 */
 			if (*pattern == '\\')
 			{
-                          if (x_debug & DEBUG_REGEX_DEBUG)
-                             privileged_yell("Trying to match [%d] after the backslash "
+                          debug(DEBUG_REGEX_DEBUG, "Trying to match [%d] after the backslash "
                                    "against [%d]", (int)*(pattern + 1), 
                                                   (int)*string);
 
                           if (tolower(*string) == tolower(*(pattern+1)))
                           {
-                               if (x_debug & DEBUG_REGEX_DEBUG)
-                                  privileged_yell("It matches!  Releasing the backslash");
+                               debug(DEBUG_REGEX_DEBUG, "It matches!  Releasing the backslash");
 
                                pattern++;
                                percent = 0;
@@ -274,7 +191,7 @@ static int new_match (const char *pattern, const char *string)
                           {
                                if (x_debug & DEBUG_REGEX_DEBUG)
                                {
-                                  privileged_yell("Found a space trying to match the [%d] after a %%\\, so this doesn't match.  Returning [0]", (int)*(pattern + 1));
+                                  debug(DEBUG_REGEX_DEBUG, "Found a space trying to match the [%d] after a %%\\, so this doesn't match.  Returning [0]", (int)*(pattern + 1));
                                   return 0;
                                }
                           }
@@ -290,8 +207,7 @@ static int new_match (const char *pattern, const char *string)
 			 */
 			else if (isspace(*string))
 			{
-				if (x_debug & DEBUG_REGEX_DEBUG)
-					privileged_yell("Found a space");
+				debug(DEBUG_REGEX_DEBUG, "Found a space");
 				percent = 0;
 				last_percent_point = NULL;
 			}
@@ -308,8 +224,7 @@ static int new_match (const char *pattern, const char *string)
 			 */
 			else
 			{
-				if (x_debug & DEBUG_REGEX_DEBUG)
-					privileged_yell("Found a [%d]", *pattern);
+				debug(DEBUG_REGEX_DEBUG, "Found a [%d]", *pattern);
 
 				percent = 0;
 				last_percent_point = string;
@@ -364,8 +279,7 @@ static int new_match (const char *pattern, const char *string)
 			 */
 			if (asterisk && !*pattern)
 			{
-				if (x_debug & DEBUG_REGEX_DEBUG)
-					privileged_yell("Wildcard at end of pattern. success!  Returning [%d]", count);
+				debug(DEBUG_REGEX_DEBUG, "Wildcard at end of pattern. success!  Returning [%d]", count);
 				return count;
 			}
 
@@ -386,8 +300,7 @@ static int new_match (const char *pattern, const char *string)
 			 */
 			if (!*string)
 			{
-				if (x_debug & DEBUG_REGEX_DEBUG)
-					privileged_yell("Ran out of source matching ?. Returning [0]");
+				debug(DEBUG_REGEX_DEBUG, "Ran out of source matching ?. Returning [0]");
 				return 0;
 			}
 			string++;
@@ -406,13 +319,11 @@ static int new_match (const char *pattern, const char *string)
 			pattern++;
 			if (!*pattern)
 			{
-				if (x_debug & DEBUG_REGEX_DEBUG)
-					privileged_yell("Lone \\ at end of pattern, failed.  Returning [0]");
+				debug(DEBUG_REGEX_DEBUG, "Lone \\ at end of pattern, failed.  Returning [0]");
 				return 0;
 			}
 
-			if (x_debug & DEBUG_REGEX_DEBUG)
-				privileged_yell("Comparing dequoted [%d] with [%d]",
+			debug(DEBUG_REGEX_DEBUG, "Comparing dequoted [%d] with [%d]",
 					*pattern, *string);
 
 			/*
@@ -421,13 +332,11 @@ static int new_match (const char *pattern, const char *string)
 			 */
 			if (tolower(*pattern) != tolower(*string))
 			{
-				if (x_debug & DEBUG_REGEX_DEBUG)
-					privileged_yell("characters [%d] and [%d] after \\ dont match.  Returning [0]", tolower(*pattern), tolower(*string));
+				debug(DEBUG_REGEX_DEBUG, "characters [%d] and [%d] after \\ dont match.  Returning [0]", tolower(*pattern), tolower(*string));
 				return 0;
 			}
 
-			if (x_debug & DEBUG_REGEX_DEBUG)
-				privileged_yell("Apparantly they match");
+			debug(DEBUG_REGEX_DEBUG, "Apparantly they match");
 
 			count++, string++, pattern++;
 			break;
@@ -442,8 +351,7 @@ static int new_match (const char *pattern, const char *string)
 		{
 			if (!*pattern && !*string)
 			{
-				if (x_debug & DEBUG_REGEX_DEBUG)
-					privileged_yell("Success!  Returning [%d]", count);
+				debug(DEBUG_REGEX_DEBUG, "Success!  Returning [%d]", count);
 				return count;
 			}
 
@@ -454,9 +362,7 @@ static int new_match (const char *pattern, const char *string)
 			 */
 			if (tolower(*pattern) == tolower(*string))
 			{
-				if (x_debug & DEBUG_REGEX_DEBUG)
-					privileged_yell("characters match");
-
+				debug(DEBUG_REGEX_DEBUG, "characters match");
 				count++, pattern++, string++;
 			}
 
@@ -469,8 +375,7 @@ static int new_match (const char *pattern, const char *string)
 			 */
 			else if (last_asterisk_point)
 			{
-				if (x_debug & DEBUG_REGEX_DEBUG)
-					privileged_yell("last_asterisk_point");
+				debug(DEBUG_REGEX_DEBUG, "last_asterisk_point");
 
                                 asterisk = 1;
                                 string = last_asterisk_point + 1;
@@ -479,8 +384,7 @@ static int new_match (const char *pattern, const char *string)
 			}
 			else if (last_percent_point)
 			{
-				if (x_debug & DEBUG_REGEX_DEBUG)
-					privileged_yell("last_percent_point");
+				debug(DEBUG_REGEX_DEBUG, "last_percent_point");
 
                                 percent = 1;
                                 string = last_percent_point + 1;
@@ -489,8 +393,7 @@ static int new_match (const char *pattern, const char *string)
 			}
 			else
 			{
-				if (x_debug & DEBUG_REGEX_DEBUG)
-					privileged_yell("Characters [%d] and [%d] dont match.  Returning [0]", tolower(*pattern), tolower(*string));
+				debug(DEBUG_REGEX_DEBUG, "Characters [%d] and [%d] dont match.  Returning [0]", tolower(*pattern), tolower(*string));
 				return 0;
 			}
 
@@ -500,8 +403,7 @@ static int new_match (const char *pattern, const char *string)
 	}
 
 	/* NOTREACHED */
-	if (x_debug & DEBUG_REGEX_DEBUG)
-		privileged_yell("ABAONDON SHIP!  Returning [0]");
+	debug(DEBUG_REGEX_DEBUG, "ABAONDON SHIP!  Returning [0]");
 	return 0;
 }
 
@@ -614,15 +516,7 @@ int wild_match (const char *p, const char *str)
 		else
 		{
 			total_explicit = 0;
-			if (!(x_debug & DEBUG_REGEX))
-				return new_match(pattern, str);
-			else
-			{
-				if (old_match(pattern, str))
-					return total_explicit + 1;
-				else
-					return 0;
-			}
+			return new_match(pattern, str);
 		}
 	}
 
@@ -630,17 +524,7 @@ int wild_match (const char *p, const char *str)
 	 * Trivial case -- No \[ \] sets, just do the match.
 	 */
 	else
-	{
-		if (!(x_debug & DEBUG_REGEX))
-			return new_match(p, str);
-		else
-		{
-			if (old_match(p, str))
-				return total_explicit + 1;
-			else
-				return 0;
-		}
-	}
+		return new_match(p, str);
 }
 
 

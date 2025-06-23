@@ -506,8 +506,7 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 		!strcmp(old->who_target, channel))
 	{
 		old->piggyback = 1;
-		if (x_debug & DEBUG_OUTBOUND)
-			yell("Piggybacking this WHO onto last one.");
+		debug(DEBUG_OUTBOUND, "Piggybacking this WHO onto last one.");
 	}
 	else if (new_w->undernet_extended)
 	{

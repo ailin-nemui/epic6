@@ -271,13 +271,11 @@ static void	new_io_event (int fd, int revents)
 			if (!ioe->quiet)
 				syserr(SRV(fd), "new_io_event: fd %d must be closed", fd);
 
-			if (x_debug & DEBUG_INBOUND) 
-				yell("FD [%d] FAILED [%d] [%d]", fd, revents, c);
+			debug(DEBUG_INBOUND, "FD [%d] FAILED [%d] [%d]", fd, revents, c);
 			return;
 		}
 
-		if (x_debug & DEBUG_INBOUND) 
-			yell("FD [%d], did [%d]", fd, c);
+		debug(DEBUG_INBOUND, "FD [%d], did [%d]", fd, c);
 	}
 	else
 	{
@@ -287,8 +285,7 @@ static void	new_io_event (int fd, int revents)
 		 * handling here.  Oh well.
 		 */
 		ioe->clean = 0;
-		if (x_debug & DEBUG_INBOUND) 
-			yell("FD [%d], did pass-through", fd);
+		debug(DEBUG_INBOUND, "FD [%d], did pass-through", fd);
 	}
 }
 
@@ -628,8 +625,7 @@ ssize_t	dgets (int fd, char *buf, size_t buflen, int buffer)
 	 */
 	if (buffer == -2 && ioe->write_pos - ioe->read_pos < buflen)
 	{
-		if (x_debug & DEBUG_NEWIO)
-			yell("dgets: Wanted %ld bytes, have %ld bytes", 
+		debug(DEBUG_NEWIO, "dgets: Wanted %ld bytes, have %ld bytes", 
 				(long)(ioe->write_pos - ioe->read_pos), (long)buflen);
 		ioe->clean = 1;
 		return 0;
@@ -683,8 +679,7 @@ ssize_t	dgets (int fd, char *buf, size_t buflen, int buffer)
 	 */
 	if (cnt < consumed)
 	{
-		if (x_debug & DEBUG_INBOUND) 
-			yell("FD [%d], Truncated (did [%ld], max [%ld])", 
+		debug(DEBUG_INBOUND, "FD [%d], Truncated (did [%ld], max [%ld])", 
 					fd, (long)consumed, (long)cnt);
 
 		/* If the line had a newline, then put the newline in. */
@@ -765,8 +760,7 @@ int 	new_open (int fd, void (*callback) (int), int io_type, int poll_events, int
 	if (fd < 0)
 		return fd;		/* Invalid */
 
-	if (x_debug & DEBUG_NEWIO)
-		yell("new_open: fd = %d, io_type = %d, poll_events = %d, quiet = %d, server = %d",
+	debug(DEBUG_NEWIO, "new_open: fd = %d, io_type = %d, poll_events = %d, quiet = %d, server = %d",
 			fd, io_type, poll_events, quiet, server);
 
 	/*
@@ -869,8 +863,7 @@ int	new_close_with_option (int fd, int virtual)
 
 	if (fd >= 0 && fd <= global_max_fd && (ioe = io_rec[fd]))
 	{
-		if (x_debug & DEBUG_NEWIO)
-			yell("new_close: fd = %d", fd);
+		debug(DEBUG_NEWIO, "new_close: fd = %d", fd);
 
 		if (ioe->io_callback == ssl_read)	/* XXX */
 			ssl_shutdown(ioe->fd);

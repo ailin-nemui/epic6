@@ -232,8 +232,7 @@ static int	scram_process_server_first_message(scram_state_t *state, const char *
         return -1;
     }
 
-    if (x_debug & DEBUG_SCRAM)
-	yell("scram_process_server_first_message: %s", server_first_message);
+    debug(DEBUG_SCRAM, "scram_process_server_first_message: %s", server_first_message);
 
     strncpy(state->server_first_message, server_first_message, sizeof(state->server_first_message));
     state->server_first_message[sizeof(state->server_first_message) - 1] = '\0';
@@ -333,13 +332,10 @@ static int	scram_client_final_message (scram_state_t *state, char *output_buffer
         yell("Error: Buffer too small for AuthMessage");
         return -1;
     }
-    if (x_debug & DEBUG_SCRAM)
-    {
-	yell("state->client_first_message_bare is %s", state->client_first_message_bare);
-	yell("state->server_first_message is %s", state->server_first_message);
-	yell("state->client_final_message_bare is %s", state->client_final_message_bare);
-	yell("state->auth_message is %s", state->auth_message);
-    }
+    debug(DEBUG_SCRAM, "state->client_first_message_bare is %s", state->client_first_message_bare);
+    debug(DEBUG_SCRAM, "state->server_first_message is %s", state->server_first_message);
+    debug(DEBUG_SCRAM, "state->client_final_message_bare is %s", state->client_final_message_bare);
+    debug(DEBUG_SCRAM, "state->auth_message is %s", state->auth_message);
 
     // 3. Derive ClientKey, StoredKey, ClientSignature, ClientProof
     // ClientKey = HMAC(SaltedPassword, "Client Key")
@@ -543,15 +539,13 @@ BUILT_IN_FUNCTION(function_scrambox, input)
 			GET_DWORD_ARG(username_, input);
 			GET_DWORD_ARG(password, input);
 
-			if (x_debug & DEBUG_SCRAM)
-				yell("Calling scram_client_first_message with %s %s", username_, password);
+			debug(DEBUG_SCRAM, "Calling scram_client_first_message with %s %s", username_, password);
 			memset(output_buffer, 0, sizeof(output_buffer));
 			if (scram_client_first_message(scrambox_, username_, password, output_buffer, sizeof(output_buffer))) {
 				yell("Scrambox first message failed for server %d", from_server);
 				RETURN_EMPTY;
 			}
-			if (x_debug & DEBUG_SCRAM)
-				yell("first client message is %s", output_buffer);
+			debug(DEBUG_SCRAM, "first client message is %s", output_buffer);
 			RETURN_FSTR(output_buffer);
 		} else if (!my_stricmp(operation, "RESPONSE")) {
 			/* If this is the first response, generate our final message */
@@ -561,22 +555,19 @@ BUILT_IN_FUNCTION(function_scrambox, input)
 					yell("Processing server first message failed.");
 					RETURN_EMPTY;
 				}
-				if (x_debug & DEBUG_SCRAM)
-					yell("Calling scram_client_final_message");
+				debug(DEBUG_SCRAM, "Calling scram_client_final_message");
 				memset(output_buffer, 0, sizeof(output_buffer));
 				if (scram_client_final_message(scrambox_, output_buffer, sizeof(output_buffer))) {
 					yell("Client final message failed.");
 					RETURN_EMPTY;
 				}
-				if (x_debug & DEBUG_SCRAM)
-					yell("Final client message is %s", output_buffer);
+				debug(DEBUG_SCRAM, "Final client message is %s", output_buffer);
 				RETURN_FSTR(output_buffer);
 			}
 			/* If this is the second response, validate it */
 			else
 			{
-				if (x_debug & DEBUG_SCRAM)
-					yell("Calling scram_verify_server_final_message with %s", input);
+				debug(DEBUG_SCRAM, "Calling scram_verify_server_final_message with %s", input);
 				if (scram_verify_server_final_message(scrambox_, input)) {
 					yell("Server final message verification failed.");
 					RETURN_EMPTY;

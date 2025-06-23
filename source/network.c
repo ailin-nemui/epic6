@@ -327,8 +327,7 @@ int	network_client (SSu *l, socklen_t ll, SSu *r, socklen_t rl)
 	    return -1;
 	}
 
-	if (x_debug & DEBUG_SERVER_CONNECT)
-		yell("Connect begun on des [%d]", fd);
+	debug(DEBUG_SERVER_CONNECT, "Connect begun on des [%d]", fd);
 	return fd;
 }
 
@@ -407,8 +406,7 @@ static	void	do_ares_callback (int fd)
 
 	if ((dgets(fd, datastr, sizeof(datastr), 1)) <= 0)
 	{
-		if (x_debug & DEBUG_SERVER_CONNECT)
-			yell("I closed ares_callback fd %d.", fd);
+		debug(DEBUG_SERVER_CONNECT, "I closed ares_callback fd %d.", fd);
 		new_close(fd);
 		return;
 	}
@@ -419,8 +417,7 @@ static	void	do_ares_callback (int fd)
 		readable = fd;
 	if (revents & POLLOUT)
 		writable = fd;
-	if (x_debug & DEBUG_SERVER_CONNECT)
-		yell("ares_process_fd: fd=%d, readable=%d, writable=%d", fd, readable, writable);
+	debug(DEBUG_SERVER_CONNECT, "ares_process_fd: fd=%d, readable=%d, writable=%d", fd, readable, writable);
 	ares_process_fd(ares_channel_, readable, writable);
 }
 
@@ -634,6 +631,19 @@ int	hostname_to_ssu (int fd, int family, const char *host, const char *port, SSu
 	struct hostname_to_ssu_data	data;
 	struct ares_addrinfo_hints 	hints;
 
+	/* 
+	 * By definition, 'localhost' maps to 127.0.0.1 or ::1.
+	 * We've had challenges with c-ares handling localhost,
+	 * so we handle it ourselves.
+	 */
+	if (!my_stricmp(host, "localhost"))
+	{
+		if (family == AF_INET)
+			host = "127.0.0.1";
+		else if (family == AF_INET6)
+			host = "::1";
+	}
+
 	memset(&data, 0, sizeof(data));
 
 	memset(&hints, 0, sizeof(hints));
@@ -651,8 +661,7 @@ int	hostname_to_ssu (int fd, int family, const char *host, const char *port, SSu
 			io("hostname_to_ssu");
 
 		if (data.status != ARES_SUCCESS) {
-			if (x_debug & DEBUG_SERVER_CONNECT)
-				yell("ares_getaddrinfo(%s,%s) failed: %d", host, port, data.status);
+			debug(DEBUG_SERVER_CONNECT, "ares_getaddrinfo(%s,%s) failed: %d", host, port, data.status);
 			return -1;
 		}
 
@@ -675,6 +684,19 @@ int	hostname_to_json (int fd, int family, const char *host, const char *port, in
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = 0;
 	hints.ai_flags = flags | ARES_AI_NUMERICSERV | ARES_AI_NOSORT | ARES_AI_ENVHOSTS;
+
+	/* 
+	 * By definition, 'localhost' maps to 127.0.0.1 or ::1.
+	 * We've had challenges with c-ares handling localhost,
+	 * so we handle it ourselves.
+	 */
+	if (!my_stricmp(host, "localhost"))
+	{
+		if (family == AF_INET || family == AF_UNSPEC)
+			host = "127.0.0.1";
+		else if (family == AF_INET6)
+			host = "::1";
+	}
 
 	*fd_ = fd;
 	ares_getaddrinfo(ares_channel_, host, port, &hints, my_addrinfo_json_callback, fd_);
@@ -738,8 +760,7 @@ int	ssu_to_hostname (SSu *ssu, char *host, size_t hostsize, char *port, size_t p
 		io("hostname_to_ssu");
 
 	if (data.status != ARES_SUCCESS) {
-		if (x_debug & DEBUG_SERVER_CONNECT)
-			yell("ares_getnameinfo failed: %d", data.status);
+		debug(DEBUG_SERVER_CONNECT, "ares_getnameinfo failed: %d", data.status);
 		return -1;
 	}
 	return 0;
@@ -868,8 +889,7 @@ static char *	sockaddr_to_string (const struct sockaddr *sa, char *s, size_t max
         case AF_INET: {
             struct sockaddr_in *ipv4 = (struct sockaddr_in *)sa;
             if (inet_ntop(AF_INET, &(ipv4->sin_addr), s, maxlen) == NULL) {
-		if (x_debug & DEBUG_SERVER_CONNECT)
-			yell("inet_ntop (IPv4)");
+		debug(DEBUG_SERVER_CONNECT, "inet_ntop (IPv4)");
                 return NULL;
             }
             return s;
@@ -877,8 +897,7 @@ static char *	sockaddr_to_string (const struct sockaddr *sa, char *s, size_t max
         case AF_INET6: {
             struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)sa;
             if (inet_ntop(AF_INET6, &(ipv6->sin6_addr), s, maxlen) == NULL) {
-		if (x_debug & DEBUG_SERVER_CONNECT)
-			yell("inet_ntop (IPv6)");
+		debug(DEBUG_SERVER_CONNECT, "inet_ntop (IPv6)");
                 return NULL;
             }
             return s;
@@ -1048,8 +1067,7 @@ static void	my_addrinfo_json_callback (void *arg, int status, int __U(timeouts),
     // MyContext *ctx = (MyContext *)arg;
 
     if (status == ARES_SUCCESS) {
-	if (x_debug & DEBUG_SERVER_CONNECT)
-        	yell("my_addrinfo_json_callback: DNS lookup successful.");
+	debug(DEBUG_SERVER_CONNECT, "my_addrinfo_json_callback: DNS lookup successful.");
 
         // Convert the result to JSON
         cJSON *json_output = convert_ares_addrinfo_to_json(result);
@@ -1058,20 +1076,17 @@ static void	my_addrinfo_json_callback (void *arg, int status, int __U(timeouts),
             // Print the JSON (or do something else with it)
             json_string = cJSON_Generate(json_output, true_);
             if (json_string) {
-		if (x_debug & DEBUG_SERVER_CONNECT)
-                	yell("my_addrinfo_json_callback: JSON Result: %s", json_string);
+		debug(DEBUG_SERVER_CONNECT, "my_addrinfo_json_callback: JSON Result: %s", json_string);
             } else {
 		malloc_sprintf(&json_string, "{\"failure\":%d}", status);
-		if (x_debug & DEBUG_SERVER_CONNECT)
-			yell("my_addrinfo_json_callback: Failed to print JSON.");
+		debug(DEBUG_SERVER_CONNECT, "my_addrinfo_json_callback: Failed to print JSON.");
             }
 
             // IMPORTANT: Free the cJSON object when you are done
             cJSON_DeleteItem(&json_output);
         } else {
 		malloc_sprintf(&json_string, "{\"failure\":%d}", status);
-		if (x_debug & DEBUG_SERVER_CONNECT)
-			yell("my_addrinfo_json_callback: Failed to convert ares_addrinfo to JSON.");
+		debug(DEBUG_SERVER_CONNECT, "my_addrinfo_json_callback: Failed to convert ares_addrinfo to JSON.");
         }
     } else {
         yell("my_addrinfo_json_callback: DNS lookup failed with status: %d (%s)", status, ares_strerror(status));
@@ -1087,8 +1102,7 @@ static void	my_addrinfo_json_callback (void *arg, int status, int __U(timeouts),
         ares_freeaddrinfo(result);
     }
 
-    if (x_debug & DEBUG_SERVER_CONNECT)
-	    yell("my_addrinfo_json_callback: Writing JSON results to fd %d", fd);
+    debug(DEBUG_SERVER_CONNECT, "my_addrinfo_json_callback: Writing JSON results to fd %d", fd);
     write(fd, json_string, strlen(json_string));
     new_free(&json_string);
 
@@ -1119,8 +1133,7 @@ int	json_to_sockaddr_array (const char *json_string, int *failure_code_, SSu **a
     }
 
     *addr_array = NULL; // Initialize the output parameter
-    if (x_debug & DEBUG_SERVER_CONNECT)
-	yell("json_to_sockaddr_array: I got: %s", json_string);
+    debug(DEBUG_SERVER_CONNECT, "json_to_sockaddr_array: I got: %s", json_string);
 
     size_t consumed = 0;
     cJSON *root = cJSON_Parse(json_string, strlen(json_string), &consumed);
@@ -1351,8 +1364,7 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 	/* This is a protection mechanism in case anything goes sideways */
 	*sl = 0;
 
-	if (x_debug & DEBUG_SERVER_CONNECT)
-		yell("Looking up [%s] vhost for %s", coalesce(something, "<default>"), familystr(family_));
+	debug(DEBUG_SERVER_CONNECT, "Looking up [%s] vhost for %s", coalesce(something, "<default>"), familystr(family_));
 
 	/*
 	 * Check to see if it's cached...
@@ -1364,8 +1376,7 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 
 		if (empty(something) && vhosts[i].is_default)
 		{
-			if (x_debug & DEBUG_SERVER_CONNECT)
-				yell("Vhost family %d has default. yay.", family_);
+			debug(DEBUG_SERVER_CONNECT, "Vhost family %d has default. yay.", family_);
 			memcpy(ssu_, &vhosts[i].ssu, sizeof(SSu));
 			*sl = socklen(ssu_);
 			return 0;
@@ -1374,8 +1385,7 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 		if (!my_stricmp(something, vhosts[i].hostname) || 
 		    !my_stricmp(something, vhosts[i].paddr))
 		{
-			if (x_debug & DEBUG_SERVER_CONNECT)
-				yell("Vhost %s is cached. yay.", coalesce(something, "<default>"));
+			debug(DEBUG_SERVER_CONNECT, "Vhost %s is cached. yay.", coalesce(something, "<default>"));
 			memcpy(ssu_, &vhosts[i].ssu, sizeof(SSu));
 			*sl = socklen(ssu_);
 			return 0;
@@ -1398,8 +1408,7 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 	hints.ai_flags = AI_ADDRCONFIG | AI_NUMERICSERV | AI_PASSIVE;
 	if ((err = getaddrinfo(something, zero, &hints, &res)))
 	{
-		if (x_debug & DEBUG_SERVER_CONNECT)
-			yell("lookup_vhost: Could not convert %s to hostname: %s", something, gai_strerror(err));
+		debug(DEBUG_SERVER_CONNECT, "lookup_vhost: Could not convert %s to hostname: %s", something, gai_strerror(err));
 		return -1;
 	}
 	for (res_save = res; res; res = res->ai_next)
@@ -1490,11 +1499,14 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
  */
 int	get_default_vhost (int family, const char *wanthost, SSu *ssu_, socklen_t *sl)
 {
+	/* XXX Please, don't ask. Sigh. */
+	if (!my_stricmp(wanthost, "<none>"))
+		wanthost = empty_string;
+
 	/* CHOICE #1 - Did you have something specific in mind? */
 	if (!empty(wanthost) && !lookup_vhost(family, wanthost, ssu_, sl))
 	{
-		if (x_debug & DEBUG_SERVER_CONNECT)
-			yell("vhost: %s was fine", wanthost);
+		debug(DEBUG_SERVER_CONNECT, "vhost: %s was fine", wanthost);
 		return 0;		/* Success */
 	}
 
@@ -1503,8 +1515,7 @@ int	get_default_vhost (int family, const char *wanthost, SSu *ssu_, socklen_t *s
 	{
 		if (!lookup_vhost(AF_INET, LocalIPv4HostName, ssu_, sl))
 		{
-			if (x_debug & DEBUG_SERVER_CONNECT)
-				yell("vhost: I used %s instead", LocalIPv4HostName);
+			debug(DEBUG_SERVER_CONNECT, "vhost: I used %s instead", LocalIPv4HostName);
 			return 0;	/* Success */
 		}
 	}
@@ -1512,8 +1523,7 @@ int	get_default_vhost (int family, const char *wanthost, SSu *ssu_, socklen_t *s
 	{
 		if (!lookup_vhost(AF_INET6, LocalIPv6HostName, ssu_, sl))
 		{
-			if (x_debug & DEBUG_SERVER_CONNECT)
-				yell("vhost: I used %s instead", LocalIPv6HostName);
+			debug(DEBUG_SERVER_CONNECT, "vhost: I used %s instead", LocalIPv6HostName);
 			return 0;	/* Success */
 		}
 	}
@@ -1521,8 +1531,7 @@ int	get_default_vhost (int family, const char *wanthost, SSu *ssu_, socklen_t *s
 	/* CHOICE #3 - Let the system just decide what's best */
 	if (!lookup_vhost(family, NULL, ssu_, sl))
 	{
-		if (x_debug & DEBUG_SERVER_CONNECT)
-			yell("vhost: I fell back to the default, you know?");
+		debug(DEBUG_SERVER_CONNECT, "vhost: I fell back to the default, you know?");
 		return 0;	/* Success */
 	}
 

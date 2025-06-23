@@ -432,6 +432,39 @@ void 	my_error (const char *format, ...)
 	}
 }
 
+/*
+ * debug - A way to output important info that is gated by an xdebug
+ *
+ * Arguments:
+ *	format	- A printf() type format
+ *	...	- Things that fulfill the 'format'.
+ *
+ * Notes:
+ *	- The message is offered to the user via /on yell.
+ *	  This is helpful for suppressing unwanted chatter.
+ *	- Because this uses put_echo() and not put_it(), it will always
+ *	  output the message unless the user vetos it.
+ *
+ * Bogons:
+ *	Regretably, this function also has size limits.
+ */
+void	debug (unsigned long flag, const char *format, ...)
+{
+	if (format)
+	{
+		if (x_debug & flag)
+		{
+			va_list args;
+			va_start (args, format);
+			vsnprintf(putbuf, sizeof putbuf, format, args);
+			va_end(args);
+			if (do_hook(YELL_LIST, "%s", putbuf))
+				put_echo(putbuf);
+		}
+	}
+}
+
+
 /******************************************************************/
 /*
  * vsyserr - A mix between say() and yell() for diagnostic errors

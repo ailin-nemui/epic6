@@ -55,7 +55,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3063;
+const unsigned long	commit_id = 3064;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -885,7 +885,7 @@ static	int		level = 0,
 	{
 	    if (level != old_level)
 	    {
-		yell("Moving from io level [%d] to level [%d] from [%s]", 
+		debug(DEBUG_WAITS, "Moving from io level [%d] to level [%d] from [%s]", 
 				old_level, level, what);
 		old_level = level;
 	    }

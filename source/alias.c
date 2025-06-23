@@ -1198,10 +1198,10 @@ void	add_local_alias	(const char *orig_name, const char *stuff, int noisy)
 	malloc_strcpy(&(tmp->user_variable), stuff);
 	if (tmp->user_variable)		/* Oh blah. */
 	{
-		if (x_debug & DEBUG_LOCAL_VARS && noisy)
-		    yell("Assign %s (local) added [%s]", name, stuff);
-		else if (noisy)
-		    say("Assign %s (local) added [%s]", name, stuff);
+		if (noisy)
+			say("Assign %s (local) added [%s]", name, stuff);
+		else
+			debug(DEBUG_LOCAL_VARS, "Assign %s (local) added [%s]", name, stuff);
 	}
 
 	new_free(&name);
@@ -1471,8 +1471,7 @@ static Symbol *	find_local_alias (const char *orig_name, alist **list)
 		if (function_return && last_function_call_level != -1)
 			c = last_function_call_level;
 
-		if (x_debug & DEBUG_LOCAL_VARS)
-			yell("Looking for [%s] in level [%d]", name, c);
+		debug(DEBUG_LOCAL_VARS, "Looking for [%s] in level [%d]", name, c);
 
 		if (call_stack[c].alias.list)
 		{
@@ -1512,16 +1511,14 @@ static Symbol *	find_local_alias (const char *orig_name, alist **list)
 
 		if (alias)
 		{
-			if (x_debug & DEBUG_LOCAL_VARS) 
-				yell("I found [%s] in level [%d] (%s)", name, c, alias->user_variable);
+			debug(DEBUG_LOCAL_VARS, "I found [%s] in level [%d] (%s)", name, c, alias->user_variable);
 			break;
 		}
 
 		if (*call_stack[c].name || call_stack[c].parent == -1 ||
 		    (function_return && last_function_call_level != -1))
 		{
-			if (x_debug & DEBUG_LOCAL_VARS) 
-				yell("I didnt find [%s], stopped at level [%d]", name, c);
+			debug(DEBUG_LOCAL_VARS, "I didnt find [%s], stopped at level [%d]", name, c);
 			break;
 		}
 	}
@@ -2539,8 +2536,7 @@ static char *	get_variable_with_args (const char *str, const char *args)
 	if (ret == NULL)
 	{
 		copy = 0, ret = malloc_strdup(empty_string);
-		if (x_debug & DEBUG_UNKNOWN)
-		    yell("Variable lookup to non-existant assign [%s]", name);
+		debug(DEBUG_UNKNOWN, "Variable lookup to non-existant assign [%s]", name);
 	}
 
 	new_free(&freep);

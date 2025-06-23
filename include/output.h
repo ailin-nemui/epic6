@@ -22,6 +22,8 @@ extern	FILE	*irclog_fp;
 	void	yell 			(const char *, ...) __A(1);
 	void    privileged_yell 	(const char *, ...) __A(1);
 	void	syserr			(int, const char *, ...) __A(2);
+	void    debug 			(unsigned long, const char *format, ...) __A(2);
+
 
 	void	my_error		(const char *, ...) __A(1);
 	SIGNAL_HANDLER(sig_refresh_screen);

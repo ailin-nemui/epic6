@@ -759,20 +759,17 @@ BUILT_IN_COMMAND(lastlog)
 	/* Normalize arguments here */
 	if (skip > cnt)
 	{
-		if (x_debug & DEBUG_LASTLOG)
-			yell("l: skip [%d] > cnt [%d]", skip, cnt);
+		debug(DEBUG_LASTLOG, "l: skip [%d] > cnt [%d]", skip, cnt);
 		goto bail;	/* Skipping the entire thing is a no-op */
 	}
 	if (skip >= 0 && number <= 0)
 	{
-		if (x_debug & DEBUG_LASTLOG)
-			yell("l: number [%d] <= 0", number);
+		debug(DEBUG_LASTLOG, "l: number [%d] <= 0", number);
 		goto bail;		/* Iterating 0 records is a no-op */
 	}
 	if (max == 0)
 	{
-		if (x_debug & DEBUG_LASTLOG)
-			yell("l: max == 0");
+		debug(DEBUG_LASTLOG, "l: max == 0");
 		goto bail;		/* Displaying 0 records is a no-op */
 	}
 	if (match)
@@ -824,24 +821,21 @@ BUILT_IN_COMMAND(lastlog)
 		norex = &realnoreg;
 	}
 
-	if (x_debug & DEBUG_LASTLOG)
-	{
-		yell("Lastlog summary status:");
-		yell("Pattern: [%s]", match ? match : "<none>");
-		yell("Regex: [%s]", regex ? regex : "<none>");
-		yell("Ignore: [%s]", nomatch ? nomatch : "<none>");
-		yell("Target: [%s]", target ? target : "<none>");
-		yell("Header: %d", header);
-		yell("Reverse: %d", reverse);
-		yell("Skip: %d", skip);
-		yell("Number: %d", number);
-		yell("Max: %d", max);
-		yell("Mask: %s", mask_to_str(&level_mask));
-		yell("Before/After: %d/%d", before, after);
-		yell("Separator: %s", separator);
-		yell("All Windows This Server: %d", this_server);
-		yell("All Windows Globally: %d", global);
-	}
+	debug(DEBUG_LASTLOG, "Lastlog summary status:");
+	debug(DEBUG_LASTLOG, "Pattern: [%s]", match ? match : "<none>");
+	debug(DEBUG_LASTLOG, "Regex: [%s]", regex ? regex : "<none>");
+	debug(DEBUG_LASTLOG, "Ignore: [%s]", nomatch ? nomatch : "<none>");
+	debug(DEBUG_LASTLOG, "Target: [%s]", target ? target : "<none>");
+	debug(DEBUG_LASTLOG, "Header: %d", header);
+	debug(DEBUG_LASTLOG, "Reverse: %d", reverse);
+	debug(DEBUG_LASTLOG, "Skip: %d", skip);
+	debug(DEBUG_LASTLOG, "Number: %d", number);
+	debug(DEBUG_LASTLOG, "Max: %d", max);
+	debug(DEBUG_LASTLOG, "Mask: %s", mask_to_str(&level_mask));
+	debug(DEBUG_LASTLOG, "Before/After: %d/%d", before, after);
+	debug(DEBUG_LASTLOG, "Separator: %s", separator);
+	debug(DEBUG_LASTLOG, "All Windows This Server: %d", this_server);
+	debug(DEBUG_LASTLOG, "All Windows Globally: %d", global);
 
 	if (outfile)
 	{
@@ -928,8 +922,7 @@ restart:
 		/* Under any "context" situation, we unconditionally show it */
 		if (exempt_counter > 0)
 		{
-			if (x_debug & DEBUG_LASTLOG)
-				yell("This line is exempt (%d left): %s", exempt_counter, l->msg);
+			debug(DEBUG_LASTLOG, "This line is exempt (%d left): %s", exempt_counter, l->msg);
 			exempt = 1;
 			exempt_counter--;
 		}
@@ -946,8 +939,7 @@ restart:
 		 */
 		if (matching && exempt)
 		{
-			if (x_debug & DEBUG_LASTLOG)
-				yell("I matched already in context. resetting counter: %s", l->msg);
+			debug(DEBUG_LASTLOG, "I matched already in context. resetting counter: %s", l->msg);
 
 			exempt_counter = after;
 		}
@@ -967,8 +959,7 @@ restart:
 			 */
 			for (i = 0; i < before; i++)
 			{
-			     if (x_debug & DEBUG_LASTLOG)
-				yell("Moving back (%d of %d), now at %s", i, before, l->msg);
+			    debug(DEBUG_LASTLOG, "Moving back (%d of %d), now at %s", i, before, l->msg);
 
 			    /*
 			     * HOWEVER -- if we bump into something that we've already
@@ -989,8 +980,7 @@ restart:
 
 			if (l && l == lastshown)
 			{
-			        if (x_debug & DEBUG_LASTLOG)
-					yell("I found the previous context at %d / %s", i, l->msg);
+				debug(DEBUG_LASTLOG, "I found the previous context at %d / %s", i, l->msg);
 
 				if (l->newer)
 				    l = l->newer;
@@ -1004,8 +994,7 @@ restart:
 			if (after != -1)
 				exempt_counter += after;
 
-			if (x_debug & DEBUG_LASTLOG)
-				yell("I matched not in context, went back %d spots, total %d exemptions: %s",
+			debug(DEBUG_LASTLOG, "I matched not in context, went back %d spots, total %d exemptions: %s",
 					i, exempt_counter, l->msg);
 			goto restart;
 		}
@@ -1016,8 +1005,7 @@ restart:
 		else if (matching && !exempt && after != -1)
 		{
 			exempt_counter += after;
-			if (x_debug & DEBUG_LASTLOG)
-				yell("I matched not in context, no back context, total %d exemptions: %s",
+			debug(DEBUG_LASTLOG, "I matched not in context, no back context, total %d exemptions: %s",
 					exempt_counter, l->msg);
 		}
 
@@ -1027,8 +1015,7 @@ restart:
 		else if (matching)
 		{
 			exempt_counter = 0;
-			if (x_debug & DEBUG_LASTLOG)
-				yell("I matched -- no contexts! %s", l->msg);
+			debug(DEBUG_LASTLOG, "I matched -- no contexts! %s", l->msg);
 		}
 
 
@@ -1126,8 +1113,7 @@ restart2:
 		/* Under any "context" situation, we unconditionally show it */
 		if (exempt_counter > 0)
 		{
-			if (x_debug & DEBUG_LASTLOG)
-				yell("This line is exempt (%d left): %s", exempt_counter, l->msg);
+			debug(DEBUG_LASTLOG, "This line is exempt (%d left): %s", exempt_counter, l->msg);
 			exempt = 1;
 			exempt_counter--;
 		}
@@ -1144,8 +1130,7 @@ restart2:
 		 */
 		if (matching && exempt)
 		{
-			if (x_debug & DEBUG_LASTLOG)
-				yell("I matched already in context. resetting counter: %s", l->msg);
+			debug(DEBUG_LASTLOG, "I matched already in context. resetting counter: %s", l->msg);
 
 			exempt_counter = after;
 		}
@@ -1165,8 +1150,7 @@ restart2:
 			 */
 			for (i = 0; i < before; i++)
 			{
-			     if (x_debug & DEBUG_LASTLOG)
-				yell("Moving back (%d of %d), now at %s", i, before, l->msg);
+			    debug(DEBUG_LASTLOG, "Moving back (%d of %d), now at %s", i, before, l->msg);
 
 			    /*
 			     * HOWEVER -- if we bump into something that we've already
@@ -1187,8 +1171,7 @@ restart2:
 
 			if (l && l == lastshown)
 			{
-			        if (x_debug & DEBUG_LASTLOG)
-					yell("I found the previous context at %d / %s", i, l->msg);
+				debug(DEBUG_LASTLOG, "I found the previous context at %d / %s", i, l->msg);
 
 				if (l->older)
 				    l = l->older;
@@ -1202,8 +1185,7 @@ restart2:
 			if (after != -1)
 				exempt_counter += after;
 
-			if (x_debug & DEBUG_LASTLOG)
-				yell("I matched not in context, went back %d spots, total %d exemptions: %s",
+			debug(DEBUG_LASTLOG, "I matched not in context, went back %d spots, total %d exemptions: %s",
 					i, exempt_counter, l->msg);
 			goto restart2;
 		}
@@ -1214,8 +1196,7 @@ restart2:
 		else if (matching && !exempt && after != -1)
 		{
 			exempt_counter += after;
-			if (x_debug & DEBUG_LASTLOG)
-				yell("I matched not in context, no back context, total %d exemptions: %s",
+			debug(DEBUG_LASTLOG, "I matched not in context, no back context, total %d exemptions: %s",
 					exempt_counter, l->msg);
 		}
 
@@ -1225,8 +1206,7 @@ restart2:
 		else if (matching)
 		{
 			exempt_counter = 0;
-			if (x_debug & DEBUG_LASTLOG)
-				yell("I matched -- no contexts! %s", l->msg);
+			debug(DEBUG_LASTLOG, "I matched -- no contexts! %s", l->msg);
 		}
 
 
@@ -1312,22 +1292,19 @@ static int	show_lastlog (Lastlog **l, int *skip, int *__U(number), Mask *level_m
 		;	/* It's ok if this matches. */
 	else
 	{
-		if (x_debug & DEBUG_LASTLOG)
-			yell("Lastlog item belongs to another window");
+		debug(DEBUG_LASTLOG, "Lastlog item belongs to another window");
 		return 0;
 	}
 
 	if ((*l)->visible == 0)
 	{
-		if (x_debug & DEBUG_LASTLOG)
-			yell("Lastlog item is not visible");
+		debug(DEBUG_LASTLOG, "Lastlog item is not visible");
 		return 0;
 	}
 
 	if (*skip > 0)
 	{
-		if (x_debug & DEBUG_LASTLOG)
-			yell("Skip > 0 -- [%d]", *skip);
+		debug(DEBUG_LASTLOG, "Skip > 0 -- [%d]", *skip);
 		(*skip)--;	/* Have not skipped enough leading records */
 
 		if (exempt)
@@ -1338,8 +1315,7 @@ static int	show_lastlog (Lastlog **l, int *skip, int *__U(number), Mask *level_m
 
 	if (!mask_isnone(level_mask) && !mask_isset(level_mask, (*l)->level))
 	{
-		if (x_debug & DEBUG_LASTLOG)
-			yell("Level_mask != level ([%s] [%s])",
+		debug(DEBUG_LASTLOG, "Level_mask != level ([%s] [%s])",
 				mask_to_str(level_mask), level_to_str((*l)->level));
 
 		if (exempt)
@@ -1363,8 +1339,7 @@ static int	show_lastlog (Lastlog **l, int *skip, int *__U(number), Mask *level_m
 
 	if (match && !wild_match(match, str))
 	{
-		if (x_debug & DEBUG_LASTLOG)
-			yell("Line [%s] not matched [%s]", str, match);
+		debug(DEBUG_LASTLOG, "Line [%s] not matched [%s]", str, match);
 
 		if (exempt)
 			retval = 0;
@@ -1373,8 +1348,7 @@ static int	show_lastlog (Lastlog **l, int *skip, int *__U(number), Mask *level_m
 	}
 	if (nomatch && wild_match(nomatch, str))
 	{
-		if (x_debug & DEBUG_LASTLOG)
-			yell("Line [%s] is matched [%s]", str, nomatch);
+		debug(DEBUG_LASTLOG, "Line [%s] is matched [%s]", str, nomatch);
 
 		if (exempt)
 			retval = 0;
@@ -1384,8 +1358,7 @@ static int	show_lastlog (Lastlog **l, int *skip, int *__U(number), Mask *level_m
 
 	if (rex && regexec(rex, str, 0, NULL, 0))
 	{
-		if (x_debug & DEBUG_LASTLOG)
-			yell("Line [%s] not regexed", str);
+		debug(DEBUG_LASTLOG, "Line [%s] not regexed", str);
 
 		if (exempt)
 			retval = 0;
@@ -1394,8 +1367,7 @@ static int	show_lastlog (Lastlog **l, int *skip, int *__U(number), Mask *level_m
 	}
 	if (norex && !regexec(norex, str, 0, NULL, 0))
 	{
-		if (x_debug & DEBUG_LASTLOG)
-			yell("Line [%s] is regexed", str);
+		debug(DEBUG_LASTLOG, "Line [%s] is regexed", str);
 
 		if (exempt)
 			retval = 0;
@@ -1404,8 +1376,7 @@ static int	show_lastlog (Lastlog **l, int *skip, int *__U(number), Mask *level_m
 	}
 	if (target && (!(*l)->target || !wild_match(target, (*l)->target)))
 	{
-		if (x_debug & DEBUG_LASTLOG)
-			yell("Target [%s] not matched [%s]", 
+		debug(DEBUG_LASTLOG, "Target [%s] not matched [%s]", 
 					(*l)->target, target);
 
 		if (exempt)
@@ -1415,8 +1386,7 @@ static int	show_lastlog (Lastlog **l, int *skip, int *__U(number), Mask *level_m
 	}
 	if (*max == 0)
 	{
-		if (x_debug & DEBUG_LASTLOG)
-			yell("max == 0");
+		debug(DEBUG_LASTLOG, "max == 0");
 		*l = NULL;	/* Have shown maximum number of matches */
 
 		if (exempt)

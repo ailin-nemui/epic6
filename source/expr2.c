@@ -622,15 +622,13 @@ static	const char *	get_token_raw (expr_info *c, TOKEN v)
 						TOK(c, v).boolean_value);
 		else if (TOK(c, v).used & USED_LVAL)
 		{
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell(">>> Expanding var name [%d]: [%s]", 
+			debug(DEBUG_NEW_MATH_DEBUG, ">>> Expanding var name [%d]: [%s]", 
 					v, TOK(c, v).lval);
 
 			TOK(c, v).raw_value = expand_alias(TOK(c, v).lval, 
 								c->args);
 
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell(">>> Expanded var name [%d]: [%s] to [%s]",
+			debug(DEBUG_NEW_MATH_DEBUG, ">>> Expanded var name [%d]: [%s] to [%s]",
 					v, TOK(c, v).lval, TOK(c, v).raw_value);
 		}
 		else
@@ -695,8 +693,7 @@ static	const char *	get_token_expanded (expr_info *c, TOKEN v)
 	if (c->noeval)
 		return get_token_raw(c, 0);
 
-	if (x_debug & DEBUG_NEW_MATH_DEBUG)
-		yell(">>> Getting token [%d] now.", v);
+	debug(DEBUG_NEW_MATH_DEBUG, ">>> Getting token [%d] now.", v);
 
 	if ((TOK(c, v).used & USED_EXPANDED) == 0)
 	{
@@ -714,8 +711,7 @@ static	const char *	get_token_expanded (expr_info *c, TOKEN v)
 		{
 			char *buffer = NULL;
 
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell(">>> Looking up variable [%d]: [%s]", 
+			debug(DEBUG_NEW_MATH_DEBUG, ">>> Looking up variable [%d]: [%s]", 
 					v, myval);
 
 			alias_special_char(&buffer, myval, c->args, NULL);
@@ -723,8 +719,7 @@ static	const char *	get_token_expanded (expr_info *c, TOKEN v)
 				buffer = malloc_strdup(empty_string);
 			TOK(c, v).expanded_value = buffer;
 
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("<<< Expanded variable [%d] [%s] to: [%s]",
+			debug(DEBUG_NEW_MATH_DEBUG, "<<< Expanded variable [%d] [%s] to: [%s]",
 					v, myval, TOK(c, v).expanded_value);
 		}
 
@@ -735,23 +730,20 @@ static	const char *	get_token_expanded (expr_info *c, TOKEN v)
 		 */
 		else if (TOK(c, v).used & USED_RAW)
 		{
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell(">>> Expanding token [%d]: [%s]", 
+			debug(DEBUG_NEW_MATH_DEBUG, ">>> Expanding token [%d]: [%s]", 
 					v, myval);
 
 			TOK(c, v).used |= USED_EXPANDED;
 			TOK(c, v).expanded_value = expand_alias(myval, c->args);
 
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("<<< Expanded token [%d]: [%s] to: [%s]", 
+			debug(DEBUG_NEW_MATH_DEBUG, "<<< Expanded token [%d]: [%s] to: [%s]", 
 					v, myval, TOK(c, v).expanded_value);
 		}
 		else
 			panic(1, "Cannot convert from this token to EXPANDED");
 	}
 
-	if (x_debug & DEBUG_NEW_MATH_DEBUG)
-		yell("<<< Token [%d] value is [%s].", v, TOK(c, v).expanded_value);
+	debug(DEBUG_NEW_MATH_DEBUG, "<<< Token [%d] value is [%s].", v, TOK(c, v).expanded_value);
 	return TOK(c, v).expanded_value;
 }
 
@@ -874,8 +866,7 @@ static	TOKEN	push_token (expr_info *c, TOKEN t)
 	else
 		c->sp++;
 
-	if (x_debug & DEBUG_NEW_MATH_DEBUG)
-		yell("Pushing token [%d] [%s]", t, get_token_expanded(c, t));
+	debug(DEBUG_NEW_MATH_DEBUG, "Pushing token [%d] [%s]", t, get_token_expanded(c, t));
 
 	return ((c->stack[c->sp] = t));
 }
@@ -1010,8 +1001,7 @@ static void	reduce (expr_info *cx, int what)
 	const char *s, *t;
 	TOKEN	v, w;
 
-	if (x_debug & DEBUG_NEW_MATH_DEBUG)
-		yell("Reducing last operation...");
+	debug(DEBUG_NEW_MATH_DEBUG, "Reducing last operation...");
 
 	if (cx->sp < 0) 
 	{
@@ -1026,8 +1016,7 @@ static void	reduce (expr_info *cx, int what)
 #define CHECK_NOEVAL							\
 	if (cx->noeval)							\
 	{								\
-		if (x_debug & DEBUG_NEW_MATH_DEBUG)			\
-			yell("O: Operation short-circuited");		\
+		debug(DEBUG_NEW_MATH_DEBUG, "O: Operation short-circuited");		\
 		push_token(cx, 0);					\
 		break;							\
 	}
@@ -1038,8 +1027,7 @@ static void	reduce (expr_info *cx, int what)
 		pop_2_floats(cx, &a, &b); 				\
 		CHECK_NOEVAL						\
 		push_float(cx, (floatop));				\
-		if (x_debug & DEBUG_NEW_MATH_DEBUG) 			\
-			yell("O: %s (%f %f) -> %f", 			\
+		debug(DEBUG_NEW_MATH_DEBUG, "O: %s (%f %f) -> %f", 	\
 				#floatop, a, b, floatop); 		\
 		break; 							\
 	}
@@ -1050,8 +1038,7 @@ static void	reduce (expr_info *cx, int what)
 		pop_2_integers(cx, &i, &j); 				\
 		CHECK_NOEVAL						\
 		push_integer(cx, (intop)); 				\
-		if (x_debug & DEBUG_NEW_MATH_DEBUG) 			\
-			yell("O: %s (" INTMAX_FORMAT " " INTMAX_FORMAT	\
+		debug(DEBUG_NEW_MATH_DEBUG, "O: %s (" INTMAX_FORMAT " " INTMAX_FORMAT	\
 					 ") -> " INTMAX_FORMAT, 	\
 				#intop, i, j, intop); 			\
 		break; 							\
@@ -1063,8 +1050,7 @@ static void	reduce (expr_info *cx, int what)
 		pop_2_booleans(cx, &c, &d); 				\
 		CHECK_NOEVAL						\
 		push_boolean(cx, (boolop)); 				\
-		if (x_debug & DEBUG_NEW_MATH_DEBUG) 			\
-			yell("O: %s (%d %d) -> %d", 			\
+		debug(DEBUG_NEW_MATH_DEBUG, "O: %s (%d %d) -> %d", 	\
 				#boolop, c, d, boolop); 		\
 		break; 							\
 	}
@@ -1076,16 +1062,14 @@ static void	reduce (expr_info *cx, int what)
 		CHECK_NOEVAL						\
 		if (b == 0.0) 						\
 		{ 							\
-			if (x_debug & DEBUG_NEW_MATH_DEBUG) 		\
-				yell("O: %s (%f %f) -> []", 		\
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s (%f %f) -> []", 	\
 					#floatop, a, b); 		\
 			my_error("Division by zero"); 			\
 			push_token(cx, 0);				\
 		} 							\
 		else 							\
 		{ 							\
-			if (x_debug & DEBUG_NEW_MATH_DEBUG) 		\
-			    yell("O: %s (%f %f) -> %f", 		\
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s (%f %f) -> %f", 	\
 					#floatop, a, b, floatop); 	\
 			push_float(cx, (floatop)); 			\
 		} 							\
@@ -1099,8 +1083,7 @@ static void	reduce (expr_info *cx, int what)
 		CHECK_NOEVAL						\
 		if (j == 0) 						\
 		{ 							\
-			if (x_debug & DEBUG_NEW_MATH_DEBUG) 		\
-				yell("O: %s (" INTMAX_FORMAT " " INTMAX_FORMAT \
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s (" INTMAX_FORMAT " " INTMAX_FORMAT \
 						") -> []", 		\
 					#intop, i, j); 			\
 			my_error("Division by zero"); 			\
@@ -1108,8 +1091,7 @@ static void	reduce (expr_info *cx, int what)
 		} 							\
 		else 							\
 		{ 							\
-			if (x_debug & DEBUG_NEW_MATH_DEBUG) 		\
-			    yell("O: %s (" INTMAX_FORMAT " " INTMAX_FORMAT \
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s (" INTMAX_FORMAT " " INTMAX_FORMAT \
 						") -> " INTMAX_FORMAT,  \
 					#intop, i, j, intop); 		\
 			push_integer(cx, (intop)); 			\
@@ -1135,8 +1117,7 @@ static void	reduce (expr_info *cx, int what)
 		i = get_token_integer(cx, v);				\
 		j = get_token_integer(cx, w);				\
 									\
-		if (x_debug & DEBUG_NEW_MATH_DEBUG) 			\
-			yell("O: %s = %s (" INTMAX_FORMAT " " INTMAX_FORMAT \
+		debug(DEBUG_NEW_MATH_DEBUG, "O: %s = %s (" INTMAX_FORMAT " " INTMAX_FORMAT \
 					") -> " INTMAX_FORMAT, 		\
 				s, #intop, i, j, intop); 		\
 									\
@@ -1155,8 +1136,7 @@ static void	reduce (expr_info *cx, int what)
 		a = get_token_float(cx, v);				\
 		b = get_token_float(cx, w);				\
 									\
-		if (x_debug & DEBUG_NEW_MATH_DEBUG) 			\
-			yell("O: %s = %s (%f %f) -> %f",  		\
+		debug(DEBUG_NEW_MATH_DEBUG, "O: %s = %s (%f %f) -> %f",  \
 				s, #floatop, a, b, floatop);		\
 									\
 		w = tokenize_float(cx, (floatop));			\
@@ -1174,8 +1154,7 @@ static void	reduce (expr_info *cx, int what)
 		c = get_token_boolean(cx, v);				\
 		d = get_token_boolean(cx, w);				\
 									\
-		if (x_debug & DEBUG_NEW_MATH_DEBUG) 			\
-			yell("O: %s = %s (%d %d) -> %d",  		\
+		debug(DEBUG_NEW_MATH_DEBUG, "O: %s = %s (%d %d) -> %d", \
 				s, #boolop, c, d, boolop); 		\
 									\
 		w = tokenize_bool(cx, (boolop));			\
@@ -1199,8 +1178,7 @@ static void	reduce (expr_info *cx, int what)
 									\
 		if (b == 0.0) 						\
 		{ 							\
-			if (x_debug & DEBUG_NEW_MATH_DEBUG) 		\
-				yell("O: %s = %s (%f %f) -> 0",  	\
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s = %s (%f %f) -> 0",  	\
 					s, #floatop, a, b); 		\
 			my_error("Division by zero"); 			\
 			add_var_alias(s, empty_string, 0);		\
@@ -1208,8 +1186,7 @@ static void	reduce (expr_info *cx, int what)
 			break;						\
 		} 							\
 									\
-		if (x_debug & DEBUG_NEW_MATH_DEBUG) 			\
-			yell("O: %s =  %s (%f %f) -> %f",  		\
+		debug(DEBUG_NEW_MATH_DEBUG, "O: %s =  %s (%f %f) -> %f", \
 				s, #floatop, a, b, floatop); 		\
 									\
 		w = tokenize_float(cx, (floatop));			\
@@ -1232,8 +1209,7 @@ static void	reduce (expr_info *cx, int what)
 									\
 		if (j == 0) 						\
 		{ 							\
-			if (x_debug & DEBUG_NEW_MATH_DEBUG) 		\
-				yell("O: %s = %s (" INTMAX_FORMAT " " 	\
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s = %s (" INTMAX_FORMAT " " 	\
 						INTMAX_FORMAT ") -> 0",	\
 					s, #intop, i, j); 		\
 			my_error("Division by zero"); 			\
@@ -1242,8 +1218,7 @@ static void	reduce (expr_info *cx, int what)
 			break;						\
 		} 							\
 									\
-		if (x_debug & DEBUG_NEW_MATH_DEBUG) 			\
-			yell("O: %s =  %s (" INTMAX_FORMAT " "  	\
+		debug(DEBUG_NEW_MATH_DEBUG, "O: %s =  %s (" INTMAX_FORMAT " "  	\
 						INTMAX_FORMAT ") -> " 	\
 						INTMAX_FORMAT,		\
 				s, #intop, i, j, intop); 		\
@@ -1271,8 +1246,7 @@ static void	reduce (expr_info *cx, int what)
 		CHECK_NOEVAL						\
 									\
 		j = get_token_integer(cx, v);				\
-		if (x_debug & DEBUG_NEW_MATH_DEBUG) 			\
-			yell("O: %s (%s " INTMAX_FORMAT ") -> " 	\
+		debug(DEBUG_NEW_MATH_DEBUG, "O: %s (%s " INTMAX_FORMAT ") -> " 	\
 					INTMAX_FORMAT, 			\
 				#intop_result, s, j, (intop_result));	\
 									\
@@ -1287,11 +1261,8 @@ static void	reduce (expr_info *cx, int what)
 /* ****************** START HERE *********************/
 #define dpushn(x1,x2,y1) 						\
 	{ 								\
-		if (x_debug & DEBUG_NEW_MATH_DEBUG) 			\
-		{ 							\
-			yell("O: COMPARE"); 				\
-			yell("O: %s -> %d", #x2, (x2)); 		\
-		} 							\
+		debug(DEBUG_NEW_MATH_DEBUG, "O: COMPARE"); 		\
+		debug(DEBUG_NEW_MATH_DEBUG, "O: %s -> %d", #x2, (x2)); 	\
 		push_boolean( x1 , y1 ); 				\
 	} 
 
@@ -1302,15 +1273,13 @@ static void	reduce (expr_info *cx, int what)
 		if (is_real_number(s) && is_real_number(t))		\
 		{							\
 			a = atof(s), b = atof(t);			\
-			if (x_debug & DEBUG_NEW_MATH_DEBUG) 		\
-				yell("O: %s N(%f %f) -> %d", #x, a, b, (x)); \
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s N(%f %f) -> %d", #x, a, b, (x)); \
 			if ((x))		dpushn(cx, x, 1) 	\
 			else			dpushn(cx, x, 0) 	\
 		} 							\
 		else 							\
 		{ 							\
-			if (x_debug & DEBUG_NEW_MATH_DEBUG) 		\
-				yell("O: %s S(%s %s) -> %d", #x, s, t, (y)); \
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s S(%s %s) -> %d", #x, s, t, (y)); \
 			if ((y))		dpushn(cx, y, 1) 	\
 			else			dpushn(cx, y, 0) 	\
 		} 							\
@@ -1324,46 +1293,40 @@ static void	reduce (expr_info *cx, int what)
 		case NOT:
 			c = pop_boolean(cx);
 			CHECK_NOEVAL
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("O: !%d -> %d", c, !c);
+			debug(DEBUG_NEW_MATH_DEBUG, "O: !%d -> %d", c, !c);
 			push_boolean(cx, !c);
 			break;
 		case COMP:
 			i = pop_integer(cx);
 			CHECK_NOEVAL
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell(": ~" INTMAX_FORMAT " -> "
+			debug(DEBUG_NEW_MATH_DEBUG, ": ~" INTMAX_FORMAT " -> "
 					   INTMAX_FORMAT, i, ~i);
 			push_integer(cx, ~i);
 			break;
 		case UPLUS:
 			a = pop_float(cx);
 			CHECK_NOEVAL
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("O: +%f -> %f", a, a);
+			debug(DEBUG_NEW_MATH_DEBUG, "O: +%f -> %f", a, a);
 			push_float(cx, a);
 			break;
 		case UMINUS:
 			a = pop_float(cx);
 			CHECK_NOEVAL
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("O: -%f -> %f", a, -a);
+			debug(DEBUG_NEW_MATH_DEBUG, "O: -%f -> %f", a, -a);
 			push_float(cx, -a);
 			break;
 		case STRLEN:
 			s = pop_expanded(cx);
 			CHECK_NOEVAL
 			i = strlen(s);
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("O: @(%s) -> " INTMAX_FORMAT, s, i);
+			debug(DEBUG_NEW_MATH_DEBUG, "O: @(%s) -> " INTMAX_FORMAT, s, i);
 			push_integer(cx, i);
 			break;
 		case WORDC:
 			s = pop_expanded(cx);
 			CHECK_NOEVAL
 			i = count_words(s, DWORD_EXTRACTW, "\"");
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("O: #(%s) -> " INTMAX_FORMAT, s, i);
+			debug(DEBUG_NEW_MATH_DEBUG, "O: #(%s) -> " INTMAX_FORMAT, s, i);
 			push_integer(cx, i);
 			break;
 		case DEREF:
@@ -1422,8 +1385,7 @@ static void	reduce (expr_info *cx, int what)
 
 			pop_2_strings(cx, &s, &t);
 			CHECK_NOEVAL
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("O: (%s) ## (%s) -> %s%s", s, t, s, t);
+			debug(DEBUG_NEW_MATH_DEBUG, "O: (%s) ## (%s) -> %s%s", s, t, s, t);
 
 			myval = malloc_strdup2(s, t);
 			push_string(cx, myval);
@@ -1454,8 +1416,7 @@ static void	reduce (expr_info *cx, int what)
 			myval = malloc_strdup(get_token_expanded(cx, v));
 			t = get_token_expanded(cx, w);
 
-			if (x_debug & DEBUG_NEW_MATH_DEBUG) 
-				yell("O: %s = (%s ## %s) -> %s%s", 
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s = (%s ## %s) -> %s%s", 
 					s, myval, t, myval, t);
 
 			malloc_strcat(&myval, t);
@@ -1473,8 +1434,7 @@ static void	reduce (expr_info *cx, int what)
 			myval = malloc_strdup(get_token_expanded(cx, w));
 			t = get_token_expanded(cx, v);
 
-			if (x_debug & DEBUG_NEW_MATH_DEBUG) 
-				yell("O: %s = (%s ## %s) -> %s%s", 
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s = (%s ## %s) -> %s%s", 
 					s, t, myval, t, myval);
 
 			malloc_strcat(&myval, t);
@@ -1489,8 +1449,7 @@ static void	reduce (expr_info *cx, int what)
 			CHECK_NOEVAL
 			t = get_token_expanded(cx, w);
 
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("O: %s = (%s)", s, t);
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s = (%s)", s, t);
 
 			push_token(cx, w);
 			add_var_alias(s, t, 0);
@@ -1515,8 +1474,7 @@ static void	reduce (expr_info *cx, int what)
 			sval = get_token_expanded(cx, v);
 			tval = get_token_expanded(cx, w);
 
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("O: %s <=> %s", s, t);
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s <=> %s", s, t);
 
 			add_var_alias(s, tval, 0);
 			add_var_alias(t, sval, 0);
@@ -1534,8 +1492,7 @@ static void	reduce (expr_info *cx, int what)
 			CHECK_NOEVAL
 			c = strcmp(s, t) ? 0 : 1;
 
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("O: %s === %s -> %d", s, t, c);
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s === %s -> %d", s, t, c);
 
 			push_boolean(cx, c);
 			break;
@@ -1546,8 +1503,7 @@ static void	reduce (expr_info *cx, int what)
 			CHECK_NOEVAL
 			c = strcmp(s, t) ? 1 : 0;
 
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("O: %s !== %s -> %d", s, t, c);
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s !== %s -> %d", s, t, c);
 
 			push_boolean(cx, c);
 			break;
@@ -1559,8 +1515,7 @@ static void	reduce (expr_info *cx, int what)
 			CHECK_NOEVAL
 			c = wild_match(t, s) ? 1 : 0;
 			
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("O: %s =~ %s -> %d", s, t, c);
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s =~ %s -> %d", s, t, c);
 
 			push_boolean(cx, c);
 			break;
@@ -1571,8 +1526,7 @@ static void	reduce (expr_info *cx, int what)
 			CHECK_NOEVAL
 			c = wild_match(t, s) ? 0 : 1;
 			
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("O: %s !~ %s -> %d", s, t, c);
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s !~ %s -> %d", s, t, c);
 
 			push_boolean(cx, c);
 			break;
@@ -1584,8 +1538,7 @@ static void	reduce (expr_info *cx, int what)
 			CHECK_NOEVAL
 			c = word_in_wordlist(s, t) ? 1 : 0;
 			
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("O: %s IN %s -> %d", s, t, c);
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s IN %s -> %d", s, t, c);
 
 			push_boolean(cx, c);
 			break;
@@ -1596,8 +1549,7 @@ static void	reduce (expr_info *cx, int what)
 			CHECK_NOEVAL
 			c = word_in_wordlist(s, t) ? 0 : 1;
 			
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("O: %s NOTIN %s -> %d", s, t, c);
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s NOTIN %s -> %d", s, t, c);
 
 			push_boolean(cx, c);
 			break;
@@ -1614,14 +1566,11 @@ static void	reduce (expr_info *cx, int what)
 		{
 			pop_3_tokens(cx, &c, &v, &w);
 			CHECK_NOEVAL
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-			{
-				yell("O: %d ? %s : %s -> %s", c,
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %d ? %s : %s -> %s", c,
 					get_token_expanded(cx, v),
 					get_token_expanded(cx, w),
 					(c ? get_token_expanded(cx, v) : 
 					     get_token_expanded(cx, w)));
-			}
 			push_token(cx, c ? v : w);
 			break;
 		}
@@ -1645,8 +1594,7 @@ static void	reduce (expr_info *cx, int what)
 			 */
 			if (get_token_boolean(cx, v))
 			{
-				if (x_debug & DEBUG_NEW_MATH_DEBUG)
-					yell("O: %s ?? %s -> %s", 
+				debug(DEBUG_NEW_MATH_DEBUG, "O: %s ?? %s -> %s", 
 						get_token_expanded(cx, v),
 						get_token_expanded(cx, w),
 						get_token_expanded(cx, v));
@@ -1654,8 +1602,7 @@ static void	reduce (expr_info *cx, int what)
 			}
 			else
 			{
-				if (x_debug & DEBUG_NEW_MATH_DEBUG)
-					yell("O: %s ?? %s -> %s", 
+				debug(DEBUG_NEW_MATH_DEBUG, "O: %s ?? %s -> %s", 
 						get_token_expanded(cx, v),
 						get_token_expanded(cx, w),
 						get_token_expanded(cx, w));
@@ -1677,8 +1624,7 @@ static void	reduce (expr_info *cx, int what)
 			 */
 			get_token_expanded(cx, v);
 
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("O: %s , %s -> %s", 
+			debug(DEBUG_NEW_MATH_DEBUG, "O: %s , %s -> %s", 
 					get_token_expanded(cx, v),
 					get_token_expanded(cx, w),
 					get_token_expanded(cx, w));
@@ -1767,8 +1713,7 @@ static int	zzlex (expr_info *c)
 #define UNARY(x, y, z) return unary(c, x, y, z);
 
 	dummy = 1;
-	if (x_debug & DEBUG_NEW_MATH_DEBUG)
-		yell("Parsing next token from: [%s]", c->ptr);
+	debug(DEBUG_NEW_MATH_DEBUG, "Parsing next token from: [%s]", c->ptr);
 
 	for (;;)
 	{
@@ -2359,8 +2304,7 @@ handle_expando:
 				c->ptr = endstr(c->ptr);
 			}
 
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("After token: [%s]", c->ptr);
+			debug(DEBUG_NEW_MATH_DEBUG, "After token: [%s]", c->ptr);
 			return ID;
 		}
 	    }
@@ -2418,8 +2362,7 @@ static void	mathparse (expr_info *c, int pc)
 		 */
 		case ID:
 		{
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("Parsed identifier token [%s]", 
+			debug(DEBUG_NEW_MATH_DEBUG, "Parsed identifier token [%s]", 
 					get_token_expanded(c, c->last_token));
 
 			/* 
@@ -2456,8 +2399,7 @@ static void	mathparse (expr_info *c, int pc)
 			{
 			    malloc_sprintf(&hack, "%s(%s)", funcname, args);
 
-			    if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("Parsed function call %s", hack);
+			    debug(DEBUG_NEW_MATH_DEBUG, "Parsed function call %s", hack);
 
 			    retval = call_function(hack, c->args);
 			    c->last_token = tokenize_expanded(c, retval);
@@ -2472,8 +2414,7 @@ static void	mathparse (expr_info *c, int pc)
 		 */
 		case M_INPAR:
 		{
-			if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("Parsed open paren");
+			debug(DEBUG_NEW_MATH_DEBUG, "Parsed open paren");
 			mathparse(c, TOPPREC);
 
 			/*
@@ -2530,8 +2471,7 @@ static void	mathparse (expr_info *c, int pc)
 			 */
 			if (assoc[otok] == BOOL)
 			{
-			    if (x_debug & DEBUG_NEW_MATH_DEBUG)
-				yell("Parsed short circuit operator");
+			    debug(DEBUG_NEW_MATH_DEBUG, "Parsed short circuit operator");
 
 			    switch (otok)
 			    {
@@ -2556,8 +2496,7 @@ static void	mathparse (expr_info *c, int pc)
 			    }
 			}
 
-		 	if (x_debug & DEBUG_NEW_MATH_DEBUG)
-			    yell("Parsed operator of type [%d]", otok);
+			debug(DEBUG_NEW_MATH_DEBUG, "Parsed operator of type [%d]", otok);
 
 			/*
 			 * Parse the right hand side through
@@ -2619,16 +2558,14 @@ static char *	matheval (char *s, const char *args)
 
 	/* Check for leftover operands */
 	if (context.sp)
-	{
 		my_error("This expression failed because it is missing operators: %s", context.orig_expr);
-	}
 
 	if (x_debug & DEBUG_NEW_MATH_DEBUG)
 	{
 		int i;
-		yell("Operands left: %d", context.sp + 1);
+		debug(DEBUG_NEW_MATH_DEBUG, "Operands left: %d", context.sp + 1);
 		for (i = 0; i <= context.sp; i++)
-			yell("Operand [%d]: [%s]", i, 
+			debug(DEBUG_NEW_MATH_DEBUG, "Operand [%d]: [%s]", i, 
 				get_token_expanded(&context, context.stack[i]));
 	}
 
@@ -2639,8 +2576,7 @@ cleanup:
 	/* Clean up and restore order */
 	destroy_expr_info(&context);
 
-	if (x_debug & DEBUG_NEW_MATH_DEBUG)
-		yell("Returning [%s]", ret);
+	debug(DEBUG_NEW_MATH_DEBUG, "Returning [%s]", ret);
 
 	/* Return the result */
 	return ret;

@@ -6,8 +6,6 @@
  * Copyright(c) 1990 
  *
  * See the COPYRIGHT file, or do a HELP IRCII COPYRIGHT 
- *
- * @(#)$Id: ircaux.h,v 1.130 2015/04/11 04:16:33 jnelson Exp $
  */
 
 #ifndef _IRCAUX_H_
@@ -15,7 +13,7 @@
 
 #include "network.h"
 #include "words.h"
-
+#include "cJSON.h"
 
 struct metric_time {
 	long mt_days;
@@ -127,6 +125,7 @@ struct 	epic_loadfile *	uzfopen 	(char **, const char *, int, struct stat *);
 	char *	endstr			(char *);
 const 	char *	nonull			(const char *);
 const 	char *	coalesce		(const char *, ...);
+const 	char *	coalesce_empty		(const char *one_, ...);
 
 	/* - - - - Functions dealing with mutating strings in place - - - - */
 	char *	upper 			(char *);
@@ -188,6 +187,8 @@ struct 	metric_time 	timespec_to_metric	(const Timespec *);
 	void	remove_mode_from_str	(char *, size_t, int);
 	void	clear_modes		(char *);
 	void	update_mode_str		(char *, size_t, const char *);
+
+	cJSON * kwarg_string_to_json 	(const char *, const char **);
 
 /**********************************************************************/
 

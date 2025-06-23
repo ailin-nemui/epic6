@@ -821,10 +821,8 @@ char	*call_function (char *name, const char *args)
 	    (type == 1 && !alias) ||
 	    (type == 2 && !func))
 	{
-	    if (x_debug & DEBUG_UNKNOWN)
-		yell("Function call to non-existant alias [%s]", str);
-	    if (debugging & DEBUG_FUNCTIONS)
-		privileged_yell("Function %s(%s) returned ", str, lparen);
+	    debug(DEBUG_UNKNOWN, "Function call to non-existant alias [%s]", str);
+	    debug(DEBUG_FUNCTIONS, "Function %s(%s) returned ", str, lparen);
 	    new_free(&str);
             return malloc_strdup(empty_string);
         }

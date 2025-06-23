@@ -1562,14 +1562,12 @@ void	rfc1459_any_to_utf8 (char *buffer, size_t buffsiz, char **extra)
 	char *	extra_payload_part = NULL;
 	int	bytes;
 
-	if (x_debug & DEBUG_RECODE)
-		yell(">> Received %s", buffer);
+	debug(DEBUG_RECODE, ">> Received %s", buffer);
 
 	if ((bytes = invalid_utf8str(buffer)) == 0)
 		return;
 
-	if (x_debug & DEBUG_RECODE)
-		yell(">> There are %d invalid utf8 sequences...", bytes);
+	debug(DEBUG_RECODE, ">> There are %d invalid utf8 sequences...", bytes);
 
 	/* 
 	 * Point the "server part" at the start, and move the 
@@ -1581,18 +1579,14 @@ void	rfc1459_any_to_utf8 (char *buffer, size_t buffsiz, char **extra)
 		if (payload_part[0] == ' ' && payload_part[1] == ':')
 		{
 			*payload_part++ = 0;	/* Whack the space */
-			if (x_debug & DEBUG_RECODE)
-				yell(">> Found payload (%ld bytes): %s", 
+			debug(DEBUG_RECODE, ">> Found payload (%ld bytes): %s", 
 					(long)strlen(payload_part), payload_part);
 			break;
 		}
 	}
 
-	if (x_debug & DEBUG_RECODE)
-	{
-		yell(">> server part is %s, payload_part is %s", 
+	debug(DEBUG_RECODE, ">> server part is %s, payload_part is %s", 
 			server_part, payload_part);
-	}
 
 	/* 
 	 * If "payload_part" is pointing at a nul here, there was no payload.
@@ -1605,8 +1599,7 @@ void	rfc1459_any_to_utf8 (char *buffer, size_t buffsiz, char **extra)
 	 */
 	if (invalid_utf8str(server_part))
 	{
-		if (x_debug & DEBUG_RECODE)
-			say(">> Need to recode server part for %d", from_server);
+		debug(DEBUG_RECODE, ">> Need to recode server part for %d", from_server);
 
 		/* 
 		 * XXX The use of the bogus nick "zero" is just because
@@ -1617,8 +1610,7 @@ void	rfc1459_any_to_utf8 (char *buffer, size_t buffsiz, char **extra)
 		if (extra_server_part)
 			server_part = extra_server_part;
 
-		if (x_debug & DEBUG_RECODE)
-			say(">> Recoded server part: %s", server_part);
+		debug(DEBUG_RECODE, ">> Recoded server part: %s", server_part);
 	}
 
 	/*
@@ -1631,8 +1623,7 @@ void	rfc1459_any_to_utf8 (char *buffer, size_t buffsiz, char **extra)
 	{
 		char *	server_part_copy;
 
-		if (x_debug & DEBUG_RECODE)
-			say(">> Need to recode payload part for %d", from_server);
+		debug(DEBUG_RECODE, ">> Need to recode payload part for %d", from_server);
 
 		server_part_copy = LOCAL_COPY(server_part);
 
@@ -1731,8 +1722,7 @@ void	rfc1459_any_to_utf8 (char *buffer, size_t buffsiz, char **extra)
 		/*
 		 * Everything else isn't subject to special casing.
 		 */
-		if (x_debug & DEBUG_RECODE)
-			say(">> Recoding payload from [%s], to [%s], server [%d]", 
+		debug(DEBUG_RECODE, ">> Recoding payload from [%s], to [%s], server [%d]", 
 				from?from:"", to?to:"", from_server);
 
 		/* UTF8-ify the payload with 'from' and 'to' */
@@ -1740,8 +1730,7 @@ void	rfc1459_any_to_utf8 (char *buffer, size_t buffsiz, char **extra)
 		if (extra_payload_part)
 			payload_part = extra_payload_part;
 
-		if (x_debug & DEBUG_RECODE)
-			say(">> Recoded payload part: %s", payload_part);
+		debug(DEBUG_RECODE, ">> Recoded payload part: %s", payload_part);
 	}
 	while (0);
 
@@ -1749,10 +1738,8 @@ void	rfc1459_any_to_utf8 (char *buffer, size_t buffsiz, char **extra)
 	server_part = LOCAL_COPY(server_part);
 	payload_part = LOCAL_COPY(payload_part);
 
-	if (x_debug & DEBUG_RECODE)
-		say(">> server part: %s", server_part);
-	if (x_debug & DEBUG_RECODE)
-		say(">> payload part: %s", payload_part);
+	debug(DEBUG_RECODE, ">> server part: %s", server_part);
+	debug(DEBUG_RECODE, ">> payload part: %s", payload_part);
 
 	/*
 	 * Now paste the two parts back together.
@@ -1775,8 +1762,7 @@ void	rfc1459_any_to_utf8 (char *buffer, size_t buffsiz, char **extra)
 		strlcat(buffer, payload_part, buffsiz);
 	}
 
-	if (x_debug & DEBUG_RECODE)
-		say(">> Reconstituted UTF8 message: %s", buffer);
+	debug(DEBUG_RECODE, ">> Reconstituted UTF8 message: %s", buffer);
 
 	new_free(&extra_server_part);
 	new_free(&extra_payload_part);

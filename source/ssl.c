@@ -135,20 +135,17 @@ void	set_ssl_root_certs_location (void *stuff)
 	VARIABLE *	v;
 	const char *	p;
 
-	if (x_debug & DEBUG_SSL)
-		yell("SSL >>> HERE WE GO -- SETTING SSL ROOT CERTS LOCATION");
+	debug(DEBUG_SSL, "SSL >>> HERE WE GO -- SETTING SSL ROOT CERTS LOCATION");
 	/* 'p' will point to /SET SSL_ROOT_CERTS_LOCATION */
 	v = (VARIABLE *)stuff;
 	p = v->string;
 
-	if (x_debug & DEBUG_SSL)
-		yell("SSL >>> The new value is: %s", p ? p : "(unset)");
+	debug(DEBUG_SSL, "SSL >>> The new value is: %s", p ? p : "(unset)");
 
 	/* If you /SET -SSL_ROOT_CERTS_LOCATION, it forces resets to default */
 	if (!p)
 	{
-		if (x_debug & DEBUG_SSL)
-			yell("SSL >>> Unsetting previous values for x509_default_cert_location_dir");
+		debug(DEBUG_SSL, "SSL >>> Unsetting previous values for x509_default_cert_location_dir");
 		new_free(&x509_default_cert_location_dir);
 		new_free(&x509_default_cert_location_file);
 	}
@@ -167,31 +164,26 @@ void	set_ssl_root_certs_location (void *stuff)
 	     */
 	    else if (stat(path, &st) == 0)
 	    {
-		if (x_debug & DEBUG_SSL)
-			yell("SSL >>> Evaluating new value of the /set: %s", path);
+		debug(DEBUG_SSL, "SSL >>> Evaluating new value of the /set: %s", path);
 
 		if (S_ISDIR(st.st_mode))
 		{
-			if (x_debug & DEBUG_SSL)
-				yell("SSL >>> The new value of the /set is a directory, so setting the directory");
+			debug(DEBUG_SSL, "SSL >>> The new value of the /set is a directory, so setting the directory");
 			malloc_strcpy(&x509_default_cert_location_dir, path);
 		}
 		else if (S_ISREG(st.st_mode))
 		{
-			if (x_debug & DEBUG_SSL)
-				yell("SSL >>> The new value of the /set is a file, so setting the file");
+			debug(DEBUG_SSL, "SSL >>> The new value of the /set is a file, so setting the file");
 			malloc_strcpy(&x509_default_cert_location_file, path);
 		}
 		else
 		{
-			if (x_debug & DEBUG_SSL)
-				yell("SSL >>> The new value of the /set is neither file nor directory, so doing nothing.");
+			debug(DEBUG_SSL, "SSL >>> The new value of the /set is neither file nor directory, so doing nothing.");
 		}
 	    }
 	    else
 	    {
-		if (x_debug & DEBUG_SSL)
-			yell("SSL >>> The new value of the /set does not exist, punting: %s", path);
+		debug(DEBUG_SSL, "SSL >>> The new value of the /set does not exist, punting: %s", path);
 	    }
 	}
 
@@ -203,15 +195,13 @@ void	set_ssl_root_certs_location (void *stuff)
 	{
 		const char *	dir = NULL;
 
-		if (x_debug & DEBUG_SSL)
-			yell("SSL >>> There is no default location for the directory, looking for one.");
+		debug(DEBUG_SSL, "SSL >>> There is no default location for the directory, looking for one.");
 
 		/* This is where OpenSSL says our cert chain should live */
 		if (!(dir = getenv(X509_get_default_cert_dir_env())))
 			dir = X509_get_default_cert_dir();
 
-		if (x_debug & DEBUG_SSL)
-			yell("SSL >>> OpenSSL suggests %s", dir);
+		debug(DEBUG_SSL, "SSL >>> OpenSSL suggests %s", dir);
 
 		/* If that location is a directory, use it. */
 		if (dir)
@@ -220,40 +210,33 @@ void	set_ssl_root_certs_location (void *stuff)
 		    {
 			if (S_ISDIR(st.st_mode))
 			{
-				if (x_debug & DEBUG_SSL)
-					yell("SSL >>> We have a winner for the directory.");
+				debug(DEBUG_SSL, "SSL >>> We have a winner for the directory.");
 				malloc_strcpy(&x509_default_cert_location_dir, dir);
 			}
 			else
-				if (x_debug & DEBUG_SSL)
-					yell("SSL >>> It wasn't a directory.");
+				debug(DEBUG_SSL, "SSL >>> It wasn't a directory.");
 		    }
 		    else
-			if (x_debug & DEBUG_SSL)
-				yell("SSL >>> I couldn't stat that...");
+			debug(DEBUG_SSL, "SSL >>> I couldn't stat that...");
 		}
 		else
-			if (x_debug & DEBUG_SSL)
-				yell("SSL >>> OpenSSL didn't suggest anything..");
+			debug(DEBUG_SSL, "SSL >>> OpenSSL didn't suggest anything..");
 	}
 	else
-		if (x_debug & DEBUG_SSL)
-			yell("SSL >>> I already have a directory location: %s", x509_default_cert_location_dir);
+		debug(DEBUG_SSL, "SSL >>> I already have a directory location: %s", x509_default_cert_location_dir);
 
 
 	if (!x509_default_cert_location_file)
 	{
 		const char *	file = NULL;
 
-		if (x_debug & DEBUG_SSL)
-			yell("SSL >>> There is no default location for the file, looking for one.");
+		debug(DEBUG_SSL, "SSL >>> There is no default location for the file, looking for one.");
 
 		/* This is where OpenSSL says our cert chain should live */
 		if (!(file = getenv(X509_get_default_cert_file_env())))
 			file = X509_get_default_cert_file();
 
-		if (x_debug & DEBUG_SSL)
-			yell("SSL >> OpenSSL suggests %s", file);
+		debug(DEBUG_SSL, "SSL >> OpenSSL suggests %s", file);
 
 		/* If that location is a file, use it. */
 		if (file)
@@ -262,25 +245,20 @@ void	set_ssl_root_certs_location (void *stuff)
 		    {
 			if (S_ISREG(st.st_mode))
 			{
-				if (x_debug & DEBUG_SSL)
-					yell("SSL >>> We have a winner for the file.");
+				debug(DEBUG_SSL, "SSL >>> We have a winner for the file.");
 				malloc_strcpy(&x509_default_cert_location_file, file);
 			}
 			else
-				if (x_debug & DEBUG_SSL)
-					yell("SSL >>> It wasn't a file.");
+				debug(DEBUG_SSL, "SSL >>> It wasn't a file.");
 		    }
 		    else
-			if (x_debug & DEBUG_SSL)
-				yell("SSL >>> I couldn't stat that.");
+			debug(DEBUG_SSL, "SSL >>> I couldn't stat that.");
 		}
 		else
-			if (x_debug & DEBUG_SSL)
-				yell("SSL >>> OpenSSL didn't suggest anything..");
+			debug(DEBUG_SSL, "SSL >>> OpenSSL didn't suggest anything..");
 	}
 	else
-		if (x_debug & DEBUG_SSL)
-			yell("SSL >>> I already have a file location: %s", x509_default_cert_location_file);
+		debug(DEBUG_SSL, "SSL >>> I already have a file location: %s", x509_default_cert_location_file);
 
 	if (ctx)
 	{
@@ -500,8 +478,7 @@ int	ssl_startup (int fd, int channel, const char *hostname, const char *cert)
 
 	if (cert && *cert)
 	{
-		if (x_debug & DEBUG_SSL)
-			yell("Using client certificate file %s", cert);
+		debug(DEBUG_SSL, "Using client certificate file %s", cert);
 		if (SSL_use_certificate_file(x->ssl, cert, SSL_FILETYPE_PEM) <= 0)
 		{
 			syserr(SRV(fd), "SSL_use_certificate_file(%s) for fd %d failed", cert, fd);
@@ -514,8 +491,7 @@ int	ssl_startup (int fd, int channel, const char *hostname, const char *cert)
 			errno = EINVAL;
 			return -1;
 		}
-		if (x_debug & DEBUG_SSL)
-			yell("Success");
+		debug(DEBUG_SSL, "Success");
 	}
 
 	if (SSL_set_fd(x->ssl, channel) <= 0)

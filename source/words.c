@@ -291,13 +291,11 @@ static int	move_to_prev_word (const char **str, const char *start, int extended,
 
 	/* Overhead -- work out if "" support will be cheap or expensive */
 	if (delims && delims[0] && delims[1] == 0) {
-		if (x_debug & DEBUG_EXTRACTW_DEBUG)
-			yell(".... move_to_prev_word: Simple processing");
+		debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_prev_word: Simple processing");
 		simple = 1;
 		what = delims[0];
 	} else {
-		if (x_debug & DEBUG_EXTRACTW_DEBUG)
-			yell(".... move_to_prev_word: Expensive processing");
+		debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_prev_word: Expensive processing");
 		simple = 0;
 		what = -1;
 	}
@@ -308,8 +306,7 @@ static int	move_to_prev_word (const char **str, const char *start, int extended,
 	/* Start at the mark the user provided us */
 	pos = *str;
 
-	if (x_debug & DEBUG_EXTRACTW_DEBUG)
-		yell(".... move_to_prev_word: Starting at [%s] (in [%s])", pos, start);
+	debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_prev_word: Starting at [%s] (in [%s])", pos, start);
 
 	/*
 	 * XXX This is a hack, but what do i care?
@@ -341,14 +338,12 @@ static int	move_to_prev_word (const char **str, const char *start, int extended,
 	{
 		const char *	before;
 
-		if (x_debug & DEBUG_EXTRACTW_DEBUG)
-			yell(".... move_to_prev_word: Handling extended word.");
+		debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_prev_word: Handling extended word.");
 
 		if (!(before = find_backward_quote(pos, start, delims)))
 			panic(1, "find_backward returned NULL [2]");
 
-		if (x_debug & DEBUG_EXTRACTW_DEBUG)
-			yell(".... move_to_prev_word: Extended word begins at [%s] (of [%s])", before, start);
+		debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_prev_word: Extended word begins at [%s] (of [%s])", before, start);
 
 		/*
 		 * "Before" either points at a double quote or it points
@@ -361,8 +356,7 @@ static int	move_to_prev_word (const char **str, const char *start, int extended,
 		/* So our new mark is the space before the double quoted word */
 		pos = before;
 
-		if (x_debug & DEBUG_EXTRACTW_DEBUG)
-			yell(".... move_to_prev_word: So the position before the extended word is [%s] (of [%s])", pos, start);
+		debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_prev_word: So the position before the extended word is [%s] (of [%s])", pos, start);
 	}
 
 	/* 
@@ -372,14 +366,12 @@ static int	move_to_prev_word (const char **str, const char *start, int extended,
 	 */
 	else
 	{
-	    if (x_debug & DEBUG_EXTRACTW_DEBUG)
-		yell(".... move_to_prev_word: Handling simple word.");
+	    debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_prev_word: Handling simple word.");
 
 	    while (pos >= start && !my_isspace(*pos))
 		pos--;
 
-	    if (x_debug & DEBUG_EXTRACTW_DEBUG)
-		yell(".... move_to_prev_word: So the position before the simple word is [%s] (of [%s])", pos, start);
+	    debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_prev_word: So the position before the simple word is [%s] (of [%s])", pos, start);
 	}
 
 	/*
@@ -388,8 +380,7 @@ static int	move_to_prev_word (const char **str, const char *start, int extended,
 	 */
 	if (pos <= start)
 	{
-		if (x_debug & DEBUG_EXTRACTW_DEBUG)
-			yell(".... move_to_prev_word: Ooops. we hit the start "
+		debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_prev_word: Ooops. we hit the start "
 				"of the string.  Stopping here.");
 
 		*str = start;
@@ -408,8 +399,7 @@ static int	move_to_prev_word (const char **str, const char *start, int extended,
 			pos--;
 	}
 	
-	if (x_debug & DEBUG_EXTRACTW_DEBUG)
-		yell(".... move_to_prev_word: And after we're done, [%s] is "
+	debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_prev_word: And after we're done, [%s] is "
 			"the start of the previous word!", pos);
 
 	*str = pos;
@@ -468,8 +458,7 @@ static int	move_to_next_word (const char **str, const char *start, int extended,
 	if (!str || !*str || !**str)
 		return 0;
 
-	if (x_debug & DEBUG_EXTRACTW_DEBUG)
-		yell(">>>> move_to_next_word: mark [%s], start [%s], "
+	debug(DEBUG_EXTRACTW_DEBUG, ">>>> move_to_next_word: mark [%s], start [%s], "
 			"extended [%d], delims [%s]", *str, start, 
 							extended, delims);
 
@@ -480,15 +469,13 @@ static int	move_to_next_word (const char **str, const char *start, int extended,
 	 */
 	if (delims && delims[0] && delims[1] == 0)
 	{
-		if (x_debug & DEBUG_EXTRACTW_DEBUG)
-			yell(".... move_to_next_word: Simple processing");
+		debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_next_word: Simple processing");
 		simple = 1;
 		what = delims[0];
 	}
 	else
 	{
-		if (x_debug & DEBUG_EXTRACTW_DEBUG)
-			yell(".... move_to_next_word: Expensive processing");
+		debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_next_word: Expensive processing");
 		simple = 0;
 		what = -1;
 	}
@@ -499,18 +486,14 @@ static int	move_to_next_word (const char **str, const char *start, int extended,
 	 */
 	CHECK_EXTENDED_SUPPORT
 
-	if (x_debug & DEBUG_EXTRACTW_DEBUG)
-	{
-		yell(".... move_to_next_word: Extended word support requested [%d]", extended == DWORD_YES);
-		yell(".... move_to_next_word: Extended word support for simple case valid [%d]", simple == 1 && **str == what);
-		yell(".... move_to_next_word: Extended word support for complex case valid [%d]", simple == 0 && strchr(delims, **str));
-	}
+	debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_next_word: Extended word support requested [%d]", extended == DWORD_YES);
+	debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_next_word: Extended word support for simple case valid [%d]", simple == 1 && **str == what);
+	debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_next_word: Extended word support for complex case valid [%d]", simple == 0 && strchr(delims, **str));
 
 	/* Start at where the user asked, eh? */
 	pos = *str;
 
-	if (x_debug & DEBUG_EXTRACTW_DEBUG)
-	    yell(".... move_to_next_word: starting at [%s]", pos);
+	debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_next_word: starting at [%s]", pos);
 
 	/*
 	 * Always skip leading spaces
@@ -518,8 +501,7 @@ static int	move_to_next_word (const char **str, const char *start, int extended,
 	while (*pos && isspace(*pos))
 		pos++;
 
-	if (x_debug & DEBUG_EXTRACTW_DEBUG)
-	    yell(".... move_to_next_word: after skipping spaces, [%s]", pos);
+	debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_next_word: after skipping spaces, [%s]", pos);
 
 	/*
 	 * Now check to see if this is an extended word.  If it is an 
@@ -532,8 +514,7 @@ static int	move_to_next_word (const char **str, const char *start, int extended,
 	{
 		const char *	after;
 
-		if (x_debug & DEBUG_EXTRACTW_DEBUG)
-		    yell(".... move_to_next_word: handling extended word");
+		debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_next_word: handling extended word");
 
 		if (!(after = find_forward_character(pos, start, delims)))
 			panic(1, "find_forward returned NULL [1]");
@@ -541,29 +522,25 @@ static int	move_to_next_word (const char **str, const char *start, int extended,
 			after++;
 		pos = after;
 
-		if (x_debug & DEBUG_EXTRACTW_DEBUG)
-		    yell(".... move_to_next_word: after extended word [%s]", pos);
+		debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_next_word: after extended word [%s]", pos);
 	}
 	/*
 	 * If this is not an extended word, just skip to the next space.
 	 */
 	else
 	{
-		if (x_debug & DEBUG_EXTRACTW_DEBUG)
-		    yell(".... move_to_next_word: handling simple word [%s]", pos);
+		debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_next_word: handling simple word [%s]", pos);
 
 		while (*pos && !my_isspace(*pos))
 			pos++;
 
-		if (x_debug & DEBUG_EXTRACTW_DEBUG)
-		    yell(".... move_to_next_word: at next space: [%s]", pos);
+		debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_next_word: at next space: [%s]", pos);
 	}
 
 	if (*pos)
 		pos++;
 
-	if (x_debug & DEBUG_EXTRACTW_DEBUG)
-	    yell("... move_to_next_word: next word starts with [%s]", pos);
+	debug(DEBUG_EXTRACTW_DEBUG, "... move_to_next_word: next word starts with [%s]", pos);
 
 	*str = pos;
 	return 1;
@@ -598,14 +575,12 @@ const char *	real_move_to_abs_word (const char *start, const char **mark, int wo
 	const char *	pointer = start;
 	int 		counter = word;
 
-	if (x_debug & DEBUG_EXTRACTW_DEBUG)
-		yell(">>>> real_move_to_abs_word: start [%s], count [%d], extended [%d], quotes [%s]", start, word, extended, quotes);
+	debug(DEBUG_EXTRACTW_DEBUG, ">>>> real_move_to_abs_word: start [%s], count [%d], extended [%d], quotes [%s]", start, word, extended, quotes);
 
 	for (; counter > 0 && *pointer; counter--)
 		move_to_next_word(&pointer, start, extended, quotes);
 
-	if (x_debug & DEBUG_EXTRACTW_DEBUG)
-		yell("<<<< real_move_to_abs_word: pointer [%s]", pointer);
+	debug(DEBUG_EXTRACTW_DEBUG, "<<<< real_move_to_abs_word: pointer [%s]", pointer);
 
 	if (mark)
 		*mark = pointer;

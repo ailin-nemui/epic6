@@ -2848,7 +2848,7 @@ BUILT_IN_COMMAND(whois)
 		new_free(&stuff);
 	}
 	else /* whois command */
-		send_to_server("WHOIS %s", coalesce(args, get_server_nickname(from_server)));
+		send_to_server("WHOIS %s", coalesce_empty(args, get_server_nickname(from_server)));
 }
 
 /*

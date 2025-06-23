@@ -524,13 +524,9 @@ void 	add_userhost_to_channel (const char *channel, const char *nick, int server
 		    remove_from_alist(&chan->nicks, new_n->nick);
 		    malloc_strcpy(&new_n->nick, nick);
 		    add_to_alist(&chan->nicks, nick, new_n);
-		    if (x_debug & DEBUG_CHANNELS)
-		    {
-			yell("Detected and corrected a nickname mangled by "
-				"server-side truncation bug");
-			yell("Server [%d] Channel [%s] Nickname [%s]",
-				server, channel, nick);
-		    }
+		    debug(DEBUG_CHANNELS, "Detected and corrected a nickname mangled by server-side truncation bug");
+		    debug(DEBUG_CHANNELS, "Server [%d] Channel [%s] Nickname [%s]", server, channel, nick);
+
 		    /*
 		     * Yes, yes i know i could 'break' here, but i
 		     * intentionally do not do so becuase i want to make

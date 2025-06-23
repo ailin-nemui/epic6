@@ -596,8 +596,7 @@ static	time_t	last_ctcp_reply = 0;
                          * we dont get a CTCP for 2 seconds.
                          */
                         last_ctcp_reply = time(NULL);
-                        if (x_debug & DEBUG_CTCPS)
-                                say("CTCP flood reply to [%s] dropped", to);
+                        debug(DEBUG_CTCPS, "CTCP flood reply to [%s] dropped", to);
 			return;
 		}
 	}

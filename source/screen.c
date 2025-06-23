@@ -700,10 +700,6 @@ static void	term_attribute (Attribute *a)
 	if (a->altchar)		term_altcharset_on();
 	if (a->italic)		term_italics_on();
 
-	/* Globally defeat colors */
-	if (x_debug & DEBUG_NO_COLOR)
-		return;
-
 	if (IS_COLOR_NONE(a->fg)) {
 		/* */ (void) 0;
 	} else if (IS_COLOR_ANSI(a->fg)) {
@@ -3153,7 +3149,7 @@ void 	add_to_screen (const char *buffer)
 		    panic(0, "Output to channel [%s:NOSERV]: %s", get_who_from(), buffer);
 
 		w = get_channel_window(get_who_from(), from_server);
-	        if (window_is_valid(w))
+	        if (w >= 1 && window_is_valid(w))
 		{
 		    add_to_window(w, buffer);
 		    return;
