@@ -38,11 +38,6 @@ if (word(2 $loadinfo()) != [pf])
 	return;                       
 };
 
-if (index(h $info(O)) == -1) {
-	xecho -b Your client doesn't have implied hooks, sorry.;
-	return
-};
-
 #
 # addformat <type> [value]
 #

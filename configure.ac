@@ -205,12 +205,11 @@ fi
 
 dnl Look for common libraries that have common functions
 AC_CHECK_LIB(m, pow, LIBS="$LIBS -lm",)
-dnl AC_CHECK_LIB(rt, clock_gettime, LIBS="$LIBS -lrt",)
 AC_CHECK_LIB(sqlite, sqlite_open, LIBS="$LIBS -lsqlite",)
 AC_CHECK_LIB(sodium, sodium_init, LIBS="$LIBS -lsodium",)
-AC_CHECK_LIB(regex, regcomp, LIBS="$LIBS -lregex",)
 AC_CHECK_LIB(ncurses, setupterm, LIBS="-lncurses $LIBS",)
 AC_CHECK_LIB(cares, ares_library_init, LIBS="$LIBS -lcares",)
+
 
 dnl ----------------------------------------------------------
 dnl
@@ -228,41 +227,6 @@ AC_CHECK_FUNC(strlcpy, AC_DEFINE([HAVE_STRLCPY], 1, [Define if you have strlcpy(
 AC_CHECK_FUNC(strlcat, AC_DEFINE([HAVE_STRLCAT], 1, [Define if you have strlcat()]),)
 
 AC_FUNC_ALLOCA
-
-dnl ----------------------------------------------------------
-dnl
-dnl It makes a big difference if your system's (struct sockaddr)
-dnl structures look like this:
-dnl
-dnl struct sockaddr {
-dnl     u_char     sa_len;
-dnl     u_char     sa_family;
-dnl     char       sa_data[14];
-dnl };
-dnl
-dnl 	or this
-dnl
-dnl struct sockaddr {
-dnl     u_short    sa_family;
-dnl     char       sa_data[14];
-dnl };
-dnl
-dnl so check for that here.
-dnl
-dnl -----------------------------------------------------------
-AC_MSG_CHECKING([to see if your struct sockaddr includes a length field])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-	#include <sys/types.h>
-	#include <sys/socket.h>
-	#include <stdlib.h>
-]],[[
-	struct sockaddr sa;
-	sa.sa_len = 0;
-	return 0;
-]])],
-  	[ AC_DEFINE([HAVE_SA_LEN], 1, [Define this if your struct sockaddr has a sa_len field])
-	  AC_MSG_RESULT([yes]) ],
-  	[ AC_MSG_RESULT([no]) ], :)
 
 dnl ----------------------------------------------------------
 dnl
@@ -284,42 +248,6 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 	  AC_MSG_RESULT([yes]) ],
   	[ AC_MSG_RESULT([no]) ], :)
 
-
-dnl ----------------------------------------------------------
-dnl
-dnl Some implementations of getaddrinfo (*cough*KAME*cough*) don't 
-dnl support the AF_UNIX protocol family.  For these partially incomplete 
-dnl implementations, we must add our own support in a wrapper.
-dnl
-
-AC_MSG_CHECKING([to see if your getaddrinfo supports AF_UNIX])
-AC_RUN_IFELSE([AC_LANG_PROGRAM([[
-	#include <sys/types.h>
-	#include <sys/socket.h>
-	#include <netdb.h>
-	#include <sys/un.h>
-	#include <stdlib.h>
-	#include <string.h>
-]],[[
-	struct addrinfo hints;
-	struct addrinfo *results;
-	int	retval;
-
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_flags = 0;
-	hints.ai_family = AF_UNIX;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = 0;
-
-	retval = getaddrinfo(0, "/tmp/.ircd/6667", &hints, &results);
-	if (retval != 0)
-		return 1;
-	else
-		return 0;
-]])],
-  AC_MSG_RESULT([yes]),
-  AC_DEFINE([GETADDRINFO_DOES_NOT_DO_AF_UNIX], 1, [Define this if your getaddrinfo() does not support AF_UNIX])
-  AC_MSG_RESULT([no. ugh]), :)
 
 dnl ----------------------------------------------------------
 dnl
@@ -566,6 +494,38 @@ else
 	    LIBS="$old_LIBS"
 	fi
 fi
+
+
+dnl ----------------------------------------------------------
+dnl pcre2 support?
+dnl
+AC_ARG_WITH([pcre2],
+[  --with-pcre2,   Compile with pcre2 support.],
+       [], [with_pcre2=maybe])
+
+AC_MSG_CHECKING([whether to support pcre2])
+if test "x$with_pcre2" = "xno" ; then
+	AC_MSG_RESULT(aww, come on!)
+else
+	old_LIBS="$LIBS"
+	LIBS="$LIBS -lpcre2-8 -lpcre2-posix"
+	AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+		#define PCRE2_CODE_UNIT_WIDTH 8
+		#include <pcre2.h>
+		#include <pcre2posix.h>
+	]], [[
+		regex_t	preg;
+		pcre2_regcomp(&preg, "^$", 0);
+	]])],
+		AC_MSG_RESULT(yes)
+		AC_DEFINE([HAVE_PCRE2], 1, [Whether or not pcre2 works])
+		,
+		AC_MSG_RESULT(no)
+		LIBS="$old_LIBS"
+		AC_CHECK_LIB(regex, regcomp, LIBS="$LIBS -lregex",)
+	)
+fi
+
 
 dnl ----------------------------------------------------------
 dnl ----------------------------------------------------------

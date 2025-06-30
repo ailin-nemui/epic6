@@ -15,7 +15,9 @@ const char compile_time_options[] = {
  
 /* Implied on hooks -- because loadformats requires it */
 					'h',
-
+#ifdef HAVE_PCRE2
+					'p',
+#endif
 #ifdef HAVE_LIBARCHIVE
 					'r',
 #endif

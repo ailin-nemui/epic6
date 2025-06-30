@@ -30,8 +30,10 @@
    commit: Version 1.7.18+ (12c4bf1986c288950a3d06da757109a6aa1ece38)
    imported on 3/25/2025
 
-   This is a fork of the original.
-   It is almost completely rewritten, but is still a derivative work.
+   This was adapted for a different purpose than the original.
+   Rather than be for handling JSON for web apps, it's used to manage
+   foundational types for a string-based macro language.
+
    Do not bother the original authors about problems with this fork.
    Contact EPIC Software Labs (list@epicsol.org) only.
  */
@@ -129,8 +131,6 @@ typedef struct
 static cJSON_bool	cJSON_ParseValue (cJSON * item, cJSON_Parser *);
 
 /* * * * */
-/* I do not currently have a use case for this */
-#if 0
 static	cJSON_bool	cJSON_IsInt (double value)
 {
 	double	a;
@@ -141,7 +141,6 @@ static	cJSON_bool	cJSON_IsInt (double value)
 			return true_;
         return false_;
 }
-#endif
 
 /* Parse the input text to generate a number, and populate the result into item. */
 static cJSON_bool	cJSON_ParseNumber (cJSON *item, cJSON_Parser *input_buffer)
@@ -695,14 +694,16 @@ static cJSON_bool	cJSON_ParseValue (cJSON *item, cJSON_Parser *input_buffer)
 	/* 2a. True */
 	if (can_read(input_buffer, 4) && (strncmp(buffer_at_offset(input_buffer), "true", 4) == 0))
 	{
-		item->type = cJSON_True;
+		item->type = cJSON_Bool;
+		item->valuebool = true_;
 		input_buffer->offset += 4;
 		return true_;
 	}
 	/* 2b. False */
 	if (can_read(input_buffer, 5) && (strncmp(buffer_at_offset(input_buffer), "false", 5) == 0))
 	{
-		item->type = cJSON_False;
+		item->type = cJSON_Bool;
+		item->valuebool = false_;
 		input_buffer->offset += 5;
 		return true_;
 	}
@@ -1010,17 +1011,21 @@ static cJSON_bool	cJSON_GenerateValue (const cJSON *item, cJSON_Generator *outpu
 		strlcpy(output, "null", 5);
 		return true_;
 
-	    case cJSON_False:
-		if (!(output = ensure(output_buffer, 6)))
-			return false_;
-		strlcpy(output, "false", 6);
-		return true_;
-
-	    case cJSON_True:
-		if (!(output = ensure(output_buffer, 5)))
-			return false_;
-		strlcpy(output, "true", 5);
-		return true_;
+	    case cJSON_Bool:
+		if (item->valuebool == true_)
+		{
+			if (!(output = ensure(output_buffer, 5)))
+				return false_;
+			strlcpy(output, "true", 5);
+			return true_;
+		}
+		else
+		{
+			if (!(output = ensure(output_buffer, 6)))
+				return false_;
+			strlcpy(output, "false", 6);
+			return true_;
+		}
 
 	    case cJSON_Number:
 		return cJSON_GenerateNumber(item, output_buffer);
@@ -1289,11 +1294,14 @@ static cJSON *	cJSON_NewItem (void)
  * Parameters:
  *	item 	- A value previously returned by a cJSON_NewItem() function
  *		  It's ok if you did stuff to it.
+ *		  THIS ITEM MUST NOT BELONG TO ANY OTHER OBJECT.
+ *		  This is not checked. 
  *
  * Notes:
- *	You must not attempt to reference 'item' after calling this function.
- *	Ideally, 'item' should be a double ptr, so we can NULL it.
- *	(ie, treat it like new_free())
+ *	YOU MUST ENSURE THERE ARE NO OTHER REFERENCES TO *item_ BEFORE YOU 
+ *	CALL THIS FUNCTION.  This means *item_ must be detached from any 
+ *	object or array it may belong to.  Failure to do this will result 
+ *	in a use-after-free(), which is bad.
  */
 void	cJSON_DeleteItem (cJSON **item_)
 {
@@ -1322,6 +1330,8 @@ void	cJSON_DeleteItem (cJSON **item_)
 }
 
 
+/* * * * * */
+/* Dealing with JSON items of the scalar types (and values) */
 char *	cJSON_GetStringValue (const cJSON *item)
 {
 	if (!cJSON_IsString(item))
@@ -1338,6 +1348,166 @@ double	cJSON_GetNumberValue (const cJSON *item)
 	return item->valuedouble;
 }
 
+void	cJSON_ensure_valuestring (cJSON *item)
+{
+	if (cJSON_IsString(item))
+		return;
+	else if (cJSON_IsTrue(item))
+		malloc_strcpy(&item->valuestring, "1");
+	else if (cJSON_IsFalse(item))
+		malloc_strcpy(&item->valuestring, "0");
+	else if (cJSON_IsNull(item))
+		malloc_strcpy(&item->valuestring, empty_string);
+	else if (cJSON_IsNumber(item))
+	{
+		if (cJSON_IsInt(item->valuedouble))
+			malloc_sprintf(&item->valuestring, "%jd", (intmax_t)item->valuedouble);
+		else
+			malloc_sprintf(&item->valuestring, "%lf", item->valuedouble);
+	}
+}
+
+void	cJSON_ensure_valuedouble (cJSON *item)
+{
+	if (cJSON_IsNumber(item))
+		return;
+	else if (cJSON_IsString(item))
+		item->valuedouble = strtod(item->valuestring, NULL);
+	else if (cJSON_IsTrue(item))
+		item->valuedouble = 1;
+	else if (cJSON_IsFalse(item))
+		item->valuedouble = 0;
+	else if (cJSON_IsNull(item))
+		item->valuedouble = 0;
+}
+
+void	cJSON_ensure_valuebool (cJSON *item)
+{
+	if (cJSON_IsBool(item))
+		return;
+	else if (cJSON_IsNumber(item))
+	{
+		/* 
+		 * Only the integer 0 is false;
+		 * So anything that is not an integer is true
+		 */
+		if (!cJSON_IsInt(item->valuedouble))
+			item->valuebool = true_;
+		else if ((intmax_t)item->valuedouble != 0)
+			item->valuebool = true_;
+		else
+			item->valuebool = false_;
+	}
+	else if (cJSON_IsString(item))
+	{
+		if (empty(item->valuestring))
+			item->valuebool = false_;
+		else
+			item->valuebool = true_;
+	}
+	else if (cJSON_IsNull(item))
+		item->valuebool = 0;
+}
+
+const char *	cJSON_GetValueAsString (cJSON *item)
+{
+	cJSON_ensure_valuestring(item);
+	return item->valuestring;
+}
+
+double		cJSON_GetValueAsNumber (cJSON *item)
+{
+	cJSON_ensure_valuedouble(item);
+	return item->valuedouble;
+}
+
+intmax_t	cJSON_GetValueAsInt (cJSON *item)
+{
+	cJSON_ensure_valuedouble(item);
+	return (intmax_t)round(item->valuedouble);
+}
+
+cJSON_bool	cJSON_GetValueAsBool (cJSON *item)
+{
+	cJSON_ensure_valuebool(item);
+	return item->valuebool;
+}
+
+/* * */
+static cJSON_bool	cJSON_reset_item (cJSON *item)
+{
+	if (cJSON_IsArray(item) || cJSON_IsObject(item))
+		return false_;
+
+	if (item->valuestring)
+		new_free(&(item->valuestring));
+	item->valuedouble = 0;
+	item->valuebool = 0;
+
+	item->type = cJSON_NULL;
+	return true;
+}
+
+cJSON_bool	cJSON_ResetValueAsString (cJSON *item, const char *value)
+{
+	if (cJSON_IsArray(item) || cJSON_IsObject(item))
+		return false_;
+	if (cJSON_reset_item(item) == false_)
+		return false;
+
+	item->type = cJSON_String;
+	item->valuestring = malloc_strdup(value);
+	return true;
+}
+
+cJSON_bool	cJSON_ResetValueAsNumber (cJSON *item, double value)
+{
+	if (cJSON_IsArray(item) || cJSON_IsObject(item))
+		return false_;
+	if (cJSON_reset_item(item) == false_)
+		return false;
+	item->type = cJSON_Number;
+	item->valuedouble = value;
+	return true;
+}
+
+cJSON_bool	cJSON_ResetValueAsInt (cJSON *item, intmax_t value)
+{
+	if (cJSON_IsArray(item) || cJSON_IsObject(item))
+		return false_;
+	if (cJSON_reset_item(item) == false_)
+		return false;
+	item->valuedouble = (double)value;
+	return true;
+}
+
+cJSON_bool	cJSON_ResetValueAsBool (cJSON *item, cJSON_bool value)
+{
+	if (cJSON_IsArray(item) || cJSON_IsObject(item))
+		return false_;
+	if (cJSON_reset_item(item) == false_)
+		return false;
+	item->type = cJSON_Bool;
+	item->valuebool = value;
+	return true;
+}
+
+cJSON_bool	cJSON_ResetValueAsNull (cJSON *item)
+{
+	if (cJSON_IsArray(item) || cJSON_IsObject(item))
+		return false_;
+	if (cJSON_reset_item(item) == false_)
+		return false;
+	item->type = cJSON_NULL;
+	return true;
+}
+
+
+/* * * * */
+/* Dealing with JSON items of the array or object types */
+
+/************** GETTING ITEMS FROM ARRAYS OR OBJECTS *************/
+/* First, basic Array operations */
 /* Get Array size/item / object item. */
 int	cJSON_GetArraySize (const cJSON *array)
 {
@@ -1377,6 +1547,7 @@ cJSON * cJSON_GetArrayItem (const cJSON *array, int index)
 	return get_array_item(array, (size_t)index);
 }
 
+/* Then basic Object operations */
 static cJSON *	get_object_item (const cJSON * object, const char * name, const cJSON_bool case_sensitive)
 {
 	cJSON *	current_element = NULL;
@@ -1417,6 +1588,7 @@ cJSON_bool	cJSON_HasObjectItem (const cJSON *object, const char *string)
 	return cJSON_GetObjectItem(object, string) ? 1 : 0;
 }
 
+/*************** ADDING ITEMS TO ARRAYS OR OBJECTS ***************/
 /* Utility for array list handling. */
 static void	suffix_object (cJSON *prev, cJSON *item)
 {
@@ -1453,6 +1625,32 @@ cJSON_bool	cJSON_AddItemToArray (cJSON *array, cJSON *item)
 
 	return true_;
 }
+
+/* Replace array/object items with new ones. */
+cJSON_bool	cJSON_InsertItemInArray (cJSON *array, int which, cJSON *newitem)
+{
+	cJSON *	after_inserted = NULL;
+
+	if (!array || which < 0 || !newitem)
+		return false_;
+
+	if (!(after_inserted = get_array_item(array, (size_t)which)))
+		return cJSON_AddItemToArray(array, newitem);
+
+	if (after_inserted != array->child && after_inserted->prev == NULL)
+		/* return false if after_inserted is a corrupted array item */
+		return false_;
+
+	newitem->next = after_inserted;
+	newitem->prev = after_inserted->prev;
+	after_inserted->prev = newitem;
+	if (after_inserted == array->child)
+		array->child = newitem;
+	else
+		newitem->prev->next = newitem;
+	return true_;
+}
+
 
 /*
  * XXX This should verify if 'name' exists in 'object' already.
@@ -1504,7 +1702,29 @@ cJSON_AddTypeToObjectWithInitialValue(double, Number)
 cJSON_AddTypeToObjectWithInitialValue(char *, String)
 
 
-/************/
+/*************** REMOVING ITEMS FROM ARRAYS OR OBJECTS ***************/
+/*
+ * cJSON_DetachItemViaPointer - Unbind an item from a container and make it a free item
+ *
+ * Arguments:
+ *	parent		- A JSON item of Container Type (Object or Array), which contains 'item'
+ *	item		- An item currently contained within 'parent'.
+ *			   - If 'item' is bound to 'parent', corruption will result.
+ *			     This is not checked.
+ *			     ITEM WILL BE DESTROYED.  YOU MUST NOT USE IT.
+ *			     - Exception -- if item == replacement, then you can use it.
+ *
+ * Invariants (violate these at your peril):
+ *	1. 'parent' must be an Array or Object item
+ *	2. 'item' must be bound to 'parent'
+ *
+ * Return value:
+ *	NULL		- The parameters were invalid, and nothing was changed
+ *			  1. parent is NULL
+ *			  2. item is NULL
+ *			  3. item is not bound to parent
+ *	<anything else>	- 'item' is returned, unbound
+ */
 cJSON *	cJSON_DetachItemViaPointer (cJSON *parent, cJSON *item)
 {
 	if ((parent == NULL) || (item == NULL) || (item != parent->child && item->prev == NULL))
@@ -1596,31 +1816,45 @@ void	cJSON_DeleteItemFromObjectCaseSensitive (cJSON *object, const char *string)
 		cJSON_DeleteItem(&x);
 }
 
-/* Replace array/object items with new ones. */
-cJSON_bool	cJSON_InsertItemInArray (cJSON *array, int which, cJSON *newitem)
-{
-	cJSON *	after_inserted = NULL;
-
-	if (!array || which < 0 || !newitem)
-		return false_;
-
-	if (!(after_inserted = get_array_item(array, (size_t)which)))
-		return cJSON_AddItemToArray(array, newitem);
-
-	if (after_inserted != array->child && after_inserted->prev == NULL)
-		/* return false if after_inserted is a corrupted array item */
-		return false_;
-
-	newitem->next = after_inserted;
-	newitem->prev = after_inserted->prev;
-	after_inserted->prev = newitem;
-	if (after_inserted == array->child)
-		array->child = newitem;
-	else
-		newitem->prev->next = newitem;
-	return true_;
-}
-
+/* I do not currently have a use case for these */
+#if 0
+/*
+ * cJSON_ReplaceItemViaPointer - Replace one JSON item for another in-place
+ *
+ * Arguments:
+ *	parent		- A JSON item of Container Type (Object or Array), which contains 'item'
+ *	item		- An item currently contained within 'parent'.
+ *			   - If 'item' is bound to 'parent', corruption will result.
+ *			     This is not checked.
+ *			     ITEM WILL BE DESTROYED.  YOU MUST NOT USE IT.
+ *			     - Exception -- if item == replacement, then you can use it.
+ *	replacement 	- An item to be held by 'parent' in place of 'item'
+ *			   - If 'replacement' is held by any object, corruption will result.
+ *			     This is not checked.
+ *
+ * Invariants (violate these at your peril):
+ *	1. 'parent' must be an Array or Object item
+ *	2. 'item' must be an item held by 'parent'
+ *	3. There must be no other references to 'item' than 'parent's
+ *	4. 'replacement' must be a free item
+ *
+ * Return value:
+ *	false_		- The parameters were invalid, and nothing was changed
+ *			  1. parent is NULL
+ *			  2. parent is not a container type or is an empty container
+ *			  3. item is NULL
+ *			  4. replacement is NULL
+ *	true_		- 'item' was replaced by 'replacement':
+ *			  1. If 'item' == 'replacement' then nothing was changed
+ *			  2. Otherwise 'item' has been destroyed and you must not use it.
+ *
+ * Notes:
+ *	If item == replacement, it is a no-op and true_ is returned.
+ *	If 'item' is not owned by 'parent' then the data structure will be corrupted.
+ *	   (this should probably be tested for)
+ *	If 'replacement' is already owned by another object, the data structure will
+ *	   be corrupted (this should probably be tested for)
+ */
 cJSON_bool	cJSON_ReplaceItemViaPointer (cJSON *parent, cJSON *item, cJSON *replacement)
 {
 	if (!parent || !parent->child || !item || !replacement)
@@ -1659,6 +1893,36 @@ cJSON_bool	cJSON_ReplaceItemViaPointer (cJSON *parent, cJSON *item, cJSON *repla
 	return true_;
 }
 
+/*
+ * cJSON_ReplaceItemInArray - Replace one JSON item for another in an array
+ *
+ * Arguments:
+ *	array	- A JSON item of Array, which contains at least 'which+1' items.
+ *	which	- The 'which'th item should be removed.
+ *	newitem	- An item to be held by 'array' in place of the 'which'th item
+ *
+ * Unchecked Invariants: (Violate these at your peril)
+ *	1. 'array' must be an Array item
+ *	2. 'array' must contain at least 'which + 1' items 
+ *	3. 'newitem' must be a free item
+ *	4. There must be no other references to the item being
+ *	   replaced, whatever it may be.
+ *
+ * Return value:
+ *	false_		- The parameters were invalid, and nothing was changed
+ *			  1. array is NULL
+ *			  2. which is negative
+ *			  3. array does not contain a 'which'th item
+ *			  4. newitem is NULL
+ *	true_		- The 'which'th item in 'array' is now 'newitem'
+ *			  1. If 'newitem' was already the 'which'th item in array, 
+ *			     nothing was changed
+ *			  2. Otherwise the 'which'th item has been destroyed and 
+ *			     you had best not be holding a pointer to it!
+ *
+ * Notes:
+ *	All the notes of cJSON_ReplaceItemByPointer apply
+ */
 cJSON_bool	cJSON_ReplaceItemInArray (cJSON *array, int which, cJSON *newitem)
 {
 	if (!array || which < 0 || !newitem)
@@ -1692,6 +1956,7 @@ cJSON_bool	cJSON_ReplaceItemInObjectCaseSensitive (cJSON *object, const char *st
 
 	return replace_item_in_object(object, string, newitem, true_);
 }
+#endif
 
 /*******************************************************************************/
 /* Create basic types: */
@@ -1710,7 +1975,10 @@ cJSON * cJSON_CreateTrue (void)
 	cJSON *item;
 
 	if ((item = cJSON_NewItem()))
-		item->type = cJSON_True;
+	{
+		item->type = cJSON_Bool;
+		item->valuebool = true_;
+	}
 
 	return item;
 }
@@ -1720,7 +1988,10 @@ cJSON * cJSON_CreateFalse (void)
 	cJSON *	item;
 
 	if ((item = cJSON_NewItem()))
-		item->type = cJSON_False;
+	{
+		item->type = cJSON_Bool;
+		item->valuebool = false_;
+	}
 
 	return item;
 }
@@ -1730,7 +2001,10 @@ cJSON * cJSON_CreateBool (cJSON_bool boolean)
 	cJSON *	item;
 
 	if ((item = cJSON_NewItem()))
-		item->type = boolean ? cJSON_True : cJSON_False;
+	{
+		item->type = cJSON_Bool;
+		item->valuebool = boolean;
+	}
 
 	return item;
 }
@@ -1911,16 +2185,17 @@ fail:
 	}	
 
 cJSON_IsType(Invalid)
-cJSON_IsType(False)
-cJSON_IsType(True)
+cJSON_IsType(Bool)
 cJSON_IsType(NULL)
 cJSON_IsType(Number)
 cJSON_IsType(String)
 cJSON_IsType(Array)
 cJSON_IsType(Object)
 
-cJSON_bool	cJSON_IsBool (const cJSON * item) { return (cJSON_IsTrue(item) || cJSON_IsFalse(item)); }
 cJSON_bool	cJSON_IsNull (const cJSON * item) { return cJSON_IsNULL(item); }
+cJSON_bool	cJSON_IsTrue (const cJSON *item) { return (cJSON_IsBool(item)) && (item->valuebool == true_); }
+cJSON_bool	cJSON_IsFalse (const cJSON *item) { return (cJSON_IsBool(item)) && (item->valuebool == false_); }
+
 
 
 /*************************************/
@@ -1932,8 +2207,7 @@ cJSON_bool	cJSON_Compare (const cJSON *a, const cJSON *b, cJSON_bool case_sensit
 	/* check if type is valid */
 	switch (a->type)
 	{
-		case cJSON_False:
-		case cJSON_True:
+		case cJSON_Bool:
 		case cJSON_NULL:
 		case cJSON_Number:
 		case cJSON_String:
@@ -1952,10 +2226,14 @@ cJSON_bool	cJSON_Compare (const cJSON *a, const cJSON *b, cJSON_bool case_sensit
 	switch (a->type)
 	{
 		/* in these cases and equal type is enough */
-		case cJSON_False:
-		case cJSON_True:
 		case cJSON_NULL:
 			return true_;
+
+		case cJSON_Bool:
+			if (a->valuebool == b->valuebool)
+				return true_;
+			else
+				return false_;
 
 		case cJSON_Number:
 			if (compare_double(a->valuedouble, b->valuedouble))

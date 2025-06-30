@@ -279,11 +279,11 @@ static void 	term_resize (void)
 #ifdef HAVE_TCGETWINSIZE
 	if (tcgetwinsize(tty_des, &window) < 0)
 #else
-# if defined(TIOCGWINSZ)
+#ifdef TIOCGWINSZ
 	if (ioctl(tty_des, TIOCGWINSZ, &window) < 0)
-# else
+#else
 	if (1)
-# endif
+#endif
 #endif
 		return;		/* *Shrug* What can we do? */
 

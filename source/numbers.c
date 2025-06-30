@@ -715,13 +715,7 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 		if (!(channel = ArgList[0]))
 			{ rfc1459_odd(from, comm, ArgList); goto END; }
 
-#ifdef IRCII_LIKE_BAN_SUMMARY
-		if (do_hook(current_numeric, "%s %s %d", 
-			from, channel, number_of_bans))
-#else
-		if (do_hook(current_numeric, "%s %d %s", 
-				from, number_of_bans, channel))
-#endif
+		if (do_hook(current_numeric, "%s %d %s", from, number_of_bans, channel))
 		{
 			put_it("%s Total number of %s on %s - %d",
 				banner(), 

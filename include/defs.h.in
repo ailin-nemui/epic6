@@ -3,9 +3,6 @@
 /* Define to 1 if using 'alloca.c'. */
 #undef C_ALLOCA
 
-/* Define this if your getaddrinfo() does not support AF_UNIX */
-#undef GETADDRINFO_DOES_NOT_DO_AF_UNIX
-
 /* Define to 1 if you have 'alloca', as a function or macro. */
 #undef HAVE_ALLOCA
 
@@ -27,14 +24,14 @@
 /* Define this if you have a working libarchive */
 #undef HAVE_LIBARCHIVE
 
+/* Whether or not pcre2 works */
+#undef HAVE_PCRE2
+
 /* Define if you have pledge() */
 #undef HAVE_PLEDGE
 
 /* Define this to support python */
 #undef HAVE_PYTHON
-
-/* Define this if your struct sockaddr has a sa_len field */
-#undef HAVE_SA_LEN
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H

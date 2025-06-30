@@ -174,28 +174,90 @@ static	const char *fields[] = {
 const char *	get_si (int refnum, const char *field)
 {
 	Server *	s;
+#if 0
+	cJSON *		x;
+#endif
 
 	if (!(s = get_server(refnum)))
 		return NULL;
 
 	if (!my_stricmp(field, "HOST")) {
+#if 0
+		if ((x = cJSON_GetObjectItem(s->info->root, "HOST")))
+			return cJSON_GetStringValue(x);
+		return NULL;
+#else
 		return s->info->host;
+#endif
 	} else if (!my_stricmp(field, "PORT")) {
+#if 0
+		if ((x = cJSON_GetObjectItem(s->info->root, "PORT")))
+		{
+			if (cJSON_IsString(x))
+				return cJSON_GetStringValue(x);
+			else
+				return ltoa(cJSON_GetNumberValue(x));
+		}
+		return 0;
+#else
 		return ltoa(s->info->port);
+#endif
 	} else if (!my_stricmp(field, "PASS")) {
+#if 0
+		if ((x = cJSON_GetObjectItem(s->info->root, "PASS")))
+			return cJSON_GetStringValue(x);
+		return NULL;
+#else
 		return s->info->password;
+#endif
 	} else if (!my_stricmp(field, "NICK")) {
+#if 0
+		if ((x = cJSON_GetObjectItem(s->info->root, "NICK")))
+			return cJSON_GetStringValue(x);
+		return NULL;
+#else
 		return s->info->nick;
+#endif
 	} else if (!my_stricmp(field, "GROUP")) {
+#if 0
+		if ((x = cJSON_GetObjectItem(s->info->root, "GROUP")))
+			return cJSON_GetStringValue(x);
+		return NULL;
+#else
 		return s->info->group;
+#endif
 	} else if (!my_stricmp(field, "TYPE")) {
+#if 0
+		if ((x = cJSON_GetObjectItem(s->info->root, "TYPE")))
+			return cJSON_GetStringValue(x);
+		return NULL;
+#else
 		return s->info->server_type;
+#endif
 	} else if (!my_stricmp(field, "PROTO")) {
+#if 0
+		if ((x = cJSON_GetObjectItem(s->info->root, "PROTO")))
+			return cJSON_GetStringValue(x);
+		return NULL;
+#else
 		return s->info->proto_type;
+#endif
 	} else if (!my_stricmp(field, "VHOST")) {
+#if 0
+		if ((x = cJSON_GetObjectItem(s->info->root, "VHOST")))
+			return cJSON_GetStringValue(x);
+		return NULL;
+#else
 		return s->info->vhost;
+#endif
 	} else if (!my_stricmp(field, "CERT")) {
+#if 0
+		if ((x = cJSON_GetObjectItem(s->info->root, "CERT")))
+			return cJSON_GetStringValue(x);
+		return NULL;
+#else
 		return s->info->cert;
+#endif
 	} else {
 		return NULL;
 	}
@@ -356,7 +418,7 @@ int	str_to_serverinfo (char *str, ServerInfo *s)
 
 	/* First the JSON part */
 	server_str_to_json(str, &root);
-
+	s->root = root;
 
 	/* Then the older part */
 	/*
@@ -1170,7 +1232,7 @@ static int	server_str_to_json (char *str, cJSON **rootptr)
 	/* Here is where we would "normalize" the data structure */
 
 	json_string = cJSON_Generate(root, true_);
-	yell(">>> %s", json_string);
+	debug(DEBUG_KWARG_PARSE, ">>> %s", json_string);
 
 	new_free(&json_string);
 	*rootptr = root;
@@ -1992,7 +2054,7 @@ return_from_ssl_detour:
 					{
 						int	p;
 						p = get_server_port(i);
-						if (p > 6690 && strcmp(get_server_type(i), "IRC-SSL"))
+						if (p > 6690 && my_stricmp(get_server_type(i), "IRC-SSL"))
 						{
 							close_server(i, NULL);
 							set_server_server_type(i, "IRC-SSL");
@@ -2000,7 +2062,7 @@ return_from_ssl_detour:
 							say("Connection closed from %s - Trying SSL next", get_server_host(i));
 							break;
 						}
-						else if (p <= 6690 && strcmp(get_server_type(i), "IRC"))
+						else if (p <= 6690 && my_stricmp(get_server_type(i), "IRC"))
 						{
 							close_server(i, NULL);
 							set_server_server_type(i, "IRC");

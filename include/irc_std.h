@@ -9,14 +9,13 @@
 /*
  * A note from the author...
  *
- * UNIX portability has been fraught with peril over the years,
- * especially in the early 90s, the early days of ircII
- * However, instead of trying to support a dozen different commercial 
- * flavors of UNIX all of which were bizarre in some unique way, 
- * the IRC world has collapsed onto Linux and the BSDs.  People no
- * longer try to run irc clients on AIX, Solaris, HP/UX, Xenix, and
- * other silliness like that.  And if they did, they wouldn't be
- * using this client.
+ * UNIX portability has been fraught with peril over the years, especially in 
+ * the early 90s, the early days of ircII However, instead of trying to 
+ * support a dozen different commercial flavors of UNIX all of which were 
+ * weird in some way, the IRC world has collapsed onto Linux, the BSDs, and Mac.
+ * People no longer try to run irc clients on AIX, IRIX, Solaris, HP/UX, Xenix, 
+ * and other silliness like that.  And if they did, they wouldn't be using this 
+ * client.
  *
  * In this file, I refer to the Open Group Base Specification Issue, 
  * which corresponds with one or more editions of POSIX (IEEE Std-1003.1-YYYY)
@@ -30,9 +29,9 @@
  * The point of this is that Issue 6 is the baseline that every 
  * self-respecting unix-like system should be supporting by now.
  *
- * To any extent this software uses anything newer than Issue 6,
- * the configure file checks for it since either Linux or BSD
- * probably won't have some things.
+ * To any extent this software uses anything newer than Issue 6, the configure 
+ * file checks for it since either Linux or BSD (or especially mac) probably 
+ * won't have some things.
  *
  * If anybody reports a compile error because I #include'd a header
  * file that your system doesn't have, please note the Issue number
@@ -90,7 +89,13 @@
 
 #include <glob.h>		/* Issue 4 */
 #include <iconv.h>		/* Issue 4 */
+#ifdef HAVE_PCRE2
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
+#include <pcre2posix.h>
+#else			/* Heaven help you */
 #include <regex.h>		/* Issue 4 */
+#endif
 #include <poll.h>		/* Issue 4.2 */
 
 #include <sys/socket.h>		/* Issue 6 */
@@ -162,27 +167,12 @@
 #define FALLTHROUGH 
 #endif
 
-/*
- * Figure out how to make alloca work
- * I took this from the autoconf documentation
- * XXX Surely this is not the way to still do this, right?
- */
-#if defined(__GNUC__) && !defined(HAVE_ALLOCA_H)
-# ifndef alloca
-#  define alloca __builtin_alloca
-# endif
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
 #else
-# if HAVE_ALLOCA_H
-#  include <alloca.h>
-# else
-#  ifdef _AIX
- #pragma alloca
-#  else
-#   ifndef alloca
-char *alloca();
-#   endif
-#  endif
-# endif
+#ifndef alloca
+#define alloca __builtin_alloca
+#endif
 #endif
 
 /*

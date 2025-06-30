@@ -44,6 +44,7 @@ sqlite
 ZNC
 Emojis (incl ZWJ)
 Arena allocation
+PCRE2 (utf8-aware regex)
 
 Actual bugs
 ================
@@ -294,3 +295,20 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * We are moving away from a C struct to a cJSON Object.  One step at a time.
 * Finalize the API to get ServerInfo values, and constrain ServerInfo use
 * Start storing the ServerInfo in the json object as well as the struct
+* Sunset check for sa_len - we don't work on raw sa's any more.
+* Sunset check for UDS support in getaddrinfo - we don't do that any more.
+* Sunset historical weirdness for alloca().  It's not 1992 any more.
+* Add support for pcre2 -- use it if you got it!
+* Several adaptations of the json support
+  - Collapse "True/False" types to "Bool" with a valuebool.
+  - Regorg the header file, remove stuff we don't use
+  - Introduce the notion of "casting" by allowing a value to be represented
+    in different types (ie, string to bool, or to number)  Perhaps I will 
+    regret this someday...
+  - Support resetting a scalar item's type and value, which i already regret,
+    but I need to be able to use these as variables.  You can't reset an 
+    array or object.
+* Don't make /load loadformats look at $info(o), that's unnecessary
+* Sunset worrying if non-standard SA_INTERRUPT exists.
+* Sunset code behind #define's we've removed already
+

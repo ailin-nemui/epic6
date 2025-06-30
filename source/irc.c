@@ -55,7 +55,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3064;
+const unsigned long	commit_id = 3065;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -731,9 +731,7 @@ static	void	parse_args (int argc, char **argv)
 				break;
 
 			case 'z':
-#ifdef ALLOW_USER_SPECIFIED_LOGIN
 				set_var_value(DEFAULT_USERNAME_VAR, optarg, 0);
-#endif
 				break;
 
 			case 'B':

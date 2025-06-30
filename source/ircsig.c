@@ -84,20 +84,8 @@ static sigfunc *reset_one_signal (int sig_no, sigfunc *sig_handler)
 	sigaddset(&sa.sa_mask, sig_no);
 
 	sa.sa_flags = 0;
-#if defined(SA_RESTART) || defined(SA_INTERRUPT)
-	if (SIGALRM == sig_no || SIGINT == sig_no)
-	{
-# if defined(SA_INTERRUPT)
-		sa.sa_flags |= SA_INTERRUPT;
-# endif /* SA_INTERRUPT */
-	}
-	else
-	{
-# if defined(SA_RESTART)
+	if (sig_no != SIGALRM && sig_no != SIGINT)
 		sa.sa_flags |= SA_RESTART;
-# endif /* SA_RESTART */
-	}
-#endif /* SA_RESTART || SA_INTERRUPT */
 
 	if (0 > sigaction(sig_no, &sa, &osa))
 		return SIG_ERR;
