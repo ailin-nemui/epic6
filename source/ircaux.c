@@ -6958,7 +6958,7 @@ size_t	get_kwarg_field (const char *inputptr, char **key, char **value)
 				else if (str[p] == ']')
 					break;
 				else
-					extra[s++] = str[p];
+					extra[s++] = str[p++];
 			}
 		}
 		else
