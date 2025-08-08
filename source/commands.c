@@ -108,7 +108,6 @@ static	void	send_to_channel_first	(const char *, char *, const char *);
 static	void	send_to_query_first	(const char *, char *, const char *);
 static	void	sendlinecmd 	(const char *, char *, const char *);
 static	void	echocmd		(const char *, char *, const char *);
-static	void	funny_stuff 	(const char *, char *, const char *);
 static	void	cd 		(const char *, char *, const char *);
 static	void	defercmd	(const char *, char *, const char *);
 static	void	describe 	(const char *, char *, const char *);
@@ -235,7 +234,7 @@ static	IrcCommand irc_command[] =
 	{ "LASTLOG",	lastlog		}, /* lastlog.c */
 	{ "LICENSE",	license		},
 	{ "LINKS",	send_comm	},
-	{ "LIST",	funny_stuff	},
+	{ "LIST",	send_comm	},
 	{ "LOAD",	load		},
 	{ "LOCAL",	localcmd	}, /* alias.c */
 	{ "LOG",	logcmd		}, /* logfiles.c */
@@ -246,7 +245,7 @@ static	IrcCommand irc_command[] =
 	{ "MODE",	send_channel_com},
 	{ "MOTD",	send_comm	},
 	{ "MSG",	e_privmsg	},
-	{ "NAMES",	funny_stuff	},
+	{ "NAMES",	send_comm	},
 	{ "NICK",	e_nick		},
 	{ "NOTE",	send_comm	},
 	{ "NOTICE",	e_privmsg	},
@@ -690,8 +689,7 @@ BUILT_IN_COMMAND(e_nick)
  * call (bletch!) to fake a timeout for io().  The better answer would be
  * for io() to take an argument specifying the maximum threshold for a
  * timeout, but i didnt want to deal with that here.  So i just add a
- * dummy timer event that does nothing (wasting two function calls and
- * about 20 bytes of memory), and call io() until the whole thing blows
+ * no-op timer event that does nothing and call io() until the whole thing blows
  * over.  Nice and painless.  You might want to try this instead of /sleep,
  * since this is (obviously) non-blocking.  This also calls time() for every
  * io event, so that might also start adding up.  Oh well, TIOLI.
@@ -699,40 +697,46 @@ BUILT_IN_COMMAND(e_nick)
  * Without an argument, it waits for the user to press a key.  Any key.
  * and the key is accepted.  Thats probably not right, ill work on that.
  */
-static	int	e_pause_cb_throw = 0;
-static	void	e_pause_cb (const char *__U(u1), const char *__U(u2)) { e_pause_cb_throw--; }
-static int e_pause_callback (void *__U(ignored)) { return 0; }
+typedef struct e_pause_data {
+	int	done;
+	char *	result;
+} e_pause_data;
+
+static	void	e_pause_prompt_callback (const char *data_, const char *__U(u2)) { 
+	if (data_) {
+		((e_pause_data *)data_)->done = 1;
+	}
+}
+static	int	e_pause_timer_callback (void *data_) { 
+	if (data_) { 
+		((e_pause_data *)data_)->done = 1; 
+	} 
+	return 0;
+}
+
 BUILT_IN_COMMAND(e_pause)
 {
 	char *		sec;
 	double 		seconds;
 	Timespec	start;
+	e_pause_data *	data;
+
+	data = new_malloc(sizeof(e_pause_data));
+	memset(data, 0, sizeof(e_pause_data));
 
 	if (!(sec = next_arg(args, &args)))
+		add_wait_prompt(empty_string, e_pause_prompt_callback, (void *)data, WAIT_PROMPT_NOOP, 0);
+	else
 	{
-		int	c_level = e_pause_cb_throw;
+		seconds = atof(sec);
+		get_time(&start);
+		start = time_add(start, double_to_timespec(seconds));
 
-		add_wait_prompt(empty_string, e_pause_cb, 
-				NULL, WAIT_PROMPT_DUMMY, 0);
-		e_pause_cb_throw++;
-		while (e_pause_cb_throw > c_level)
-			io("pause");
-		return;
+		add_timer(0, empty_string, seconds, 1, e_pause_timer_callback, &data, NULL, GENERAL_TIMER, -1, 0, 0);
 	}
-
-	seconds = atof(sec);
-	get_time(&start);
-	start = time_add(start, double_to_timespec(seconds));
-
-	/* 
-	 * I use comment here simply becuase its not going to mess
-	 * with the arguments.
-	 */
-	add_timer(0, empty_string, seconds, 1, 
-			e_pause_callback,
-			NULL, NULL, GENERAL_TIMER, -1, 0, 0);
-	while (time_diff(get_time(NULL), start) > 0)
+	while (data->done == 0)
 		io("e_pause");
+	new_free(&data);
 }
 
 /*
@@ -1218,7 +1222,7 @@ BUILT_IN_COMMAND(xevalcmd)
 			if (!(s = next_arg(args, &args)))
 				return;
 
-			val = str_to_servref(s);
+			val = serverdesc_lookup(s);
 			if (is_server_registered(val))
 				from_server = val;
 		}
@@ -1258,95 +1262,6 @@ BUILT_IN_COMMAND(xevalcmd)
 BUILT_IN_COMMAND(evalcmd)
 {
 	runcmds(args, subargs);
-}
-
-BUILT_IN_COMMAND(funny_stuff)
-{
-	char	*arg;
-	const char	*stuff;
-	int	min = 0,
-		max = 0,
-		flags = 0,
-		ircu = 0;
-
-	stuff = empty_string;
-	while ((arg = next_arg(args, &args)) != NULL)
-	{
-		if (*arg == '/' || *arg == '-')
-		{
-			if (my_strnicmp(arg+1, "IRCU", 1) == 0) 	/* IRCU */
-				ircu = 1;
-			else if (my_strnicmp(arg+1, "MAX", 2) == 0)	/* MAX */
-			{
-				if ((arg = next_arg(args, &args)) != NULL)
-					max = my_atol(arg);
-			}
-			else if (my_strnicmp(arg+1, "MIN", 2) == 0) /* MIN */
-			{
-				if ((arg = next_arg(args, &args)) != NULL)
-					min = my_atol(arg);
-			}
-			else if (my_strnicmp(arg+1, "ALL", 1) == 0) /* ALL */
-				flags &= ~(FUNNY_PUBLIC | FUNNY_PRIVATE);
-			else if (my_strnicmp(arg+1, "PUBLIC", 2) == 0) /* PUBLIC */
-			{
-				flags |= FUNNY_PUBLIC;
-				flags &= ~FUNNY_PRIVATE;
-			}
-			else if (my_strnicmp(arg+1, "PRIVATE", 2) == 0) /* PRIVATE */
-			{
-				flags |= FUNNY_PRIVATE;
-				flags &= ~FUNNY_PUBLIC;
-			}
-			else if (my_strnicmp(arg+1, "TOPIC", 1) == 0)	/* TOPIC */
-				flags |= FUNNY_TOPIC;
-			else if (my_strnicmp(arg+1, "USERS", 1) == 0)	/* USERS */
-				flags |= FUNNY_USERS;
-			else if (my_strnicmp(arg+1, "NAME", 1) == 0)	/* NAME */
-				flags |= FUNNY_NAME;
-			else
-				stuff = arg;
-		}
-		else stuff = arg;
-	}
-
-	if (strcmp(stuff, "*") == 0)
-		if (!(stuff = get_window_echannel(0)))
-			stuff = empty_string;
-
-	/* Channel names can contain stars! */
-	if (strchr(stuff, '*') && !im_on_channel(stuff, from_server))
-	{
-		set_server_funny_stuff(from_server, min, max, flags, stuff);
-
-		if (min && ircu)
-		{
-			if (max)
-				send_to_server("%s >%d,<%d", command, min - 1, max + 1);
-			else
-				send_to_server("%s >%d", command, min - 1);
-		}
-		else if (max && ircu)
-			send_to_server("%s <%d", command, max + 1);
-		else
-			send_to_server("%s %s", command, empty_string);
-	}
-	else
-	{
-		set_server_funny_stuff(from_server, min, max, flags, NULL);
-
-		if (min && ircu)
-		{
-			if (max)
-				send_to_server("%s >%d,<%d", command, min - 1, max + 1);
-			else
-				send_to_server("%s >%d", command, min - 1);
-		}
-		else if (max && ircu)
-			send_to_server("%s <%d", command, max + 1);
-		else
-			send_to_server("%s %s", command, stuff);
-	}
 }
 
 BUILT_IN_COMMAND(hookcmd)
@@ -2362,7 +2277,7 @@ BUILT_IN_COMMAND(quotecmd)
 			if (!(s = next_arg(args, &args)))
 				return;
 
-			sval = str_to_servref(s);
+			sval = serverdesc_lookup(s);
 			if (!is_server_open(sval))
 			{
 			   say("XQUOTE: Server %d is not connected", sval);
@@ -3111,6 +3026,8 @@ struct target_type target[4] =
 
 	if (command && !strcmp(command, "MSG"))
 		command = "PRIVMSG";		/* XXX */
+	if (!command)
+		command = "PRIVMSG";		/* XXX */
 
 	while ((current_nick = next_nick))
 	{
@@ -3191,7 +3108,7 @@ struct target_type target[4] =
 		msgtarget = strchr(servername, '/');
 		*msgtarget++ = 0;
 
-		if ((servref = str_to_servref(servername)) == NOSERV)
+		if ((servref = serverdesc_lookup(servername)) == NOSERV)
 		{
 			yell("Unknown server [%s] in target", servername);
 			new_free(&extra);

@@ -720,6 +720,9 @@ static void	delete_window_contents (int window_)
 	int	oldref;
 	int	i;
 
+	if (!window)
+		return;
+
 	/*
 	 * OK!  Now we have completely unlinked this window from whatever
 	 * window chain it was on before, be it a screen, or be it the
@@ -1119,6 +1122,8 @@ static int	add_to_window_list (int screen_, int window_)
 	if (!window_is_valid(window_))
 		return 0;
 	new_w = get_window_by_refnum_direct(window_);
+	if (!new_w)
+		return 0;
 
 	if (screen_ < 0)
 		panic(1, "add_to_window_list: Cannot add window [%d] to NULL screen.", get_window_user_refnum(window_));
@@ -1351,6 +1356,9 @@ int	get_window_by_screen_row (int screen_, int row)
 	{
 		Window	*w = NULL;
 
+		if (!w)
+			continue;
+
 		w = get_window_by_refnum_direct(window_);
 		if (w->top < row && w->bottom > row)
 			return w->refnum;
@@ -1378,6 +1386,9 @@ static void	recalculate_window_positions (int screen_)
 		Window	*w = NULL;
 
 		w = get_window_by_refnum_direct(window_);
+		if (!w)
+			continue;
+
 		top += w->toplines_showing;
 		w->top = top;
 		w->bottom = top + w->display_lines;
@@ -1955,6 +1966,8 @@ static void	resize_window_display (int window_)
 void	window_scrollback_needs_rebuild (int window)
 {
 	Window *w = get_window_by_refnum_direct(window);
+	if (!w)
+		return;
 	debuglog("window_scrollback_needs_rebuild(%d)", w->user_refnum);
 	w->rebuild_scrollback = 1;
 }
@@ -1965,6 +1978,8 @@ void	window_scrollback_needs_rebuild (int window)
 void	window_statusbar_needs_update (int refnum)
 {
 	Window *w = get_window_by_refnum_direct(refnum);
+	if (!w)
+		return;
 	debuglog("window_statusbar_needs_update(%d)", w->user_refnum);
 	w->update |= UPDATE_STATUS;
 }
@@ -1975,6 +1990,8 @@ void	window_statusbar_needs_update (int refnum)
 static void	window_statusbar_needs_redraw (int refnum)
 {
 	Window *w = get_window_by_refnum_direct(refnum);
+	if (!w)
+		return;
 	debuglog("window_statusbar_needs_redraw(%d)", w->user_refnum);
 	w->update |= REDRAW_STATUS;
 }
@@ -1985,6 +2002,8 @@ static void	window_statusbar_needs_redraw (int refnum)
 static void	window_body_needs_redraw (int refnum)
 {
 	Window *w = get_window_by_refnum_direct(refnum);
+	if (!w)
+		return;
 	debuglog("window_body_needs_redraw(%d)", w->user_refnum);
 	w->cursor = -1;
 }
@@ -2069,6 +2088,9 @@ static	int	restart = 0;
 			tmp = NULL;
 			continue;
 		}
+
+		if (!tmp)
+			continue;
 
 		/*
 		 * Logical update Type 1 - Scrollback rebuilds
@@ -2184,6 +2206,8 @@ static	int	restart = 0;
 	{
 		Window *tmp = get_window_by_refnum_direct(window_);
 
+		if (!tmp)
+			continue;
 		if (tmp->cursor > tmp->display_lines)
 			panic(1, "uaw: window [%d]'s cursor [%hd] is off the display [%d]", tmp->user_refnum, tmp->cursor, tmp->display_lines);
 	}
@@ -2839,16 +2863,16 @@ static int	get_window_by_desc (const char *stuff)
 
 	for (window_ = 0; traverse_all_windows2(&window_); )
 	{
-		w = get_window_by_refnum_direct(window_);
-		if (w->uuid && !my_stricmp(w->uuid, stuff))
-			return w->refnum;
+		if ((w = get_window_by_refnum_direct(window_)))
+			if (w->uuid && !my_stricmp(w->uuid, stuff))
+				return w->refnum;
 	}
 
 	for (window_ = 0; traverse_all_windows2(&window_); )
 	{
-		w = get_window_by_refnum_direct(window_);
-		if (w->name && !my_stricmp(w->name, stuff))
-			return w->refnum;
+		if ((w = get_window_by_refnum_direct(window_)))
+			if (w->name && !my_stricmp(w->name, stuff))
+				return w->refnum;
 	}
 
 	if (is_number(stuff) && (w = get_window_by_refnum_direct(my_atol(stuff))))
@@ -3029,7 +3053,8 @@ int	get_window_refnum (int refnum)
 	Window *tmp;
 
 	if (!(tmp = get_window_by_refnum_direct(refnum)))
-		tmp = get_window_by_refnum_direct(current_window_);
+		if (!(tmp = get_window_by_refnum_direct(current_window_)))
+			return 0;		/* XXX Is this right? */
 	return tmp->refnum;
 }
 
@@ -3038,9 +3063,8 @@ int	get_window_user_refnum (int refnum)
 	Window *tmp;
 
 	if (!(tmp = get_window_by_refnum_direct(refnum)))
-		tmp = get_window_by_refnum_direct(current_window_);
-	if (!tmp)
-		return 0;
+		if (!(tmp = get_window_by_refnum_direct(current_window_)))
+			return 0;		/* XXX Is this right? */
 	return tmp->user_refnum;
 }
 
@@ -3448,7 +3472,8 @@ int 	get_window_server (int refnum)
 	Window	*tmp;
 
 	if ((tmp = get_window_by_refnum_direct(refnum)) == (Window *) 0)
-		tmp = get_window_by_refnum_direct(current_window_);
+		if (!(tmp = get_window_by_refnum_direct(current_window_)))
+			return NOSERV;
 	return (tmp->server);
 }
 
@@ -3524,7 +3549,7 @@ void 	window_check_servers (void)
 		if (status > SERVER_RECONNECT && status < SERVER_CLOSING)
             	{
 		    if (get_server_autoclose(i))
-			close_server(i, "No windows for this server");
+			server_close(i, "No windows for this server");
 	        }
 		continue;		/* Move on to next server */
 	    }
@@ -3537,7 +3562,7 @@ void 	window_check_servers (void)
 		debug(DEBUG_SERVER_CONNECT, "window_check_servers() is bringing up server %d", i);
 
 		/* This bootstraps the reconnect process */
-		bootstrap_server_connection(i);
+		server_bootstrap_connection(i);
 		pop_context(l);
 	    }
 	    else if (status == SERVER_ACTIVE)
@@ -3549,7 +3574,7 @@ void 	window_check_servers (void)
 	    {
 	        int	l = set_context(get_window_server(window), window, NULL, NULL, LEVEL_OTHER);
 		debug(DEBUG_SERVER_CONNECT, "window_check_servers() is restarting server %d", i);
-		connect_to_server_next_addr(i);
+		server_connect_next_addr(i);
 		pop_context(l);
 	    }
 	}
@@ -4708,7 +4733,9 @@ static char	*get_waiting_channels_by_window (int window_)
 	if (!window_is_valid(window_))
 		return malloc_strdup(empty_string);
 
-	win = get_window_by_refnum_direct(window_);
+	if (!(win = get_window_by_refnum_direct(window_)))
+		return malloc_strdup(empty_string);
+
 	for (nick = win->waiting_chans; nick; nick = nick->next)
 		malloc_strcat_wordlist(&stuff, space, nick->name);
 
@@ -4728,6 +4755,9 @@ static char	*get_nicklist_by_window (int window_)
 		return malloc_strdup(empty_string);
 
 	win = get_window_by_refnum_direct(window_);
+	if (!win)
+		return malloc_strdup(empty_string);
+
 	for (nick = win->nicks; nick; nick = nick->next)
 		malloc_strcat_wordlist(&stuff, space, nick->name);
 
@@ -7889,8 +7919,7 @@ WINDOWCMD(server)
 		int i;
 		int status;
 
-		if ((i = str_to_servref_with_update(arg)) == NOSERV)
-			i = str_to_newserv(arg);
+		i = serverdesc_upsert(arg, 1);
 		from_server = i;
 		status = get_server_state(i);
 
@@ -7931,7 +7960,7 @@ WINDOWCMD(server)
 		}
 	}
 	else
-		display_server_list();
+		server_list_display();
 
 	return refnum;
 }
@@ -10166,6 +10195,8 @@ int     get_window_lastlog_max          (int window)
 {
 	Window *w = get_window_by_refnum_direct(window);
 
+	if (!w)
+		return 0;
 	return w->lastlog_max;
 }
 
@@ -10173,6 +10204,8 @@ int	set_window_lastlog_max		(int window, int value)
 {
 	Window *w = get_window_by_refnum_direct(window);
 
+	if (!w)
+		return 0;
 	w->lastlog_max = value;
 	return 0;
 }
@@ -10181,6 +10214,8 @@ int     set_window_lastlog_size_decr    (int window)
 {
 	Window *w = get_window_by_refnum_direct(window);
 
+	if (!w)
+		return 0;
 	w->lastlog_size--;
 	return 0;
 }
@@ -10189,6 +10224,8 @@ int     set_window_lastlog_size_incr    (int window)
 {
 	Window *w = get_window_by_refnum_direct(window);
 
+	if (!w)
+		return 0;
 	w->lastlog_size++;
 	return 0;
 }

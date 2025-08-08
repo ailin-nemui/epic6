@@ -256,7 +256,7 @@ BUILT_IN_COMMAND(timercmd)
 
 		if ((na = next_arg(args, &args)))
 		{
-		    if ((domref = str_to_servref(na)) == NOSERV)
+		    if ((domref = serverdesc_lookup(na)) == NOSERV)
 		    {
 			/* -1 defaults to from_server anyways */
 			if (!my_stricmp(na, "-1"))

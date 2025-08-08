@@ -1382,6 +1382,9 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 			return 0;
 		}
 
+		if (empty(something))
+			continue;
+
 		if (!my_stricmp(something, vhosts[i].hostname) || 
 		    !my_stricmp(something, vhosts[i].paddr))
 		{

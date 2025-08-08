@@ -4318,7 +4318,8 @@ static	int		never_warn_again = 0;
  */
 static	void	user_input_codepoint (uint32_t key)
 {
-	int	old_quote_hit;
+	int		old_quote_hit;
+	WaitPrompt *	wp;
 
         if (dumb_mode)
                 return;
@@ -4327,17 +4328,18 @@ static	void	user_input_codepoint (uint32_t key)
          * This is only used by /pause to see when a keypress event occurs,
          * but not to impact how that keypress is handled at all.
          */
-        if (get_screen_prompt_list(last_input_screen) &&
-            get_screen_prompt_list(last_input_screen)->type == WAIT_PROMPT_DUMMY)
-		fire_wait_prompt(key);
+	wp = get_screen_prompt_list(last_input_screen);
 
         /* were we waiting for a keypress? */
-        if (get_screen_prompt_list(last_input_screen) && 
-            get_screen_prompt_list(last_input_screen)->type == WAIT_PROMPT_KEY)
+	if (wp && wp->type == WAIT_PROMPT_KEY)
         {
 		fire_wait_prompt(key);
 		return;
         }
+
+	/* /Pause is waiting for a keypress but doesn't wish to interfere */
+	else if (wp && wp->type == WAIT_PROMPT_NOOP)
+		fire_wait_prompt(key);		/* FALLTHROUGH */
 
 	/*
 	 * New: handle_keypress now takes "quote" argument, where it will

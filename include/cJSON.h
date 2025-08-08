@@ -201,16 +201,31 @@ typedef struct cJSON
 	char *		cJSON_GetStringValue		(const cJSON *);
 	double		cJSON_GetNumberValue		(const cJSON *);
 
+#if 0
 	/* Given a JSON item, replace its _value_ */
 	double		cJSON_SetNumberHelper		(cJSON *object, double);
 	char *		cJSON_SetValuestring		(cJSON *object, const char *);
+#endif
 
+	const char *    cJSON_GetValueAsString (cJSON *item);
+	double          cJSON_GetValueAsNumber (cJSON *item);
+	intmax_t        cJSON_GetValueAsInt (cJSON *item);
+	cJSON_bool      cJSON_GetValueAsBool (cJSON *item);
+
+	cJSON_bool      cJSON_ResetValueAsString (cJSON *item, const char *value);
+	cJSON_bool      cJSON_ResetValueAsNumber (cJSON *item, double value);
+	cJSON_bool      cJSON_ResetValueAsInt (cJSON *item, intmax_t value);
+	cJSON_bool      cJSON_ResetValueAsBool (cJSON *item, cJSON_bool value);
+	cJSON_bool      cJSON_ResetValueAsNull (cJSON *item);
+
+#if 0
 	/* * * */
 	/* Given a JSON item, given it belongs to an array or object, remove it */
 	cJSON *		cJSON_DetachItemViaPointer	(cJSON *parent, cJSON * item);
 
 	/* Given a JSON Array or Object, given 'item' is a member, change 'item' with 'replacement'. */
 	cJSON_bool	cJSON_ReplaceItemViaPointer 	(cJSON *parent, cJSON * item, cJSON * replacement);
+#endif
 
 	/* Duplicate a JSON item (recursively) */
 	cJSON *		cJSON_Duplicate			(const cJSON *, cJSON_bool);
@@ -219,7 +234,7 @@ typedef struct cJSON
 	cJSON_bool	cJSON_Compare			(const cJSON *, const cJSON *, const cJSON_bool);
 
 /* Macro for iterating over an array or object */
-#define cJSON_ArrayForEach(element, array) for(element = (array != NULL) ? (array)->child : NULL; element != NULL; element = element->next)
+#define cJSON_ForEach(element, array) for (element = (array != NULL) ? (array)->child : NULL; element != NULL; element = element->next)
 
 #endif
 

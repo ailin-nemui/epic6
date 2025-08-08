@@ -243,7 +243,7 @@ static RecodeRule *	create_recoding_rule (const char *target, const char *encodi
 		r->encoding = NULL;
 	r->server_part = NULL;
 	r->target_part = NULL;
-	clear_serverinfo(&r->si);
+	serverinfo_clear(&r->si);
 	r->inbound_handle = 0;
 	r->outbound_handle = 0;
 	r->source = source;
@@ -319,8 +319,8 @@ static RecodeRule *	create_recoding_rule (const char *target, const char *encodi
 		/* If the rule doesn't limit the server, then it's ok */
 		if (r->server_part != NULL)
 		{
-			clear_serverinfo(&r->si);
-			str_to_serverinfo(r->server_part, &r->si);
+			serverinfo_clear(&r->si);
+			serverinfo_load(&r->si, r->server_part);
 		}
 	}
 

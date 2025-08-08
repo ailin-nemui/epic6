@@ -1500,11 +1500,12 @@ static int	utf8_strnicmp (const char *str1, const char *str2, size_t n)
 		c1 = next_code_point2(s1, &offset1, 1);
 		c2 = next_code_point2(s2, &offset2, 1);
 
+		/* If either string failed, or is at eos, stop */
+		if (c1 <= 0 || c2 <= 0)
+			return *s1 - *s2;
+
 		s1 += offset1;
 		s2 += offset2;
-
-		if (c1 == -1 || c2 == -1)
-			return *s1 - *s2;	/* What to do here? */
 
 		u1 = mkupper_l(c1);
 		u2 = mkupper_l(c2);
@@ -7107,6 +7108,8 @@ advance:
 		kwarg_string += bytes_consumed;
 	}
 
+	new_free(&key);
+	new_free(&value);
 	return root;
 }
 

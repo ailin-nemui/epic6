@@ -41,19 +41,7 @@ typedef struct WaitCmdstru
 
 typedef struct ServerInfo 
 {
-        char *  	freestr;
-	char *		fulldesc;
         int     	refnum;
-        const char *  	host;
-        int     	port;
-        const char *  	password;
-        const char * 	nick;
-        const char *  	group;
-        const char *  	server_type;
-        const char *  	proto_type;
-	const char *  	vhost;
-	const char *  	cert;
-
 	cJSON *		root;
 } ServerInfo;
 typedef ServerInfo SI;
@@ -61,13 +49,14 @@ typedef ServerInfo SI;
 /* Server: a structure for the server_list */
 typedef	struct
 {
+	SI *		info;			/* Canonical information */
+	Bucket *	altnames;		/* Alternate handles for the server */
+
+	/* * * * */
 	int		des;			/* file descriptor to server (or helper) */
 	int		state;			/* See above */
 
-	/* status = CREATED, RECONNECT */
-	SI *		info;			/* Canonical information */
-	Bucket *	altnames;		/* Alternate handles for the server */
-	cJSON *		info_;
+	/* state = CREATED, RECONNECT */
 
 	/* state = DNS */
 	SSu *		addrs;			/* Returned by ares_getaddrinfo */
@@ -98,18 +87,15 @@ typedef	struct
 
 	/* state = ACTIVE */
 
-		/* metadata about the server */
+		/* runtime metadata about the server */
 	char *		itsname;		/* the server's idea of its name */
 	char *		version_string;		/* what is says */
-#if 0
-	alist		a005;			/* 005 settings kept kere. */
-#endif
 	alist		options;		/* 005/CAP settings kept kere. */
 	int		stricmp_table;		/* Which case insensitive map to use */
 	int		line_length;		/* How long a protocol command may be */
 	int		max_cached_chan_size;	/* Bigger channels won't cache U@H */
 
-		/* metadata about us */
+		/* runtime metadata about us */
 	char *		unique_id;		/* Unique ID (for ircnet) */
 	char *		cookie;			/* Erf/TS4 "cookie" value */
 	char		umode[54];		/* Currently set user modes */
@@ -117,13 +103,13 @@ typedef	struct
 	char *		away_message;		/* away message for this server */
 	int		away_status;		/* whether the server thinks we're away */
 
-		/* metadata about the session */
+		/* runtime metadata about the session */
 	int		sent;			/* set if something has been sent, used for redirect */
 	char *		quit_message;		/* Where we stash a quit message */
 	int		autoclose;		/* Whether the server is closed when
 					   	   there are no windows on it */
 
-		/* Metadata about activity */
+		/* runtime metadata about activity */
         char *          invite_channel;
         char *          joined_nick;
         char *          public_nick;
@@ -154,7 +140,7 @@ typedef	struct
         WaitCmd *       start_wait_list;
         WaitCmd *       end_wait_list;
 
-		/* metadata about message processing */
+		/* runtime metadata about message processing */
 #define DOING_PRIVMSG	1U
 #define DOING_NOTICE	2U
 #define DOING_CTCP	4U
@@ -166,8 +152,8 @@ typedef	struct
 }	Server;
 
 	int    	serverinfo_matches_servref	(ServerInfo *, int);
-        int    	clear_serverinfo 		(ServerInfo *s);
-        int    	str_to_serverinfo 		(char *str, ServerInfo *s);
+        int    	serverinfo_clear		(ServerInfo *s);
+        int    	serverinfo_load 		(ServerInfo *s, const char *str);
 	Server *get_server 			(int);
 
 #endif	/* NEED_SERVER_LIST */
@@ -209,31 +195,27 @@ typedef	struct
 	BUILT_IN_COMMAND(disconnectcmd);
 	BUILT_IN_COMMAND(reconnectcmd);
 
-	int	str_to_servref			(const char *);
-	int	str_to_servref_with_update	(const char *desc);
-	int	str_to_newserv			(const char *);
-	void	destroy_server_list		(void);
-	void	add_servers			(const char *, const char *);
-	int	read_default_server_file 	(void);
-	void	display_server_list		(void);
-	char *	create_server_list		(void);	/* MALLOC */
+	int	serverdesc_lookup		(const char *);
+	int	serverdesc_insert		(const char *);
+	int	serverdesc_upsert		(const char *desc, int quiet);
+	int	serverdesc_import_default_file	(void);
+
+	void	server_list_remove_all		(void);
+	void	add_server			(const char *, const char *);
+	void	server_list_display		(void);
+	char *	server_list_to_string		(void);	/* MALLOC */
 	int	server_list_size		(void);
 	int	is_server_valid			(int refnum);
 
-	void	flush_server			(int);
 	void	send_to_server			(const char *, ...) __A(1);
 	void	send_to_aserver			(int, const char *, ...) __A(2);
 	void	send_to_server_with_payload	(const char *, const char *, ...) __A(2);
-	void	send_to_aserver_with_payload	(int, const char *, const char *, ...) __A(3);
 	void	send_to_aserver_raw		(int, size_t len, const char *buffer);
-#if 0
-	int	grab_server_address		(int);
-#endif
-	int	bootstrap_server_connection	(int);
-	int	connect_to_server_next_addr	(int);
-	int	close_all_servers		(const char *);
-	void	my_close_server			(int, const char *, int);
-#define close_server(x, y) my_close_server(x, y, 0);
+
+	int	server_bootstrap_connection	(int);
+	int	server_connect_next_addr	(int);
+	int	servers_close_all		(const char *);
+	void	server_close			(int, const char *);
 
 	void	set_server_away_message		(int, const char *);
 const	char *	get_server_away_message		(int);
@@ -241,8 +223,8 @@ const	char *	get_server_away_message		(int);
 	int	get_server_away_status		(int);
 	int	get_server_operator		(int);
 
-const	char *	get_umode			(int);
-	void    update_user_mode        	(int, const char *);
+const	char *	get_server_umode		(int);
+	void    update_server_umode        	(int, const char *);
 
 const	char *	get_server_name			(int);
 const	char *	get_server_itsname		(int);
@@ -258,7 +240,7 @@ const 	char *	get_server_version_string	(int);
 	int	get_server_ssl_enabled		(int);
 const	char *	get_server_ssl_cipher		(int);
  
-	void	register_server			(int, const char *);
+	void	server_register			(int, const char *);
 	void	password_sendline		(const char *, const char *);
 	int	is_server_open			(int);
 	int	is_server_registered		(int);
@@ -287,7 +269,7 @@ const	char*	get_server_005			(int, const char *);
 
 	void	server_hard_wait		(int);
         void    server_passive_wait 		(int, const char *);
-        int     check_server_wait 		(int, const char *);
+        int     server_check_wait 		(int, const char *);
 
 	int	get_server_line_length		(int);
 	int	get_server_state		(int);

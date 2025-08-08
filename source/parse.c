@@ -583,7 +583,7 @@ static void	p_pong (const char *from, const char *comm, const char **ArgList)
 	 */
 	if (!my_stricmp(from, get_server_itsname(from_server)))
 	{
-		if (check_server_wait(from_server, pong_message))
+		if (server_check_wait(from_server, pong_message))
 			return;
 	}
 
@@ -939,7 +939,7 @@ static void	p_mode (const char *from, const char *comm, const char **ArgList)
 	if (is_channel(target))
 		update_channel_mode(target, changes);
 	else
-		update_user_mode(from_server, changes);
+		update_server_umode(from_server, changes);
 }
 
 static void strip_modes (const char *from, const char *channel, const char *line)

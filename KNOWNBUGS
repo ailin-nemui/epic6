@@ -312,3 +312,17 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Sunset worrying if non-standard SA_INTERRUPT exists.
 * Sunset code behind #define's we've removed already
 * Fix runaway loop
+* Begin the refactoring of server project...
+* Allow cJSON values to be coalesced and unconditionally reset by type 
+* Rename cJSON_ArrayForEach -> ForEach since it can be used on objects as well
+* Change WAIT_PROMPT_DUMMY to WAIT_PROMPT_NOOP for kindness sake
+* Create formal abstraction layers for serverdesc, server info, server, 
+  and server list, and create APIs for each layer
+* ServerInfos no longer contain a rigid compiled-in schema, they're just 
+  a cJSON object with whatever fields you want.
+* Getting a value from a serverinfo now requires getters and setters
+* Function names get changed so they're always like serverlist_<whatever>
+* Remove the "funny stuff" handling for /names and /list
+* Refactor /pause to not use static global variables
+* Fix so many compiler warnings at -O2 and without it
+

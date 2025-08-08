@@ -1339,7 +1339,7 @@ STATUS_FUNCTION(status_umode)
 	if (get_window_server(window_) < 0)
 		return empty_string;
 
-	strlcpy(localbuf, get_umode(get_window_server(window_)), sizeof localbuf);
+	strlcpy(localbuf, get_server_umode(get_window_server(window_)), sizeof localbuf);
 	if (!*localbuf)
 		return empty_string;
 

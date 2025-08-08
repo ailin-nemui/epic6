@@ -1348,7 +1348,7 @@ double	cJSON_GetNumberValue (const cJSON *item)
 	return item->valuedouble;
 }
 
-void	cJSON_ensure_valuestring (cJSON *item)
+static void	cJSON_ensure_valuestring (cJSON *item)
 {
 	if (cJSON_IsString(item))
 		return;
@@ -1367,7 +1367,7 @@ void	cJSON_ensure_valuestring (cJSON *item)
 	}
 }
 
-void	cJSON_ensure_valuedouble (cJSON *item)
+static void	cJSON_ensure_valuedouble (cJSON *item)
 {
 	if (cJSON_IsNumber(item))
 		return;
@@ -1381,7 +1381,7 @@ void	cJSON_ensure_valuedouble (cJSON *item)
 		item->valuedouble = 0;
 }
 
-void	cJSON_ensure_valuebool (cJSON *item)
+static void	cJSON_ensure_valuebool (cJSON *item)
 {
 	if (cJSON_IsBool(item))
 		return;
@@ -1652,6 +1652,7 @@ cJSON_bool	cJSON_InsertItemInArray (cJSON *array, int which, cJSON *newitem)
 }
 
 
+/* * */
 /*
  * XXX This should verify if 'name' exists in 'object' already.
  */
@@ -1664,6 +1665,7 @@ cJSON_bool	cJSON_AddItemToObject (cJSON *object, const char *name, cJSON *item)
 	return cJSON_AddItemToArray(object, item);
 }
 
+/* * */
 #define cJSON_AddTypeToObject(type) 								\
 cJSON *	cJSON_Add ## type ## ToObject (cJSON *object, const char *name) 			\
 {												\
@@ -1683,7 +1685,7 @@ cJSON_AddTypeToObject(False)
 cJSON_AddTypeToObject(Object)
 cJSON_AddTypeToObject(Array)
 
-
+/* * */
 #define cJSON_AddTypeToObjectWithInitialValue(ctype, jsontype)					\
 cJSON *	cJSON_Add ## jsontype ## ToObject (cJSON *object, const char *name, const ctype initial) \
 {												\
@@ -1700,6 +1702,51 @@ cJSON *	cJSON_Add ## jsontype ## ToObject (cJSON *object, const char *name, cons
 cJSON_AddTypeToObjectWithInitialValue(cJSON_bool, Bool)
 cJSON_AddTypeToObjectWithInitialValue(double, Number)
 cJSON_AddTypeToObjectWithInitialValue(char *, String)
+
+#if 0
+/* * */
+#define cJSON_UpsertTypeToObject(jtype) 							\
+cJSON *	cJSON_Upsert ## type ## ToObject (cJSON *object, const char *name) 			\
+{												\
+	cJSON *x;										\
+												\
+	if ((x = cJSON_GetObjectItem(object, name)))						\
+	{											\
+		cJSON_reset_item(x);								\
+		x->type = jtype;								\
+		return x;									\
+	}											\
+	else											\
+	{											\
+		cJSON *var = cJSON_Create ## jtype ();						\
+		if ((x = cJSON_AddItemToObject(object, name, var)))				\
+			return x;								\
+	}											\
+	return NULL;										\
+}
+cJSON_UpsertTypeToObject(Null)
+cJSON_UpsertTypeToObject(True)
+cJSON_UpsertTypeToObject(False)
+cJSON_UpsertTypeToObject(Object)
+cJSON_UpsertTypeToObject(Array)
+#endif
+
+/* * */
+#define cJSON_UpsertTypeToObjectWithInitialValue(ctype, jsontype)				\
+cJSON *	cJSON_Upsert ## jsontype ## ToObject (cJSON *object, const char *name, const ctype initial) \
+{												\
+	cJSON *x;										\
+												\
+	if ((x = cJSON_GetObjectItem(object, name)))						\
+		cJSON_ResetValueAs ## jsontype (x, initial);					\
+	else											\
+		x = cJSON_Add ## jsontype ## ToObject (object, name, initial);			\
+	return x;										\
+}
+
+cJSON_UpsertTypeToObjectWithInitialValue(cJSON_bool, Bool)
+cJSON_UpsertTypeToObjectWithInitialValue(double, Number)
+cJSON_UpsertTypeToObjectWithInitialValue(char *, String)
 
 
 /*************** REMOVING ITEMS FROM ARRAYS OR OBJECTS ***************/
@@ -2272,7 +2319,7 @@ cJSON_bool	cJSON_Compare (const cJSON *a, const cJSON *b, cJSON_bool case_sensit
 			cJSON *a_element = NULL;
 			cJSON *b_element = NULL;
 
-			cJSON_ArrayForEach(a_element, a)
+			cJSON_ForEach(a_element, a)
 			{
 				/* TODO This has O(n^2) runtime, which is horrible! */
 				b_element = get_object_item(b, a_element->name, case_sensitive);
@@ -2287,7 +2334,7 @@ cJSON_bool	cJSON_Compare (const cJSON *a, const cJSON *b, cJSON_bool case_sensit
 			 * doing this twice, once on a and b to prevent true comparison if a subset of b
 			 * TODO: Do this the proper way, this is just a fix for now 
 			 */
-			cJSON_ArrayForEach(b_element, b)
+			cJSON_ForEach(b_element, b)
 			{
 				if (!(a_element = get_object_item(a, b_element->name, case_sensitive)))
 					return false_;

@@ -331,8 +331,8 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 		old_server = from_server;
 		malloc_sprintf(&str, "%s:%d:::%s:", new_server, new_port, 
 					get_server_group(from_server));
-		if ((new_servref = str_to_servref(str)) == NOSERV)
-			new_servref = str_to_newserv(str);
+		if ((new_servref = serverdesc_lookup(str)) == NOSERV)
+			new_servref = serverdesc_insert(str);
 
 		say("The server has asked you to switch to %s:%d.  I set up server refnum %d for you.", new_server, new_port, new_servref);
 		say("If you want to switch, do /SERVER %d", new_servref);
@@ -489,9 +489,6 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 	case 322:		/* #define RPL_LIST             322 */
 	{
 		const char *channel, *user_cnt, *line;
-		int	cnt;
-		int	funny_flags, funny_min, funny_max;
-		const char *funny_match;
 
 		PasteArgs(ArgList, 2);
 		if (!(channel = ArgList[0]))
@@ -501,47 +498,9 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 		if (!(line = ArgList[2]))
 			{ rfc1459_odd(from, comm, ArgList); goto END; }
 
-		funny_flags = get_server_funny_flags(from_server);
-		funny_min = get_server_funny_min(from_server);
-		funny_max = get_server_funny_max(from_server);
-		funny_match = get_server_funny_match(from_server);
-
 		/* List messages NEVER go to a chanwin */
 		pop_context(l);
 		l = set_context(from_server, -1, from, NULL, LEVEL_OTHER);
-
-		/*
-		 * Do not display if the channel has no topic and the user asked
-		 * for only channels with topics.
-		 */
-		if (funny_flags & FUNNY_TOPIC && !(line && *line))
-			goto END;
-
-		/*
-		 * Do not display if the channel does not have the necessary 
-		 * number of users the user asked for
-		 */
-		cnt = my_atol(user_cnt);
-		if (funny_min && (cnt < funny_min))
-			goto END;
-		if (funny_max && (cnt > funny_max))
-			goto END;
-
-		/*
-		 * Do not display if the channel is not private or public as the
-		 * user requested.
-		 */
-		if ((funny_flags & FUNNY_PRIVATE) && (*channel != '*'))
-			goto END;
-		if ((funny_flags & FUNNY_PUBLIC) && (*channel == '*'))
-			goto END;
-
-		/*
-		 * Do not display if the channel does not match the user's 
-		 * supplied wildcard pattern
-		 */
-		if (funny_match && wild_match(funny_match, channel) == 0)
-			goto END;
 
 		/* Then see if they want to hook /ON LIST */
 		if (!do_hook(LIST_LIST, "%s %s %s", channel, user_cnt, line))
@@ -616,10 +575,10 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 
 	case 353:		/* #define RPL_NAMREPLY         353 */
 	{
-		const char	*type, *channel, *line;
+		const char	*channel, *line;
 
 		PasteArgs(ArgList, 2);
-		if (!(type = ArgList[0]))
+		if (!(/*type = */ ArgList[0]))
 			{ rfc1459_odd(from, comm, ArgList); goto END; }
 		if (!(channel = ArgList[1]))
 			{ rfc1459_odd(from, comm, ArgList); goto END; }
@@ -655,40 +614,6 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 		    }
 
 		    break;
-		}
-		else
-		{
-		    int	cnt;
-		    const char	*ptr;
-		    int	funny_flags, funny_min, funny_max;
-		    const char *funny_match;
-
-		    funny_flags = get_server_funny_flags(from_server);
-		    funny_min = get_server_funny_min(from_server);
-		    funny_max = get_server_funny_max(from_server);
-		    funny_match = get_server_funny_match(from_server);
-
-		    ptr = line;
-		    for (cnt = -1; ptr; cnt++)
-		    {
-			if ((ptr = strchr(ptr, ' ')) != NULL)
-				ptr++;
-		    }
-
-		    if (funny_min && (cnt < funny_min))
-			goto END;
-		    else if (funny_max && (cnt > funny_max))
-			goto END;
-
-		    if ((funny_flags & FUNNY_PRIVATE) && 
-					(*type == '='))
-			goto END;
-		    if ((funny_flags & FUNNY_PUBLIC) && 
-					((*type == '*') || (*type == '@')))
-			goto END;
-
-		    if (funny_match && wild_match(funny_match, channel) == 0)
-			goto END;
 		}
 
 		/* Everything is OK. */
@@ -818,7 +743,7 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 		if (!(token = ArgList[0]))
 			{ rfc1459_odd(from, comm, ArgList); goto END; }
 
-		if (check_server_wait(from_server, token))
+		if (server_check_wait(from_server, token))
 			goto END;
 
 		break;
@@ -956,7 +881,7 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 	 * Sometimes the server doesn't catch the USER line, so
 	 * here we send a simplified version again  -lynx 
 	 */
-		register_server(from_server, NULL);
+		server_register(from_server, NULL);
 		break;
 
 	case 462:		/* #define ERR_ALREADYREGISTRED 462 */

@@ -1267,7 +1267,7 @@ int     is_current_channel (const char *channel, int server)
 }
 
 /*
- * This is called by close_server(), when a server connection is being 
+ * This is called by server_close(), when a server connection is being 
  * abandoned.  Channels are never retained across reconnections.
  */
 void 	destroy_server_channels (int server)

@@ -1080,7 +1080,11 @@ static	char	*alias_banner		(void) { return malloc_strdup(banner()); }
 
 static	char	*alias_currdir  	(void)
 {
-	char 	*tmp = (char *)new_malloc(PATH_MAX+1);
+	char 	*tmp;
+
+	/* XXX Clang made me do it. */
+	if (!(tmp = (char *)new_malloc(PATH_MAX+1)))
+		RETURN_EMPTY;
 	if (!getcwd(tmp, PATH_MAX))
 		*tmp = 0;
 	return tmp;
@@ -1881,7 +1885,7 @@ BUILT_IN_FUNCTION(function_servers, input)
 
 	if (!input || !*input)
 	{
-		retval = create_server_list();
+		retval = server_list_to_string();
 		RETURN_MSTR(retval);
 	}
 
@@ -4241,7 +4245,7 @@ BUILT_IN_FUNCTION(function_umode, words)
 	else
 		servnum = from_server;
 
-	ret = get_umode(servnum);
+	ret = get_server_umode(servnum);
 	RETURN_STR(ret);		/* Dont pass function call to macro! */
 }
 
@@ -4548,7 +4552,7 @@ BUILT_IN_FUNCTION(function_winchan, input)
 		if (empty(input))
 			servnum = from_server;
 		else
-			servnum = str_to_servref(input);
+			servnum = serverdesc_lookup(input);
 
 		/* Now return window for *any* channel. */
 		if ((win = get_channel_window(chan, servnum)) >= 1)
@@ -7768,7 +7772,7 @@ BUILT_IN_FUNCTION(function_channelsyncing, word)
 
 	GET_FUNC_ARG(channel, word);
 	GET_FUNC_ARG(serverstr, word);
-	servref = str_to_servref(serverstr);
+	servref = serverdesc_lookup(serverstr);
 
 	retval = channel_is_syncing(channel, servref);
 	RETURN_INT(retval);

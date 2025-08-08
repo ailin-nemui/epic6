@@ -55,7 +55,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3066;
+const unsigned long	commit_id = 3067;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -377,7 +377,7 @@ void	irc_exit (int really_quit, const char *format, ...)
 	/* Do some clean up */
 	do_hook(EXIT_LIST, "%s", buffer);
 
-	close_all_servers(quit_message);
+	servers_close_all(quit_message);
 	value = 0;
 	logger(&value);
 	get_child_exit(-1);  /* In case some children died in the exit hook. */
@@ -399,7 +399,7 @@ void	irc_exit (int really_quit, const char *format, ...)
 	remove_channel(NULL, 0);
 	set_lastlog_size(&value);
 	delete_all_windows();
-	destroy_server_list();
+	server_list_remove_all();
 
 	remove_bindings();
 	flush_on_hooks();
@@ -769,7 +769,7 @@ static	void	parse_args (int argc, char **argv)
 
 	for (; *argv; argc--, argv++)
 		if (**argv)
-			add_servers(*argv, NULL);
+			serverdesc_insert(*argv);
 
 	if (!use_input && quick_startup)
 	{
@@ -794,13 +794,17 @@ static	void	parse_args (int argc, char **argv)
 	 */
 	if ((cptr = getenv("IRCSERVER")))
 	{
-		ptr = malloc_strdup(cptr);
-		add_servers(ptr, NULL);
-		new_free(&ptr);
+		char *	arg;
+		char *	ptr_;
+
+		ptr_ = ptr = malloc_strdup(cptr);
+		while ((arg = next_arg(ptr, &ptr)))
+			serverdesc_insert(arg);
+		new_free(&ptr_);
 	}
 
 	if (!server_list_size() || append_servers)
-		read_default_server_file();
+		serverdesc_import_default_file();
 
 	return;
 }
@@ -838,20 +842,45 @@ static void	do_signals(void)
 	}
 }
 
-/* 
- * io() is a ONE TIME THROUGH loop!  It simply does ONE check on the
- * file descriptors, and if there is nothing waiting, it will time
- * out and drop out.  It does everything as far as checking for exec,
- * sockets, ttys, notify, the whole ball o wax, but it does NOT iterate!
- * 
- * You should usually NOT call io() unless you are specifically waiting
- * for something from a file descriptor.  There are no known re-entrancy
- * problems, and it is intended that you should be able to call this 
- * function from anywhere.  It has been optimized from the original 
- * irc_io() function from ircII.
+/*
+ * io - Handle one event (the event looper)
  *
- * Heavily optimized for EPIC3-final to do as little work as possible
- *			-jfn 3/96
+ * Arguments:
+ *	what	- Who the caller is.  Gives the user context in case of a runaway
+ *
+ * The main event looper calls this function in an infinite loop.
+ *	It handles one "cycle" or "sequence point".
+ *	1. Handle a "system reset"
+ *	2. Handle user pressing ^C 5 times if we're "stuck"
+ *	3. Keep track of the recursion level
+ * 	4. Figure out when the next /TIMER expires (this may be 0)
+ *	5. SLEEP until something needs to happen
+ *	   a. If the /TIMER expired, run it
+ *	   b. If we got a signal, keep track of that
+ *	   c. If an fd is ready, data from it was buffered up
+ *	        What we're expected to do is consume that data.
+ *	6. Do routine post-processing tasks:
+ *	   a. Process signals
+ *	   b. Reap dead children processes
+ *	   c. Run /DEFERed commands
+ *	   d. Verify referential integrity of windows and servers
+ *	   e. Verify referential integrity of windows and channels
+ *	   f. If necessary, redraw the entire screen
+ *	   g. If necessary, redraw specific windows
+ *	   h. Move the cursor back to the input line
+ *	7. Unwind the recursion level and sanity check it.
+ *
+ * In theory, every time through the loop is "clean" -- one thing happens,
+ * and there is no carry-over state to the next loop.  However, that is not
+ * perfect, and the loop is self-correcting, and has some failsafes:
+ *	1. Polling loop
+ *	2. User presses ^C 5 times when the client is jammed
+ *	3. Excessive recursion (in a script or otherwise)
+ *
+ * Notes:
+ *	This is re-entrant, and you can call it, but you should only call it
+ *	when you are waiting for something specific to happen before you continue.
+ *	Callbacks are better than recursion.
  */
 void	io (const char *what)
 {
@@ -1123,7 +1152,7 @@ int 	main (int argc, char *argv[])
 	init_input();
 
 	if (dont_connect)
-		display_server_list();		/* Let user choose server */
+		server_list_display();		/* Let user choose server */
 	else
 		set_window_server(0, 0);	/* Connect to default server */
 

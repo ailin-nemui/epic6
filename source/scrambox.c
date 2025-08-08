@@ -36,7 +36,7 @@
 #define SCRAM_MAX_USERNAME_LEN 256
 #define SCRAM_MAX_PASSWORD_LEN 256
 #define SCRAM_MAX_SALT_LEN 256
-#define SCRAM_MAX_AUTH_MSG_LEN 1024 // Adjust as needed
+#define SCRAM_MAX_AUTH_MSG_LEN 500 // Adjust as needed  -- 512 for irc purposes
 #define SCRAM_KEY_LEN SHA512_DIGEST_LENGTH // SHA512 hash output size
 
 // Helper for Base64 encoding (a simple one for demonstration, production might use a more robust one)
@@ -191,6 +191,10 @@ static int	scram_client_first_message (scram_state_t *state, const char *usernam
         yell("Error: Output buffer too small or snprintf error for client-first-message-bare");
         return -1;
     }
+    /*
+     * XXX But what if sizeof(state->client_first_message_bare) > sizeof(output_buffer) ?
+     * GCC14 -fanalyzer has got to know!
+     */
     strncpy(state->client_first_message_bare, output_buffer, sizeof(state->client_first_message_bare));
     state->client_first_message_bare[sizeof(state->client_first_message_bare) - 1] = '\0';
 

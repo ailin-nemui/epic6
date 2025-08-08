@@ -15,7 +15,7 @@
 #define WAIT_PROMPT_NONE	0x00
 #define WAIT_PROMPT_LINE        0x01
 #define WAIT_PROMPT_KEY         0x02
-#define WAIT_PROMPT_DUMMY	0x04
+#define WAIT_PROMPT_NOOP	0x04
 
 	void		repaint_window_body		(int);
 	int		create_additional_screen 	(void);

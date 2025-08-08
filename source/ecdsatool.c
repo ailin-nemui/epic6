@@ -243,7 +243,14 @@ static inline ecdsa_key_t *	ecdsa_key__alloc (void)
 
 	key = new_malloc(sizeof(ecdsa_key_t));
 	memset(key, 0, sizeof(ecdsa_key_t));
-	key->eckey = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+	/* 
+	 * The OpenSSL API does not give a satisfactory reason why
+	 * the following call might fail -- but it does say it could.
+	 * Since I don't know what could cause it, I'm not sure what
+	 * I should do to compensate, beyond giving up.
+	 */
+	if (!(key->eckey = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1)))
+		panic(1, "EC_KEY_new_by_curve_name failed.  Help!");
 	EC_KEY_set_conv_form(key->eckey, POINT_CONVERSION_COMPRESSED);
 
 	return key;
@@ -256,15 +263,12 @@ static	ecdsa_key_t *	ecdsa_key__new (void)
 {
 	ecdsa_key_t *	key;
 
+	/* 
+	 * We presume, probably invalidly, that the OpenSSL API
+	 * does not fail if it compiles
+	 */
 	key = ecdsa_key__alloc();
-	if (key->eckey != NULL)
-		EC_KEY_generate_key(key->eckey);
-	else
-	{
-		ecdsa_key__free(&key);
-		return NULL;
-	}
-
+	EC_KEY_generate_key(key->eckey);
 	return key;
 }
 
@@ -368,9 +372,7 @@ static	ecdsa_key_t *	ecdsa_key__from_base64_pubkey (const char *keydata)
  */
 static	void	ecdsa_key__free (ecdsa_key_t **key)
 {
-	if ((*key)->eckey != NULL)
-		EC_KEY_free((*key)->eckey);
-
+	EC_KEY_free((*key)->eckey);
 	new_free(key);
 }
 

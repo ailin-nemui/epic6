@@ -622,7 +622,7 @@ LOGFILE(server)
 	else if (!is_number(arg))
 		say("/LOG SERVER: The log's server needs to be a number or ALL");
 	else
-		log->servref = str_to_servref(arg);
+		log->servref = serverdesc_lookup(arg);
 
 	return log;
 }
