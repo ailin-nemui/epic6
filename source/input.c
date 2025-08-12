@@ -1232,7 +1232,7 @@ BUILT_IN_KEYBINDING(input_end_of_line)
 }
 
 /*
- * This removes every code ponit between 'start' and 'end' (inclusive) 
+ * This removes every code point between 'start' and 'end' (inclusive) 
  * The cursor is moved to 'start' because that is where the cut was
  * made as far as the user sees.
  */
@@ -1245,6 +1245,7 @@ static void	cut_input (int start, int end)
 	/* We need to sanity check 'end' here. */
 	if (end > MAXCOLS)
 		end = MAXCOLS;
+	/* XXX I think this should be 'end', not 'end + 1' */
 	endpos = LOGICAL_CHARS[end + 1];
 	strext2(&CUT_BUFFER, INPUT_BUFFER, startpos, endpos);
 
@@ -1275,7 +1276,8 @@ BUILT_IN_KEYBINDING(input_delete_to_previous_space)
 	if (LOGICAL_CURSOR <= 0)
 		return;
 
-	anchor = LOGICAL_CURSOR;
+	/* We never cut the character the cursor is *on* */
+	anchor = LOGICAL_CURSOR - 1;
 	while (LOGICAL_CURSOR > 0 && !isspace(PREV_CHAR))
 		input_move_cursor(LEFT, 0);
 	cut_input(LOGICAL_CURSOR, anchor);
@@ -1295,7 +1297,8 @@ BUILT_IN_KEYBINDING(input_delete_previous_word)
         if (LOGICAL_CURSOR <= 0)
 		return;
 
-	anchor = LOGICAL_CURSOR;
+	/* We never cut the character the cursor is *on* */
+	anchor = LOGICAL_CURSOR - 1;
 	input_backward_word(0, NULL);
 	cut_input(LOGICAL_CURSOR, anchor);
 }

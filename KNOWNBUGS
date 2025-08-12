@@ -49,6 +49,8 @@ PCRE2 (utf8-aware regex)
 Actual bugs
 ================
 * /SET NEW_SERVER_LASTLOG_LEVEL does not work properly because it doesn't check window servers.
+* Is DELETE_PREVIOUS_WORD implemented correctly? it whacks the character under the cursor,
+  which apparently you don't want to do if you're on the first character of a word.
 
 THE CHANGELOG SINCE THE LAST RELEASE:
 -------------------------------------
@@ -325,4 +327,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Remove the "funny stuff" handling for /names and /list
 * Refactor /pause to not use static global variables
 * Fix so many compiler warnings at -O2 and without it
-
+* Try to make /bind DELETE_TO_PREVIOUS_SPACE behave like epic4 did.
