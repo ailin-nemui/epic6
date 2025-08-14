@@ -1004,7 +1004,7 @@ static	int	serverinfo_insert (ServerInfo *si)
 	/* Then the older part */
 	s->info = (ServerInfo *)new_malloc(sizeof(ServerInfo));
 	serverinfo_clear(s->info);
-	*(s->info) = *si;
+	s->info->root = cJSON_Duplicate(si->root, true_);
 
 	s->altnames = new_bucket();
 	add_to_bucket(s->altnames, shortname(serverinfo_get(si, "HOST")), NULL);

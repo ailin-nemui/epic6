@@ -330,3 +330,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Fix so many compiler warnings at -O2 and without it
 * Try to make /bind DELETE_TO_PREVIOUS_SPACE behave like epic4 did.
 * Fix bogon (rb fusion)
+* SI's must be deep copied (with cJSON_Duplicate()) (rb fusion)
