@@ -756,14 +756,19 @@ int	serverinfo_matches_servref (ServerInfo *si, int servref)
 		host_ = serverinfo_get(si, "HOST");
 		if (host_ && is_number(host_))
 		{
-			host_ = NULL;
 			refnum_ = atol(host_);
+			host_ = NULL;
 		}
 	}
 
 	/* Are we looking for this server specifically? */
-	if (refnum_ != NOSERV && refnum_ == servref)
-		return 1;
+	if (refnum_ != NOSERV)
+	{
+		if (refnum_ == servref)
+			return 1;
+		else
+			return 0;
+	}
 #endif
 
 	/*

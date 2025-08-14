@@ -250,6 +250,8 @@ int	str_to_mask (Mask *mask, const char *orig, char **rejects)
 		{
 			if (my_strnicmp(str, "ALL", len) == 0)
 				mask_setall(mask);
+			else if (my_strnicmp(str, "-ALL", len) == 0)
+				mask_unsetall(mask);
 			else if (my_strnicmp(str, "NONE", len) == 0)
 				mask_unsetall(mask);
 			else
