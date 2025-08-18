@@ -1,5 +1,19 @@
 EPIC6-0.0.1
 
+*** News 08/18/2025 -- Level-sets represented as a single word now
+	From the very beginnings of ircII, level sets ("MSGS PUBLICS
+	JOINS OTHER") have been represented as a sparce-seperated 
+	list of levels.  This makes it hard to capture the level as
+	a word and makes it hard to pass to /window notify_level which
+	expects only one word and doesn't support double quoted words.
+
+	Starting from now, level sets will be comma-seperated instead
+	of space seperated, to make them easier to work with in scripts,
+	without being harder to read
+
+	Historically:	*** Window level is MSG PUBLICS JOINS OTHER
+	Going Forward:	*** Window level is MSG,PUBLICS,JOINS,OTHER
+
 *** News 06/05/2025 -- $regcomp() and friends now use base85.
 	This will probably not affect you -- but previously, $regcomp()
 	and friends who work with compiled regexes, had "encoded" the 

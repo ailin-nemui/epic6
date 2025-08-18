@@ -49,8 +49,6 @@ PCRE2 (utf8-aware regex)
 Actual bugs
 ================
 * /SET NEW_SERVER_LASTLOG_LEVEL does not work properly because it doesn't check window servers.
-* Is DELETE_PREVIOUS_WORD implemented correctly? it whacks the character under the cursor,
-  which apparently you don't want to do if you're on the first character of a word.
 * Create /load ignore on top of /on context and /shh
 
 THE CHANGELOG SINCE THE LAST RELEASE:
@@ -331,3 +329,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Try to make /bind DELETE_TO_PREVIOUS_SPACE behave like epic4 did.
 * Fix bogon (rb fusion)
 * SI's must be deep copied (with cJSON_Duplicate()) (rb fusion)
+* When normalizing levels, use commas instead of spaces (see UPDATES)

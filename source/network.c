@@ -440,6 +440,8 @@ void	init_ares (void)
 {
 	int	retval;
 
+	ares_library_init(ARES_LIB_INIT_ALL);
+
 	memset(&ares_options_, 0, sizeof(ares_options_));
 	ares_options_.sock_state_cb = ares_sock_state_cb_;
 	ares_options_.sock_state_cb_data = NULL;

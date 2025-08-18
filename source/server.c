@@ -1001,9 +1001,14 @@ static	int	serverinfo_insert (ServerInfo *si)
 
 	s = server_list[i] = new_malloc(sizeof(Server));
 
-	/* Then the older part */
 	s->info = (ServerInfo *)new_malloc(sizeof(ServerInfo));
 	serverinfo_clear(s->info);
+	/* 
+	 * We must do a deep copy because we don't know the
+	 * provenance of 'si' -- it might be a local variable
+	 * on the stack of the caller; but we must ensure
+	 * it is on the heap under our exclusive control.
+	 */
 	s->info->root = cJSON_Duplicate(si->root, true_);
 
 	s->altnames = new_bucket();

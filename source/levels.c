@@ -163,7 +163,7 @@ static const char *	mask_to_positive_str (const Mask *mask)
 		if (mask_isset(mask, next))
 		{
 		    if (*buffer)
-			strlcat(buffer, " ", sizeof buffer);
+			strlcat(buffer, ",", sizeof buffer);
 		    strlcat(buffer, LEVELNAME(i), sizeof buffer);
 		}
 		next++;
@@ -189,7 +189,7 @@ static const char *	mask_to_negative_str (const Mask *mask)
 		if (!mask_isset(mask, next))
 		{
 		    if (*buffer)
-			strlcat(buffer, " -", sizeof buffer);
+			strlcat(buffer, ",-", sizeof buffer);
 		    strlcat(buffer, LEVELNAME(i), sizeof buffer);
 		}
 		next++;
