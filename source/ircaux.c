@@ -6662,7 +6662,7 @@ static uint32_t       cp437_to_ucs (unsigned char cp437_byte)
  *
  * Arguments:
  *	input	 - A CP437-encoded string
- *	inputlen - A pointer to how many bytes are in 'input'
+ *	inputlen - How many bytes are in 'input'
  *	destlen	 - A pointer where to store the number of output bytes
  *
  * Return value:
@@ -7019,8 +7019,9 @@ got_value:
  *
  * Arguments:
  *	kwarg_string		- A "kwarg string" (see Notes)
- *	default_field_names	- A list of zero or more field names for 
+ *	default_field_names	- An array of zero or more field names for 
  *				  leading positional arguments
+ *				  This array must end in a NULL pointer.
  *				  If there are no leading positional arguments
  *				  this may be NULL.
  *
