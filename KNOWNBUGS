@@ -330,3 +330,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Fix bogon (rb fusion)
 * SI's must be deep copied (with cJSON_Duplicate()) (rb fusion)
 * When normalizing levels, use commas instead of spaces (see UPDATES)
+* Call @scrambox(RESET) more often.  Fixes sasl scram on reconnects.

@@ -110,6 +110,8 @@ on #-server_state -100 "% % POLICY" {
 		xecho -b SASL POLICY - You do not have a SASL policy for server $0;
 		return;
 	};
+	# This is paranoia.
+	@ scrambox(RESET);
 	xecho -b SASL POLICY - I will be using SASL rule $rule for server $0;
 	@ sasl_auth[$0][rule] = rule;
 
@@ -120,7 +122,7 @@ on #-server_state -100 "% % POLICY" {
 	} elsif (sasl_rules[$rule][type] == [ECDSA-NIST256P-CHALLENGE]) {
 		# Nothing
 	} elsif (sasl_rules[$rule][type] == [SCRAM-SHA-512]) {
-		@ scrambox(RESET);
+		# Nothing
 	} elsif (sasl_rules[$rule][type] == [PLAIN]) {
 		@serverctl(SET $0 SSL IRC-SSL);
 		@serverctl(SET $0 PORT 6697);
@@ -179,6 +181,7 @@ on #-authenticate -100 "% +" {
 	} elsif (sasl_rules[$rule][type] == [SCRAM-SHA-512]) {
 		@ :nick = word(0 $sasl_rules[$rule][data]);
 		@ :pass = word(1 $sasl_rules[$rule][data]);
+		@scrambox(RESET);
 		@ :x = scrambox(BEGIN "$nick" "$pass");
 		if (!x) {
 			xecho -b Could not initialize scrambox;
@@ -209,6 +212,7 @@ on #-authenticate -100 "% *" {
 		@ :x = scrambox(RESPONSE $xform("-B64" $1-));
 		if (!x) {
 			xecho -b Could not authenticate scrambox from server;
+			@scrambox(RESET);
 			disconnect;
 		} else {
 			#echo x here is: $x;
@@ -223,10 +227,17 @@ on #-authenticate -100 "% *" {
 # Success!
 on #-903 -100 * {
 	@serverctl(SET $servernum() CAP_HOLD 0);
+	if ((:rule = sasl_auth[$servernum()][rule]) == []) {
+		sasl_auth.failed;
+	};
+	if (sasl_rules[$rule][type] == [SCRAM-SHA-512]) {
+		@scrambox(RESET);
+	};
 };
 
 # Failure
 on #-904 -100 * {
+	echo - Debug - SASL auth failed for >$*<;
 	sasl_auth.failed;
 };
 

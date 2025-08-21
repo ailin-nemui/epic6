@@ -48,43 +48,41 @@ static struct debug_opts opts[] =
 {
 	{ "LOCAL_VARS",		DEBUG_LOCAL_VARS },
 	{ "NEWIO",		DEBUG_NEWIO },
-	{ "CHANNELS",		DEBUG_CHANNELS },
 	{ "CTCPS",		DEBUG_CTCPS },
+	{ "SCRAM",		DEBUG_SCRAM },
 	{ "OUTBOUND",		DEBUG_OUTBOUND },
 	{ "INBOUND",		DEBUG_INBOUND },
 	{ "WAITS",		DEBUG_WAITS },
-	{ "MEMORY",		0 },
+	{ "RECODE",		DEBUG_RECODE },
 	{ "SERVER_CONNECT",	DEBUG_SERVER_CONNECT },
 	{ "CRASH",		DEBUG_CRASH },
-	{ "NO_COLOR",		0 },
+	{ "RFC1459",		DEBUG_RFC1459 },
 	{ "NOTIFY",		DEBUG_NOTIFY },
-	{ "REGEX",		0 },
+	{ "KWARG_PARSE",	DEBUG_KWARG_PARSE },
 	{ "REGEX_DEBUG",	DEBUG_REGEX_DEBUG },
 	{ "BROKEN_CLOCK",	DEBUG_BROKEN_CLOCK },
+	{ "CHANNELS",		DEBUG_CHANNELS },
 	{ "UNKNOWN",		DEBUG_UNKNOWN },
-	{ "BOLD_HELPER",	0 },
-	{ "NEW_MATH",		0 },
+	{ "SEQUENCE_POINTS",	DEBUG_SEQUENCE_POINTS },
 	{ "NEW_MATH_DEBUG",	DEBUG_NEW_MATH_DEBUG },
-	{ "AUTOKEY",		0 },
 	{ "EXTRACTW",		DEBUG_EXTRACTW },
 	{ "SLASH_HACK",		DEBUG_SLASH_HACK },
-	{ "LASTLOG",		DEBUG_LASTLOG },
 	{ "SSL",		DEBUG_SSL },
+	{ "LASTLOG",		DEBUG_LASTLOG },
 	{ "EXTRACTW_DEBUG",	DEBUG_EXTRACTW_DEBUG },
 	{ "MESSAGE_FROM",	DEBUG_MESSAGE_FROM },
 	{ "WHO_QUEUE",		DEBUG_WHO_QUEUE },
 	{ "UNICODE",		DEBUG_UNICODE },
 	{ "DWORD",        	DEBUG_DWORD },
-	{ "RECODE",		DEBUG_RECODE },
-	{ "SEQUENCE_POINTS",	DEBUG_SEQUENCE_POINTS },
-	{ "SCRAM",		DEBUG_SCRAM },
-	{ "KWARG_PARSE",	DEBUG_KWARG_PARSE },
-	{ "RFC1459",		DEBUG_RFC1459 },
+	{ "MEMORY",		0 },
+	{ "NO_COLOR",		0 },
+	{ "REGEX",		0 },
+	{ "BOLD_HELPER",	0 },
+	{ "NEW_MATH",		0 },
+	{ "AUTOKEY",		0 },
 	{ "ALL",		~0},
 	{ NULL,			0 },
 };
-
-
 
 BUILT_IN_COMMAND(xdebugcmd)
 {
@@ -164,6 +162,7 @@ char *	function_xdebug (char *word)
 		malloc_strcat(&ret, opts[cnt].command);
 	}
 
+	/* XXX Is this recursion to loop over the string !?! */
 	if (word && *word)
 	{
 		free_str = function_xdebug(word);

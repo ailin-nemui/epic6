@@ -16,6 +16,7 @@ extern 	unsigned long 	x_debug;
 #define DEBUG_SCRAM		(1UL << 3)
 #define DEBUG_OUTBOUND		(1UL << 4)
 #define DEBUG_INBOUND		(1UL << 5)
+#define DEBUG_6			(1UL << 6)
 #define DEBUG_WAITS		(1UL << 7)
 #define DEBUG_RECODE		(1UL << 8)
 #define DEBUG_SERVER_CONNECT	(1UL << 9)
