@@ -10,10 +10,10 @@
  * A note from the author...
  *
  * UNIX portability has been fraught with peril over the years, especially in 
- * the early 90s, the early days of ircII However, instead of trying to 
+ * the early 90s, the early days of ircII.  However, instead of trying to 
  * support a dozen different commercial flavors of UNIX all of which were 
  * weird in some way, the IRC world has collapsed onto Linux, the BSDs, and Mac.
- * People no longer try to run irc clients on AIX, IRIX, Solaris, HP/UX, Xenix, 
+ * People no longer try to run irc clients on AIX, IRIX, Solaris, HP/UX, SCO ODT,
  * and other silliness like that.  And if they did, they wouldn't be using this 
  * client.
  *

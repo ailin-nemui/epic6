@@ -128,12 +128,6 @@ typedef	struct
 	UserhostEntry *	userhost_queue;		/* Userhost queue */
 	UserhostEntry *	userhost_wait;		/* Userhost wait queue */
 
-		/* /LIST, /NAMES */
-	int		funny_min;		/* Funny stuff */
-	int		funny_max;
-	int		funny_flags;
-	char *		funny_match;
-
 		/* /WAIT */
         int             waiting_in;
         int             waiting_out;
@@ -323,16 +317,6 @@ const char *	get_server_ssl_certificate      (int);
         void    set_server_ssl_certificate_hash (int, const char *);	/* static */
 const char *	get_server_ssl_certificate_hash (int);
 #endif
-
-	void	set_server_funny_min         	(int, int);
-	int	get_server_funny_min         	(int);
-	void	set_server_funny_max         	(int, int);
-	int	get_server_funny_max         	(int);
-	void	set_server_funny_flags         	(int, int);
-	int	get_server_funny_flags         	(int);
-	void	set_server_funny_match		(int, const char *);
-const char *	get_server_funny_match         	(int);
-	void	set_server_funny_stuff		(int, int, int, int, const char *);
 
         void    set_server_stricmp_table        (int, int);		/* static */
         int     get_server_stricmp_table        (int);

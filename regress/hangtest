@@ -1,9 +1,0 @@
-alias hang {
-	window new server /tmp/.ircd/6667 double on hide
-	window swap last
-	window new server /tmp/.ircd/6666 double on hide
-	window swap last
-	window discon
-	window kill
-}
-

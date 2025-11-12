@@ -205,7 +205,7 @@ fi
 
 dnl Look for common libraries that have common functions
 AC_CHECK_LIB(m, pow, LIBS="$LIBS -lm",)
-AC_CHECK_LIB(sqlite, sqlite_open, LIBS="$LIBS -lsqlite",)
+AC_CHECK_LIB(sqlite3, sqlite3_open, LIBS="$LIBS -lsqlite3",)
 AC_CHECK_LIB(sodium, sodium_init, LIBS="$LIBS -lsodium",)
 AC_CHECK_LIB(ncurses, setupterm, LIBS="-lncurses $LIBS",)
 AC_CHECK_LIB(cares, ares_library_init, LIBS="$LIBS -lcares",)

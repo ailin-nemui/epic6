@@ -241,6 +241,7 @@ void	put_it (const char *format, ...)
 	{
 		va_list args;
 		va_start (args, format);
+		/* XXX TODO - Use malloc_vsprintf() */
 		vsnprintf(putbuf, sizeof putbuf, format, args);
 		va_end(args);
 		put_echo(putbuf);

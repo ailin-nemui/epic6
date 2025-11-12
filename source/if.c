@@ -746,7 +746,7 @@ BUILT_IN_COMMAND(forcmd)
 	char *	working    = NULL;
 	char *	commence   = NULL;
 	char *	evaluation = NULL;
-	char *	lameeval   = NULL;
+	char *	eval_copy   = NULL;
 	char *	iteration  = NULL;
 	char *	blah       = NULL;
 	char *	commands   = NULL;
@@ -800,16 +800,16 @@ BUILT_IN_COMMAND(forcmd)
 	will_catch_break_exceptions++;
 	will_catch_continue_exceptions++;
 	sigh = strlen(evaluation) + 1;
-	lameeval = alloca(sigh + 1);
+	eval_copy = alloca(sigh + 1);
 	while (1)
 	{
 		/* 
 		 * This is quite intentional.
-		 * "lameeval" gets mangled every time through, so we need
+		 * "eval_copy" gets mangled every time through, so we need
 		 * to take a fresh copy from scratch each time.
 		 */
-		strlcpy(lameeval, evaluation, sigh);
-		blah = parse_inline(lameeval, subargs);
+		strlcpy(eval_copy, evaluation, sigh);
+		blah = parse_inline(eval_copy, subargs);
 		if (!check_val(blah))
 		{
 			new_free(&blah);

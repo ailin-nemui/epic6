@@ -5514,10 +5514,10 @@ ENCODER(iconv)
 	dest_ptr = dest;
 
 	/* 
-	 * Older iconv()s, especially FreeBSD's, expect the 2nd argument
+	 * Older iconv()s (especially FreeBSD's) expect the 2nd argument
 	 * to iconv() to be (const char **), but Issue 6+ requires it to 
 	 * be (char **), and these cannot be reconciled through a cast, 
-	 * so I chose to have non-standard iconv() result in the warning.
+	 * so I chose to have non-standard iconv() incur the warning.
 	 *
 	 * The xform subsystem requires all inputs to be treated
 	 * as const, so as a special case, I cast away the cast for
@@ -6150,12 +6150,14 @@ int	recode_with_iconv_t (iconv_t iref, char **data, size_t *numbytes)
  * Arguments:
  *	key	- A single unicode code point.  Ideally something returned
  *		  by next_code_point().
- *	utf8str	- A buffer to write the string into.  At least 8 bytes big.
- *	utf8strsiz - The size of utf8str (ignored for now)
+ *	utf8str	- A buffer to write the string into.  At least 6 bytes big.
+ *	utf8strsiz - The size of utf8str - should be at least 6.
  *
  * Returns:
- *	The number of bytes in the resulting utf8 sequence, that is, the 
- *	number of bytes written to utf8str, not counting trailing nul.
+ *	  0	- Nothing was written (because the output buffer was too small)
+ *		  You might as well consider this an error.
+ *	> 0	- The number of bytes written to 'utf8str' 
+ *		  **BUT NOT INCLUDING THE TRAILING NUL WHICH IS ALSO WRITTEN.**
  */
 int	ucs_to_utf8 (uint32_t key, char *utf8str_, size_t utf8strsiz)
 {

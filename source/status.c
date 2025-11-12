@@ -34,7 +34,6 @@
  * SUCH DAMAGE.
  */
 
-#define __need_putchar_x__
 #include "irc.h"
 #include "termx.h"
 #include "status.h"
@@ -519,7 +518,7 @@ int	make_status (int window_, Status *status)
 	const char *	start_rhs = 0;
 		int	pr_lhs = 0,
 			pr_rhs = 0,
-			line = 0,	/* XXX gcc4 lameness */
+			line = 0,	/* XXX gcc4 wackiness */
 			*prc = &pr_lhs, 
 			i;
 	const char *	s;

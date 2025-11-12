@@ -818,16 +818,16 @@ int	serverinfo_matches_servref (ServerInfo *si, int servref)
 	 * then server 0 wins!
 	 */
 
-	if (get_server_host(servref) && wild_match(host_, get_server_host(servref)))
+	if (host_ && get_server_host(servref) && wild_match(host_, get_server_host(servref)))
 		return 1;
 
-	if (get_server_itsname(servref) && wild_match(host_, get_server_itsname(servref)))
+	if (host_ && get_server_itsname(servref) && wild_match(host_, get_server_itsname(servref)))
 		return 1;
 
-	if (!empty(get_server_group(servref)) && wild_match(host_, get_server_group(servref)))
+	if (host_ && !empty(get_server_group(servref)) && wild_match(host_, get_server_group(servref)))
 		return 1;
 
-	if (get_server_005(servref, "NETWORK") && wild_match(host_, get_server_005(servref, "NETWORK")))
+	if (host_ && get_server_005(servref, "NETWORK") && wild_match(host_, get_server_005(servref, "NETWORK")))
 		return 1;
 
 	for (j = 0; j < s->altnames->numitems; j++)
@@ -835,7 +835,7 @@ int	serverinfo_matches_servref (ServerInfo *si, int servref)
 		if (!s->altnames->list[j].name)
 			continue;
 
-		if (wild_match(host_, s->altnames->list[j].name))
+		if (host_ && wild_match(host_, s->altnames->list[j].name))
 			return 1;
 	}
 
@@ -1388,7 +1388,7 @@ static int	next_server_in_group (int oldserv, int direction)
 /*****************************************************************************/
 	int	connected_to_server = 0;	/* How many active server 
 						   connections are open */
-static	char    lame_wait_nick[] = "***LW***";
+static	char    hard_wait_nick[] = "***LW***";
 static	char    wait_nick[] = "***W***";
 
 /*
@@ -2557,7 +2557,7 @@ int 	server_connect_next_addr (int new_server)
 	new_open(des, server_io, NEWIO_CONNECT, POLLOUT, 0, from_server);
 
 	/* 
-	 * In the past, you could not do getsockanem(2) on UDSs portably.
+	 * In the past, you could not do getsockname(2) on UDSs portably.
 	 * See https://pubs.opengroup.org/onlinepubs/9799919799/functions/getsockname.html
 	 * Issue 8 talks about AF_UNIX and getsockname() which implies it should be supported.
 	 * Per the suggestion in the above page, we memset the sockname to 0 first.
@@ -4025,7 +4025,7 @@ void 	server_hard_wait (int i)
 
 	s->waiting_out++;
 	lock_stack_frame();
-	send_to_aserver(i, "%s", lame_wait_nick);
+	send_to_aserver(i, "%s", hard_wait_nick);
 	while ((s = get_server(i)) && (s->waiting_in < s->waiting_out))
 		io(reason);
 
@@ -4085,7 +4085,7 @@ void	server_passive_wait (int i, const char *stuff)
  * the main loop until one round trip to the server is completed.
  *
  * How it does this is in server_hard_wait() [see above].  It will send
- * an invalid command to the server  (lame_wait_nick) and wait for the
+ * an invalid command to the server  (hard_wait_nick) and wait for the
  * server to send a 421 NOSUCHCOMMAND numeric back to us.  
  *
  * Ordinarily, this would be non-controversial, except that you might do
@@ -4120,7 +4120,7 @@ int	server_check_wait (int refnum, const char *nick)
 		return 0;
 
 	/* Hard waits */
-	if ((s->waiting_out > s->waiting_in) && !strcmp(nick, lame_wait_nick))
+	if ((s->waiting_out > s->waiting_in) && !strcmp(nick, hard_wait_nick))
 	{
 		s->waiting_in++;
 		unlock_stack_frame();
@@ -5132,8 +5132,8 @@ static void 	got_my_userhost (int refnum, UserhostItem *__U(item), const char *_
  * This results in a window connected to a server that is CLOSED; however
  * window_check_servers() will call here to find out if there are other
  * IP addresses that can be tried, and if so, it resets the server to 
- * READY.  This is what allows /reconnect to do the right thing if you 
- * get hung up during a connection to a firewalled IP address.
+ * READY.  This is what allows /reconnect to do the right thing if you
+ * try to connect to an IP address that is unreachable.
  */
 int	server_more_addrs (int refnum)
 {

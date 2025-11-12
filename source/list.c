@@ -44,7 +44,7 @@
  * (such as "find_in_list()" being in unspecified order).
  *
  * Unlike in C90, you can no longer create type-punned List-congruent objects.
- * You _must_ use the (List) object, and hang your data structure off of 'd'.
+ * You _must_ use the (List) object, and attach your data structure on 'd'.
  *
  * The (List) object contains 
  *  (1) a link to the next (List) item, 

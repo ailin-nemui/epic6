@@ -332,3 +332,12 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * When normalizing levels, use commas instead of spaces (see UPDATES)
 * Call @scrambox(RESET) more often.  Fixes sasl scram on reconnects.
 * Update colors script, (zlonix)
+* The sqlite library is spelled -lsqlite3
+* Sunset "funny stuff" (client side filtering of /names, /list, etc)
+* Remove more problematic words
+* Check for nulls passed to wild_match() in serverinfo_matches_servref()
+* Neither status.c nor window.c require putchar_x(). yay!
+* Do not initialize a variable declaration with a fn call (generally)
+* Rename get_window2() to get_window_from_args()
+* Refactor implementation, comments of various /window subcommands
+* Particularly, remove unnecessary uses of Window * ptrs
