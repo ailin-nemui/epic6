@@ -255,7 +255,7 @@ static	void		reinstate_user_modes 		(void);
 
 static	const char *	get_server_password 		(int refnum);
 static	void		set_server_password 		(int refnum, const char *password);
-	void		password_sendline 		(const char *data, const char *line);
+	void		password_sendline 		(void *data, const char *line);
 	int		is_me 				(int refnum, const char *nick);
 
 static	void		set_server_port 		(int refnum, int port);
@@ -3058,14 +3058,18 @@ static void	set_server_password (int refnum, const char *password)
  * hitting of the return key, etc 
  * -- Callback function
  */
-void 	password_sendline (const char *data, const char *line)
+void 	password_sendline (void *data_, const char *line)
 {
 	int	new_server;
+	char *	data;
 
 	if (!line || !*line)
 		return;
 
+	data = (char *)data_;
 	new_server = serverdesc_lookup(data);
+	new_free(&data_);
+
 	set_server_password(new_server, line);
 	server_close(new_server, NULL);
 	set_server_state(new_server, SERVER_RECONNECT);

@@ -55,7 +55,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3074;
+const unsigned long	commit_id = 3076;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -298,9 +298,9 @@ static		char	switch_help[] =
   The [nickname] can be up to 30 characters long                      \n\
   The [server list] are one or more server descriptions               \n\
   The [switches] are zero or more of the following:                   \n\
-      -a\tThe [server list] adds to default server list               \n"
-"      -b\tThe program should run in the background ``bot mode''       \n"
-"      -B\tLoads your .ircrc file before you connect to a server.      \n\
+      -a\tThe [server list] adds to default server list               \n\
+      -b\tThe program should run in the background ``bot mode''       \n\
+      -B\tLoads your .ircrc file before you connect to a server.      \n\
       -d\tThe program should run in ``dumb mode'' (no fancy screen)   \n\
       -h\tPrint this help message                                     \n\
       -q\tThe program will not load your .ircrc file                  \n\
@@ -554,9 +554,8 @@ static	void	parse_args (int argc, char **argv)
 	char *		the_path = NULL;
 
 	/* 
-	 * https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/unistd.h.html
-	 * says that <unistd.h> shall define 'optarg' and 'optind'.
-	 * In the past, we used to declare them extern ourselves.
+	 * 'optarg' and 'optind' are declared in <unistd.h>
+	 * by at least Issue 2
 	 */
 
 	*nickname = 0;
@@ -1059,7 +1058,7 @@ int 	main (int argc, char *argv[])
 	init_vhosts_stage2();
 
 	fprintf(stderr, "EPIC VI -- %s\n", ridiculous_version_name);
-	fprintf(stderr, "EPIC Software Labs (2006)\n");
+	fprintf(stderr, "EPIC Software Labs (2025)\n");
 	fprintf(stderr, "Version (%s), Commit Id (%lu) -- Date (%s)\n", 
 				irc_version, commit_id, internal_version);
 	fprintf(stderr, "%s\n", compile_info);

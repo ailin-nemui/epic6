@@ -33,6 +33,10 @@ on ^730 * { echo *** $1- is online };
 on ^731 * { echo *** $1- is not online };
 
 alias notify {
+	if (functioncall()) {
+		# XXX TODO ###
+		return;
+	}
 	if (serverctl(GET -1 005 MONITOR)) {
 		if (* == []) {
 			monitor s

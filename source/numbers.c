@@ -1550,9 +1550,10 @@ END:
 				get_server_name(from_server));
 			if (!dumb_mode)
 			{
+				char *x = NULL;
+				malloc_sprintf(&x, "%d", from_server);
 				add_wait_prompt("Server Password:", 
-					password_sendline, NUMSTR(from_server),
-					WAIT_PROMPT_LINE, 0);
+					password_sendline, x, WAIT_PROMPT_LINE, 0);
 			}
 		}
 	}

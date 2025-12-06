@@ -2,7 +2,7 @@ EPIC6-0.0.1
 
 *** News 08/18/2025 -- Level-sets represented as a single word now
 	From the very beginnings of ircII, level sets ("MSGS PUBLICS
-	JOINS OTHER") have been represented as a sparce-seperated 
+	JOINS OTHER") have been represented as a space-seperated 
 	list of levels.  This makes it hard to capture the level as
 	a word and makes it hard to pass to /window notify_level which
 	expects only one word and doesn't support double quoted words.

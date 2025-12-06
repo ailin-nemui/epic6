@@ -44,12 +44,15 @@ sqlite
 ZNC
 Emojis (incl ZWJ)
 Arena allocation
-PCRE2 (utf8-aware regex)
+*PCRE2 (utf8-aware regex)
+Use open_memstream() for malloc_sprintf()?
 
 Actual bugs
 ================
 * /SET NEW_SERVER_LASTLOG_LEVEL does not work properly because it doesn't check window servers.
 * Create /load ignore on top of /on context and /shh
+* https://ryan.slipgate.org/epic6-3074.core2.txt
+* Status right indicator doesn't seem to be working (rb fusion)
 
 THE CHANGELOG SINCE THE LAST RELEASE:
 -------------------------------------
@@ -341,3 +344,7 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Rename get_window2() to get_window_from_args()
 * Refactor implementation, comments of various /window subcommands
 * Particularly, remove unnecessary uses of Window * ptrs
+* Fix add_wait_prompt() to take a (void *) cookie instead of a C string
+* Refactor all callers of add_wait_prompt()
+* Kludge /load notify so $notify(on) doesn't malfunction
+

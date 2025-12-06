@@ -37,9 +37,7 @@
 /* Function decls */
 static	void	TruncateAndEscape (char **, const char *, ssize_t, const char *);
 static	char *	alias_special_char (char **, char *, const char *, char *);
-static	void	do_alias_string (const char *, const char *);
-
-char *alias_string = NULL;
+static	void	do_alias_string (void *, const char *);
 
 /************************** EXPRESSION MODE PARSER ***********************/
 /* canon_number: canonicalizes number to something relevant */
@@ -476,18 +474,20 @@ static	char	*alias_special_char (char **buffer, char *ptr, const char *args, cha
 		case DOUBLE_QUOTE:
 		case '\'':
 		{
+			char *	my_alias_string;
+
 			if ((ptr = strchr(tmp, c)))
 				*ptr++ = 0;
 
-			alias_string = NULL;
-			add_wait_prompt(tmp, do_alias_string, empty_string,
+			my_alias_string = NULL;
+			add_wait_prompt(tmp, do_alias_string, (void *)&my_alias_string,
 				(c == DOUBLE_QUOTE) ? WAIT_PROMPT_LINE
 						    : WAIT_PROMPT_KEY, 1);
-			while (!alias_string)
+			while (!my_alias_string)
 				io("Input Prompt");
 
-			TruncateAndEscape(buffer, alias_string, length,quote_em);
-			new_free(&alias_string);
+			TruncateAndEscape(buffer, my_alias_string, length, quote_em);
+			new_free(&my_alias_string);
 			return (ptr);
 		}
 
@@ -737,8 +737,9 @@ static	void	TruncateAndEscape (char **buff, const char *add, ssize_t length, con
 	return;
 }
 
-static void	do_alias_string (const char *__U(unused), const char *input)
+static void	do_alias_string (void *my_alias_string_, const char *input)
 {
-	malloc_strcpy(&alias_string, input);
+	char **my_alias_string = (char **)my_alias_string_;
+	malloc_strcpy(my_alias_string, input);
 }
 

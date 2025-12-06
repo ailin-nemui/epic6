@@ -84,6 +84,38 @@
 #define REALNAME_LEN 50
 #define PATH_LEN 1024
 
+#if 0
+/*
+ * This enum replaces 'dumb_mode', 'foreground', 'background', and 'use_input'
+ */
+typedef enum OperatingMode_x {
+	/* 
+	 * Stdin and stdout are a pty; run as a full screen interactive application
+	 * The program will exit when you do /QUIT
+	 */
+	FULL_MODE,
+
+	/* 
+	 * Stdin is a pty, stdout is not. Everything is done on full lines only 
+	 * Input editing is handled by your pty, not by epic
+	 * The program will exit if stdout EPIPEs
+	 */
+	STDIN_ONLY_MODE,
+
+	/* 
+	 * Stdout is a pty, stdin is not.  Everything is done on full lines only.
+	 * The program will exit when stdin reaches its EOF
+	 */
+	STDOUT_ONLY_MODE,
+
+	/* 
+	 * No input, no output -- just load a script (ie, we're a bot)
+	 * The program will exit when your script does /QUIT
+	 */
+	BOT_MODE
+} OperatingMode;
+#endif
+
 /* irc.c's global variables */
 extern		int	background;
 extern		int	current_numeric;

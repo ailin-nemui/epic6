@@ -157,7 +157,7 @@ static	void	xevalcmd 	(const char *, char *, const char *);
 static	void	xtypecmd 	(const char *, char *, const char *);
 
 /* other */
-static	void	eval_inputlist 	(const char *, const char *);
+static	void	eval_inputlist 	(void *, const char *);
 static void	parse_block (const char *, const char *, int interactive);
 
 typedef void (*CmdFunc) (const char *, char *, const char *);
@@ -702,7 +702,7 @@ typedef struct e_pause_data {
 	char *	result;
 } e_pause_data;
 
-static	void	e_pause_prompt_callback (const char *data_, const char *__U(u2)) { 
+static	void	e_pause_prompt_callback (void *data_, const char *__U(u2)) { 
 	if (data_) {
 		((e_pause_data *)data_)->done = 1;
 	}
@@ -732,7 +732,7 @@ BUILT_IN_COMMAND(e_pause)
 		get_time(&start);
 		start = time_add(start, double_to_timespec(seconds));
 
-		add_timer(0, empty_string, seconds, 1, e_pause_timer_callback, &data, NULL, GENERAL_TIMER, -1, 0, 0);
+		add_timer(0, empty_string, seconds, 1, e_pause_timer_callback, (void *)data, NULL, GENERAL_TIMER, -1, 0, 0);
 	}
 	while (data->done == 0)
 		io("e_pause");
@@ -1334,15 +1334,16 @@ BUILT_IN_COMMAND(info)
  * eval_inputlist:  Cute little wrapper that calls runcmds() when we
  * get an input prompt ..
  */
-static void	eval_inputlist (const char *args_, const char *line)
+static void	eval_inputlist (void *args_, const char *line)
 {
         char *tmp;
 	char *args;
+	char *save_args;
 
 	if (!args_)
 		return;
 
-	args = LOCAL_COPY(args_);
+	save_args = args = (char *)args_;
 	if (*args == '(') {
                 if (!(tmp = next_expr(&args, '('))) {
 			yell("INPUT: syntax error with arglist");
@@ -1353,6 +1354,8 @@ static void	eval_inputlist (const char *args_, const char *line)
                 /* traditional behavior */
 		runcmds(args, line);
 	}
+
+	new_free(&save_args);
 }
 
 
@@ -1393,6 +1396,8 @@ BUILT_IN_COMMAND(inputcmd)
 	while (my_isspace(*args))
 		args++;
 
+	/* This gets new_free()d in eval_inputlist above */
+	args = malloc_strdup(args);
 	add_wait_prompt(prompt, eval_inputlist, args, wait_type, echo);
 }
 
@@ -2175,9 +2180,16 @@ BUILT_IN_COMMAND(mecmd)
 		say("Usage: /ME <action description>");
 }
 
-static 	void	oper_password_received (const char *data, const char *line)
+static 	void	oper_password_received (void *data_, const char *line)
 {
+	char *	data;
+
+	if (!data_)
+		return;
+
+	data = (char *)data_;
 	send_to_server("OPER %s %s", data, line);
+	new_free(&data);
 }
 
 /* oper: the OPER command.  */
@@ -2191,6 +2203,8 @@ BUILT_IN_COMMAND(oper)
 		nick = nickname;
 	if (!(password = next_arg(args, &args)))
 	{
+		/* This gets new_free()d in oper_password_received() above */
+		nick = malloc_strdup(nick);
 		add_wait_prompt("Operator Password:",
 			oper_password_received, nick, WAIT_PROMPT_LINE, 0);
 		return;

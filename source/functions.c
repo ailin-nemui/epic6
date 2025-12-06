@@ -7528,6 +7528,7 @@ BUILT_IN_FUNCTION(function_strptime, input)
 
 	GET_DWORD_ARG(format, input);
 
+	/* strptime() is required by Issue 5 */
 	if (!(strptime(input, format, &timeptr)))
 		RETURN_EMPTY;
 

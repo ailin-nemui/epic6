@@ -99,7 +99,7 @@ struct  PromptStru *    next;
 
         char *          data;
         int             type;
-        void            (*func) (const char *, const char *);
+        void            (*func) (void *, const char *);
 
         void *          my_input_line;
         void *          saved_input_line;
@@ -4378,6 +4378,7 @@ void	fire_wait_prompt (uint32_t key)
 
 	ucs_to_utf8(key, utf8str, sizeof(utf8str));
 	(*oldprompt->func)(oldprompt->data, utf8str);
+	oldprompt->data = NULL;			/* XXX Testing */
 	destroy_prompt(last_input_screen, &oldprompt);
 
 }
@@ -4393,6 +4394,7 @@ void	fire_normal_prompt (const char *utf8str)
 	update_input(last_input_screen, UPDATE_ALL);
 
 	(*oldprompt->func)(oldprompt->data, utf8str);
+	oldprompt->data = NULL;			/* XXX Testing */
 	destroy_prompt(last_input_screen, &oldprompt);
 }
 
@@ -4421,10 +4423,9 @@ void	fire_normal_prompt (const char *utf8str)
  *		1. A pointer to "data" (see next)
  *		2. A C string (possibly encoded in UTF8 in the future)
  *	   	containing the user's response.
- *  	data	A payload of data to be passed to your callback.
- *		**NOTE -- It is important that this be new_malloc()ed memory.
- *		YOU are responsible for new_free()ing it in the callback.
- *		This may be NULL.
+ *  	data	An opaque payload of data to be passed to your callback.
+ *		THIS OBJECT BELONGS TO YOU.  YOU MUST CLEAN UP AFTER IT 
+ *		IN THE CALL TO func().  This may be NULL.
  *  	type	One of:
  *		WAIT_PROMPT_LINE - An entire line of input (up through SENDLINE)
  *		WAIT_PROMPT_KEY - The next keypress (possibly UTF8 code point)
@@ -4440,7 +4441,7 @@ void	fire_normal_prompt (const char *utf8str)
  *	 Suggestion: "data" should be a struct that contains window and server 
  * 	 context information.
  */
-void 	add_wait_prompt (const char *prompt, void (*func)(const char *data, const char *utf8str), const char *data, int type, int echo)
+void 	add_wait_prompt (const char *prompt, void (*func)(void *data, const char *utf8str), void *data, int type, int echo)
 {
 	WaitPrompt *New;
 	int	s;
@@ -4455,7 +4456,7 @@ void 	add_wait_prompt (const char *prompt, void (*func)(const char *data, const 
 
 	last_input_screen = s;
 	New = (WaitPrompt *) new_malloc(sizeof(WaitPrompt));
-	New->data = malloc_strdup(data);
+	New->data = data;		/* This caller owns this */
 	New->type = type;
 	New->func = func;
 	New->my_input_line = new_input_line(prompt, echo);
@@ -4474,7 +4475,6 @@ static void	destroy_prompt (int __U(s_), WaitPrompt **oldprompt)
 {
 	destroy_input_line((*oldprompt)->my_input_line);
 	(*oldprompt)->my_input_line = NULL;
-	new_free(&(*oldprompt)->data);
 	new_free((char **)oldprompt);
 
 	update_input(last_input_screen, UPDATE_ALL);

@@ -235,7 +235,7 @@ const 	char *	get_server_version_string	(int);
 const	char *	get_server_ssl_cipher		(int);
  
 	void	server_register			(int, const char *);
-	void	password_sendline		(const char *, const char *);
+	void	password_sendline		(void *, const char *);
 	int	is_server_open			(int);
 	int	is_server_registered		(int);
 	void	server_is_registered		(int, const char *, const char *);
