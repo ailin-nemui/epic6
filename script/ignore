@@ -1,0 +1,144 @@
+#
+# Here's the plan
+# 
+#  THE MOST RAW SYNTAX:
+#	/IGNORE <objects> <operations>
+#
+#  <objects> is a comma-seperated or space-seperated list of
+#      <refnums> or wildcard <targets>.  Space-seperated lists
+#      must be surrounded by double quotes
+#
+#  <operations> are comma-seperated or space-seperated list of 
+#       levels, which may be prefixed with +, -, or neither, 
+#       or the operations TIMEOUT <seconds> or REASON <string>
+#
+# How this looks:
+#  /ignore
+#		List all ignores
+#  /ignore <target>
+#		List a specific ignore by its target
+#  /ignore <refnum>
+#		List a specific ignore by its refnum
+#  
+#  /ignore <target> <level(s)>
+#		Upsert an ignore to add or remove levels
+#  /ignore <refnum> <level(s)>
+#		Update an ignore to add or remove levels
+#  Levels can be prefixed with + (add) or - (remove) or neither (add)
+#  Levels can be comma-seperated or space-seperated
+#
+#  /ignore <target|refnum> TIMEOUT <seconds>
+#  /ignore <target|refnum> REASON <reason>
+#  In addition to levels, you can specify a timeout or a reason.
+#
+#
+
+#
+# The ignore data structure:
+#	target:		string (wildcard pattern)
+#	levels:		string (space seperated list of levels)
+#	reason:		string
+#	timeout:	integer (time_t value)
+#
+# We have a lookup table:
+#	_ignores_lookup[<encoded wildcard>] = <refnum>
+#
+# The ignore data structure is stored per refnum:
+#	_ignores[<refnum>}[<field>] = <value>
+#
+alias ignore (targets, operations) {
+	if (!targets) {
+		ignore.show_all;
+		return;
+	};
+	if (!operations) {
+		operations = [show];
+	};
+
+	fe ($strip(, $targets)) target {
+		@ :refnum = _ignore.upsert_target($target);
+
+		if (operations == [show]) {
+			# We don't do anything, fall through here;
+		} else {
+			@ :ops = strip(, $operations)
+			for (:i = 0; #word($i $ops); i++) {
+				if (word($i $ops) == [reason]) {
+					@i++;
+					@ _ignores[$refnum][reason] = word($i $ops);
+				} elsif (word($i $ops) == [timeout]) {
+					@i++;
+					@ _ignores[$refnum][timeout] = time() + word($i $ops);
+				} else {
+					push _ignores[$refnum][levels] word($i $ops);
+				};
+			};
+			_ignore.canonicalize $refnum;
+		};
+		_ignore.show $target;
+	};
+};
+
+#
+# This enstures that whatever in $0 exists, and returns its refnum.
+# But if $0 is a number that doesn't exist, it reteurns empty string.
+#
+alias _ignore.upsert_target (target) {
+	if (isnumber($target)) {
+		# If it doesn't exist, bail.
+		if (!_ignores[$target][target]) {
+			return;
+		} else {
+			@ :refnum = target;
+		};
+	} else {
+		foreach _ignores_lookup pattern {
+			if (encode($target) == encode($pattern)) {
+				@ :refnum = _ignores_lookup[$pattern];
+				break;
+			};
+		};
+		# If we didn't find it, create a stub;
+		if (:refnum == []) {
+			for (:i = 0; _ignores[$i][target]; i++) {
+				#;
+			};
+			@ _ignores[$i][target] = target;
+			@ _ignores[$i][levels] = [ALL];
+		};
+	};
+	return $refnum
+};
+
+alias _ignore.gc_ignores {
+	foreach _ignores refnum {
+
+	# Remove all ignores whose levels are NONE.
+};
+
+alias _ignore.canonicalize {
+	# Verify that all the fields make sense (ie, remove invalid levels)
+};
+
+alias _ignore.show {
+};
+
+on #^context -333 * (server, window, sender, target, level) {
+	# For every ignore, if this matches the ignore, is this level covered?
+	foreach _ignores refnum {
+		if (_ignores[$refnum][pattern] =~ pattern) {
+			if (levelctl(IN $level $_ignores[$refnum][levels])) {
+				shh;
+				return;
+			};
+		};
+		if (_ignores[$refnum][pattern] =~ target) {
+			if (levelctl(IN $level $_ignores[$refnum][levels])) {
+				shh;
+				return;
+			};
+		};
+	};
+}
+
+#hop'2k25
