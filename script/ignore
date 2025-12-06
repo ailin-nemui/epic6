@@ -114,6 +114,7 @@ alias _ignore.gc_ignores {
 	foreach _ignores refnum {
 
 	# Remove all ignores whose levels are NONE.
+	};
 };
 
 alias _ignore.canonicalize {

@@ -347,4 +347,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Fix add_wait_prompt() to take a (void *) cookie instead of a C string
 * Refactor all callers of add_wait_prompt()
 * Kludge /load notify so $notify(on) doesn't malfunction
-
+* Fix syntax error in /load ignore (rb zlonix)
