@@ -573,7 +573,7 @@ int	ssu_to_port_quick (SSu *name_)
 	len = socklen(name_);
 	if ((retval = Getnameinfo(name_, len, host, sizeof(host), port, sizeof(port), 0)))
 	{
-		syserr(-1, "ssu_to_paddr_quick: Getnameinfo(sockaddr->p_addr) failed: %s", 
+		syserr(-1, "ssu_to_port_quick: Getnameinfo(sockaddr->p_addr) failed: %s", 
 					gai_strerror(retval));
 		return -1;
 	}

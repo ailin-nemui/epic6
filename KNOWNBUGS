@@ -51,8 +51,8 @@ Actual bugs
 ================
 * /SET NEW_SERVER_LASTLOG_LEVEL does not work properly because it doesn't check window servers.
 * Create /load ignore on top of /on context and /shh
-* https://ryan.slipgate.org/epic6-3074.core2.txt
 * Status right indicator doesn't seem to be working (rb fusion)
+
 
 THE CHANGELOG SINCE THE LAST RELEASE:
 -------------------------------------
@@ -348,3 +348,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Refactor all callers of add_wait_prompt()
 * Kludge /load notify so $notify(on) doesn't malfunction
 * Fix syntax error in /load ignore (rb zlonix)
+* Fix off-by-one buffer overrun (rb ryan_ -- thanks!)

@@ -6937,7 +6937,7 @@ size_t	get_kwarg_field (const char *inputptr, char **key, char **value)
 	if (*inputptr == ':')
 		return 1;
 
-	inputlen = strlen(inputptr);
+	inputlen = strlen(inputptr) + 1;
 	extra = new_malloc(inputlen);
 	memset(extra, 0, inputlen);
 	debug(DEBUG_KWARG_PARSE, "parsing %s, of length %d", inputptr, (int)inputlen);
