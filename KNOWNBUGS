@@ -349,3 +349,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Kludge /load notify so $notify(on) doesn't malfunction
 * Fix syntax error in /load ignore (rb zlonix)
 * Fix off-by-one buffer overrun (rb ryan_ -- thanks!)
+* Fix /server \\\\\\\\ (rb fusion)

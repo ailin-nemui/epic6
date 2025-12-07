@@ -1664,6 +1664,7 @@ static	void	server_io (int fd)
 			}
 
 			s->addrs_total = json_to_sockaddr_array(result_json, &failure_code, &s->addrs);
+			s->addr_counter = 0;
 			if (failure_code != 0)
 			{
 				say("DNS lookup for server %d [%s] failed with error: %d (%s)", 

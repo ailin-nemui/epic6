@@ -6957,6 +6957,7 @@ size_t	get_kwarg_field (const char *inputptr, char **key, char **value)
 					/* Only honor \ if it's not the final char */
 					if (str[p+1])
 						p++;
+					extra[s++] = str[p++];
 				}
 				else if (str[p] == ']')
 					break;
@@ -6973,6 +6974,7 @@ size_t	get_kwarg_field (const char *inputptr, char **key, char **value)
 					/* Only honor \ if it's not the final char */
 					if (str[p+1])
 						p++;
+					extra[s++] = str[p++];
 				}
 				else if (str[p] == ':')
 					goto got_value;
