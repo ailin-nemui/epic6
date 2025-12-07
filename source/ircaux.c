@@ -2921,6 +2921,7 @@ const char *	intmaxtoa (intmax_t foo)
 {
 	static char buffer[BIG_BUFFER_SIZE + 1];
 
+	/* yell("foo is %jd", foo); */
 	snprintf(buffer, sizeof(buffer), "%jd", foo);
 	return buffer;
 }
