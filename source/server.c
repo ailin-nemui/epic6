@@ -1554,12 +1554,15 @@ delete_usage_error:
 	/* * * * The rest of these actually move windows around * * * */
 	olds = from_server;
 
-	if ((news = serverdesc_update(server)) == NOSERV)
+	if ((news = serverdesc_lookup(server)) == NOSERV)
 	{
-	    if ((news = serverdesc_insert(server)) == NOSERV)
+	    if ((news = serverdesc_update(server)) == NOSERV)
 	    {
-		say("I can't parse server description [%s]", server);
-		return;
+		if ((news = serverdesc_insert(server)) == NOSERV)
+		{
+		    say("I can't parse server description [%s]", server);
+		    return;
+		}
 	    }
 	}
 

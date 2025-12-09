@@ -305,7 +305,7 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Add support for pcre2 -- use it if you got it!
 * Several adaptations of the json support
   - Collapse "True/False" types to "Bool" with a valuebool.
-  - Regorg the header file, remove stuff we don't use
+  - Reorg the header file, remove stuff we don't use
   - Introduce the notion of "casting" by allowing a value to be represented
     in different types (ie, string to bool, or to number)  Perhaps I will 
     regret this someday...
@@ -351,3 +351,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Fix off-by-one buffer overrun (rb ryan_ -- thanks!)
 * Fix /server \\\\\\\\ (rb fusion)
 * Fix null deref with unloading timers triggered by /unload  (rb ryan_)
+* When doing /server <desc> don't do an upsert unless a straight lookup fails

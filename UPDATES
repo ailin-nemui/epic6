@@ -223,7 +223,7 @@ EPIC6-0.0.1
 	without things getting "bloated"
 
 	In EPIC6, the following features have been removed and are not 
-	expected to reteurn.  If you strongly disagree with the retirement 
+	expected to return.  If you strongly disagree with the retirement 
 	of these features, please contact us and we can talk about it!
 		C90-only environs	Shebang support
 		/REDIRECT and /FLUSH	(/queue was removed but put back)
