@@ -8146,10 +8146,11 @@ WINDOWCMD(server)
 
 	if ((arg = next_arg(*args, args)))
 	{
-		int i;
-		int status;
+		int	i;
+		int	status;
 
-		i = serverdesc_upsert(arg, 1);
+		if ((i = serverdesc_lookup(arg)) == NOSERV)
+			i = serverdesc_upsert(arg, 1);
 		from_server = i;
 		status = get_server_state(i);
 

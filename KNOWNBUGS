@@ -352,3 +352,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Fix /server \\\\\\\\ (rb fusion)
 * Fix null deref with unloading timers triggered by /unload  (rb ryan_)
 * When doing /server <desc> don't do an upsert unless a straight lookup fails
+* Same thing, but for /window server
