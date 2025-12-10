@@ -697,20 +697,21 @@ BUILT_IN_COMMAND(e_nick)
  * Without an argument, it waits for the user to press a key.  Any key.
  * and the key is accepted.  Thats probably not right, ill work on that.
  */
-typedef struct e_pause_data {
+typedef struct e_pause_data 
+{
 	int	done;
-	char *	result;
 } e_pause_data;
 
-static	void	e_pause_prompt_callback (void *data_, const char *__U(u2)) { 
-	if (data_) {
+static	void	e_pause_prompt_callback (void *data_, const char *__U(u2)) 
+{
+	if (data_)
 		((e_pause_data *)data_)->done = 1;
-	}
 }
-static	int	e_pause_timer_callback (void *data_) { 
-	if (data_) { 
+
+static	int	e_pause_timer_callback (void *data_) 
+{ 
+	if (data_) 
 		((e_pause_data *)data_)->done = 1; 
-	} 
 	return 0;
 }
 
@@ -718,22 +719,19 @@ BUILT_IN_COMMAND(e_pause)
 {
 	char *		sec;
 	double 		seconds;
-	Timespec	start;
 	e_pause_data *	data;
 
 	data = new_malloc(sizeof(e_pause_data));
-	memset(data, 0, sizeof(e_pause_data));
+	data->done = 0;
 
-	if (!(sec = next_arg(args, &args)))
-		add_wait_prompt(empty_string, e_pause_prompt_callback, (void *)data, WAIT_PROMPT_NOOP, 0);
-	else
+	if ((sec = next_arg(args, &args)))
 	{
 		seconds = atof(sec);
-		get_time(&start);
-		start = time_add(start, double_to_timespec(seconds));
-
 		add_timer(0, empty_string, seconds, 1, e_pause_timer_callback, (void *)data, NULL, GENERAL_TIMER, -1, 0, 0);
 	}
+	else
+		add_wait_prompt(empty_string, e_pause_prompt_callback, (void *)data, WAIT_PROMPT_NOOP, 0);
+
 	while (data->done == 0)
 		io("e_pause");
 	new_free(&data);

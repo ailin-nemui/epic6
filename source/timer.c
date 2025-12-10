@@ -751,18 +751,32 @@ static	void	list_timers (const char *command)
  *
  * "refnum_gets" must be REFNUM_MAX_ + 1 bytes by definition of API.
  */
+/*
+ * create_timer_ref - Establish a timer's name (from a suggestion)
+ *
+ * Arguments:
+ *	refnum_wanted: The refnum that you want to use:
+ *			- NULL or empty_string: "I don't care"
+ *			- Anything else: User supplied /timer -name
+ *	refnum_get:	A pointer where I will put the refnum you get.
+ *			- The pointed-to string should be NULL-initialized.
+ *			- YOU OWN THIS STRING.  YOU MUST ASSIGN IT TO ->ref
+ *			  IN YOUR TIMER STRUCT.
+ *
+ * Return value:
+ *	-1	The requested refnum is in use; do not use 'refnum_gets'.
+ *	 0	You can use the refnum placed in 'refnum_gets'
+ */
 static	int	create_timer_ref (const char *refnum_wanted, char **refnum_gets)
 {
-	Timer	*tmp;
-	char	*refnum_want;
-	int	i, pts;
-
-	refnum_want = LOCAL_COPY(refnum_wanted);
+	Timer *	tmp;
+	int	i, 
+		pts;
 
 	/* If the user doesnt care */
-	if (*refnum_want == 0)
+	if (!refnum_wanted || !*refnum_wanted)
 	{
-		/* So ... we count the number of times that exist. */
+		/* So ... we count the number of timers that exist. */
 		for (pts = 0, tmp = PendingTimers; tmp; tmp = tmp->next)
 			pts++;
 
@@ -795,10 +809,10 @@ static	int	create_timer_ref (const char *refnum_wanted, char **refnum_gets)
 	else
 	{
 		/* See if the refnum is available */
-		if (get_timer(refnum_want))
+		if (get_timer(refnum_wanted))
 			return -1;		/* Already in use */
 
-		malloc_strcpy(refnum_gets, refnum_want);
+		malloc_strcpy(refnum_gets, refnum_wanted);
 	}
 
 	return 0;
@@ -866,7 +880,7 @@ static	void	remove_timers_by_domref (int domain, int domref)
  *  update:      This should be 1 if we're updating the specified refnum
  *  refnum_want: The refnum requested.  
  *		 (1) User-supplied for /TIMER timers
- *		 (2) the empty string for system timers ("dont care")
+ *		 (2) NULL or empty string for system timers ("dont care")
  *  interval:	 How long until the timer should fire; 
  *		 (1) for repeating timers (events != 1), the timer will 
  *		     fire with this interval.
@@ -913,12 +927,13 @@ static	void	remove_timers_by_domref (int domain, int domref)
  *		This is useful for things that (eg) run at the top of every 
  *		minute (60), hour (3600), or day (86400)
  */
-char *add_timer (int update, const char *refnum_want, double interval, long events, int (callback) (void *), void *commands, const char *subargs, TimerDomain domain, int domref, int cancelable, int snap)
+char *	add_timer (int update, const char *refnum_want, double interval, long events, int (callback) (void *), void *commands, const char *subargs, TimerDomain domain, int domref, int cancelable, int snap)
 {
-	Timer	*ntimer, *otimer = NULL;
-	char *	refnum_got = NULL;
-	Timespec right_now;
-	char *	retval;
+	Timer *		ntimer;
+	Timer *		otimer = NULL;
+	char *		refnum_got = NULL;
+	Timespec	right_now;
+	char *		retval;
 
 	right_now = get_time(NULL);
 
@@ -942,8 +957,8 @@ char *add_timer (int update, const char *refnum_want, double interval, long even
 	 */
 	if (update)
 	{
-	    if (!(otimer = get_timer(refnum_want)))
-		update = 0;		/* Ok so we're not updating! */
+		if (!(otimer = get_timer(refnum_want)))
+			update = 0;		/* Ok so we're not updating! */
 	}
 
 	/*

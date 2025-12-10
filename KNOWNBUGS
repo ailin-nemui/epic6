@@ -51,7 +51,6 @@ Actual bugs
 ================
 * /SET NEW_SERVER_LASTLOG_LEVEL does not work properly because it doesn't check window servers.
 * Create /load ignore on top of /on context and /shh
-* Status right indicator doesn't seem to be working (rb fusion)
 
 
 THE CHANGELOG SINCE THE LAST RELEASE:
@@ -353,3 +352,5 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Fix null deref with unloading timers triggered by /unload  (rb ryan_)
 * When doing /server <desc> don't do an upsert unless a straight lookup fails
 * Same thing, but for /window server
+* Append /set input_right_indicator with a space, because reasons.
+* Have the math parser output the expression when there is an error.

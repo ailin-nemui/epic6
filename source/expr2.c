@@ -232,6 +232,7 @@ typedef struct
 	static	char *	alias_special_char (char **buffer, char *ptr, 
 					const char *args, char *quote_em);
 	static	const char *	get_token_expanded (expr_info *c, TOKEN v);
+	static void 	math_error (expr_info *c, const char *format, ...);
 
 
 /******************** EXPRESSION CONSTRUCTOR AND DESTRUCTOR ****************/
@@ -456,7 +457,7 @@ static	TOKEN		tokenize_lval (expr_info *c, const char *t)
 {
 	if (c->token >= TOKENCOUNT)
 	{
-		my_error("Too many tokens for this expression");
+		math_error(c, "Too many tokens for this expression");
 		return -1;
 	}
 	TOK(c, c->token).used = USED_LVAL;
@@ -477,7 +478,7 @@ static	TOKEN		tokenize_raw (expr_info *c, const char *t)
 {
 	if (c->token >= TOKENCOUNT)
 	{
-		my_error("Too many tokens for this expression");
+		math_error(c, "Too many tokens for this expression");
 		return -1;
 	}
 	TOK(c, c->token).used = USED_RAW;
@@ -495,7 +496,7 @@ static	TOKEN		tokenize_expanded (expr_info *c, char *t)
 {
 	if (c->token >= TOKENCOUNT)
 	{
-		my_error("Too many tokens for this expression");
+		math_error(c, "Too many tokens for this expression");
 		return -1;
 	}
 	TOK(c, c->token).used = USED_EXPANDED;
@@ -513,7 +514,7 @@ static	TOKEN		tokenize_integer (expr_info *c, intmax_t t)
 {
 	if (c->token >= TOKENCOUNT)
 	{
-		my_error("Too many tokens for this expression");
+		math_error(c, "Too many tokens for this expression");
 		return -1;
 	}
 	TOK(c, c->token).used = USED_INTEGER;
@@ -530,7 +531,7 @@ static	TOKEN		tokenize_float (expr_info *c, double t)
 {
 	if (c->token >= TOKENCOUNT)
 	{
-		my_error("Too many tokens for this expression");
+		math_error(c, "Too many tokens for this expression");
 		return -1;
 	}
 	TOK(c, c->token).used = USED_FLOAT;
@@ -547,7 +548,7 @@ static	TOKEN		tokenize_bool (expr_info *c, BooL t)
 {
 	if (c->token >= TOKENCOUNT)
 	{
-		my_error("Too many tokens for this expression");
+		math_error(c, "Too many tokens for this expression");
 		return -1;
 	}
 	TOK(c, c->token).used = USED_BOOLEAN;
@@ -590,7 +591,7 @@ static	const char *	get_token_raw (expr_info *c, TOKEN v)
 
 	if (v < 0 || v >= c->token)
 	{
-		my_error("Token index [%d] is out of range", v);
+		math_error(c, "Token index [%d] is out of range", v);
 		return get_token_raw(c, 0);	/* The empty token */
 	}
 
@@ -652,7 +653,7 @@ static const char *	get_token_lval (expr_info *c, TOKEN v)
 
 	if (v < 0 || v >= c->token)
 	{
-		my_error("Token index [%d] is out of range", v);
+		math_error(c, "Token index [%d] is out of range", v);
 		return NULL;			/* No lvalue here! */
 	}
 
@@ -662,7 +663,7 @@ static const char *	get_token_lval (expr_info *c, TOKEN v)
 		return NULL;		/* Suppress the operation entirely */
 	else if (((TOK(c, v).used & USED_LVAL) == 0))
 	{
-		my_error("Token [%d] (\"%s\") is not an lvalue", 
+		math_error(c, "Token [%d] (\"%s\") is not an lvalue", 
 				v, get_token_expanded(c, v));
 		return NULL;			/* No lvalue here! */
 	}
@@ -683,7 +684,7 @@ static	const char *	get_token_expanded (expr_info *c, TOKEN v)
 
 	if (v < 0 || v >= c->token)
 	{
-		my_error("Token index [%d] is out of range", v);
+		math_error(c, "Token index [%d] is out of range", v);
 		return get_token_expanded(c, 0);	/* The empty token */
 	}
 
@@ -759,7 +760,7 @@ static const char *	get_token_fname (expr_info *c, TOKEN v)
 
 	if (v < 0 || v >= c->token)
 	{
-		my_error("Token index [%d] is out of range", v);
+		math_error(c, "Token index [%d] is out of range", v);
 		return NULL;			/* No lvalue here! */
 	}
 
@@ -785,7 +786,7 @@ static	intmax_t	get_token_integer (expr_info *c, TOKEN v)
 
 	if (v < 0 || v >= c->token)
 	{
-		my_error("Token index [%d] is out of range", v);
+		math_error(c, "Token index [%d] is out of range", v);
 		return 0;		/* The empty token */
 	}
 	
@@ -809,7 +810,7 @@ static	double	get_token_float (expr_info *c, TOKEN v)
 
 	if (v < 0 || v >= c->token)
 	{
-		my_error("Token index [%d] is out of range", v);
+		math_error(c, "Token index [%d] is out of range", v);
 		return 0.0;		/* The empty token */
 	}
 	
@@ -833,7 +834,7 @@ static	BooL	get_token_boolean (expr_info *c, TOKEN v)
 
 	if (v < 0 || v >= c->token)
 	{
-		my_error("Token index [%d] is out of range", v);
+		math_error(c, "Token index [%d] is out of range", v);
 		return 0;		/* The empty token */
 	}
 	
@@ -859,7 +860,7 @@ static	TOKEN	push_token (expr_info *c, TOKEN t)
 {
 	if (c->sp == STACKSZ - 1)
 	{
-		my_error("Expressions may not have more than %d operands",
+		math_error(c, "Expressions may not have more than %d operands",
 			STACKSZ);
 		return -1;
 	}
@@ -902,7 +903,7 @@ static TOKEN	top (expr_info *c)
 {
 	if (c->sp < 0)
 	{
-		my_error("No operands.");
+		math_error(c, "No operands.");
 		return -1;
 	}
 	else
@@ -918,7 +919,7 @@ static	TOKEN	pop_token (expr_info *c)
 		 * Yeilds empty values.  Thats probably the most reasonable
 		 * course of action.
 		 */
-		my_error("Cannot pop operand: no more operands");
+		math_error(c, "Cannot pop operand: no more operands");
 		return 0;
 	}
 	else
@@ -1005,7 +1006,7 @@ static void	reduce (expr_info *cx, int what)
 
 	if (cx->sp < 0) 
 	{
-		my_error("An operator is missing a required operand");
+		math_error(cx, "An operator is missing a required operand");
 		return;
 	}
 
@@ -1064,7 +1065,7 @@ static void	reduce (expr_info *cx, int what)
 		{ 							\
 			debug(DEBUG_NEW_MATH_DEBUG, "O: %s (%f %f) -> []", 	\
 					#floatop, a, b); 		\
-			my_error("Division by zero"); 			\
+			math_error(cx, "Division by zero"); 			\
 			push_token(cx, 0);				\
 		} 							\
 		else 							\
@@ -1086,7 +1087,7 @@ static void	reduce (expr_info *cx, int what)
 			debug(DEBUG_NEW_MATH_DEBUG, "O: %s (" INTMAX_FORMAT " " INTMAX_FORMAT \
 						") -> []", 		\
 					#intop, i, j); 			\
-			my_error("Division by zero"); 			\
+			math_error(cx, "Division by zero"); 			\
 			push_token(cx, 0);				\
 		} 							\
 		else 							\
@@ -1180,7 +1181,7 @@ static void	reduce (expr_info *cx, int what)
 		{ 							\
 			debug(DEBUG_NEW_MATH_DEBUG, "O: %s = %s (%f %f) -> 0",  	\
 					s, #floatop, a, b); 		\
-			my_error("Division by zero"); 			\
+			math_error(cx, "Division by zero"); 			\
 			add_var_alias(s, empty_string, 0);		\
 			push_token(cx, 0);				\
 			break;						\
@@ -1212,7 +1213,7 @@ static void	reduce (expr_info *cx, int what)
 			debug(DEBUG_NEW_MATH_DEBUG, "O: %s = %s (" INTMAX_FORMAT " " 	\
 						INTMAX_FORMAT ") -> 0",	\
 					s, #intop, i, j); 		\
-			my_error("Division by zero"); 			\
+			math_error(cx, "Division by zero"); 			\
 			add_var_alias(s, empty_string, 0);		\
 			push_token(cx, 0);				\
 			break;						\
@@ -1638,7 +1639,7 @@ static void	reduce (expr_info *cx, int what)
 		}
 
 		default:
-			my_error("Unknown operator or out of operators");
+			math_error(cx, "Unknown operator or out of operators");
 			return;
 	}
 }
@@ -1656,7 +1657,7 @@ static int	lexerr (expr_info *c, const char *format, ...)
 	vsnprintf(buffer, BIG_BUFFER_SIZE, format, a);
 	va_end(a);
 
-	my_error("%s", buffer);
+	math_error(c, "%s", buffer);
 	c->errflag = 1;
 	return EOI;
 }
@@ -2424,7 +2425,7 @@ static void	mathparse (expr_info *c, int pc)
 			if (c->mtok != M_OUTPAR) 
 			{
 				if (!c->errflag)
-				    my_error("')' expected");
+				    math_error(c, "')' expected");
 				return;
 			}
 			break;
@@ -2558,7 +2559,7 @@ static char *	matheval (char *s, const char *args)
 
 	/* Check for leftover operands */
 	if (context.sp)
-		my_error("This expression failed because it is missing operators: %s", context.orig_expr);
+		math_error(&context, "This expression failed because it is missing operators: %s", context.orig_expr);
 
 	if (x_debug & DEBUG_NEW_MATH_DEBUG)
 	{
@@ -2582,6 +2583,42 @@ cleanup:
 	return ret;
 }
 
+/* ERROR HANDLING */
+/*
+ * math_error - A yell() replacement to be used during expression parsing
+ *
+ * Arguments:
+ *	info	- The expression being parsed
+ *	format	- A printf() type format
+ *	...	- Things that fulfill the 'format'.
+ *
+ * Notes:
+ *	- This function will output status info about the expression
+ *	- The message is offered to the user via /on yell.
+ *	  This is helpful for suppressing unwanted chatter.
+ *	- Because this uses put_echo() and not put_it(), it will always
+ *	  output the message unless the user vetos it.
+ *
+ * Bogons:
+ *	Regretably, this function also has size limits.
+ *	This is copypasta from math_error().  How gross.
+ */
+static void 	math_error (expr_info *c, const char *format, ...)
+{
+	static	char	math_error_buffer1[BIG_BUFFER_SIZE * 10 + 1];
+	static	char	math_error_buffer2[BIG_BUFFER_SIZE * 100 + 1];
+
+	if (c && format)
+	{
+		va_list args;
+		va_start (args, format);
+		vsnprintf(math_error_buffer1, sizeof math_error_buffer1, format, args);
+		va_end(args);
+		snprintf(math_error_buffer2, sizeof math_error_buffer2, "In the expression \"%s\", an error occurred: %s", c->orig_expr, math_error_buffer1);
+		do_hook(YELL_LIST, "%s", math_error_buffer2);
+		put_echo(math_error_buffer2);
+	}
+}
 
 /******************************* SUPPORT *************************************/
 /*
@@ -2627,4 +2664,5 @@ static  char *	after_expando_special (expr_info *c)
 	 */
 	return rest;
 }
+
 
