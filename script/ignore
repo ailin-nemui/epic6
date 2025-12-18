@@ -31,6 +31,9 @@
 #  /ignore <target|refnum> REASON <reason>
 #  In addition to levels, you can specify a timeout or a reason.
 #
+#  <target> is either a nick!user@host or a channel.
+#  For now, anything that begins with a non-alpha is a channel
+#  nick!user@hosts are filled out using $uhc().
 #
 
 #
@@ -127,7 +130,7 @@ alias _ignore.show {
 on #^context -333 * (server, window, sender, target, level) {
 	# For every ignore, if this matches the ignore, is this level covered?
 	foreach _ignores refnum {
-		if (_ignores[$refnum][pattern] =~ pattern) {
+		if (_ignores[$refnum][pattern] =~ sender) {
 			if (levelctl(IN $level $_ignores[$refnum][levels])) {
 				shh;
 				return;

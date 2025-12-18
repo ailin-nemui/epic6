@@ -496,6 +496,23 @@ else
 fi
 
 
+AC_ARG_WITH([installtype],
+[  --with-installtype,   Either "std" (default) or "prod".],
+      [], [with_installtype=std])
+AC_MSG_CHECKING([what kind of install to support])
+if test "x$with_installtype" = "x" ; then
+	INSTALL_TYPE=std
+	AC_MSG_RESULT(std)
+elif test "x$with_installtype" = "xstd" ; then
+	INSTALL_TYPE=std
+	AC_MSG_RESULT(std)
+elif test "x$with_installtype" = "xprod" ; then
+	INSTALL_TYPE=prod
+	AC_MSG_RESULT(prod)
+else 
+	AC_MSG_ERROR([--with-installtype must be "std" or "prod"])
+fi
+
 dnl ----------------------------------------------------------
 dnl pcre2 support?
 dnl
@@ -647,6 +664,7 @@ AC_SUBST(PYTHON_CFLAGS)
 AC_SUBST(PYTHON_LDFLAGS)
 AC_SUBST(WSERV_BIN)
 AC_SUBST(WSERV_INSTALL)
+AC_SUBST(INSTALL_TYPE)
 AC_SUBST(bindir)
 AC_SUBST(irclibdir)
 AC_SUBST(libexecdir)

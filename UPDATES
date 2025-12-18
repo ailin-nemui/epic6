@@ -1,5 +1,18 @@
 EPIC6-0.0.1
 
+*** News 12/17/2025 -- New configure flag, "--with-installtype"
+	Traditionally epic installs its binary as epic6-<version>
+	and a symlink from "epic6" to "epic6-<version>".
+
+	It does this because that's what ircII has always done, 
+	and that was inherited from gnu screen's behavior
+
+	For those who would prefer to do without this quirk, you can 
+	now do 
+		./configure --with-installtype=prod
+	and then the epic binary will be installed as "epic6" without
+	the version suffix and without the symlink.
+
 *** News 08/18/2025 -- Level-sets represented as a single word now
 	From the very beginnings of ircII, level sets ("MSGS PUBLICS
 	JOINS OTHER") have been represented as a space-seperated 

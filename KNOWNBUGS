@@ -354,3 +354,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Same thing, but for /window server
 * Append /set input_right_indicator with a space, because reasons.
 * Have the math parser output the expression when there is an error.
+* Add ./configure --with-installtype=prod  (rb skered)

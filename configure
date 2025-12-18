@@ -644,6 +644,7 @@ program_prefix
 epic6
 srcdir
 irclibdir
+INSTALL_TYPE
 WSERV_INSTALL
 WSERV_BIN
 PYTHON_LDFLAGS
@@ -709,6 +710,7 @@ with_iconv
 with_valgrind
 with_clang_sanitizing
 with_python
+with_installtype
 with_pcre2
 '
       ac_precious_vars='build_alias
@@ -1344,6 +1346,7 @@ Optional Packages:
   --with-valgrind                 Include support for Valgrind Memcheck
   --with-clang-sanitizing         Include support for clang sanitizing
   --with-python=PATH_TO_PYTHON_CONFIG_EXE   Compile with Python support.
+  --with-installtype,   Either "std" (default) or "prod".
   --with-pcre2,   Compile with pcre2 support.
 
 Some influential environment variables:
@@ -4849,6 +4852,34 @@ fi
 
 
 
+# Check whether --with-installtype was given.
+if test ${with_installtype+y}
+then :
+  withval=$with_installtype;
+else case e in #(
+  e) with_installtype=std ;;
+esac
+fi
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking what kind of install to support" >&5
+printf %s "checking what kind of install to support... " >&6; }
+if test "x$with_installtype" = "x" ; then
+	INSTALL_TYPE=std
+	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: std" >&5
+printf "%s\n" "std" >&6; }
+elif test "x$with_installtype" = "xstd" ; then
+	INSTALL_TYPE=std
+	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: std" >&5
+printf "%s\n" "std" >&6; }
+elif test "x$with_installtype" = "xprod" ; then
+	INSTALL_TYPE=prod
+	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: prod" >&5
+printf "%s\n" "prod" >&6; }
+else
+	as_fn_error $? "--with-installtype must be \"std\" or \"prod\"" "$LINENO" 5
+fi
+
+
 # Check whether --with-pcre2 was given.
 if test ${with_pcre2+y}
 then :
@@ -5210,6 +5241,7 @@ printf "%s\n" "no" >&6; }
 esac
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
 
 
 
