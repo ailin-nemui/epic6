@@ -355,3 +355,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Append /set input_right_indicator with a space, because reasons.
 * Have the math parser output the expression when there is an error.
 * Add ./configure --with-installtype=prod  (rb skered)
+* Changes to the 'colors' script (zlonix)
