@@ -142,6 +142,8 @@ const 	char *	coalesce_empty		(const char *one_, ...);
 	char *  strlpcat		(char *, size_t, const char *, ...) __A(3);
 	char *	pullstr 		(char *, char *);
 	char *	ov_strcpy		(char *, const char *);
+	void	ov_strcpy2		(char *str1, size_t n);
+
 
 	/* - - - - (High level) Functions dealing with copying or extracting strings in place - - - - */
 	char *	fix_string_width	(const char *, int, int, size_t, int);

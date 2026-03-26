@@ -1548,7 +1548,7 @@ END:
 		{
 			say("Password required for connection to server %s",
 				get_server_name(from_server));
-			if (!dumb_mode)
+			if (terminfo_mode)
 			{
 				char *x = NULL;
 				malloc_sprintf(&x, "%d", from_server);

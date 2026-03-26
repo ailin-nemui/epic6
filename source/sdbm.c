@@ -307,7 +307,7 @@ static int	sdbm__makroom (SDBM *db, long hash, int need)
 			    || write(db->pagf, db->pagbuf, PBLKSIZ) < 0)
 				return 0;
 			db->pagbno = newp;
-			(void) memcpy(pag, new, PBLKSIZ);
+			(void) memmove(pag, new, PBLKSIZ);
 		}
 		else if (lseek(db->pagf, OFF_PAG(newp), SEEK_SET) < 0
 			 || write(db->pagf, new, PBLKSIZ) < 0)
@@ -574,13 +574,13 @@ static void	sdbm__putpair (char *pag, Datum key, Datum val)
  * enter the key first
  */
 	my_off -= key.dsize;
-	(void) memcpy(pag + my_off, key.dptr, key.dsize);
+	(void) memmove(pag + my_off, key.dptr, key.dsize);
 	ino[n + 1] = my_off;
 /*
  * now the data
  */
 	my_off -= val.dsize;
-	(void) memcpy(pag + my_off, val.dptr, val.dsize);
+	(void) memmove(pag + my_off, val.dptr, val.dsize);
 	ino[n + 2] = my_off;
 /*
  * adjust item count
@@ -723,7 +723,7 @@ static void	sdbm__splpage (char *pag, char *new, long sbit)
 	char cur[PBLKSIZ];
 	short *ino = (short *) cur;
 
-	(void) memcpy(cur, pag, PBLKSIZ);
+	(void) memmove(cur, pag, PBLKSIZ);
 	(void) memset(pag, 0, PBLKSIZ);
 	(void) memset(new, 0, PBLKSIZ);
 

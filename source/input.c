@@ -437,7 +437,7 @@ static int	retokenize_input (int start)
 	current_column = 0;
 	old_s = s = INPUT_BUFFER;
 
-	while (s && *s)
+	while (*s)
 	{
 		codepoint = next_code_point2(s, &offset, 1);
 		s += offset;
@@ -524,9 +524,9 @@ const char *	prompt;
 	int	os_, oos_;
 
 	/*
-	 * No input line in dumb or bg mode.
+	 * Input line only in fullscreen mode when in the foreground
 	 */
-	if (dumb_mode || !foreground)
+	if (!terminfo_mode || !foreground)
 		return;
 
 	/* Save the state of things */
@@ -1180,12 +1180,15 @@ BUILT_IN_KEYBINDING(input_backward_word)
  */
 BUILT_IN_KEYBINDING(input_delete_character)
 {
+	size_t	bytes_to_remove;
+
 	/* Delete key does nothing at end of input */
 	if (!THIS_CHAR)
 		return;
 
 	/* Whack the character under cursor and redraw input line */
-	ov_strcpy(CURSOR_SPOT, NEXT_SPOT);
+	bytes_to_remove = NEXT_SPOT - CURSOR_SPOT;
+	ov_strcpy2(CURSOR_SPOT, bytes_to_remove);
 	retokenize_input(LOGICAL_CURSOR);
 	update_input(last_input_screen, UPDATE_FROM_CURSOR);
 }
@@ -1727,15 +1730,15 @@ static void	input_expand (void)
 
 	INPUT_BUFFER = new_malloc(sizeof(char) * (INPUT_BUFFER_SIZE + 1));
 	memset(INPUT_BUFFER, 0, sizeof(char) * (INPUT_BUFFER_SIZE + 1));
-	memcpy(INPUT_BUFFER, old_input_buffer, sizeof(char) * old_input_buffer_size);
+	memmove(INPUT_BUFFER, old_input_buffer, sizeof(char) * old_input_buffer_size);
 
 	LOGICAL_CHARS = new_malloc(sizeof(int) * (INPUT_BUFFER_SIZE + 1));
 	memset(LOGICAL_CHARS, 0, sizeof(int) * (INPUT_BUFFER_SIZE + 1));
-	memcpy(LOGICAL_CHARS, old_logical_chars, sizeof(int) * old_input_buffer_size);
+	memmove(LOGICAL_CHARS, old_logical_chars, sizeof(int) * old_input_buffer_size);
 
 	LOGICAL_COLUMN = new_malloc(sizeof(int) * (INPUT_BUFFER_SIZE + 1));
 	memset(LOGICAL_COLUMN, 0, sizeof(int) * (INPUT_BUFFER_SIZE + 1));
-	memcpy(LOGICAL_COLUMN, old_logical_columns, sizeof(int) * old_input_buffer_size);
+	memmove(LOGICAL_COLUMN, old_logical_columns, sizeof(int) * old_input_buffer_size);
 
 	return;
 }

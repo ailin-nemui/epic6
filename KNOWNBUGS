@@ -51,7 +51,7 @@ Actual bugs
 ================
 * /SET NEW_SERVER_LASTLOG_LEVEL does not work properly because it doesn't check window servers.
 * Create /load ignore on top of /on context and /shh
-
+* Add /ON GEOMETRY to show columns and rows
 
 THE CHANGELOG SINCE THE LAST RELEASE:
 -------------------------------------
@@ -356,3 +356,24 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Have the math parser output the expression when there is an error.
 * Add ./configure --with-installtype=prod  (rb skered)
 * Changes to the 'colors' script (zlonix)
+* Reorganize 'configure.ac'
+* - Move the --with-installtype support from the middle of library checks
+* - Fix a typo with PYTHON_O
+* Remove several previously sunset ONs; look for them when scripted ONs appear
+* - ENCRYPTED_NOTICE, ENCRYPTED_PRIVMSG, FLOOD, HELP, NOTE,
+* - NOTIFY_SIGNON, NOTIFY_SIGNOFF, REDIRECT, WALL, 
+* Fix several ON WINDOW_*'s that were out of order
+* Refactor how epic's operational mode is handled in global flags
+* -  "background" -> "detached"
+* -  "dumb_mode" ~-> "terminfo_mode"
+* -  foreground stays the same
+* -  "my_path"    -> "my_homedir"
+* Create an ov_strcpy2() which doesn't require aliased pointers.
+* Sunset STOP_IRC (^Z, term_pause(), etc.)  This was nice before gnu screen...
+* Fix bug in mail.py 
+* Various and sundry changes suggested by clang and gcc static analyzers
+* Use memmove() instead of memcpy() as its params are identical but it works in more cases
+* Sunset /BOTMODE -- just use -b 
+* Begin refactoring the command line argument parser to handle defaults more sensibly
+
+

@@ -286,7 +286,7 @@ static void 	BreakArgs (char *Input, const char **Sender, const char **OutPut)
 		if (*Input == ':')
 		{
 			/* Squash the : so if PasteArgs() is called it doesn't reappear */
-			ov_strcpy(Input, Input + 1);
+			ov_strcpy2(Input, 1);
 			OutPut[ArgCount++] = Input;
 			break;
 		}
@@ -402,14 +402,6 @@ static void	p_wallops (const char *from, const char *comm, const char **ArgList)
  *	+ CTCP handling does its own ignore, flood control, and throttling.
  *  
  *   If the PRIVMSG contains nothing after CTCP handling, then stop.
- *
- *   First, IGNOREs are checked. (CTCPs do their own ignore handling)
- * 
- *   If the PRIVMSG is encrypted, it will first be offered via
- *	/ON ENCRYPTED_PRIVMSG no matter who sent it or to whom 
- *	it was sent.
- *
- *   Next, flood control is checked.  
  *
  *   All PRIVMSGs are offered via /ON GENERAL_PRIVMSG,
  *	no matter who sent it or to whom it was sent.  
@@ -745,8 +737,9 @@ static void	p_kill (const char *from, const char *comm, const char **ArgList)
 	/* 
 	 * If we are a bot, and /on disconnect didnt hook, 
 	 * then we arent going anywhere.  We might as well quit.
+	 * XXX This is bogus.  it should be handled in close_server().
 	 */
-	if (background && !hooked)
+	if (detached && !hooked)
 		irc_exit(1, NULL);
 }
 

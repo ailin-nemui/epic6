@@ -713,7 +713,7 @@ void	term_reset (void)
  */
 SIGNAL_HANDLER(term_cont)
 {
-	use_input = foreground = (tcgetpgrp(0) == getpgrp());
+	foreground = (tcgetpgrp(0) == getpgrp());
 	if (foreground)
 	{
 #if use_alt_screen
@@ -725,17 +725,6 @@ SIGNAL_HANDLER(term_cont)
 		tcsetattr(tty_des, TCSADRAIN, &newb);
 	}
 }
-
-/*
- * term_pause: sets terminal back to pre-program days, then SIGSTOPs itself. 
- */
-BUILT_IN_KEYBINDING(term_pause)
-{
-	term_reset();
-	kill(getpid(), SIGSTOP);
-}
-
-
 
 /*
  * term_init: does all terminal initialization... reads termcap info, sets
@@ -752,8 +741,8 @@ int 	term_init (void)
 		desired;
 	char	*term;
 
-	if (dumb_mode)
-		panic(1, "term_init called in dumb_mode");
+	if (!terminfo_mode)
+		panic(1, "term_init called  with terminfo_mode == 0");
 
 	if ((term = getenv("TERM")) == (char *) 0)
 	{
@@ -1250,7 +1239,7 @@ void	term_beep (void)
 
 void	set_automargin_override (void *__U(stuff))
 {
-	if (dumb_mode)
+	if (!terminfo_mode)
 		return;
 
 	/*

@@ -2928,7 +2928,8 @@ static int 	rite (int window_, const char *str)
 	scroll_window(window_);
 
 	if (get_window_screennum(window_) >= 0 && get_window_display_lines(window_))
-		output_with_count(str, 1, foreground);
+		if (foreground)
+			output_with_count(str, 1, 1);
 
 	set_window_cursor_incr(window_);
 	return 0;
@@ -3097,7 +3098,7 @@ void 	add_to_screen (const char *buffer)
 	if (get_who_output_suppressed())
 		return;
 
-	if (dumb_mode)
+	if (!terminfo_mode)
 	{
 		add_to_lastlog(get_window_refnum(0), buffer);
 
@@ -3425,7 +3426,7 @@ static int	ok_to_output (int window_)
  */
 static void 	scroll_window (int window_)
 {
-	if (dumb_mode)
+	if (!terminfo_mode)
 		return;
 
 	if (get_window_cursor(window_) > get_window_display_lines(window_))
@@ -3472,7 +3473,7 @@ static void 	scroll_window (int window_)
 			scroll = get_window_display_lines(window_);
 
 		/* Adjust the top of the physical display */
-		if (get_window_screennum(window_) >= 0 && foreground && get_window_display_lines(window_))
+		if (foreground && get_window_screennum(window_) >= 0 && get_window_display_lines(window_))
 		{
 			term_scroll(get_window_top(window_),
 				get_window_top(window_) + get_window_cursor(window_) - 1, 
@@ -3506,7 +3507,7 @@ void 	repaint_window_body (int window_)
 	if (!window_is_valid(window_))
 		return;
 
-	if (dumb_mode || get_window_screennum(window_) < 0)
+	if (!terminfo_mode || get_window_screennum(window_) < 0)
 		return;
 
 	global_beep_ok = 0;		/* Suppress beeps */
@@ -3541,7 +3542,8 @@ void 	repaint_window_body (int window_)
 
 		/* Don't -1 get_window_by_columns()! */
 		widthstr = prepare_display_fixed_size(str, get_window_my_columns(window_), 1, ' ', 0);
-		output_with_count(widthstr, 1, foreground);
+		if (foreground)
+			output_with_count(widthstr, 1, 1);
 		new_free(&widthstr);
 	   }
 	}
@@ -3630,7 +3632,7 @@ static	int	refnumber = 0;
 		new_s->fpin = stdin;
 		new_s->fdout = 1;
 		new_s->fpout = stdout;
-		if (use_input)
+		if (foreground)
 			new_open(0, do_screens, NEWIO_READ, POLLIN, 0, -1);
 	}
 	else
@@ -3692,7 +3694,8 @@ int	create_additional_screen (void)
 	/* Don't "move" this down! It belongs here. */
 	oldscreen = get_window_screennum(0);
 
-	if (!use_input)
+	/* We do not create new windows when STDIN is not available */
+	if (!foreground)
 		return -1;
 
 	if (!(wserv_path = get_string_var(WSERV_PATH_VAR)))
@@ -3973,10 +3976,8 @@ void 	kill_screen (int screen_)
 	}
 	if (screen->fdin)
 	{
-		if (use_input)
-			screen->fdin = new_close(screen->fdin);
+		screen->fdin = new_close(screen->fdin);
 		close(screen->fdout);
-		close(screen->fdin);
 	}
 	if (screen->control)
 		screen->control = new_close(screen->control);
@@ -4058,7 +4059,8 @@ static void 	do_screens (int fd)
 
 	saved_from_server = from_server;
 
-	if (use_input)
+	/* We do not check STDIN when STDIN is not available */
+	if (foreground)
 	for (screen = screen_list; screen; screen = screen->next)
 	{
 		if (!screen->alive)
@@ -4146,8 +4148,8 @@ static void 	do_screens (int fd)
 		 */
 		set_window_priority(0, current_window_priority++);
 
-		/* Dumb mode only accepts complete lines from the user */
-		if (dumb_mode)
+		/* When not in full screen mode we only accept complete lines from the user */
+		if (!terminfo_mode)
 		{
 			if (dgets(screen->fdin, buffer, IO_BUFFER_SIZE, 1) < 0)
 			{
@@ -4307,7 +4309,7 @@ static	int		never_warn_again = 0;
 }
 
 /*
- * user_codepoint - Inject one unicode codepoint into the keybinding system
+ * user_input_codepoint - Inject one unicode codepoint into the keybinding system
  * 
  * Arguments:
  *	key 	- The unicode codepoint for the key the user just pressed
@@ -4321,7 +4323,7 @@ static	void	user_input_codepoint (uint32_t key)
 	int		old_quote_hit;
 	WaitPrompt *	wp;
 
-        if (dumb_mode)
+        if (!terminfo_mode)
                 return;
 
         /*

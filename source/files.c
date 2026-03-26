@@ -784,7 +784,7 @@ static char *	Datum_to_string (Datum d)
 		return NULL;
 
 	retval = new_malloc(d.dsize + 1);
-	memcpy(retval, d.dptr, d.dsize);
+	memmove(retval, d.dptr, d.dsize);
 	retval[d.dsize] = 0;
 	return retval;			/* MALLOCED, EH! */
 }

@@ -1179,7 +1179,7 @@ static cJSON_bool	cJSON_GenerateString_ptr (const char *input, cJSON_Generator *
 	if (escape_characters == 0)
 	{
 		output[0] = '\"';
-		memcpy(output + 1, input, output_length);
+		memmove(output + 1, input, output_length);
 		output[output_length + 1] = '\"';
 		output[output_length + 2] = '\0';
 

@@ -360,7 +360,7 @@ int	new_window (int screen_)
 	int		i;
 	int		window_;
 
-	if (dumb_mode && current_window_ >= 1)
+	if (!terminfo_mode && current_window_ >= 1)
 		return -1;
 
 	/*
@@ -1151,7 +1151,7 @@ static int	add_to_window_list (int screen_, int window_)
 		if (screen_add_window_first(screen_, new_w->refnum) == 0)
 			yell("screen_add_window_first(%d, %d) failed!", screen_, new_w->refnum);
 
-		if (dumb_mode)
+		if (!terminfo_mode)
 		{
 			new_w->display_lines = 24;
 			set_screens_current_window(screen_, new_w->refnum);
@@ -1879,7 +1879,7 @@ static void	resize_window_display (int window_)
 	Display 	*tmp;
 	Window *	window;
 
-	if (dumb_mode)
+	if (!terminfo_mode)
 		return;
 
 	if (!window_is_valid(window_))
@@ -2017,7 +2017,7 @@ void 	redraw_all_windows (void)
 {
 	int	refnum = 0;
 
-	if (dumb_mode)
+	if (!terminfo_mode)
 		return;
 
 	while (traverse_all_windows2(&refnum)) {
@@ -2226,7 +2226,7 @@ static void	rebalance_windows (int screen_)
 	int each, extra;
 	int window_resized = 0, window_count = 0;
 
-	if (dumb_mode)
+	if (!terminfo_mode)
 		return;
 
 	/*
@@ -2298,7 +2298,7 @@ void 	recalculate_windows (int screen_)
 	int	window_count = 0;
 	int	tmp_;
 
-	if (dumb_mode)
+	if (!terminfo_mode)
 		return;
 
 	/*
@@ -2689,7 +2689,7 @@ static void 	my_goto_window (int screen_, int which)
 	i = 1;
 	tmp_ = 0;
 	while (traverse_all_windows_on_screen2(&tmp_, screen_))
-		if (i >= which)
+		if (i++ >= which)
 			break;
 
 	set_screens_current_window(screen_, tmp_);
@@ -3927,7 +3927,7 @@ static void 	clear_window (int window_)
 {
 	Window *window;
 
-	if (dumb_mode)
+	if (!terminfo_mode)
 		return;
 
 	if (!(window = get_window_by_refnum_direct(window_)))
@@ -3979,7 +3979,7 @@ static void	unclear_window (int window_)
 	Window *window;
 	int i;
 
-	if (dumb_mode)
+	if (!terminfo_mode)
 		return;
 
 	if (!(window = get_window_by_refnum_direct(window_)))

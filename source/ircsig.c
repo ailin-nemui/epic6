@@ -76,6 +76,8 @@ static sigfunc *reset_one_signal (int sig_no, sigfunc *sig_handler)
 
 	if (sig_no < 0)
 		return NULL;			/* Signal not implemented */
+	if (sig_no == SIGKILL || sig_no == SIGSTOP)
+		return NULL;			/* Issue 6 requires these signals to be silently ignored */
 
 	signal_handlers[sig_no] = NULL;
 
@@ -87,7 +89,7 @@ static sigfunc *reset_one_signal (int sig_no, sigfunc *sig_handler)
 	if (sig_no != SIGALRM && sig_no != SIGINT)
 		sa.sa_flags |= SA_RESTART;
 
-	if (0 > sigaction(sig_no, &sa, &osa))
+	if (sigaction(sig_no, &sa, &osa) < 0)
 		return SIG_ERR;
 
 	return osa.sa_handler;

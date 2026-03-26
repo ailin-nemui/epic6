@@ -353,7 +353,6 @@ void 	init_binds (void)
     ADDBIND("SCROLL_START",		    scrollback_start		    );
     ADDBIND("SELF_INSERT",		    input_add_character		    );
     ADDBIND("SEND_LINE",		    send_line			    );
-    ADDBIND("STOP_IRC",			    term_pause			    );
     ADDBIND("SWAP_LAST_WINDOW",		    swap_last_window		    );
     ADDBIND("SWAP_NEXT_WINDOW",		    swap_next_window		    );
     ADDBIND("SWAP_PREVIOUS_WINDOW",	    swap_previous_window	    );
@@ -474,7 +473,7 @@ static void	key_exec_bt (Key *key)
 		char *buf;
 
 		buf = alloca(len + 1);
-		memcpy(buf + 1, kstr, len);
+		memmove(buf + 1, kstr, len);
 		buf[0] = key->val;
 		kstr = buf;
 		len++;
@@ -1301,7 +1300,6 @@ void	init_keys (void)
 	BIND("^W", "NEXT_WINDOW");
         BIND("^X", "SWITCH_CHANNELS");
 	BIND("^Y", "YANK_FROM_CUTBUFFER");
-	BIND("^Z", "STOP_IRC");
 	/* ^[ (was META1_CHARACTER) */
 	/* ^\ */
 	/* ^^ */
@@ -1324,8 +1322,6 @@ void	init_keys (void)
 	BIND("^[^?", "DELETE_PREVIOUS_WORD");
 
 	/* meta2 stuff. */
-	BIND("^[O^Z", "STOP_IRC");
-	BIND("^[[^Z", "STOP_IRC");
 	BIND("^[OC", "FORWARD_CHARACTER");
 	BIND("^[[C", "FORWARD_CHARACTER");
 	BIND("^[OD", "BACKWARD_CHARACTER");

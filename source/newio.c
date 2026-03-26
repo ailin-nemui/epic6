@@ -503,7 +503,7 @@ int	dgets_buffer (int fd, const void *data, ssize_t len)
 		RESIZE(ioe->buffer, char, ioe->buffer_size);
 	}
 
-	memcpy((ioe->buffer) + (ioe->write_pos), data, len);
+	memmove((ioe->buffer) + (ioe->write_pos), data, len);
 	ioe->write_pos += len;
 	ioe->clean = 0;
 	ioe->segments++;

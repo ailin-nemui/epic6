@@ -716,7 +716,7 @@ static char *get_bio_mem_string(BIO *mem)
 	if (p && bytes >= 0 && (unsigned long)bytes < SIZE_MAX)
 	{
 		char *result = new_malloc((size_t)bytes + 1);
-		memcpy(result, p, bytes);
+		memmove(result, p, bytes);
 		result[bytes] = 0;
 		return result;
 	}

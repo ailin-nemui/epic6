@@ -303,8 +303,9 @@ void *	really_new_free (void **ptr, const char *fn, int line)
 		memset((void *)(mo_ptr(*ptr)), 0, alloc_size(*ptr));
 		alloc_size(*ptr) = FREED_VAL;
 		free((void *)(mo_ptr(*ptr)));
+		*ptr = NULL;
 	}
-	return ((*ptr = NULL));
+	return NULL;
 }
 
 /* really_new_malloc in disguise */
@@ -1718,7 +1719,7 @@ struct	passwd 	scratch,
 	str++;
 	if (!*str || *str == '/')
 	{
-		strlcpy(buffer, my_path, sizeof(buffer));
+		strlcpy(buffer, my_homedir, sizeof(buffer));
 		strlcat(buffer, str, sizeof(buffer));
 
 		strlcpy(result, buffer, sizeof(Filename));
@@ -3400,6 +3401,41 @@ char *	ov_strcpy (char *str1, const char *str2)
 	return str1;
 }
 
+/*
+ * Remove the first 'n' characters from 'str1' by shifting the characters.  
+ * This is useful when you are working on a char[] and you would be doing
+ * a strcpy anyways.
+ */
+void	ov_strcpy2 (char *str1, size_t n)
+{
+	size_t	str1_len, str2_len;
+
+	/* 
+	 * Please remember neither of these include the trailing nul.
+	 * But whwn we copy them below, we must include it!
+	 */
+	str1_len = strlen(str1);
+
+	/*
+	 * If the number of bytes to be truncated is greater than the
+	 * number of bytes we have, then we can just nul the string
+	 * and call it a day!
+	 */
+	if (n >= str1_len)
+	{
+		*str1 = 0;
+		return;
+	}
+
+	/*
+	 * Otherwise need to copy the string *and the subsequent nul*
+	 * -- str2_len + 1 will then include the trailing nul.
+	 */
+	str2_len = str1_len - n;
+	memmove(str1, str1 + n, str2_len + 1);
+	return;
+}
+
 int 	last_char (const char *string)
 {
 	if (!string)
@@ -3637,7 +3673,7 @@ char *	strlpcat (char *source, size_t size, const char *format, ...)
  *
  * Return value:
  *	64 bits of randomness packed into an (unsigned long).
- *	You could memcpy() those bits out if you wanted to.
+ *	You could memmove() those bits out if you wanted to.
  *
  * Notes:
  *	Uses OpenSSL's RNG.  Should use libsodium's.
@@ -3655,7 +3691,7 @@ unsigned long	random_number (unsigned long l)
 	if (err != 1)
 		return 0;
 
-	memcpy(&retval, bytes, sizeof(unsigned long));	
+	memmove(&retval, bytes, sizeof(unsigned long));	
 	if (retval == 0)
 		return random_number(l);
 	return retval;

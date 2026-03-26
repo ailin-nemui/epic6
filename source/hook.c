@@ -155,18 +155,14 @@ Hookables hook_function_templates[] =
 	{ "CTCP_REPLY",		NULL,	4,	0,	0,	NULL, 0 },
 	{ "CTCP_REQUEST",	NULL,	4,	0,	0,	NULL, 0 },
 	{ "DISCONNECT",		NULL,	1,	0,	0,	NULL, 0 },
-        { "ENCRYPTED_NOTICE",   NULL,   3,      0,      0,	NULL, 0 },
-        { "ENCRYPTED_PRIVMSG",  NULL,   3,      0,      0,	NULL, 0 },
 	{ "ERROR",		NULL,	1,	0,	0,	NULL, 0 },
 	{ "EXEC",		NULL,	2,	0,	0,	NULL, 0 },
-	{ "EXEC_ERRORS",	NULL,	2,	0,	0,	NULL, 0 },
+	{ "EXEC_ERRORS",	NULL,	1,	0,	0,	NULL, 0 },
 	{ "EXEC_EXIT",		NULL,	3,	0,	0,	NULL, 0 },
-	{ "EXEC_PROMPT",	NULL,	2,	0,	0,	NULL, 0 },
+	{ "EXEC_PROMPT",	NULL,	1,	0,	0,	NULL, 0 },
         { "EXIT",               NULL,   1,      0,      0,	NULL, 0 },
-	{ "FLOOD",		NULL,	5,	0,	0,	NULL, 0 },
 	{ "GENERAL_NOTICE",	NULL,	3,	0,	0,	NULL, 0 },
 	{ "GENERAL_PRIVMSG",	NULL,	3,	0,	0,	NULL, 0 },
-	{ "HELP",		NULL,	2,	0,	0,	NULL, 0 },
 	{ "HOOK",		NULL,	1,	0,	0,	NULL, 0 },
 	{ "IDLE",		NULL,	1,	0,	0,	NULL, 0 },
 	{ "INPUT",		NULL,	1,	0,	HF_NORECURSE,	NULL, 0 },
@@ -183,10 +179,7 @@ Hookables hook_function_templates[] =
 	{ "NAMES",		NULL,	2,	0,	0,	NULL, 0 },
 	{ "NEW_NICKNAME",	NULL,	2,	0,	HF_NORECURSE,	NULL, 0 },
 	{ "NICKNAME",		NULL,	2,	0,	0,	NULL, 0 },
-	{ "NOTE",		NULL,	3,	0,	0,	NULL, 0 },
 	{ "NOTICE",		NULL,	2,	0,	0,	NULL, 0 },
-	{ "NOTIFY_SIGNOFF",	NULL,	1,	0,	0,	NULL, 0 },
-	{ "NOTIFY_SIGNON",	NULL,	2,	0,	0,	NULL, 0 },
 	{ "NUMERIC",		NULL,	3,	0,	0,	NULL, 0 },
 	{ "ODD_SERVER_STUFF",	NULL,	3,	0,	0,	NULL, 0 },
 	{ "OPERWALL",		NULL,	2,	0,	0,	NULL, 0 },
@@ -201,7 +194,6 @@ Hookables hook_function_templates[] =
 	{ "RAW_IRC",		NULL,	1,	0,	0,	NULL, 0 },
 	{ "RAW_IRC_BYTES",	NULL,	1,	0,	0,	NULL, 0 },
 	{ "RECONNECT_REQUIRED",	NULL,	1,	0,	0,	NULL, 0 },
-	{ "REDIRECT",		NULL,	2,	0,	HF_NORECURSE,	NULL, 0 },
 	{ "SEND_ACTION",	NULL,	2,	0,	HF_NORECURSE,	NULL, 0 },
 	{ "SEND_CTCP",		NULL,	3,	0,	HF_NORECURSE,	NULL, 0 },
 	{ "SEND_EXEC",		NULL,	2,	0,	HF_NORECURSE,	NULL, 0 },
@@ -229,16 +221,15 @@ Hookables hook_function_templates[] =
 	{ "UNKNOWN_COMMAND",	NULL,	2,	0,	HF_NORECURSE, 	NULL, 0},
 	{ "UNKNOWN_SET",	NULL,	2,	0,	HF_NORECURSE,	NULL, 0},
 	{ "UNLOAD",		NULL,	1,	0,	0,	NULL, 0 },
-	{ "WALL",		NULL,	2,	0,	0,	NULL, 0 },
 	{ "WALLOP",		NULL,	3,	0,	0,	NULL, 0 },
 	{ "WHO",		NULL,	6,	0,	0,	NULL, 0 },
 	{ "WINDOW",		NULL,	2,	0,	HF_NORECURSE,	NULL, 0 },
-	{ "WINDOW_REBUILT",	NULL,	1,	0,	0,	NULL, 0 },
+	{ "WINDOW_BEFOREKILL",	NULL,	1,	0,	0,	NULL, 0 },
 	{ "WINDOW_COMMAND",	NULL,	1, 	0,	0,	NULL, 0 },
 	{ "WINDOW_CREATE",	NULL,	1, 	0,	0,	NULL, 0 },
-	{ "WINDOW_BEFOREKILL",	NULL,	1,	0,	0,	NULL, 0 },
 	{ "WINDOW_KILL",	NULL,	2,	0,	0,	NULL, 0 },
 	{ "WINDOW_NOTIFIED",	NULL,	2,	0,	HF_NORECURSE,	NULL, 0 },
+	{ "WINDOW_REBUILT",	NULL,	1,	0,	0,	NULL, 0 },
 	{ "WINDOW_SERVER",	NULL,	3,	0,	0,	NULL, 0 },
 	{ "YELL",		NULL,	1,	0,	0,	NULL, 0 },
 };
@@ -270,7 +261,7 @@ static void	initialize_hook_functions (void)
 	char *  p;
 
 	hook_functions = new_malloc(NUMBER_OF_LISTS * sizeof(Hookables));
-	p = new_malloc(4050);
+	p = new_malloc(FIRST_NAMED_HOOK * 4 + 50);
 
 	for (i = 0; i < FIRST_NAMED_HOOK; i++, p += 4)
 	{

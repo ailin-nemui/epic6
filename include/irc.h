@@ -86,7 +86,7 @@
 
 #if 0
 /*
- * This enum replaces 'dumb_mode', 'foreground', 'background', and 'use_input'
+ * This enum replaces 'line_ux_mode', 'foreground', 'detached', and 'use_input'
  */
 typedef enum OperatingMode_x {
 	/* 
@@ -112,17 +112,17 @@ typedef enum OperatingMode_x {
 	 * No input, no output -- just load a script (ie, we're a bot)
 	 * The program will exit when your script does /QUIT
 	 */
-	BOT_MODE
+	DETACHED_MODE
 } OperatingMode;
 #endif
 
 /* irc.c's global variables */
-extern		int	background;
+extern		int	detached;
 extern		int	current_numeric;
 extern		int	dead;
 extern volatile	sig_atomic_t	dead_children_processes;
 extern		int	dont_connect;
-extern		int	dumb_mode;
+extern		int	terminfo_mode;
 extern		int	foreground;
 extern		int	global_beep_ok;
 extern		int	inhibit_logging;
@@ -132,7 +132,6 @@ extern		int	privileged_output;
 extern		int	quick_startup;
 extern		int	use_flow_control;
 extern		int	use_iexten;
-extern		int	use_input;
 extern		int	waiting_out;
 extern		int	waiting_in;
 extern		char *	cut_buffer;
@@ -147,7 +146,7 @@ extern		char *	irc_lib;
 extern const 	char 	irc_version[];
 extern		char *	last_notify_nick;
 extern		char *	LocalHostName;
-extern		char *	my_path;
+extern		char *	my_homedir;
 extern		char	nickname[NICKNAME_LEN + 1];
 /* extern	const	char	my_off[]; */
 extern	const	char	on[];

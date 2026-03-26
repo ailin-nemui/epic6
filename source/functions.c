@@ -3920,7 +3920,7 @@ BUILT_IN_FUNCTION(function_truncate, words)
 		RETURN_EMPTY;
 
 	while (*buffer && isspace(*buffer))
-		ov_strcpy(buffer, buffer+1);
+		ov_strcpy2(buffer, 1);
 
 	RETURN_FSTR(buffer);
 }

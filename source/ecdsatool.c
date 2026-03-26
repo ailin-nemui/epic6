@@ -301,12 +301,8 @@ static	ecdsa_key_t *	ecdsa_key__load (const char *filename)
 	ecdsa_key_t *	key;
 	FILE *		in;
 
- 	key = ecdsa_key__alloc();
 	if (!(in = fopen(filename, "r")))
-	{
-		ecdsa_key__free(&key);
 		return NULL;
-	}
 	if (check_permissions(in, S_IFREG|S_IRUSR))
 	{
 		say("ecdsatool: load_key: file %s had insecure permissions - not loaded", filename);
@@ -314,6 +310,7 @@ static	ecdsa_key_t *	ecdsa_key__load (const char *filename)
 		return NULL;
 	}
 
+ 	key = ecdsa_key__alloc();
 	PEM_read_ECPrivateKey(in, &key->eckey, NULL, NULL);
 	fclose(in);
 

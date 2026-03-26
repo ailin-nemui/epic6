@@ -97,7 +97,6 @@ static  void    abortcmd 	(const char *, char *, const char *);
 static	void	away 		(const char *, char *, const char *);
 static	void	beepcmd 	(const char *, char *, const char *);
 static	void	blesscmd	(const char *, char *, const char *);
-static	void	botmodecmd	(const char *, char *, const char *);
 static	void	breakcmd	(const char *, char *, const char *);
 static	void	commentcmd 	(const char *, char *, const char *);
 static	void	continuecmd	(const char *, char *, const char *);
@@ -192,7 +191,6 @@ static	IrcCommand irc_command[] =
 	{ "BEEP",	beepcmd		},
 	{ "BIND",	bindcmd		}, /* keys.c */
 	{ "BLESS",	blesscmd	},
-	{ "BOTMODE",	botmodecmd	},
 	{ "BREAK",	breakcmd	},
 	{ "CALL",	e_call		},
 	{ "CD",		cd		},
@@ -3658,25 +3656,6 @@ BUILT_IN_COMMAND(returncmd)
 		if (args && *args)
 			add_local_alias("FUNCTION_RETURN", args, 0);
 		return_exception++;
-	}
-}
-
-BUILT_IN_COMMAND(botmodecmd)
-{
-	if (dumb_mode) {
-		use_input = 0;
-		background = 1;
-		my_signal(SIGHUP, SIG_IGN);
-		if (!freopen("/dev/null", "w", stdout))
-		{
-		     yell("Could not redirect stdout to /dev/null.  Can't become a bot.");
-		     return;
-		}
-		new_close(0);
-		if (fork())
-			_exit(0);
-	} else {
-		say("Bot mode can only be entered from Dumb mode.");
 	}
 }
 

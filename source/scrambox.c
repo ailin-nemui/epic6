@@ -55,7 +55,7 @@ static size_t base64_encode(const unsigned char *data, size_t input_length, char
     BIO_flush(bio);
 
     BIO_get_mem_ptr(bio, &bufferPtr);
-    memcpy(encoded_data, bufferPtr->data, bufferPtr->length);
+    memmove(encoded_data, bufferPtr->data, bufferPtr->length);
     encoded_data[bufferPtr->length] = '\0';
 
     BIO_free_all(bio);

@@ -627,7 +627,6 @@ int	tputs_x(char *);
 	int		term_echo 		(int);
 	int		term_init 		(void);
 	int		term_resize 		(void);
-	BUILT_IN_KEYBINDING(term_pause);
 	void		term_inputline_putchar 	(unsigned char);
 	void		term_scroll 		(int, int, int);
 	void		term_right		(int);

@@ -670,10 +670,7 @@ BUILT_IN_FUNCTION(function_getarrays, input)
 		if (!input || !*input || wild_match(input, array_info.item[array_info.index[idx]]))
 			malloc_strcat_wordlist(&result, space, array_info.item[array_info.index[idx]]);
 
-	if (!result)
-		RETURN_EMPTY;
-
-	return result;
+	RETURN_MSTR(result);
 }
 
 /*
@@ -929,7 +926,7 @@ BUILT_IN_FUNCTION(function_listarray, input)
 		for (idx = 0; idx < array->size; idx++)
 			malloc_strcat_wordlist(&result, separator, array->item[idx]);
 	}
-	return result ? result : malloc_strdup(empty_string);
+	RETURN_MSTR(result);
 }
 
 

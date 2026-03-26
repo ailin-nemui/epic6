@@ -1,8 +1,9 @@
 dnl ----------------------------------------------------------
-4nl configure.in for ircii, 2.3.  copyright (c) matthew green, 1993,
-dnl except those bits attributed otherwise.
-dnl thanks to the screen 3.3 configure.in for giving me examples to
-dnl work from and steal ;)
+dnl Based on configure.in, originally from ircII-2.3
+dnl  Copyright 1993 Matthew Green
+dnl Originally inspired by configure.in from GNU Screen-3.3
+dnl
+dnl All modifications after 1993 are in the public domain
 dnl
 
 dnl ------------------------------------------------------------
@@ -495,24 +496,6 @@ else
 	fi
 fi
 
-
-AC_ARG_WITH([installtype],
-[  --with-installtype,   Either "std" (default) or "prod".],
-      [], [with_installtype=std])
-AC_MSG_CHECKING([what kind of install to support])
-if test "x$with_installtype" = "x" ; then
-	INSTALL_TYPE=std
-	AC_MSG_RESULT(std)
-elif test "x$with_installtype" = "xstd" ; then
-	INSTALL_TYPE=std
-	AC_MSG_RESULT(std)
-elif test "x$with_installtype" = "xprod" ; then
-	INSTALL_TYPE=prod
-	AC_MSG_RESULT(prod)
-else 
-	AC_MSG_ERROR([--with-installtype must be "std" or "prod"])
-fi
-
 dnl ----------------------------------------------------------
 dnl pcre2 support?
 dnl
@@ -544,6 +527,24 @@ else
 fi
 
 
+AC_ARG_WITH([installtype],
+[  --with-installtype,   Either "std" (default) or "prod".],
+      [], [with_installtype=std])
+AC_MSG_CHECKING([what kind of install to support])
+if test "x$with_installtype" = "x" ; then
+	INSTALL_TYPE=std
+	AC_MSG_RESULT(std)
+elif test "x$with_installtype" = "xstd" ; then
+	INSTALL_TYPE=std
+	AC_MSG_RESULT(std)
+elif test "x$with_installtype" = "xprod" ; then
+	INSTALL_TYPE=prod
+	AC_MSG_RESULT(prod)
+else 
+	AC_MSG_ERROR([--with-installtype must be "std" or "prod"])
+fi
+
+
 dnl ----------------------------------------------------------
 dnl ----------------------------------------------------------
 dnl
@@ -560,7 +561,7 @@ dnl
 
 if test -z "$CFLAGS"; then CFLAGS="-g -O"; fi
 if test -z "$LDFLAGS"; then LDFLAGS= ; fi
-if test -z "$PYTHON_O"; then PYTHON_OH= ; fi
+if test -z "$PYTHON_O"; then PYTHON_O= ; fi
 if test -z "$WSERV_BIN"; then WSERV_BIN= ; fi
 if test -z "$WSERV_INSTALL"; then WSERV_INSTALL= ; fi
 if test -z "$bindir"; then bindir=\${prefix}/bin; fi

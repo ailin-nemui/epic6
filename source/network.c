@@ -510,7 +510,7 @@ int	paddr_to_ssu (const char *host, SSu *storage_, int flags)
 	}
 
 	/* It's wild to me that C prefers this over type punning... */
-	memcpy(&(storage_->ss), results->ai_addr, results->ai_addrlen);
+	memmove(&(storage_->ss), results->ai_addr, results->ai_addrlen);
 
 	freeaddrinfo(results);
 	return 0;
@@ -667,7 +667,7 @@ int	hostname_to_ssu (int fd, int family, const char *host, const char *port, SSu
 			return -1;
 		}
 
-		memcpy(ssu, data.result->nodes->ai_addr, data.result->nodes->ai_addrlen);
+		memmove(ssu, data.result->nodes->ai_addr, data.result->nodes->ai_addrlen);
 		ares_freeaddrinfo(data.result);
 		return 0;
 	}
@@ -1303,11 +1303,13 @@ void	init_one_vhost (struct ifaddrs *addr)
 	vhosts[i].hostname = NULL;
 	vhosts[i].hostname = malloc_strdup(addrbuf);
 	vhosts[i].paddr = malloc_strdup(addrbuf);
-	memcpy(&(vhosts[i].ssu), addr->ifa_addr, sasocklen(addr->ifa_addr));
+	memmove(&(vhosts[i].ssu), addr->ifa_addr, sasocklen(addr->ifa_addr));
 	vhosts[i].sl = sasocklen(addr->ifa_addr);
 	vhosts[i].is_default = 0;
 
+#if 0
 	say("Successfully created vhost for %s", addrbuf);
+#endif
 }
 
 void	init_vhosts_stage1 (void)
@@ -1379,7 +1381,7 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 		if (empty(something) && vhosts[i].is_default)
 		{
 			debug(DEBUG_SERVER_CONNECT, "Vhost family %d has default. yay.", family_);
-			memcpy(ssu_, &vhosts[i].ssu, sizeof(SSu));
+			memmove(ssu_, &vhosts[i].ssu, sizeof(SSu));
 			*sl = socklen(ssu_);
 			return 0;
 		}
@@ -1391,7 +1393,7 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 		    !my_stricmp(something, vhosts[i].paddr))
 		{
 			debug(DEBUG_SERVER_CONNECT, "Vhost %s is cached. yay.", coalesce(something, "<default>"));
-			memcpy(ssu_, &vhosts[i].ssu, sizeof(SSu));
+			memmove(ssu_, &vhosts[i].ssu, sizeof(SSu));
 			*sl = socklen(ssu_);
 			return 0;
 		}
@@ -1459,10 +1461,10 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 			vhosts[i].hostname = malloc_strdup(something);
 			vhosts[i].paddr = sa_to_paddr_quick(res->ai_addr);
 		}
-		memcpy(&(vhosts[i].ssu), res->ai_addr, res->ai_addrlen);
+		memmove(&(vhosts[i].ssu), res->ai_addr, res->ai_addrlen);
 		vhosts[i].sl = res->ai_addrlen;
 
-		memcpy(ssu_, res->ai_addr, res->ai_addrlen);
+		memmove(ssu_, res->ai_addr, res->ai_addrlen);
 		*sl = res->ai_addrlen;
 
 		say("Successfully created vhost for %s", something);

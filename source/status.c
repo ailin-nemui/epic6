@@ -845,9 +845,9 @@ int	redraw_status (int window_, Status *status)
 			continue;
 		}
 
-		if (dumb_mode || !foreground || get_window_screennum(window_) < 0)
+		if (!terminfo_mode || !foreground || get_window_screennum(window_) < 0)
 		{
-			debuglog("redraw_status(%d/%d/%d): dumb/bg/invisible",
+			debuglog("redraw_status(%d/%d/%d): line/bg/invisible",
 				user_refnum, status_line, line);
 			continue;
 		}

@@ -1775,7 +1775,7 @@ something_broke:
 				continue;
 			}
 
-			memcpy(&s->remote_sockname.ss, &name.ss, sizeof(name.ss));
+			memmove(&s->remote_sockname.ss, &name.ss, sizeof(name.ss));
 			s->remote_paddr = ssu_to_paddr_quick((SSu *)&name);
 			say("Connected to IP address %s", s->remote_paddr);
 
@@ -2437,9 +2437,12 @@ static int	server_connect_next_address_internal (int server)
 		{
 			if (port_ == 6697)
 			{
-				yell("Server %d is not set to use SSL but is using an SSL port. Fixing.", server);
+				yell("Server %d is using an SSL port, but wasn't specified to use SSL. Fixing.", server);
+				set_server_server_type(server, "IRC-SSL");
+#if 0
 				set_server_port(server, 6667);
 				setssuport(&s->addrs[s->addr_counter], 6667);
+#endif
 			}
 		}
 
@@ -4329,12 +4332,16 @@ static char *	shortname (const char *oname)
 	if (!(rest = strchr(name, '.')))
 		return name;
 
-	/* If it starts with 'irc', skip that. */
+	/* If the first hostname segment starts with 'irc', skip that. */
+	/* This intentionally picks up "irc2" or "ircserver" */
 	if (!strncmp(name, "irc", 3))
 	{
-		ov_strcpy(name, rest + 1);
+		size_t	bytes_to_remove;
+
+		bytes_to_remove = rest + 1 - name;
+		ov_strcpy2(name, bytes_to_remove);
 		if (!(rest = strchr(name + 1, '.')))
-			rest = name + strlen(name);
+			rest = endstr(name);
 	}
 
 	/* Truncate at 60 chars */

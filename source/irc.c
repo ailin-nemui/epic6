@@ -41,6 +41,10 @@
  */
 
 /*
+ * XXX The number of global variables is too darn high.
+ */
+
+/*
  * irc_version is what $J returns, its the common-name for the version.
  */
 const char irc_version[] = "EPIC6-0.0.1";
@@ -55,7 +59,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3085;
+const unsigned long	commit_id = 3086;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -101,6 +105,10 @@ const char ridiculous_version_name[] = "Otiose";
 	/*
 	 * Set by:	parse_args:  IRCPORT env, or -p command line argument
 	 * Used by:	serverinfo_to_newserv() - default port for new servers
+	 *
+	 * This is weird because if this is 6667, then it also sets the default TLS=no
+	 * If you change this to 6697, then it also changes the default TLS=yes
+	 * But if you change TLS=yes then we use 6697 no matter what this is.
 	 */
 	int		irc_port = 6667;
 
@@ -118,40 +126,50 @@ const char ridiculous_version_name[] = "Otiose";
 	int		current_numeric = -1;
 
 	/*
-	 * THESE NEXT FOUR VARIABLES SOULD BE COLLAPSED INTO ONE
+	 * Flags are weird.
+	 * You can use a flag to indicate "this _should_ be done"
+	 * You can use a flag to indicate "this _has_ been done".
+	 * Sometimes you care if it should be done but hasn't been done yet
+	 * Sometimes you don't care at all.
+	 * Sometimes flags are named for what they are,
+	 * Sometimes flags are named for what they *aren't*.
 	 */
-	/* Set if the client is not using a termios interface */
+
+	/* Set if the client shall use a full-screen user interface (default: yes) */
 	/*
+	 *	When 1		The program shall use a full screen character-based user interface
+	 *	When 0		The program shall use a line-based interface on stdin/stdout
+	 *
 	 * Set by:	parse_args --  -d and -b command line arguments
 	 *		main() -- if we're not connected to a terminal
-	 * Used by:	/botmode - you must be in dumb mode to use /botmode.
-	 *		update_input() - input line is suppressed in dumb mode
-	 *		irc_exit() - screen is reset if in dumb mode
-	 *		on 464 - do not ask for password in dumb mode
-	 *		add_to_screen() - simplify output in dumb mode
-	 *		scroll_window() - window scrolling gated by dumb mode
-	 *		repaint_window_body() - gated by dumb mode
-	 *		do_screens() - simplify user input in dumb mode
-	 *		user_input_codepoint() - gated by dumb mode
-	 *		redraw_status() - gated by dumb mode
-	 *		term_init() - panics if called in dumb mode
-	 * 		set_automargin_override() - gated by dumb mode
+	 * Used by:	XXX todo XXX
 	 * Thoughts:	Should be renamed. 
 	 */
-	int		dumb_mode = 0;
+	int		terminfo_mode = 1;
 
-	/* Set if the client is supposed to fork(). (a bot.)  Probably bogus. */
+	/* Set if the client is supposed to fork(). (a bot.)  (default: no). */
 	/*
+	 *	When 0		The program shall use the controlling terminal it was started on
+	 *	When 1		The program shall disassociate from the controlling terminal and 
+	 *			run as a background daemon
+	 *
 	 * Set by:	/botmode
 	 *		parse_args -- -b command line argument
 	 * Used by:	main() -- switching to bot mode, redirecting stdout to /dev/null
 	 *		p_kill -- If killed and bot didn't handle, then exit program
 	 *			^^^ This is bogus.
 	 */
-	int		background = 0;
+	int		detached = 0;
 
-	/* This is 1 if we are in the foreground process group */
+	/* Set to 1 whenever we are in the foreground process group (presumptively: yes) */
 	/*
+	 *	When 1		The program is currently the fg process of its controlling terminal
+	 *			and may therefore use stdin and stdout.
+ 	 *	When 0		The program is not the fg process of its controlling terminal,
+	 *			- Either because it is the bg process
+	 *			- or because it is not attached to a controlling terminal
+ 	 *			and must therefore not use stdin and stdout
+	 *
 	 * Set by:	term_cont -- if we are the fg or bg process
 	 * Used by:	cursor_to_input() -- gated on foreground
 	 *		update_input -- gated on foreground
@@ -160,25 +178,9 @@ const char ridiculous_version_name[] = "Otiose";
 	 *		scroll_window -- physical output gated on foreground
 	 *		repaint_window_body() -- passed to output_with_count().
 	 *		redraw_status() - gated on foreground
-	 * Notes: Nothing sets this to low!  That's heinous and wrong.
 	 */
 	int		foreground = 1;
 
-	/* Set if the client is checking fd 0 for input. (usu. op of "background") */
-	/*
-	 * Set by:	/botmode
-	 *		parse_args -- -b command line argument
-	 *		term_cont -- if we are the fg or bg process
-	 * Used by:	parse_args -- -b and -q cannot be used together
-	 *			      -b and -s cannot be used together
-	 *		main -- causes a fork()  [why not background?]
-	 *		create_new_screen -- to decide whether to open stdin for reading
-	 *				^^^ this is absolutely wrong
-	 *		kill_screen -- to decide whether to close fdin for reading
-	 *		do_screens -- gated on use_input
-	 * Notes: background and use_input should be merged
-	 */
-	int		use_input = 1;
 	/*
 	 * END GROUP OF VARIABLES TO COLLAPSE
 	 */
@@ -229,33 +231,33 @@ const char ridiculous_version_name[] = "Otiose";
 	Timespec	idle_time = { 0, 0 };
 
 /* Set to 0 when you want to suppress all beeps (such as window repaints) */
-int		global_beep_ok = 1;
+	int		global_beep_ok = 1;
 
 /* The unknown userhost value.  Bogus, but DONT CHANGE THIS!  */
-const char	*unknown_userhost = "<UNKNOWN>@<UNKNOWN>";
+	const char	*unknown_userhost = "<UNKNOWN>@<UNKNOWN>";
 
 /* Whether or not the client is dying. */
-int		dead = 0;
+	int		dead = 0;
 
 /* The number of pending SIGINTs (^C) still unprocessed. */
 volatile sig_atomic_t	cntl_c_hit = 0;
 
 /* This is 1 if you want all logging to be inhibited. Dont leave this on! */
-int		inhibit_logging = 0;
+	int		inhibit_logging = 0;
 
 
 /* Output which is displayed without modification by the user */
-int		privileged_output = 0;
+	int		privileged_output = 0;
 
 /* Output which should not trigger %F in hidden windows */
-int		do_window_notifies = 1;
+	int		do_window_notifies = 1;
 
-jmp_buf		panic_jumpseat;
-int		system_reset = 0;
+	jmp_buf		panic_jumpseat;
+	int		system_reset = 0;
 
-intmax_t	sequence_point = 0;
+	intmax_t	sequence_point = 0;
 
-char *		tmp_hostname = NULL;
+	char *		tmp_hostname = NULL;
 
 /*
  * If set, outbound connections will be bind()ed to the address
@@ -268,21 +270,21 @@ char *		tmp_hostname = NULL;
  * set to addresses that do not belong to the current hostname.
  * If that happens, outbound connections will fail, and its not my fault.
  */
-char *		LocalIPv4HostName = NULL;
-char *		LocalIPv6HostName = NULL;
+	char *		LocalIPv4HostName = NULL;
+	char *		LocalIPv6HostName = NULL;
 
-int		inbound_line_mangler = 0,
-		outbound_line_mangler = 0;
+	int		inbound_line_mangler = 0,
+			outbound_line_mangler = 0;
 
-static char	*epicrc_file = NULL,		/* full path .epicrc file */
+static	char	*epicrc_file = NULL,		/* full path .epicrc file */
 		*ircrc_file = NULL;		/* full path .ircrc file */
-char		*startup_file = NULL,		/* Set when epicrc loaded */
-		*my_path = (char *) 0,		/* path to users home dir */
+	char	*startup_file = NULL,		/* Set when epicrc loaded */
+		*my_homedir = (char *) 0,	/* path to users home dir */
 		*irc_lib = (char *) 0,		/* path to the ircII library */
 		*default_channel = NULL,	/* Channel to join on connect */
 		nickname[NICKNAME_LEN + 1],	/* users nickname */
 		*send_umode = NULL;		/* sent umode */
-char		*cut_buffer = (char *) 0;	/* global cut_buffer */
+	char	*cut_buffer = (char *) 0;	/* global cut_buffer */
 
 const char	empty_string[] = "",		/* just an empty string */
 		space[] = " ",			/* just a lonely space */
@@ -293,19 +295,19 @@ const char	empty_string[] = "",		/* just an empty string */
 		dot[] = ".",
 		comma[] = ",";
 
-static		char	switch_help[] =
-"Usage: epic [switches] [nickname] [server list]                      \n\
+static	char	switch_help[] =
+"Usage: epic6 [switches] [nickname] [server list]                     \n\
   The [nickname] can be up to 30 characters long                      \n\
   The [server list] are one or more server descriptions               \n\
   The [switches] are zero or more of the following:                   \n\
       -a\tThe [server list] adds to default server list               \n\
-      -b\tThe program should run in the background ``bot mode''       \n\
+      -b\tThe program should run detached ``bot mode''                \n\
       -B\tLoads your .ircrc file before you connect to a server.      \n\
       -d\tThe program should run in ``dumb mode'' (no fancy screen)   \n\
       -h\tPrint this help message                                     \n\
       -q\tThe program will not load your .ircrc file                  \n\
       -s\tThe program will not connect to a server upon startup       \n\
-      -S\tEach argument will be tokenised by whitechar                \n\
+      -S\tEach argument will be tokenised by spaces                   \n\
       -v\tPrint the version of this irc client and exit               \n\
       -x\tRun the client in full X_DEBUG mode                         \n\
       -c <chan>\tJoin <chan> after first connection to a server       \n\
@@ -316,11 +318,13 @@ static		char	switch_help[] =
       -p <port>\tThe program will use <port> as the default portnum   \n\
       -z <user>\tThe program will use <user> as your default username \n";
 
+volatile sig_atomic_t	dead_children_processes;
+volatile sig_atomic_t	segv_recurse = 0;
 
 
-typedef void (*AtExitFunction) (void);
-AtExitFunction	at_exit_functions[128];
-int	next_at_exit_function_refnum = 0;
+typedef void 	(*AtExitFunction) (void);
+	AtExitFunction	at_exit_functions[128];
+	int		next_at_exit_function_refnum = 0;
 
 void	at_irc_exit (AtExitFunction f)
 {
@@ -330,9 +334,13 @@ void	at_irc_exit (AtExitFunction f)
 	at_exit_functions[next_at_exit_function_refnum++] = f;
 }
 
+/* 
+ * XXX Is this the end of the global variables? gah.
+ */
+
 static SIGNAL_HANDLER(sig_irc_exit)
 {
-	irc_exit (1, NULL);
+	irc_exit(1, NULL);
 }
 
 /* irc_exit: cleans up and leaves */
@@ -385,7 +393,7 @@ void	irc_exit (int really_quit, const char *format, ...)
 	close_all_dbms();
 
 	/* Arrange to have the cursor on the input line after exit */
-	if (!dumb_mode)
+	if (terminfo_mode)
 	{
 		cursor_to_input();
 		term_cr();
@@ -422,7 +430,6 @@ die_now:
 	exit(1);
 }
 
-volatile sig_atomic_t	dead_children_processes;
 
 /* 
  * This is needed so that the fork()s we do to read compressed files dont
@@ -433,7 +440,6 @@ static SIGNAL_HANDLER(child_reap)
 	dead_children_processes = 1;
 }
 
-volatile sig_atomic_t	segv_recurse = 0;
 
 /* sigsegv: something to handle segfaults in a nice way */
 static SIGNAL_HANDLER(coredump)
@@ -543,6 +549,25 @@ static	void	show_version (void)
  * arguments have been parsed will be taken as a default nickname.
  * All the rest of the args will be taken as servers to be added to your
  * default server list.
+ *
+ * What gets set (or reset) here
+ *	/SET DEFAULT_USERNAME
+ *	/SET DEFAULT_REALNAME
+ * 	my_homedir
+ *	irc_port
+ *	epicrc_file
+ *	ircrc_file
+ *	irc_lib
+ *	send_umode
+ *	/SET LOAD_PATH
+ *	terminfo_mode
+ *	quick_startup
+ *	dont_connect
+ *	detached
+ *	x_debug
+ *	default_channel
+ *	nickname
+ *	and the server list is initialized
  */
 static	void	parse_args (int argc, char **argv)
 {
@@ -552,109 +577,117 @@ static	void	parse_args (int argc, char **argv)
 	char *		ptr = (char *) 0;
 	const char *	cptr = NULL;
 	char *		the_path = NULL;
+	int		defer_username = 0;
 
 	/* 
 	 * 'optarg' and 'optind' are declared in <unistd.h>
 	 * by at least Issue 2
 	 */
 
-	*nickname = 0;
-
-	/* 
-	 * Its probably better to parse the environment variables
-	 * first -- that way they can be used as defaults, but can 
-	 * still be overriden on the command line.
-	 */
-	if ((entry = getpwuid(getuid())))
-	{
-		if (entry->pw_gecos && *(entry->pw_gecos))
-		{
-			if ((ptr = strchr(entry->pw_gecos, ',')))
-				*ptr = 0;
-			set_var_value(DEFAULT_REALNAME_VAR, entry->pw_gecos, 0);
-		}
-
-		if (entry->pw_name && *(entry->pw_name))
-			set_var_value(DEFAULT_USERNAME_VAR, entry->pw_name, 0);
-
-		if (entry->pw_dir && *(entry->pw_dir))
-			malloc_strcpy(&my_path, entry->pw_dir);
-	}
-
-
-	if ((cptr = getenv("IRCNICK")))
-		strlcpy(nickname, cptr, sizeof nickname);
-
-	/* XXX Rewrite this XXX */
 	/*
-	 * We now allow users to use IRCUSER or USER if we couldnt get the
-	 * username from the password entries.  For those systems that use
-	 * NIS and getpwuid() fails (boo, hiss), we make a last ditch effort
-	 * to see what LOGNAME is (defined by POSIX.2 to be the canonical 
-	 * username under which the person logged in as), and if that fails,
-	 * we're really tanked, so we just let the user specify their own
-	 * username.  I think everyone would have to agree this is the most
-	 * reasonable way to handle this.
+	 * This will not always succeed, nor always yield useful information
 	 */
-	if (empty(get_string_var(DEFAULT_USERNAME_VAR)))
-		if ((cptr = getenv("LOGNAME")) && *cptr)
-			set_var_value(DEFAULT_USERNAME_VAR, cptr, 0);
+	entry = getpwuid(getuid());
 
-	if ((cptr = getenv("IRCUSER")) && *cptr) 
-		set_var_value(DEFAULT_USERNAME_VAR, cptr, 0);
-	else if (empty(get_string_var(DEFAULT_USERNAME_VAR)))
-		;
-	else if ((cptr = getenv("USER")) && *cptr) 
-		set_var_value(DEFAULT_USERNAME_VAR, cptr, 0);
-	else if ((cptr = getenv("HOME")) && *cptr)
+	/*
+	 * These are all circular references:
+	 *	USER - your unix login, or your IRCUSER, or, if needs be, your NICK
+	 *	NICK - your IRCNICK, if needs be, your USER
+	 *	REALNAME - your IRCNAME or gecos, or if needs be, your USER
+	 * We want to not fail on the user, so we work it out.
+	 */
+	/* * */
+	cptr = getenv("IRCUSER");
+	if (empty(cptr))
 	{
-		const char *cptr2 = strrchr(cptr, '/');
-		if (cptr2)
-			set_var_value(DEFAULT_USERNAME_VAR, cptr2, 0);
-		else
-			set_var_value(DEFAULT_USERNAME_VAR, cptr, 0);
+		if (entry && entry->pw_name && *(entry->pw_name))
+			cptr = entry->pw_name;
 	}
+	if (empty(cptr))
+		cptr = getenv("LOGNAME");
+	if (empty(cptr))
+		cptr = getenv("USER");
+	if (empty(cptr))
+	{
+		if ((cptr = getenv("HOME")) && *cptr)
+		{
+			const char *cptr2 = strrchr(cptr, '/');
+			if (cptr2)
+				cptr = cptr2 + 1;
+			else
+				cptr = NULL;
+		}
+	}
+	if (empty(cptr))
+		cptr = get_string_var(DEFAULT_USERNAME_VAR);
+	if (empty(cptr))
+		defer_username = 1;
 	else
-	{
-		fprintf(stderr, "I dont know what your user name is.\n");
-		fprintf(stderr, "Set your LOGNAME environment variable\n");
-		fprintf(stderr, "and restart EPIC.\n");
-		exit(1);
-	}
-	/* XXX Rewrite this ^^^^ */
+		set_var_value(DEFAULT_USERNAME_VAR, cptr, 0);
 
-	if ((cptr = getenv("IRCNAME")))
-		set_var_value(DEFAULT_REALNAME_VAR, cptr, 0);
-	else if ((cptr = getenv("NAME")))
-		set_var_value(DEFAULT_REALNAME_VAR, cptr, 0);
-	else if ((cptr = getenv("REALNAME")))
-		set_var_value(DEFAULT_REALNAME_VAR, cptr, 0);
+	/* * */
+	*nickname = 0;
+	cptr = getenv("IRCNICK");
+	if (empty(cptr))
+		cptr = getenv("NICK");
+	if (empty(cptr) && defer_username == 0)
+		cptr = get_string_var(DEFAULT_USERNAME_VAR);
 	else
-	{
+		cptr = "EPICUser";		/* The most bogus of all fallbacks! */
+	strlcpy(nickname, cptr, sizeof nickname);
+
+	if (defer_username)
+		set_var_value(DEFAULT_USERNAME_VAR, nickname, 0);
+
+	/* * */
+	cptr = getenv("IRCNAME");
+	if (empty(cptr))
+		cptr = getenv("NAME");
+	if (empty(cptr))
+		cptr = getenv("REALNAME");
+	if (empty(cptr))
 		cptr = get_string_var(DEFAULT_REALNAME_VAR);
-		if (!cptr || !*cptr)
-			set_var_value(DEFAULT_REALNAME_VAR, "*Unknown*", 0);
+	if (empty(cptr))
+	{
+		if ((entry = getpwuid(getuid())))
+		{
+			if (entry->pw_gecos && *(entry->pw_gecos))
+			{
+				if ((ptr = strchr(entry->pw_gecos, ',')))
+					*ptr = 0;
+				cptr = entry->pw_gecos;
+			}
+		}
 	}
+	if (empty(cptr))
+		cptr = get_string_var(DEFAULT_USERNAME_VAR);	/* This is always set above */
 
-	if ((cptr = getenv("HOME")))
-		malloc_strcpy(&my_path, cptr);
-	else if (!my_path)
-		malloc_strcpy(&my_path, "/");
+	set_var_value(DEFAULT_REALNAME_VAR, cptr, 0);
+
+	/* * */
+	cptr = NULL;
+	if (entry)
+		cptr = entry->pw_dir;
+	if (empty(cptr))
+		cptr = getenv("HOME");
+	if (empty(cptr))
+		cptr = "/";
+	malloc_strcpy(&my_homedir, cptr);
 
 
-
+	/* * */
 	if ((cptr = getenv("IRCPORT")))
 		irc_port = my_atol(cptr);
 
 	if ((cptr = getenv("EPICRC")))
 		epicrc_file = malloc_strdup(cptr);
 	else
-		epicrc_file = malloc_strdup2(my_path, EPICRC_NAME);
+		epicrc_file = malloc_strdup2(my_homedir, EPICRC_NAME);
 
 	if ((cptr = getenv("IRCRC")))
 		ircrc_file = malloc_strdup(cptr);
 	else
-		ircrc_file = malloc_strdup2(my_path, IRCRC_NAME);
+		ircrc_file = malloc_strdup2(my_homedir, IRCRC_NAME);
 
 	if ((cptr = getenv("IRCLIB")))
 		irc_lib = malloc_strdup2(cptr, "/");
@@ -692,7 +725,7 @@ static	void	parse_args (int argc, char **argv)
 				break;
 
 			case 'd': /* use dumb mode */
-				dumb_mode = 1;
+				terminfo_mode = 0;
 				break;
 
 			case 'l': /* Load some file instead of ~/.ircrc */
@@ -716,9 +749,8 @@ static	void	parse_args (int argc, char **argv)
 				break;
 
 			case 'b':
-				dumb_mode = 1;
-				use_input = 0;
-				background = 1;
+				terminfo_mode = 0;
+				detached = 1;
 				break;
 
 			case 'n':
@@ -769,24 +801,6 @@ static	void	parse_args (int argc, char **argv)
 	for (; *argv; argc--, argv++)
 		if (**argv)
 			serverdesc_insert(*argv);
-
-	if (!use_input && quick_startup)
-	{
-		fprintf(stderr, "Cannot use -b and -q at the same time\n");
-		exit(1);
-	}
-	if (!use_input && dont_connect)
-	{
-		fprintf(stderr, "Cannot use -b and -s at the same time\n");
-		exit(1);
-	}
-
-	if (!check_nickname(nickname))
-	{
-		fprintf(stderr, "Invalid nickname: [%s]\n", nickname);
-		fprintf(stderr, "Please restart EPIC with a valid nickname\n");
-		exit(1);
-	}
 
 	/*
 	 * Find and build the server lists...
@@ -1065,7 +1079,7 @@ int 	main (int argc, char *argv[])
 	fprintf(stderr, "OpenSSL version: %#8.8lx\n", OpenSSL_version_num());
 
 	/* If we're a bot, do the bot thing. */
-	if (!use_input)
+	if (detached)
 	{
 		pid_t	child_pid;
 
@@ -1078,7 +1092,7 @@ int 	main (int argc, char *argv[])
 		}
 		else if (child_pid > 0)
 		{
-			fprintf(stderr, "Process [%d] running in background\n",
+			fprintf(stderr, "Process [%d] running detached\n",
 					child_pid);
 			_exit(0);
 		}
@@ -1089,7 +1103,7 @@ int 	main (int argc, char *argv[])
 		if (isatty(0))
 			fprintf(stderr, " connected to tty [%s]", ttyname(0));
 		else
-			dumb_mode = 1;
+			terminfo_mode = 0;
 		fprintf(stderr, "\n");
 	}
 
@@ -1112,10 +1126,10 @@ int 	main (int argc, char *argv[])
 	set_context(-1, -1, NULL, NULL, LEVEL_OTHER);
 
 	/* 
-	 * We use dumb mode for -d, -b, when stdout is redirected to a file,
+	 * We use line mode for -d, -b, when stdout is redirected to a file,
 	 * or as a failover if init_screen() fails. 
 	 */
-	if ((dumb_mode == 0) && (init_screen() == 0))
+	if (terminfo_mode && (init_screen() == 0))
 	{
 		my_signal(SIGCONT, term_cont);
 		my_signal(SIGWINCH, sig_refresh_screen);
@@ -1127,13 +1141,13 @@ int 	main (int argc, char *argv[])
 	}
 	else
 	{
-		if (background)
+		if (detached)
 		{
 			my_signal(SIGHUP, SIG_IGN);
 			if (!freopen("/dev/null", "w", stdout)) 
 				(void) 0;
 		}
-		dumb_mode = 1;		/* Just in case */
+		terminfo_mode = 0;		/* Just in case */
 		create_new_screen(1);
 		new_window(main_screen);
 		init_variables_stage2();
