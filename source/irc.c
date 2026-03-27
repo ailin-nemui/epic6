@@ -59,7 +59,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3086;
+const unsigned long	commit_id = 3087;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -598,31 +598,53 @@ static	void	parse_args (int argc, char **argv)
 	 */
 	/* * */
 	cptr = getenv("IRCUSER");
-	if (empty(cptr))
+	if (!empty(cptr))
+		fprintf(stderr, "Username %s from IRCUSER\n", cptr);
+	else
 	{
 		if (entry && entry->pw_name && *(entry->pw_name))
 			cptr = entry->pw_name;
-	}
-	if (empty(cptr))
-		cptr = getenv("LOGNAME");
-	if (empty(cptr))
-		cptr = getenv("USER");
-	if (empty(cptr))
-	{
-		if ((cptr = getenv("HOME")) && *cptr)
+		if (!empty(cptr))
+			fprintf(stderr, "Username %s from pw entry\n", cptr);
+		else
 		{
-			const char *cptr2 = strrchr(cptr, '/');
-			if (cptr2)
-				cptr = cptr2 + 1;
+			cptr = getenv("LOGNAME");
+			if (!empty(cptr))
+				fprintf(stderr, "Username %s from LOGNAME\n", cptr);
 			else
-				cptr = NULL;
+			{
+				cptr = getenv("USER");
+				if (!empty(cptr))
+					fprintf(stderr, "Username %s from USER\n", cptr);
+				else
+				{
+					if ((cptr = getenv("HOME")) && *cptr)
+					{
+						const char *cptr2 = strrchr(cptr, '/');
+						if (cptr2)
+							cptr = cptr2 + 1;
+						else
+							cptr = NULL;
+					}
+					if (!empty(cptr))
+						fprintf(stderr, "Username %s from HOME\n", cptr);
+					else
+					{
+						cptr = get_string_var(DEFAULT_USERNAME_VAR);
+						if (!empty(cptr))
+							fprintf(stderr, "Username %s from DEFAULT_USERNAME_VAR\n", cptr);
+						else
+						{
+							fprintf(stderr, "Username deferred for nickname\n");
+							defer_username = 1;
+						}
+					}
+				}
+			}
 		}
 	}
-	if (empty(cptr))
-		cptr = get_string_var(DEFAULT_USERNAME_VAR);
-	if (empty(cptr))
-		defer_username = 1;
-	else
+
+	if (!empty(cptr))
 		set_var_value(DEFAULT_USERNAME_VAR, cptr, 0);
 
 	/* * */

@@ -375,5 +375,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Use memmove() instead of memcpy() as its params are identical but it works in more cases
 * Sunset /BOTMODE -- just use -b 
 * Begin refactoring the command line argument parser to handle defaults more sensibly
-
-
+* At startup, explain where we got the user's username from
