@@ -194,8 +194,6 @@ void	fatal_malloc_check (void *ptr, const char *special, const char *fn, int lin
 		panic(1, "BE SURE TO INCLUDE THE ABOVE IMPORTANT INFORMATION! "
 			"-- new_free()'s magic check failed from [%s/%d].", 
 			fn, line);
-		/* NOTREACHED */
-		exit(1);
 	    }
 
 	    case ALREADY_FREED:
@@ -2262,142 +2260,6 @@ int 	end_strcmp (const char *val1, const char *val2, size_t bytes)
 }
 
 /*
- * exec a program, given its arguments and input, return its entire output.
- * on call, *len is the length of input, and on return, it is set to the
- * length of the data returned.
- *
- * Reading is done more agressively than writing to keep the buffers
- * clean, and the data flowing.
- *
- * Potential Bugs:
- *   - If the program in question locks up for any reason, so will epic.
- *     This could be fixed with an appropriate timeout in the poll call.
- *   - If the program in question outputs enough data, epic will run out
- *     of memory and dump core.
- *   - Although input and the return values are char*'s, they are only
- *     treated as blocks of data, the size of *len.
- *
- * Special Note: stdin and stdout are not expected to be textual.
- *
- * XXX This entire thing is heinous.
- */
-char *	exec_pipe (const char *executable, char *input, size_t *len, char * const *args)
-{
-	int 	pipe0[2] = {-1, -1};
-	int 	pipe1[2] = {-1, -1};
-	pid_t	pid;
-	char *	ret = NULL;
-	size_t	retlen = 0, rdpos = 0, wrpos = 0;
-
-	if (pipe(pipe0) || pipe(pipe1))
-	{
-		yell("Cannot open pipes for %s: %s",
-				executable, strerror(errno));
-		close(pipe0[0]);
-		close(pipe0[1]);
-		close(pipe1[0]);
-		close(pipe1[1]);
-		return ret;
-	}
-
-	switch (pid = fork())
-	{
-	    case -1:
-		yell("Cannot fork for %s: %s", 
-				executable, strerror(errno));
-		close(pipe0[0]);
-		close(pipe0[1]);
-		close(pipe1[0]);
-		close(pipe1[1]);
-		return ret;
-
-	    case 0:
-		dup2(pipe0[0], 0);
-		dup2(pipe1[1], 1);
-		close(pipe0[1]);
-		close(pipe1[0]);
-		close(2);	/* we dont want to see errors yet */
-		if (setgid(getgid()))
-			exit(0);
-		if (setuid(getuid()))
-			exit(0);
-		execvp(executable, args);
-		_exit(0);
-
-	    default :
-	    {
-		struct pollfd fds[2];
-
-		fds[0].fd = pipe1[0];
-		fds[0].events = POLLIN;
-		fds[0].revents = 0;
-		fds[1].fd = pipe0[1];
-		fds[1].events = POLLOUT;
-		fds[1].revents = 0;
-
-		close(pipe0[0]);
-		close(pipe1[1]);
-
-		for (;;) 
-		{
-			int	poll_result;
-
-			/* The magic value -1 is defined by the standard */
-			poll_result = poll(fds, 2, -1);
-			if (poll_result < 0)
-			{
-				yell("Broken poll call: %s", strerror(errno));
-				if (errno == EINTR)
-					continue;
-				break;
-			} 
-			else if (poll_result == 0)
-				break;
-
-			if (fds[0].revents & POLLIN)
-			{
-				int	read_result;
-
-				retlen = rdpos + 4096;
-				new_realloc((void **) &ret, retlen);
-				read_result = read(pipe1[0], ret + rdpos, retlen - rdpos);
-				if (read_result > 0)
-					rdpos += read_result;
-				else 
-					break;
-			}
-			else if (fds[1].revents & POLLOUT)
-			{
-				if (input && wrpos < *len)
-				{
-					int	write_result;
-
-					if ((write_result = write(pipe0[1], input + wrpos, MIN(512, *len-wrpos))) > 0)
-						wrpos += write_result;
-					else
-						break;
-				}
-				else 
-				{
-					fds[1].events = 0;
-					close(pipe0[1]);
-				}
-
-			}
-		}
-		close(pipe0[1]);
-		close(pipe1[0]);
-		waitpid(pid, NULL, WNOHANG);
-		new_realloc((void **) &ret, rdpos);
-		break;
-	    }
-	}
-
-	*len = rdpos;
-	return ret;
-}
-
-/*
  * exec() something and return three FILE's.
  *
  * On failure, close everything and return NULL.
@@ -2913,7 +2775,8 @@ const char *	my_ctime (time_t when)
 	static char 	x[50];
 	struct tm	time_val;
 
-	time_val = *localtime(&when);
+	memset(&time_val, 0, sizeof(time_val));
+	localtime_r(&when, &time_val);
 	strftime(x, sizeof(x), "%c", &time_val);
 	return x;
 }
@@ -3570,7 +3433,7 @@ static 	char 	*mystuff = NULL;
 			{
 				*nick = mystuff;
 				*user = endstr(mystuff);
-				*host = at + 1;
+				*host = bang + 1;
 			}
 			else			/* nick!user */
 			{
@@ -3894,6 +3757,8 @@ char *	universal_next_arg_count (char *str, char **new_ptr, int count, int exten
  *
  * Notes:
  *	None.
+ *
+ * XXXX This needs to be rewritten.  I don't understand this any more.
  */
 void	dequoter (char **str, int full, int extended, const char *delims)
 {
@@ -3924,7 +3789,16 @@ void	dequoter (char **str, int full, int extended, const char *delims)
 	    if (c == 0)
 		return;
 
-	    if (delims && delims[0] && delims[1] == 0)
+	    /*
+	     * XXXX It is entirely possible this is wrong.
+	     * It's not clear to me if delims is ever supposed to be NULL
+	     * or if it is, how it should behave.
+	     */
+	    if (!delims)
+		delims = "\"";
+
+	    /* If delims contains only one character, it is "simple" */
+	    if (*delims && !delims[1])
 	    {
 		simple = 1;
 		what = delims[0];
@@ -4702,7 +4576,7 @@ ENCODER(url)
         static const char hexnum[] = "0123456789ABCDEF";
 	size_t	orig_i, dest_i;
 
-        if (!orig || !dest || dest_len <= 0)
+        if (!orig || !dest || dest_len == 0)
                 return -1;
 
 	if (orig_len == 0)
@@ -4754,7 +4628,7 @@ DECODER(url)
 	size_t	orig_i, dest_i;
 	int	val1, val2;
 
-        if (!orig || !dest || dest_len <= 0)
+        if (!orig || !dest || dest_len == 0)
                 return -1;
 
 	if (!*orig)
@@ -4791,7 +4665,7 @@ ENCODER(enc)
 {
 	size_t	orig_i, dest_i;
 
-        if (!orig || !dest || dest_len <= 0)
+        if (!orig || !dest || dest_len == 0)
                 return -1;
 
 	if (orig_len == 0)
@@ -4814,7 +4688,7 @@ DECODER(enc)
 {
 	size_t	orig_i, dest_i;
 
-        if (!orig || !dest || dest_len <= 0)
+        if (!orig || !dest || dest_len == 0)
                 return -1;
 
 	if (!*orig)
@@ -4864,7 +4738,7 @@ static ssize_t	b64_general_encoder (const char *__U(orig), size_t __U(orig_len),
 {
 	size_t	orig_i, dest_i;
 
-        if (!orig || !dest || dest_len <= 0)
+        if (!orig || !dest || dest_len == 0)
                 return -1;
 
 	if (orig_len == 0)
@@ -4941,7 +4815,7 @@ static ssize_t	b64_general_decoder (const char *__U(orig), size_t __U(orig_len),
 {
 	size_t	orig_i, dest_i;
 
-        if (!orig || !dest || dest_len <= 0)
+        if (!orig || !dest || dest_len == 0)
                 return -1;
 
 	if (!*orig)
@@ -5251,14 +5125,14 @@ ENCODER(ctcp)
 {
 	size_t	orig_i, dest_i;
 
-        if (!orig || !dest || dest_len <= 0)
+        if (!orig || !dest || dest_len == 0)
 	{
 		if (!orig)
 			yell("ctcp_encoder: orig is NULL");
 		if (!dest)
 			yell("ctcp_encoder: dest is NULL");
-		if (dest_len <= 0)
-			yell("ctcp_encoder: dest_len <= 0");
+		if (dest_len == 0)
+			yell("ctcp_encoder: dest_len == 0");
                 return -1;
 	}
 
@@ -5305,7 +5179,7 @@ DECODER(ctcp)
 {
 	size_t	orig_i, dest_i;
 
-        if (!orig || !dest || dest_len <= 0)
+        if (!orig || !dest || dest_len == 0)
                 return -1;
 
 	if (!*orig)
@@ -5350,7 +5224,7 @@ ENCODER(null)
 {
 	size_t	orig_i, dest_i;
 
-        if (!orig || !dest || dest_len <= 0)
+        if (!orig || !dest || dest_len == 0)
                 return -1;
 
 	if (!*orig)
@@ -5377,7 +5251,7 @@ ENCODER(all)
 {
 	char	*all_xforms;
 
-        if (!dest || dest_len <= 0)
+        if (!dest || dest_len == 0)
                 return -1;
 
 	all_xforms = valid_transforms();
@@ -5449,7 +5323,7 @@ char *  sha256_digest (const char *type, int hexstr, const char *input, size_t i
 
 ENCODER(sha256)
 {
-        if (!orig || !dest || dest_len <= 0)
+        if (!orig || !dest || dest_len == 0)
                 return -1;
 
 	sha256_digest(NULL, 1, orig, orig_len, dest, dest_len);
@@ -5545,7 +5419,7 @@ ENCODER(iconv)
 	char 	*orig_ptr;
 	iconv_t encodingx;
 
-        if (!orig || !dest || dest_len <= 0)
+        if (!orig || !dest || dest_len == 0)
                 return -1;
 
 	dest_ptr = dest;
@@ -5774,7 +5648,7 @@ char *	transform_string_dyn (const char *type, const char *orig_str, size_t orig
 	else
 		direction = XFORM_ENCODE;
 
-	if (orig_str_len <= 0)
+	if (orig_str_len == 0)
 		orig_str_len = strlen(orig_str);
 
 	if ((transform = lookup_transform(type, &numargs, 
@@ -5785,7 +5659,7 @@ char *	transform_string_dyn (const char *type, const char *orig_str, size_t orig
 	}
 
 	dest_str_len = orig_str_len * expansion_size + expansion_overhead;
-	if (dest_str_len <= 0)
+	if (dest_str_len == 0)
 	{
 		yell("Transform [%s] on a string of size [%ld] resulted in "
 		     "an invalid destination size of [%ld].  Refusing to "
@@ -6029,8 +5903,8 @@ int	recode_with_iconv (const char *from, const char *to, char **data, size_t *nu
 {
 	iconv_t	iref;
 	char *	dest_ptr = NULL;
-	size_t	dest_left = 0;
-	size_t	dest_size = 0;
+	size_t	dest_left;
+	size_t	dest_size;
 	char *	work_data;
 	char *	retstr = NULL;
 
@@ -6299,8 +6173,6 @@ int	strext2 (char **cut, char *buffer, size_t part2, size_t part3)
 
 	/* Copy the cut part */
 	newlen = (ssize_t)(part3 - part2 + 1);
-	if (newlen <= 0)
-		return 0;		/* Uh, what? */
 
 	RESIZE(*cut, char, newlen);
 	p = *cut;
@@ -6415,6 +6287,22 @@ int	check_xdigit (char digit)
 
 
 /*
+ *
+ */
+int	is_signal_valid (int signo)
+{
+	struct sigaction	sa;
+
+	if (sigaction(signo, NULL, &sa) == 0) 
+		return 1;
+	else
+	{
+		/* The only interesting errno is EINVAL */
+		return 0;
+	}
+}
+
+/*
  * How do you convert a signal (SIGHUP, aka 1) 
  *      to a string like kill(8) uses? ("HUP") ?
  * 
@@ -6427,19 +6315,19 @@ int	check_xdigit (char digit)
  * Often, programs build this as a static table at compile time, but that brings
  * in dependencies, so we generate it at boot-time.
  */
-static  char *          signal_name[NSIG + 1];
+static  char *          signal_name[MY_SIG_MAX + 1];
 
 void	init_signal_names (void)
 {
 	int	i;
 
-	for (i = 1; i < NSIG; i++)
+	for (i = 1; i < MY_SIG_MAX; i++)
 	{
 		signal_name[i] = NULL;
 
 /* XXX because clang objects to #x + 3 */
 /* XXX and because gcc objects to &(#x + 3) */
-#define SIGH(x, y) if (i == x && i <= NSIG) malloc_strcpy(&signal_name[i], y);
+#define SIGH(x, y) if (i == x && i <= MY_SIG_MAX && is_signal_valid(i)) malloc_strcpy(&(signal_name[i]), y);
 
 #ifdef SIGABRT
 		SIGH(SIGABRT, "ABRT")
@@ -6531,8 +6419,10 @@ void	init_signal_names (void)
 #ifdef SIGWINCH
 		else SIGH(SIGWINCH, "WINCH")
 #endif
-		else
+		else if (is_signal_valid(i))
 			malloc_sprintf(&signal_name[i], "SIG%d", i);
+		else
+			signal_name[i] = NULL;
 	}
 }
 
@@ -6540,7 +6430,7 @@ const char *	get_signal_name (int signo)
 {
 	static	char	static_signal_name[128];
 
-	if (signo <= 0 || signo > NSIG || signal_name[signo] == NULL)
+	if (signo <= 0 || signo > MY_SIG_MAX || signal_name[signo] == NULL)
 	{
 		snprintf(static_signal_name, 127, "SIG%d", signo);
 		return static_signal_name;
@@ -6556,10 +6446,8 @@ int	get_signal_by_name (const char *signame)
 
 	len = strlen(signame);
 
-	for (i = 1; i < NSIG; i++)
+	for (i = 1; i < MY_SIG_MAX; i++)
 	{
-		if (!get_signal_name(i))
-			continue;
 		if (!my_strnicmp(get_signal_name(i), signame, len))
 			return i;
 	}
@@ -7262,3 +7150,25 @@ size_t	strlcat (char *dst, const char *src, size_t dsize)
 }
 #endif
 
+
+/* 
+ * This insanity is brought to you by gemini and static analyzers 
+ * who object to getpwuid().
+ * -- public domain.
+ */
+
+struct passwd * my_getpwuid (uid_t uid) 
+{
+	static struct passwd 	pwd;
+	static char 		buffer[4096]; 	/* This is a magic value.  Sue me */
+	struct passwd *		result;
+	int			err;
+
+	/* getpwuid_r() uses "result = NULL" on failure. */
+	err = getpwuid_r(uid, &pwd, buffer, sizeof(buffer), &result);
+
+	if (err || !result)
+		return NULL;
+
+	return &pwd;
+}

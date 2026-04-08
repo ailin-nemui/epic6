@@ -256,21 +256,21 @@ static void 	destroy_channel (Channel *chan)
  */
 void 	add_channel (const char *name, int server)
 {
-	Channel *new_c;
+volatile /* BAH~! */ Channel *new_c;
 	int	was_window = -1;
 
 	if ((new_c = find_channel(name, server)))
 	{
 		was_window = new_c->window;
-		destroy_channel(new_c);
-		malloc_strcpy(&(new_c->channel), name);
+		destroy_channel((Channel *)new_c);
+		malloc_strcpy(&(((Channel *)new_c)->channel), name);
 		new_c->server = server;
 	}
 	else
 		new_c = create_channel(name, server);
 
 	new_c->waiting = 1;		/* This channel is "syncing" */
-	get_time(&new_c->join_time);
+	get_time(&((Channel *)new_c)->join_time);
 
 	if (was_window == -1)
 		was_window = claim_waiting_channel(name, server);

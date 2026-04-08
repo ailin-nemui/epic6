@@ -154,7 +154,7 @@ typedef struct InputLine
  * This is a UTF8 C string containing the input line.
  * Although ultimately this is the official reference copy of the input line,
  * any time you change stuff in it, you need to call retokenize_input_line()
- * to refresh the metadata and update_input() to refresh the screen.
+ * to refresh the metadata and redraw_input() to refresh the screen.
  */
 #define INPUT_LINE		((InputLine *)get_screen_input_line(last_input_screen))
 #define INPUT_BUFFER 		INPUT_LINE->input_buffer
@@ -211,8 +211,9 @@ typedef struct InputLine
  * IN THEORY you could operate on the input buffer by doing string things
  * on this pointer.  BE VERY CAREFUL YOU DON'T SCREW IT UP!
  *
- * IF YOU CHANGE THE INPUT BUFFER YOU _MUST_ CALL retokenize_input()
- * AND YOU _MUST_ CALL update_input()!
+ * IF YOU CHANGE THE INPUT BUFFER 
+ *   YOU _MUST_ CALL retokenize_input() (to update the data structures) 
+ *   AND YOU _MUST_ CALL redraw_input() (to update the screen)!
  */
 #define CURSOR_SPOT		(INPUT_BUFFER + LOGICAL_LOCATION)
 #define NEXT_SPOT		(INPUT_BUFFER + NEXT_LOGICAL_LOCATION)
@@ -244,13 +245,13 @@ typedef struct InputLine
  * cut buffer or saved it to a local string, so you can add it back.
  * 
  * AFTER YOU CALL ADD_TO_INPUT() YOU _MUST_ CALL retokenize_input().
- * AND YOU _MUST_ CALL update_input()!
+ * AND YOU _MUST_ CALL redraw_input()!
  */
 #define ADD_TO_INPUT(x) 	strlcat(INPUT_BUFFER, (x), INPUT_BUFFER_SIZE);
 
 /*
  * Moving the cursor is as easy as changing the logical cursor.
- * HOWEVER IF YOU DO THIS YOU _MUST_ CALL update_input()!
+ * HOWEVER IF YOU DO THIS YOU _MUST_ CALL redraw_input()!
  * Update_input() is what updates the cursor on the user's screen.
  */
 #define CURSOR_RIGHT            LOGICAL_CURSOR++
@@ -477,11 +478,11 @@ static int	retokenize_input (int start)
 
 
 /*
- * update_input: Refresh the input line so what is on screen agrees with
+ * redraw_input: Refresh the input line so what is on screen agrees with
  *		 what is in memory.
  *
  * The input line is operated on 'asynchronously' meaning you can perform
- * many operations in a batch, and then call update_input() when you're
+ * many operations in a batch, and then call redraw_input() when you're
  * done and it will sort out what the screen needs to look like.
  *
  * There are three broad types of changes you can make:
@@ -511,12 +512,11 @@ static int	retokenize_input (int start)
  *
  * Clear as mud?
  */
-void	update_input (int which_screen, int update)
+void	redraw_input (int which_screen, int update)
 {
 	char	*ptr, *ptr_free;
 	int	max;
 const char *	prompt;
-	int	do_echo, old_do_echo;
 	int	saved_current_window;
 	int	cols_used;
 	int	original_update;
@@ -540,7 +540,7 @@ const char *	prompt;
 	/* <<<< INDENTED BACK ONE TAB FOR MY SANITY <<<<< */
 
 	/* 
-	 * XXX Using "which_screen == 0" to mean "update every screen"
+	 * XXX Using "which_screen == -1" to mean "update every screen"
 	 * is kind of a hack.
 	 */
 	if (which_screen >= 0 && which_screen != s)
@@ -554,7 +554,6 @@ const char *	prompt;
 	last_input_screen = output_screen = s;
 	make_window_current_informally(get_screen_input_window(s));
 	update = original_update;
-	do_echo = INPUT_LINE->echo;
 
 	/*
 	 * FIRST OFF -- Recalculate the metadata
@@ -890,9 +889,6 @@ const char *	prompt;
 		 */
 		term_move_cursor(0, INPUT_LINE_ROW);
 
-		/* Forcibly output the prompt */
-		old_do_echo = term_echo(1);
-
 		/*
 		 * Figure out how many cols we will give to the
 		 * prompt.  If the prompt is too long, we will
@@ -918,13 +914,6 @@ const char *	prompt;
 		if (START!=0)
 			output_with_count(IND_LEFT, 0, 1);
 
-		term_echo(old_do_echo);
-
-		/*
-		 * Turn the echo back to what it was before,
-		 * and output the rest of the input buffer.
-		 */
-		term_echo(do_echo);
 
 		if (input_column_count(INPUT_BUFFER + LOGICAL_CHARS[START]) >
 				get_screen_columns(last_input_screen) - cols_used)
@@ -937,8 +926,6 @@ const char *	prompt;
 		else 
 			safe_puts(INPUT_BUFFER + LOGICAL_CHARS[START],
 				  get_screen_columns(last_input_screen) - cols_used);
-
-		term_echo(old_do_echo);
 
 		/*
 		 * Clear the rest of the input line and reset the cursor
@@ -969,8 +956,6 @@ const char *	prompt;
 		max = get_screen_columns(last_input_screen);
 		max -= PHYSICAL_CURSOR;
 
-		old_do_echo = term_echo(do_echo);
-
 		if (input_column_count(INPUT_BUFFER + LOGICAL_LOCATION) > max) 
 		{
 			max -= IND_RIGHT_LEN;
@@ -982,7 +967,6 @@ const char *	prompt;
 			safe_puts(CURSOR_SPOT, max);
 		}
 
-		term_echo(old_do_echo);
 		term_clear_to_eol();
 		term_flush();
 	}
@@ -997,7 +981,6 @@ const char *	prompt;
 	 * Turn the terminal echo back on, and flush all of the output
 	 * we may have done here.
 	 */
-	term_echo(1);
 	term_flush();
 
 	/* <<<<< END INDENT ONE TAB BACK FOR MY SANITY <<<<<< */
@@ -1014,11 +997,11 @@ const char *	prompt;
  *
  * Arguments:
  *	dir	- Must either be LEFT (-1) or RIGHT (1)
- *	refresh	- 0 if you don't want me to call update_input.
+ *	refresh	- 0 if you don't want me to call redraw_input.
  *		     This might happen if you intend to call me multiple times.
  *		     YOU ARE RESPONSIBLE FOR CALLING UPDATE_INPUT() AFTER YOU
  *		     ARE DONE!
- *		  1 if I should call update_input
+ *		  1 if I should call redraw_input
  *
  * Return value:
  *	1 if I moved the logical cursor
@@ -1045,10 +1028,10 @@ static int	input_move_cursor (int direction, int refresh)
 		CURSOR_LEFT;
 	}
 	else
-	   panic(1, "update_input_cursor not called with RIGHT or LEFT (%d)", direction);
+	   panic(1, "input_move_cursor not called with RIGHT or LEFT (%d)", direction);
 
 	if (refresh)
-		update_input(last_input_screen, UPDATE_JUST_CURSOR);
+		redraw_input(last_input_screen, UPDATE_JUST_CURSOR);
 	return moved;
 }
 
@@ -1065,7 +1048,7 @@ static void	set_input (const char *str)
 	retokenize_input(LOGICAL_CURSOR);
 	while ((input_move_cursor(RIGHT, 0)))
 		;
-	update_input(last_input_screen, UPDATE_ALL);
+	redraw_input(last_input_screen, UPDATE_ALL);
 
 }
 
@@ -1080,7 +1063,8 @@ char *	get_input (void)
 }
 
 /* init_input: initialized the input buffer by clearing it out */
-void	init_input (void)
+/* XXX This should take a screen param.  as should everything */
+void	clear_input (void)
 {
 	*INPUT_BUFFER = 0;
         START = 0;
@@ -1109,7 +1093,7 @@ void	set_input_prompt (void *stuff)
 	else
 		return;
 
-	update_input(-1, UPDATE_ALL);
+	redraw_input(-1, UPDATE_ALL);
 }
 
 
@@ -1190,7 +1174,7 @@ BUILT_IN_KEYBINDING(input_delete_character)
 	bytes_to_remove = NEXT_SPOT - CURSOR_SPOT;
 	ov_strcpy2(CURSOR_SPOT, bytes_to_remove);
 	retokenize_input(LOGICAL_CURSOR);
-	update_input(last_input_screen, UPDATE_FROM_CURSOR);
+	redraw_input(last_input_screen, UPDATE_FROM_CURSOR);
 }
 
 
@@ -1219,7 +1203,7 @@ BUILT_IN_KEYBINDING(input_beginning_of_line)
 	START = 0;
         LOGICAL_CURSOR=0;
 
-	update_input(last_input_screen, UPDATE_ALL);
+	redraw_input(last_input_screen, UPDATE_ALL);
 }
 
 /*
@@ -1231,7 +1215,7 @@ BUILT_IN_KEYBINDING(input_end_of_line)
 	while ((input_move_cursor(RIGHT, 0)))
 		;
 
-	update_input(last_input_screen, UPDATE_ALL);
+	redraw_input(last_input_screen, UPDATE_ALL);
 }
 
 /*
@@ -1254,7 +1238,7 @@ static void	cut_input (int start, int end)
 
 	LOGICAL_CURSOR = start;
 	retokenize_input(start);
-	update_input(last_input_screen, UPDATE_ALL);
+	redraw_input(last_input_screen, UPDATE_ALL);
 }
 
 /*
@@ -1372,7 +1356,7 @@ BUILT_IN_KEYBINDING(input_add_character)
 	}
 
 	retokenize_input(LOGICAL_CURSOR);
-	update_input(last_input_screen, UPDATE_FROM_CURSOR);
+	redraw_input(last_input_screen, UPDATE_FROM_CURSOR);
 	input_move_cursor(RIGHT, 1);
 }
 
@@ -1394,7 +1378,7 @@ BUILT_IN_KEYBINDING(input_clear_to_bol)
 	cut_input(0, LOGICAL_CURSOR  - 1);
 
 	LOGICAL_CURSOR = 0;
-	update_input(last_input_screen, UPDATE_ALL);
+	redraw_input(last_input_screen, UPDATE_ALL);
 }
 
 /*
@@ -1408,7 +1392,7 @@ BUILT_IN_KEYBINDING(input_clear_line)
 
         memset(INPUT_BUFFER, 0, INPUT_BUFFER_SIZE);
 	LOGICAL_CURSOR = 0;
-        update_input(last_input_screen, UPDATE_ALL);
+        redraw_input(last_input_screen, UPDATE_ALL);
 }
 
 /*
@@ -1423,17 +1407,17 @@ BUILT_IN_KEYBINDING(input_reset_line)
 	START = 0;
         LOGICAL_CURSOR=0;
         memset(INPUT_BUFFER, 0, INPUT_BUFFER_SIZE);
-        update_input(last_input_screen, UPDATE_FROM_CURSOR);
+        redraw_input(last_input_screen, UPDATE_FROM_CURSOR);
 
         if (!string)
 		set_input(empty_string);
 	else
-		set_input(string);	/* This calls update_input() */
+		set_input(string);	/* This calls redraw_input() */
 }
 
 BUILT_IN_KEYBINDING(refresh_inputline)
 {
-	update_input(-1, UPDATE_ALL);
+	redraw_input(-1, UPDATE_ALL);
 }
 
 /*
@@ -1458,7 +1442,7 @@ BUILT_IN_KEYBINDING(input_yank_cut_buffer)
 	for (x = input_column_count(CUT_BUFFER); x > 0; x--)
 		input_move_cursor(RIGHT, 0);
 
-	update_input(last_input_screen, UPDATE_ALL);
+	redraw_input(last_input_screen, UPDATE_ALL);
 }
 
 
@@ -1491,7 +1475,7 @@ BUILT_IN_KEYBINDING(send_line)
         LOGICAL_CURSOR = 0;
         memset(INPUT_BUFFER, 0, INPUT_BUFFER_SIZE);
 
-	update_input(last_input_screen, UPDATE_ALL);
+	redraw_input(last_input_screen, UPDATE_ALL);
 
 	holding_already = window_is_holding(get_screen_input_window(last_input_screen));
 	do_unscroll = window_is_scrolled_back(get_screen_input_window(last_input_screen));
@@ -1624,7 +1608,7 @@ BUILT_IN_KEYBINDING(type_text)
 	for (x = totalcols; x > 0; x--)
 		input_move_cursor(RIGHT, 0);
 
-	update_input(last_input_screen, UPDATE_ALL);
+	redraw_input(last_input_screen, UPDATE_ALL);
 }
 
 /* parse_text: the bindable function that executes its string */

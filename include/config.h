@@ -34,7 +34,7 @@
  * at runtime in your ~/.epicrc, so please don't feel you need to change
  * them here.
  *
- * - A /set value that is a string should be a C string or NULL
+ * - A /set value that is a string should be a C string or (const char *)NULL
  * - A /set value that is a boolean should be 0 for OFF and 1 for ON
  * - A /set value that is an integer should be a C integer.
  * If you don't know, don't touch.
@@ -46,20 +46,20 @@
 #define DEFAULT_BANNER "***"
 #define DEFAULT_BANNER_EXPAND 0
 #define DEFAULT_BEEP 1
-#define DEFAULT_BLANK_LINE_INDICATOR NULL
+#define DEFAULT_BLANK_LINE_INDICATOR (const char *)NULL
 #define DEFAULT_BROKEN_AIXTERM 0
 #define DEFAULT_CHANNEL_NAME_WIDTH 0
 #define DEFAULT_CLOCK 1
 #define DEFAULT_CLOCK_24HOUR 0
-#define DEFAULT_CLOCK_FORMAT NULL
+#define DEFAULT_CLOCK_FORMAT (const char *)NULL
 #define DEFAULT_CLOCK_INTERVAL 60
 #define DEFAULT_CMDCHARS "/"
 #define DEFAULT_COMMENT_HACK 1
 #define DEFAULT_CONTINUED_LINE "+"
-#define DEFAULT_CURRENT_WINDOW_LEVEL NULL
+#define DEFAULT_CURRENT_WINDOW_LEVEL (const char *)NULL
 #define DEFAULT_DISPATCH_UNKNOWN_COMMANDS 0
 #define DEFAULT_DISPLAY 1
-#define DEFAULT_FIRST_LINE NULL
+#define DEFAULT_FIRST_LINE (const char *)NULL
 #define DEFAULT_FLOATING_POINT_MATH 0
 #define DEFAULT_FLOATING_POINT_PRECISION 16
 #define DEFAULT_HIDE_PRIVATE_CHANNELS 0
@@ -72,7 +72,7 @@
 #define DEFAULT_KEY_INTERVAL 1000
 #define DEFAULT_LASTLOG 256
 #define DEFAULT_LASTLOG_LEVEL "ALL"
-#define DEFAULT_LASTLOG_REWRITE NULL
+#define DEFAULT_LASTLOG_REWRITE (const char *)NULL
 #define DEFAULT_LOG 0
 #define DEFAULT_LOGFILE "irc.log"
 #define DEFAULT_METRIC_TIME 0
@@ -86,7 +86,7 @@
 #define DEFAULT_OLD_SERVER_LASTLOG_LEVEL "NONE"
 #define DEFAULT_PAD_CHAR ' '
 #define DEFAULT_QUIT_MESSAGE "ircII %s -- What next?"
-#define DEFAULT_SCREEN_OPTIONS NULL
+#define DEFAULT_SCREEN_OPTIONS (const char *)NULL
 #define DEFAULT_SCROLLBACK 256
 #define DEFAULT_SCROLLBACK_RATIO 50
 #define DEFAULT_SCROLL_LINES 1
@@ -96,8 +96,8 @@
 #define DEFAULT_SHOW_CHANNEL_NAMES 1
 #define DEFAULT_SHOW_NUMERICS 0
 #define	DEFAULT_SHOW_STATUS_ALL 0
-#define DEFAULT_SSL_CIPHERS NULL
-#define DEFAULT_SSL_ROOT_CERTS_LOCATION NULL
+#define DEFAULT_SSL_CIPHERS (const char *)NULL
+#define DEFAULT_SSL_ROOT_CERTS_LOCATION (const char *)NULL
 #define DEFAULT_STATUS_AWAY " (Away)"
 #define DEFAULT_STATUS_CHANNEL " %C"
 #define DEFAULT_STATUS_CHANOP "@"
@@ -110,7 +110,7 @@
 #define DEFAULT_STATUS_HOLD_LINES "%B"
 #define DEFAULT_STATUS_HOLDMODE " (Hold)"
 #define DEFAULT_STATUS_INSERT ""
-#define DEFAULT_STATUS_MAIL NULL
+#define DEFAULT_STATUS_MAIL (const char *)NULL
 #define DEFAULT_STATUS_MODE " (+%+)"
 #define DEFAULT_STATUS_NICKNAME "%N"
 #define	DEFAULT_STATUS_NOSWAP "(NOSWAP)"
@@ -172,12 +172,12 @@
 #define DEFAULT_SUPPRESS_FROM_REMOTE_SERVER 0
 #define DEFAULT_SWITCH_CHANNELS_BETWEEN_WINDOWS 1
 #define DEFAULT_TERM_DOES_BRIGHT_BLINK 0
-#define DEFAULT_TMUX_OPTIONS NULL
+#define DEFAULT_TMUX_OPTIONS (const char *)NULL
 #define DEFAULT_USER_INFORMATION "EPIC6 -- Did we get lost again?"
 #define DEFAULT_WORD_BREAK " \t"
 #define DEFAULT_WSERV_TYPE "screen"
 #define DEFAULT_XTERM "xterm"
-#define DEFAULT_XTERM_OPTIONS NULL
+#define DEFAULT_XTERM_OPTIONS (const char *)NULL
 
 #endif /* _CONFIG_H_ */
 

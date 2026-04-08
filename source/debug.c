@@ -132,7 +132,7 @@ BUILT_IN_COMMAND(xdebugcmd)
 			say("Unrecognized XDEBUG option '%s'", this_arg);
 	}
 
-	if (args && *args && *args == '{')
+	if (args && *args == '{')
 	{
 		runcmds(args, subargs);
 		x_debug = original_xdebug;
@@ -150,7 +150,7 @@ char *	function_xdebug (char *word)
 
 	for (cnt = 0; opts[cnt].command; cnt++)
 	{
-		if (!~opts[cnt].flag) {
+		if (opts[cnt].flag == 0) {
 			continue;
 		} else if (!wild_match(mask,opts[cnt].command)) {
 			continue;

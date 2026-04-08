@@ -151,20 +151,17 @@ static	int	polls = 0;
 	 * If we get more than 10,000 polls in a row, then something is 
 	 * broken somewhere else, and we need to abend.
 	 */
-	if (timeout)
+	if (timeout->tv_sec == 0 && timeout->tv_nsec == 0)
 	{
-	    if (timeout->tv_sec == 0 && timeout->tv_nsec == 0)
-	    {
 		if (polls++ > 10000)
 		{
-		    dump_timers();
-		    panic(1, "Stuck in a polling loop. Help!");
+			dump_timers();
+			panic(1, "Stuck in a polling loop. Help!");
 		}
 		return 0;		/* Timers are more important */
-	    }
-	    else
-		polls = 0;
 	}
+	else
+		polls = 0;
 
 	/* 
 	 * It is possible that as a result of the previous I/O run, we are
@@ -861,7 +858,7 @@ int	new_close_with_option (int fd, int virtual)
 	if (fd < 0)
 		return -1;		/* Oh well. */
 
-	if (fd >= 0 && fd <= global_max_fd && (ioe = io_rec[fd]))
+	if (fd <= global_max_fd && (ioe = io_rec[fd]))
 	{
 		debug(DEBUG_NEWIO, "new_close: fd = %d", fd);
 

@@ -1075,7 +1075,7 @@ static	char	*alias_version 		(void) { return malloc_strdup(internal_version); }
 static  char    *alias_show_userhost 	(void) { return malloc_strdup(get_server_userhost(from_server)); }
 static  char    *alias_online 		(void) { return malloc_sprintf(NULL, INTMAX_FORMAT, (intmax_t)start_time.tv_sec); }
 static  char    *alias_idle 		(void) { return malloc_sprintf(NULL, INTMAX_FORMAT, (intmax_t)time(NULL) - idle_time.tv_sec); }
-static	char	*alias_current_numeric	(void) { return malloc_sprintf(NULL, "%03d", current_numeric); }
+static	char	*alias_current_numeric	(void) { return malloc_sprintf(NULL, "%03d", current_numeric()); }
 static	char	*alias_banner		(void) { return malloc_strdup(banner()); }
 
 static	char	*alias_currdir  	(void)
@@ -1918,7 +1918,7 @@ BUILT_IN_FUNCTION(function_strftime, input)
 {
 	char		result[128];
 	time_t		ltime;
-	struct tm	*tm;
+	struct tm	tm;
 
 	if (isdigit(*input))
 		ltime = strtoul(input, &input, 0);
@@ -1932,9 +1932,10 @@ BUILT_IN_FUNCTION(function_strftime, input)
 		return malloc_strdup(empty_string);
 
 
-	tm = localtime(&ltime);
+	memset(&tm, 0, sizeof(tm));
+	localtime_r(&ltime, &tm);
 
-	if (!strftime(result, 128, input, tm))
+	if (!strftime(result, 128, input, &tm))
 		return malloc_strdup(empty_string);
 
 	return malloc_strdup(result);
@@ -2146,6 +2147,7 @@ BUILT_IN_FUNCTION(function_remw, word)
 
 	/* Whack off the word we're looking for... */
 	GET_FUNC_ARG(word_, word);
+	(void)word_;
 
 	/* XXX Cut and pasted from $notw(). */
         /* An invalid word simply returns the string as-is */
@@ -3911,13 +3913,11 @@ BUILT_IN_FUNCTION(function_truncate, words)
 			end--;
 		buffer[end+1] = 0;
 	}
-	else if (num >= 0)
+	else 
 	{
 		snprintf(format, sizeof format, "%%10.%dlf", num);
 		snprintf(buffer, sizeof buffer, format, value);
 	}
-	else
-		RETURN_EMPTY;
 
 	while (*buffer && isspace(*buffer))
 		ov_strcpy2(buffer, 1);
@@ -4138,7 +4138,7 @@ BUILT_IN_FUNCTION(function_geom, words)
         else
                 GET_FUNC_ARG(refnum, words);
 
-	if ((window = lookup_window(refnum) < 1))
+	if (((window = lookup_window(refnum)) < 1))
                 RETURN_EMPTY;
         if (get_window_geometry(window, &col, &li))
                 RETURN_EMPTY;
@@ -4209,7 +4209,7 @@ BUILT_IN_FUNCTION(function_repeat, words)
 	 * This replaces a GET_INT_ARG(num, words)
 	 */
 	num = strtoul(words, &words, 10);
-	if (words && *words)
+	if (*words)
 		words++;
 
 	if (num < 1)
@@ -6564,8 +6564,12 @@ BUILT_IN_FUNCTION(function_realpath, input)
 
 BUILT_IN_FUNCTION(function_ttyname, input)
 {
-	char *retval = ttyname(0);
-	RETURN_STR(retval);
+	Filename	t;
+
+	*t = 0;
+	if (ttyname_r(0, t, sizeof(t)))
+		RETURN_EMPTY;
+	RETURN_FSTR(t);
 }
 
 /* 
@@ -6916,12 +6920,12 @@ BUILT_IN_FUNCTION(function_killpid, input)
 	if (is_number(sig_str))
 	{
 		sig = my_atol(sig_str);
-		if ((sig < 1) || (sig >= NSIG))
+		if ((sig < 1) || (sig >= MY_SIG_MAX))
 			RETURN_EMPTY;
 	}
 	else
 	{
-		for (sig = 1; sig < NSIG; sig++)
+		for (sig = 1; sig < MY_SIG_MAX; sig++)
 		{
 			if (!get_signal_name(sig))
 				continue;
@@ -7024,11 +7028,11 @@ BUILT_IN_FUNCTION(function_exec, input)
 
 	RETURN_IF_EMPTY(input);
 	count = split_wordlist(input, &args, DWORD_YES);
+	if (!count)
+		RETURN_EMPTY;
+
 	RESIZE(args, void *, count+1);
 	args[count] = NULL;
-
-	if (!count || !args)
-		RETURN_EMPTY;
 
 	fds = open_exec_for_in_out_err(args[0], (char * const *)args);
 	new_free(&args);
@@ -7199,7 +7203,7 @@ BUILT_IN_FUNCTION(function_tobase, input)
 	int	c, base, len = 0, pos = 0, negate = 0;
 	intmax_t	n, num;
 	char *	string;
-	char 	table[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	const char 	table[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 	len = pos = 0;
 	
@@ -7387,7 +7391,7 @@ BUILT_IN_FUNCTION(function_xform, input)
 	char *	directives;
 	int	x, i = 0;
 	int	types[MAX_TRANSFORMS];
-	char *	args[MAX_TRANSFORMS];
+	char *	args[MAX_TRANSFORMS] = {NULL};
 	int	encodings[MAX_TRANSFORMS];
 
 	char *	typestr;
@@ -7424,13 +7428,13 @@ BUILT_IN_FUNCTION(function_xform, input)
 		else
 			arg = NULL;
 
-		if (i < MAX_TRANSFORMS)
-	        {
-			types[i] = type;
-			encodings[i] = encodingx;
-			args[i] = arg;
-			i++;
-		}
+		types[i] = type;
+		encodings[i] = encodingx;
+		args[i] = arg;
+		i++;
+
+		if (i == MAX_TRANSFORMS)
+			break;
 	    }
 	}
 
@@ -8339,12 +8343,22 @@ BUILT_IN_FUNCTION(function_rgb, input)
 	}
 
 	/* Then finally format the results */
-	if (fg_r != -1 && fg_g != -1 && fg_b != -1)
-		snprintf(fg_color_str, 9, "%2.2jX%2.2jX%2.2jX", fg_r, fg_g, fg_b);
+	/*
+	 * I hate this and I hate all the tooling that made me do this.
+	 */
+	if (fg_r >= 0 && fg_g >= 0 && fg_b >= 0)
+		snprintf(fg_color_str, 9, "%02hhX%02hhX%02hhX", 
+						(unsigned char)(fg_r & 0xff), 
+						(unsigned char)(fg_g & 0xff),
+						(unsigned char)(fg_b & 0xff));
 	else
 		*fg_color_str = 0;
-	if (bg_r != -1 && bg_g != -1 && bg_b != -1)
-		snprintf(bg_color_str, 9, "%2.2jX%2.2jX%2.2jX", bg_r, bg_g, bg_b);
+
+	if (bg_r >= 0 && bg_g >= 0 && bg_b >= 0)
+		snprintf(bg_color_str, 9, "%02hhX%02hhX%02hhX", 
+						(unsigned char)(bg_r & 0xff), 
+						(unsigned char)(bg_g & 0xff),
+						(unsigned char)(bg_b & 0xff));
 	else
 		*bg_color_str = 0;
 
@@ -8552,11 +8566,13 @@ BUILT_IN_FUNCTION(function_hex, input)
 		GET_INT_ARG(value, input);
 	}
 
+	if (value < 0)
+		RETURN_EMPTY;
 	if (digits == 0)
 		RETURN_EMPTY;
 
 	retval = new_malloc(digits + 1);
-	snprintf(retval, digits + 1, "%*.*jX", (int)digits, (int)digits, value);
+	snprintf(retval, digits + 1, "%*.*jX", (int)digits, (int)digits, (uintmax_t)value);
 	RETURN_MSTR(retval);
 }
 

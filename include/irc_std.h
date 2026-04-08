@@ -116,13 +116,10 @@
 #endif
 
 /*
- * This header existed in Issue 2 but disappeared
- * before at least Issue 6.
- * Some systems define tputs, etc in this header.
+ * This header existed in Issue 2 but it lives
+ * under the curses specification.
  */
-#ifdef HAVE_TERM_H
-# include <term.h>		/* Non-standard */
-#endif
+#include <term.h>		/* Issue 2 - Curses/terminfo */
 
 /*
  * C99 requires 'isnan' and 'isinf' and the like 
@@ -192,18 +189,9 @@
  */
 
 /*
- * NSIG is a pain in my [censored]
- * NSIG is non-standard before Issue 8.
- * Issue 8 defined it as sysconf(_SC_NSIG), 
- * so someday we should add that to the mix here.
+ * this is temporary, he said, holding his breath
  */
-#ifndef NSIG
-# ifdef _NSIG
-#  define NSIG _NSIG
-# else
-#  define NSIG 32
-# endif
-#endif
+#define MY_SIG_MAX 128
 
 /*
  * Define generic macros for signal handlers and built in commands.
@@ -218,7 +206,7 @@ typedef void 		sigfunc 		(int);
 	const char *	get_signal_name 	(int);
 	int		get_signal_by_name	(const char *);	/* Returns -1 on error */
 
-extern	volatile sig_atomic_t	signals_caught[NSIG];
+extern	volatile sig_atomic_t	signals_caught[MY_SIG_MAX];
 
 #define BUILT_IN_COMMAND(x)	void x 	(const char *__U(command), char *__U(args), const char *__U(subargs))
 #define BUILT_IN_KEYBINDING(x)	void x 	(unsigned int __U(key), char *__U(string))

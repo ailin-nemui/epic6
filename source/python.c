@@ -650,8 +650,6 @@ PYTHON(set_set)
 	/* XXX - TODO - /SET symbol value */
 	PyErr_Format(PyExc_NotImplementedError, "Not Implemented Yet");
 	return NULL;
-
-	return PyLong_FromLong(0);
 }
 
 /*

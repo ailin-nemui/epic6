@@ -66,8 +66,8 @@ const char *	banner (void)
 	static	char	thing[80];
 	const char *str;
 
-	if (current_numeric > 0 && get_int_var(SHOW_NUMERICS_VAR))
-		snprintf(thing, sizeof thing, "%3.3d", current_numeric);
+	if (current_numeric() > 0 && get_int_var(SHOW_NUMERICS_VAR))
+		snprintf(thing, sizeof thing, "%3.3d", current_numeric());
 	else if ((str = get_string_var(BANNER_VAR)))
 	{
 		if (get_int_var(BANNER_EXPAND_VAR))
@@ -178,7 +178,7 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 	char *	target = NULL;
 	char	*copy;
 	int	i;
-	int	old_current_numeric = current_numeric;
+	int	old_current_numeric = current_numeric();
 	int	numeric;
 	int	l;
 
@@ -213,7 +213,8 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 	else
 		l = set_context(from_server, -1, from, NULL, LEVEL_OTHER);
 
-	current_numeric = numeric;	/* must be negative of numeric! */
+	/* must be negative of numeric! */
+	set_server_current_numeric(from_server, numeric);
 
 
 	/*
@@ -379,7 +380,7 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 			{ rfc1459_odd(from, comm, ArgList); goto END; }
 
 		/* Ach.  /on 301 doesn't offer 'from' as $0.  Bummer. */
-                if (do_hook(current_numeric, "%s %s", nick, message))
+                if (do_hook(current_numeric(), "%s %s", nick, message))
 		{
 			/* XXXX Hack -- figure out another way */
 			copy = alloca(IRCD_BUFFER_SIZE + 1);
@@ -587,9 +588,10 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 
 		if (channel_is_syncing(channel, from_server))
 		{
-		    char *line_copy = LOCAL_COPY(line);
+		    char *line_copy;
 		    char *nick;
 
+		    line_copy = LOCAL_COPY(line);
 		    while ((nick = next_arg(line_copy, &line_copy)) != NULL)
 		    {
 			/*
@@ -607,7 +609,7 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 			 * treated with suspicion until the WHO reply is 
 			 * completed and we know that its not truncated. --esl
 			 */
-			if (!line || !*line)
+			if (!line_copy || !*line_copy)
 				add_to_channel(channel, nick, from_server, 1, 0, 0, 0);
 			else
 				add_to_channel(channel, nick, from_server, 0, 0, 0, 0);
@@ -640,7 +642,7 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 		if (!(channel = ArgList[0]))
 			{ rfc1459_odd(from, comm, ArgList); goto END; }
 
-		if (do_hook(current_numeric, "%s %d %s", from, number_of_bans, channel))
+		if (do_hook(current_numeric(), "%s %d %s", from, number_of_bans, channel))
 		{
 			put_it("%s Total number of %s on %s - %d",
 				banner(), 
@@ -927,12 +929,12 @@ void 	numbered_command (const char *from, const char *comm, char const **ArgList
 		strlcat(copy, ArgList[i], IRCD_BUFFER_SIZE);
 	}
 
-	if (!do_hook(current_numeric, "%s %s", from, copy))
+	if (!do_hook(current_numeric(), "%s %s", from, copy))
 		goto END;
 
 DISPLAY:
 /* DEFAULT DISPLAY */
-	if (!do_hook(NUMERIC_LIST, "%d %s %s", current_numeric, from, copy))
+	if (!do_hook(NUMERIC_LIST, "%d %s %s", current_numeric(), from, copy))
 		goto END;
 
 	/*
@@ -1542,24 +1544,18 @@ END:
 		break;
 	case 464:		/* #define ERR_PASSWDMISMATCH   464 */
 	{
-		if (oper_command)
-			oper_command = 0;
-		else if (!is_server_registered(from_server))
+		if (!is_server_registered(from_server))
 		{
 			say("Password required for connection to server %s",
 				get_server_name(from_server));
-			if (terminfo_mode)
-			{
-				char *x = NULL;
-				malloc_sprintf(&x, "%d", from_server);
-				add_wait_prompt("Server Password:", 
-					password_sendline, x, WAIT_PROMPT_LINE, 0);
-			}
+			say("Do /server -update %d pass=<the_password> and try again.", 
+				from_server);
 		}
+		break;
 	}
 	}
 
-	current_numeric = old_current_numeric;
+	set_server_current_numeric(from_server, old_current_numeric);
 	pop_context(l);
 }
 

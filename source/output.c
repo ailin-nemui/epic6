@@ -109,71 +109,20 @@ void	redraw_all_screens (void)
 	update_all_windows();
 
 	/* Physically redraw all input lines */
-	update_input(-1, UPDATE_ALL);
+	redraw_input(-1, UPDATE_ALL);
 
 	output_screen = old_os;
 	need_redraw = 0;
 }
 
-/* extern_write -- controls whether others may write to our terminal or not. */
-/* This is basically stolen from bsd -- so its under the bsd copyright */
-BUILT_IN_COMMAND(extern_write)
-{
-	char *tty;
-	Stat sbuf;
-	const int OTHER_WRITE = 020;
-
-	if (!(tty = ttyname(2)))
-	{
-		yell("Could not figure out the name of your tty device!");
-		return;
-	}
-	if (stat(tty, &sbuf) < 0)
-	{
-		yell("Could not get the information about your tty device!");
-		return;
-	}
-	if (!args || !*args)
-	{
-		if (sbuf.st_mode & 020)
-			say("Mesg is 'y'");
-		else
-			say("Mesg is 'n'");
-		return;
-	}
-	switch (args[0])
-	{
-		case 'y' :
-		{
-			if (chmod(tty, sbuf.st_mode | OTHER_WRITE) < 0)
-			{
-				yell("Could not set your tty's mode!");
-				return;
-			}
-			break;
-		}
-		case 'n' :
-		{
-			if (chmod(tty, sbuf.st_mode &~ OTHER_WRITE) < 0)
-			{
-				yell("Could not set your tty's mode!");
-				return;
-			}
-			break;
-		}
-		default :
-			say("Usage: /%s [Y|N]", command);
-	}
-}
-
 /*
- * init_screen() sets up a full screen display for normal display mode.
+ * init_display() sets up a full screen display for normal display mode.
  * It will fail if your TERM setting doesn't have all of the necessary
  * capabilities to run in full screen mode.  The client is expected to 
  * fail-over to dumb mode in this case.
  * This may only be called once, at initial startup (by main()).
  */
-int	init_screen (void)
+int	init_display (void)
 {
 	/* Investigate TERM and put the console in full-screen mode */
 	if (term_init())
@@ -182,12 +131,14 @@ int	init_screen (void)
 	term_clear_screen();
 	term_resize();
 
+#if 0
 	/*
 	 * System independant stuff
 	 */
 	create_new_screen(1);
 	new_window(main_screen);
 	update_all_windows();
+#endif
 
 	term_move_cursor(0, 0);
 	return 0;

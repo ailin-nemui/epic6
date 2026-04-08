@@ -159,6 +159,44 @@
  */
 	int	last_server = NOSERV;
 
+	int	connected_to_server = 0;	/* How many active server 
+						   connections are open */
+static	char    hard_wait_nick[] = "***LW***";
+static	char    wait_nick[] = "***W***";
+
+/*
+ * Each server goes through various stages/states where it builds up its capabilities
+ * until it is fully enabled as a conduit for IRC commands by the user.
+ * Each state *generally* automatically transitions to the next state when it completes.
+ * 
+ * There are three quiescent states (ie, states that do not automatically advance)
+ *	RECONNECT	A server in RECONNECT will stay there until a window is associated with the server
+ *			Once a window is associated with a server, it advances to POLICY (was DNS)
+ *	ACTIVE		A server in ACTIVE will stay there until the protocol session ends, because of
+ *			1. The user requests disconnection,
+ *			2. The server tells us we're being rejected,
+ *			3. An EOF occurs on the underying network socket
+ *	CLOSED		A server in CLOSED will stay there until the user moves it back to RECONNECT
+ */
+const char *server_states[14] = {
+	"CREATED",		/* A server in CREATED is being built and can't be used yet. */
+	"RECONNECT",		/* A server in RECONNECT can be connected to (but isn't).  Quiescent until a window points at it */
+	"POLICY",		/* A server in POLICY invites scripts to modify the server description to be used */
+	"DNS",			/* A server in DNS is fetching IP addresses (but doesn't have them). */
+	"CONNECTING",		/* A server in CONNECTING is doing a non-blocking connect. */
+	"SSL_CONNECTING",	/* A server in SSL_CONNECTING is establishing SSL on top of the socket */
+	"REGISTERING",		/* A server in REGISTERING is establishing an RFC1459 session with irc server */
+	"SYNCING",		/* A server in SYNCING has a RFC1459 protocol layer and is doing things like setting AWAY */
+	"ACTIVE",		/* A server in ACTIVE is quiescent and can be used by the user */
+	"EOF",			/* A server in EOF has received an EOF on the socket (needs to be server_close()d */
+	"ERROR",		/* A server in ERROR has received an error incompatable with the connection and needs to be reset */
+	"CLOSING",		/* A server in CLOSING has already failed, and we are just cleaning up state */
+	"CLOSED",		/* A server in CLOSED is "cleaned" and quiescent - you need to reset to RECONNECT */
+	"DELETED"		/* A server in DELETED is being torn down and can't be used any more */
+};
+
+/*****************************************************************************/
+
 
 
 	/* Convert user string to json data */
@@ -560,6 +598,8 @@ int	serverinfo_clear (ServerInfo *s)
  *
  * Return value:	
  *	This function returns 0
+ *	NOTE - someday this function may return -1 for an error.
+ *		carefully note all the callers to adjust them!
  */
 int	serverinfo_load (ServerInfo *s, const char *str)
 {
@@ -573,7 +613,7 @@ int	serverinfo_load (ServerInfo *s, const char *str)
 	 * As a shortcut, we allow the string to be a number,
 	 * which refers to an existing server.
 	 */
-	if (str && is_number(str))
+	if (is_number(str))
 	{
 		int	i;
 
@@ -894,8 +934,8 @@ int	serverdesc_lookup (const char *desc)
 	/* Then the older part */
 	ptr = LOCAL_COPY(desc);
 	serverinfo_clear(&si);
-	if (serverinfo_load(&si, ptr))
-		return NOSERV;
+	/* someday serverinfo_load() will return -1, but not today */
+	serverinfo_load(&si, ptr);
 	retval = serverinfo_lookup(&si);
 
 	serverinfo_free(&si);
@@ -960,8 +1000,8 @@ int	serverdesc_update (const char *desc)
 	/* Then the older part */
 	ptr = LOCAL_COPY(desc);
 	serverinfo_clear(&si);
-	if (serverinfo_load(&si, ptr))
-		return NOSERV;
+	/* serverinfo_load() may return -1 in the future... */
+	serverinfo_load(&si, ptr);
 
 	if ((retval = serverinfo_lookup(&si)) != NOSERV)
 		serverinfo_update_aserver(&si, retval);
@@ -1090,8 +1130,8 @@ int	serverdesc_insert (const char *desc)
 
 	ptr = LOCAL_COPY(desc);
 	serverinfo_clear(&si);
-	if (serverinfo_load(&si, ptr))
-		return NOSERV;
+	/* serverinfo_load() may return -1 in the future */
+	serverinfo_load(&si, ptr);
 
 	retval = serverinfo_insert(&si);
 	return retval;
@@ -1199,13 +1239,8 @@ int	serverdesc_insert_with_group (const char *servers_, const char *group)
 	return retval;
 }
 
-
-
 /***************************************************************************/
-
 /***************************************************************************/
-
-
 
 void	server_list_remove_all (void)
 {
@@ -1385,44 +1420,6 @@ static int	next_server_in_group (int oldserv, int direction)
 
 /*****************************************************************************/
 /*****************************************************************************/
-/*****************************************************************************/
-	int	connected_to_server = 0;	/* How many active server 
-						   connections are open */
-static	char    hard_wait_nick[] = "***LW***";
-static	char    wait_nick[] = "***W***";
-
-/*
- * Each server goes through various stages/states where it builds up its capabilities
- * until it is fully enabled as a conduit for IRC commands by the user.
- * Each state *generally* automatically transitions to the next state when it completes.
- * 
- * There are three quiescent states (ie, states that do not automatically advance)
- *	RECONNECT	A server in RECONNECT will stay there until a window is associated with the server
- *			Once a window is associated with a server, it advances to POLICY (was DNS)
- *	ACTIVE		A server in ACTIVE will stay there until the protocol session ends, because of
- *			1. The user requests disconnection,
- *			2. The server tells us we're being rejected,
- *			3. An EOF occurs on the underying network socket
- *	CLOSED		A server in CLOSED will stay there until the user moves it back to RECONNECT
- */
-const char *server_states[14] = {
-	"CREATED",		/* A server in CREATED is being built and can't be used yet. */
-	"RECONNECT",		/* A server in RECONNECT can be connected to (but isn't).  Quiescent until a window points at it */
-	"POLICY",		/* A server in POLICY invites scripts to modify the server description to be used */
-	"DNS",			/* A server in DNS is fetching IP addresses (but doesn't have them). */
-	"CONNECTING",		/* A server in CONNECTING is doing a non-blocking connect. */
-	"SSL_CONNECTING",	/* A server in SSL_CONNECTING is establishing SSL on top of the socket */
-	"REGISTERING",		/* A server in REGISTERING is establishing an RFC1459 session with irc server */
-	"SYNCING",		/* A server in SYNCING has a RFC1459 protocol layer and is doing things like setting AWAY */
-	"ACTIVE",		/* A server in ACTIVE is quiescent and can be used by the user */
-	"EOF",			/* A server in EOF has received an EOF on the socket (needs to be server_close()d */
-	"ERROR",		/* A server in ERROR has received an error incompatable with the connection and needs to be reset */
-	"CLOSING",		/* A server in CLOSING has already failed, and we are just cleaning up state */
-	"CLOSED",		/* A server in CLOSED is "cleaned" and quiescent - you need to reset to RECONNECT */
-	"DELETED"		/* A server in DELETED is being torn down and can't be used any more */
-};
-
-
 
 /*************************** SERVER STUFF *************************/
 /*
@@ -2232,8 +2229,8 @@ static void 	vsend_to_aserver_with_payload (int refnum, const char *payload, con
 void	send_to_aserver_raw (int refnum, size_t len, const char *buffer)
 {
 	Server *s;
-	int des;
-	int err = 0;
+	int	des;
+	int	err;
 
 	if (!(s = get_server(refnum)))
 		return;
@@ -2301,7 +2298,7 @@ int	server_bootstrap_connection (int server)
 static	int	server_grab_address (int server)
 {
 	Server *s;
-	int	family;
+	int	family_;
 	int	xfd[2];
 
 	debug(DEBUG_SERVER_CONNECT, "Grabbing server addresses for server [%d]", server);
@@ -2331,28 +2328,28 @@ static	int	server_grab_address (int server)
 	const char *	pr = get_si(server, "PROTO");
 
 	if (empty(pr))
-		family = AF_UNSPEC;
+		family_ = AF_UNSPEC;
 	else if (!my_stricmp(pr, "0")
 	      || !my_stricmp(pr, "any") 
 	      || !my_stricmp(pr, "ip") 
 	      || !my_stricmp(pr, "tcp") )
-		family = AF_UNSPEC;
+		family_ = AF_UNSPEC;
 	else if (!my_stricmp(pr, "4")
 	      || !my_stricmp(pr, "tcp4") 
 	      || !my_stricmp(pr, "ipv4") 
 	      || !my_stricmp(pr, "v4") 
 	      || !my_stricmp(pr, "ip4") )
-		family = AF_INET;
+		family_ = AF_INET;
 	else if (!my_stricmp(pr, "6")
 	      || !my_stricmp(pr, "tcp6") 
 	      || !my_stricmp(pr, "ipv6") 
 	      || !my_stricmp(pr, "v6") 
 	      || !my_stricmp(pr, "ip6") )
-		family = AF_INET6;
+		family_ = AF_INET6;
 	else
-		family = AF_UNSPEC;
+		family_ = AF_UNSPEC;
 
-	hostname_to_json(xfd[0], family, get_server_host(server), ltoa(get_server_port(server)), 0);
+	hostname_to_json(xfd[0], family_, get_server_host(server), ltoa(get_server_port(server)), 0);
 	s->des = xfd[1];
 	return 0;
 }
@@ -3974,6 +3971,24 @@ int	get_server_protocol_state (int refnum)
 
 	return retval;
 }
+
+int	get_server_current_numeric (int refnum)
+{
+	(void) refnum;
+	return current_numeric_;
+}
+
+void	set_server_current_numeric (int refnum, int numeric)
+{
+	(void) refnum;
+	current_numeric_ = numeric;
+}
+
+int	current_numeric (void)
+{
+	return get_server_current_numeric(from_server);
+}
+
 
 void	set_server_protocol_state (int refnum, int state)
 {

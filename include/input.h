@@ -14,10 +14,10 @@
 	void	cursor_to_input 		(void);
 	char *	get_input 			(void);
 	char *	get_input_prompt 		(void);
-	void	init_input 			(void);
+	void	clear_input 			(void);
 	char	input_pause 			(char *);
 	void	set_input_prompt		(void *);
-	void	update_input 			(int, int);
+	void	redraw_input 			(int, int);
 	int     cursor_position 		(int);
 	char *	function_inputctl		(char *);
 

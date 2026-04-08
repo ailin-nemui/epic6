@@ -33,7 +33,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#define __need_term_h__
 #define __need_putchar_x__
 #define __need_term_flush__
 #include "irc.h"
@@ -239,7 +238,6 @@ static	IrcCommand irc_command[] =
 	{ "LUSERS",	send_comm	},
 	{ "MAP",	send_comm	},
 	{ "ME",		mecmd		},
-	{ "MESG",	extern_write	},
 	{ "MODE",	send_channel_com},
 	{ "MOTD",	send_comm	},
 	{ "MSG",	e_privmsg	},
@@ -1012,8 +1010,6 @@ BUILT_IN_COMMAND(xechocmd)
 		case 'e':
 		case 'E':
 		{
-			double	timeout = 0;
-
 			next_arg(args, &args);
 			if (!(flag_arg = next_arg(args, &args)))
 				break;
@@ -1021,6 +1017,8 @@ BUILT_IN_COMMAND(xechocmd)
 			/* Outputting here is bad.  So just ignore it */
 			if (is_number(flag_arg))
 			{
+				double	timeout;
+
 				timeout = atof(flag_arg);
 				output_expires_after = timeout;
 			}
@@ -2176,33 +2174,17 @@ BUILT_IN_COMMAND(mecmd)
 		say("Usage: /ME <action description>");
 }
 
-static 	void	oper_password_received (void *data_, const char *line)
-{
-	char *	data;
-
-	if (!data_)
-		return;
-
-	data = (char *)data_;
-	send_to_server("OPER %s %s", data, line);
-	new_free(&data);
-}
-
 /* oper: the OPER command.  */
 BUILT_IN_COMMAND(oper)
 {
 	char	*password;
 	char	*nick;
 
-	oper_command = 1;
 	if (!(nick = next_arg(args, &args)))
 		nick = nickname;
 	if (!(password = next_arg(args, &args)))
 	{
-		/* This gets new_free()d in oper_password_received() above */
-		nick = malloc_strdup(nick);
-		add_wait_prompt("Operator Password:",
-			oper_password_received, nick, WAIT_PROMPT_LINE, 0);
+		say("Usage: OPER nickname password");
 		return;
 	}
 	send_to_server("OPER %s %s", nick, password);
@@ -2483,10 +2465,9 @@ BUILT_IN_COMMAND(send_kick)
  */
 BUILT_IN_COMMAND(send_channel_com)
 {
-	char	*ptr;
+	char		*ptr;
 	const char	*s;
-
-	char usage[] = "Usage: %s <*|#channel> [arguments]";
+	const char 	usage[] = "Usage: %s <*|#channel> [arguments]";
 
         ptr = next_arg(args, &args);
 
@@ -2512,7 +2493,7 @@ BUILT_IN_COMMAND(sendlinecmd)
 	server = from_server;
 	display = swap_window_display(1);
 	parse_statement(args, 1, NULL);
-	update_input(-1, UPDATE_ALL);
+	redraw_input(-1, UPDATE_ALL);
 	swap_window_display(display);
 	from_server = server;
 }
@@ -2894,8 +2875,6 @@ int	command_exist (char *command)
 /*********** Sending messages **************************************/
 struct target_type
 {
-	char *		nick_list;
-	const char *	message;
 	int  		hook_type;
 	const char *	command;
 	const char *	format;
@@ -2998,10 +2977,10 @@ static	int	recursion = 0;
 	 */
 struct target_type target[4] = 
 {	
-	{NULL, NULL, SEND_MSG_LIST,     "PRIVMSG", "*%s*> %s" , LEVEL_MSG }, 
-	{NULL, NULL, SEND_PUBLIC_LIST,  "PRIVMSG", "%s> %s"   , LEVEL_PUBLIC },
-	{NULL, NULL, SEND_NOTICE_LIST,  "NOTICE",  "-%s-> %s" , LEVEL_NOTICE },
-	{NULL, NULL, SEND_NOTICE_LIST,  "NOTICE",  "-%s-> %s" , LEVEL_NOTICE }
+	{SEND_MSG_LIST,     "PRIVMSG", "*%s*> %s" , LEVEL_MSG }, 
+	{SEND_PUBLIC_LIST,  "PRIVMSG", "%s> %s"   , LEVEL_PUBLIC },
+	{SEND_NOTICE_LIST,  "NOTICE",  "-%s-> %s" , LEVEL_NOTICE },
+	{SEND_NOTICE_LIST,  "NOTICE",  "-%s-> %s" , LEVEL_NOTICE }
 };
 
 	if (!nick_list || !text)
@@ -3493,7 +3472,11 @@ static	unsigned 	level = 0;
 		send_text(from_server, get_window_target(0), stmt, NULL, 1, 0);
 
 	/*
-	 * Statement that looks like () {} is an block-with-arglist statement
+	 * Statements that look like () {} is an block-with-arglist statement
+	 * Everything else looking like () must be an expression statement.
+	 * We have to differentiate those two cases.
+	 *  1. If it is a block-with-arglist statement, we handle it here
+	 *  2. If it is anything else, we ask the expression lexer to handle it
 	 */
 	else if (*stmt == '(')
 	{
@@ -3540,8 +3523,14 @@ static	unsigned 	level = 0;
 	/*
 	 * Statement that starts with @ or surrounded by ()s is an
  	 * expression statement.
+	 *
+	 * The lexing of statements surrounded by ()s is handled 
+	 * above, because (expr) and (arglist) {block} are ambiguous.
+	 *
+	 * The "expression_statement" label is where the block lexer
+	 * jumps to if it determines it does not have a block!
 	 */
-	else if ((*stmt == '@') || (*stmt == '('))
+	else if ((*stmt == '@'))
 	{
 		/*
 		 * The expression parser wants to mangle the string it's given.

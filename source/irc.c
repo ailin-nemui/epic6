@@ -33,7 +33,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#define __need_term_h__
 #include "irc.h"
 
 /*
@@ -59,7 +58,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3087;
+const unsigned long	commit_id = 3088;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -123,7 +122,7 @@ const char ridiculous_version_name[] = "Otiose";
 	 *		banner()  (with /set show_numerics for banner)
 	 * Thoughts:	Should be per-server, not global.
 	 */
-	int		current_numeric = -1;
+	int		current_numeric_ = -1;
 
 	/*
 	 * Flags are weird.
@@ -150,6 +149,8 @@ const char ridiculous_version_name[] = "Otiose";
 	/* Set if the client is supposed to fork(). (a bot.)  (default: no). */
 	/*
 	 *	When 0		The program shall use the controlling terminal it was started on
+	 *	When -1		The program shall disassociate from the controlling terminal and
+	 *			run as a background daemon, but it has not yet done so.
 	 *	When 1		The program shall disassociate from the controlling terminal and 
 	 *			run as a background daemon
 	 *
@@ -172,7 +173,7 @@ const char ridiculous_version_name[] = "Otiose";
 	 *
 	 * Set by:	term_cont -- if we are the fg or bg process
 	 * Used by:	cursor_to_input() -- gated on foreground
-	 *		update_input -- gated on foreground
+	 *		redraw_input -- gated on foreground
 	 *		rite() -- controls whether output_with_count() outputs or just counts.
 	 *			^^^ This is bogus
 	 *		scroll_window -- physical output gated on foreground
@@ -184,18 +185,6 @@ const char ridiculous_version_name[] = "Otiose";
 	/*
 	 * END GROUP OF VARIABLES TO COLLAPSE
 	 */
-
-	/*
-	 * Set when an OPER command is sent out, reset when umode +o or 464 reply
-	 * comes back.  This is *seriously* bogus.
-	 */
-	/*
-	 * Set by:	/oper
-	 *		/on 464 - to reset to 0
-	 * Used by:	/on 464 - to differentiate OPER password from PASS password.
-	 * Notes: BURN IT WITH FIRE
-	 */
-	int		oper_command = 0;
 
 	/* Set if your IRCRC file is NOT to be loaded on startup. */
 	/*
@@ -276,8 +265,7 @@ volatile sig_atomic_t	cntl_c_hit = 0;
 	int		inbound_line_mangler = 0,
 			outbound_line_mangler = 0;
 
-static	char	*epicrc_file = NULL,		/* full path .epicrc file */
-		*ircrc_file = NULL;		/* full path .ircrc file */
+static	char	*epicrc_file = NULL;		/* full path .epicrc file */
 	char	*startup_file = NULL,		/* Set when epicrc loaded */
 		*my_homedir = (char *) 0,	/* path to users home dir */
 		*irc_lib = (char *) 0,		/* path to the ircII library */
@@ -556,7 +544,6 @@ static	void	show_version (void)
  * 	my_homedir
  *	irc_port
  *	epicrc_file
- *	ircrc_file
  *	irc_lib
  *	send_umode
  *	/SET LOAD_PATH
@@ -573,95 +560,55 @@ static	void	parse_args (int argc, char **argv)
 {
 	int 		ch;
 	int 		append_servers = 0;
-	struct passwd *	entry;
+	struct passwd *	entry = NULL;
 	char *		ptr = (char *) 0;
 	const char *	cptr = NULL;
 	char *		the_path = NULL;
-	int		defer_username = 0;
 
-	/* 
-	 * 'optarg' and 'optind' are declared in <unistd.h>
-	 * by at least Issue 2
+
+	/* * * */
+	/*
+	 * PHASE 1 - Initialize default values from environment vars
 	 */
 
 	/*
-	 * This will not always succeed, nor always yield useful information
+	 * Default Username
 	 */
-	entry = getpwuid(getuid());
-
-	/*
-	 * These are all circular references:
-	 *	USER - your unix login, or your IRCUSER, or, if needs be, your NICK
-	 *	NICK - your IRCNICK, if needs be, your USER
-	 *	REALNAME - your IRCNAME or gecos, or if needs be, your USER
-	 * We want to not fail on the user, so we work it out.
-	 */
-	/* * */
-	cptr = getenv("IRCUSER");
-	if (!empty(cptr))
+	if ((cptr = getenv("IRCUSER")))
 		fprintf(stderr, "Username %s from IRCUSER\n", cptr);
-	else
+	if (empty(cptr))
 	{
+		entry = my_getpwuid(getuid());
+
 		if (entry && entry->pw_name && *(entry->pw_name))
-			cptr = entry->pw_name;
-		if (!empty(cptr))
-			fprintf(stderr, "Username %s from pw entry\n", cptr);
-		else
 		{
-			cptr = getenv("LOGNAME");
-			if (!empty(cptr))
-				fprintf(stderr, "Username %s from LOGNAME\n", cptr);
-			else
-			{
-				cptr = getenv("USER");
-				if (!empty(cptr))
-					fprintf(stderr, "Username %s from USER\n", cptr);
-				else
-				{
-					if ((cptr = getenv("HOME")) && *cptr)
-					{
-						const char *cptr2 = strrchr(cptr, '/');
-						if (cptr2)
-							cptr = cptr2 + 1;
-						else
-							cptr = NULL;
-					}
-					if (!empty(cptr))
-						fprintf(stderr, "Username %s from HOME\n", cptr);
-					else
-					{
-						cptr = get_string_var(DEFAULT_USERNAME_VAR);
-						if (!empty(cptr))
-							fprintf(stderr, "Username %s from DEFAULT_USERNAME_VAR\n", cptr);
-						else
-						{
-							fprintf(stderr, "Username deferred for nickname\n");
-							defer_username = 1;
-						}
-					}
-				}
-			}
+			cptr = entry->pw_name;
+			fprintf(stderr, "Username %s from pw entry\n", cptr);
 		}
 	}
+	if (empty(cptr))
+	{
+		cptr = "default";		/* wut? */
+		fprintf(stderr, "Username %s\n", cptr);
+	}
+	set_var_value(DEFAULT_USERNAME_VAR, cptr, 0);
 
-	if (!empty(cptr))
-		set_var_value(DEFAULT_USERNAME_VAR, cptr, 0);
-
-	/* * */
+	/*
+	 * Default Nickname
+	 */
 	*nickname = 0;
 	cptr = getenv("IRCNICK");
 	if (empty(cptr))
 		cptr = getenv("NICK");
-	if (empty(cptr) && defer_username == 0)
+	if (empty(cptr))
 		cptr = get_string_var(DEFAULT_USERNAME_VAR);
 	else
 		cptr = "EPICUser";		/* The most bogus of all fallbacks! */
 	strlcpy(nickname, cptr, sizeof nickname);
 
-	if (defer_username)
-		set_var_value(DEFAULT_USERNAME_VAR, nickname, 0);
-
-	/* * */
+	/*
+	 * Default Realname 
+	 */
 	cptr = getenv("IRCNAME");
 	if (empty(cptr))
 		cptr = getenv("NAME");
@@ -671,7 +618,7 @@ static	void	parse_args (int argc, char **argv)
 		cptr = get_string_var(DEFAULT_REALNAME_VAR);
 	if (empty(cptr))
 	{
-		if ((entry = getpwuid(getuid())))
+		if ((entry = my_getpwuid(getuid())))
 		{
 			if (entry->pw_gecos && *(entry->pw_gecos))
 			{
@@ -686,7 +633,9 @@ static	void	parse_args (int argc, char **argv)
 
 	set_var_value(DEFAULT_REALNAME_VAR, cptr, 0);
 
-	/* * */
+	/*
+	 * Default homedir
+	 */
 	cptr = NULL;
 	if (entry)
 		cptr = entry->pw_dir;
@@ -697,28 +646,49 @@ static	void	parse_args (int argc, char **argv)
 	malloc_strcpy(&my_homedir, cptr);
 
 
-	/* * */
+	/*
+	 * Default port
+	 */
 	if ((cptr = getenv("IRCPORT")))
 		irc_port = my_atol(cptr);
 
+	/*
+	 * Default startup file
+	 */
 	if ((cptr = getenv("EPICRC")))
-		epicrc_file = malloc_strdup(cptr);
+		malloc_strcpy(&epicrc_file, cptr);
+	else if ((cptr = getenv("IRCRC")))
+		malloc_strcpy(&epicrc_file, cptr);
 	else
-		epicrc_file = malloc_strdup2(my_homedir, EPICRC_NAME);
+	{
+		char *x;
+		x =  malloc_strdup2(my_homedir, EPICRC_NAME);
+		if (!file_exists(x))
+		{
+			new_free(&x);
+			x =  malloc_strdup2(my_homedir, IRCRC_NAME);
+		}
+		malloc_strcpy(&epicrc_file, x);
+		new_free(&x);
+	}
 
-	if ((cptr = getenv("IRCRC")))
-		ircrc_file = malloc_strdup(cptr);
-	else
-		ircrc_file = malloc_strdup2(my_homedir, IRCRC_NAME);
-
+	/*
+	 * Default IRCLIB (to use for /set load_path) 
+	 */
 	if ((cptr = getenv("IRCLIB")))
 		irc_lib = malloc_strdup2(cptr, "/");
 	else
 		irc_lib = malloc_strdup(IRCLIB);
 
+	/*
+	 * Default User Mode (ie, +i)
+	 */
 	if ((cptr = getenv("IRCUMODE")))
 		send_umode = malloc_strdup(cptr);
 
+	/*
+	 * Default /SET LOAD_PATH
+	 */
 	if ((cptr = getenv("IRCPATH")))
 		the_path = malloc_strdup(cptr);
 	else
@@ -727,14 +697,31 @@ static	void	parse_args (int argc, char **argv)
 	set_var_value(LOAD_PATH_VAR, the_path, 0);
 	new_free(&the_path);
 
+	/*
+	 * Default VHOST
+	 */
 	if ((cptr = getenv("IRCHOST")) && *cptr)
-		tmp_hostname = malloc_strdup(cptr);
+		malloc_strcpy(&tmp_hostname, cptr);
 
 	/*
-	 * Parse the command line arguments.
+	 * Default Channel to join on first connect
+	 */
+	if ((cptr = getenv("IRCCHANNEL")) && *cptr)
+		default_channel = malloc_strdup(cptr);
+
+	/* * * */
+	/* 
+	 * PHASE 2 - Parse command line arguments 
+	 *
+	 * Command line arguments override environment variables
 	 */
 	while ((ch = getopt(argc, argv, "aBbc:dhH:l:L:n:p:qsSvxz:")) != EOF)
 	{
+		/* 
+		 * 'optarg' and 'optind' are declared in <unistd.h> by at 
+		 * least Issue 2, and do not need to be declared by us.
+		 */
+
 		switch (ch)
 		{
 			case 'v':	/* Output ircII version */
@@ -742,48 +729,49 @@ static	void	parse_args (int argc, char **argv)
 				/* NOTREACHED */
 				exit(0);
 
-			case 'p': /* Default port to use */
+			case 'p': 	/* Overrule IRCPORT */
 				irc_port = my_atol(optarg);
 				break;
 
-			case 'd': /* use dumb mode */
+			case 'd': 	/* disable terminfo mode */
 				terminfo_mode = 0;
 				break;
 
-			case 'l': /* Load some file instead of ~/.ircrc */
-			case 'L': /* Same as above. Doesnt work like before */
+			case 'l': 	/* Overrule IRCRC/EPICRC */
+			case 'L': 	
 				malloc_strcpy(&epicrc_file, optarg);
 				break;
 
-			case 'a': /* append server, not replace */
+			case 'a': 	/* append server, not replace */
 				append_servers = 1;
 				break;
 
-			case 'q': /* quick startup -- no .ircrc */
+			case 'q': 	/* quick startup -- no .ircrc */
 				quick_startup = 1;
 				break;
 
-			case 's': /* dont connect - let user choose server */
+			case 's': 	/* dont connect - let user choose server */
 				dont_connect = 1;
 				break;
 			
-			case 'S': /* dummy option - to not choke on -S */
+			case 'S':
+				/* Historical option */
 				break;
 
-			case 'b':
+			case 'b':	/* "bot mode" - implies -d as well */
 				terminfo_mode = 0;
-				detached = 1;
+				detached = -1;
 				break;
 
-			case 'n':
+			case 'n':	/* Overrules IRCNICK */
 				strlcpy(nickname, optarg, sizeof nickname);
 				break;
 
-			case 'x': /* x_debug flag */
+			case 'x': 	/* x_debug flag - danger! */
 				x_debug = (unsigned long)0x0fffffff;
 				break;
 
-			case 'z':
+			case 'z':	/* Overrule IRCUSER */
 				set_var_value(DEFAULT_USERNAME_VAR, optarg, 0);
 				break;
 
@@ -791,12 +779,12 @@ static	void	parse_args (int argc, char **argv)
 				/* Historical option */
 				break;
 
-			case 'c':
+			case 'c':	/* Overrule IRCCHANNEL */
 				malloc_strcpy(&default_channel, optarg);
 				break;
 
-			case 'H':
-				tmp_hostname = malloc_strdup(optarg);
+			case 'H':	/* Overrule IRCHOST */
+				malloc_strcpy(&tmp_hostname, optarg);
 				break;
 
 			default:
@@ -809,6 +797,10 @@ static	void	parse_args (int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	/*
+	 * If the first naked argument after flags looks like a nickname,
+	 * then it is the default nickname, overruling IRCNICK and -n
+	 */
 	if (argc && **argv && !strchr(*argv, '.'))
 		strlcpy(nickname, *argv++, sizeof nickname), argc--;
 
@@ -820,6 +812,9 @@ static	void	parse_args (int argc, char **argv)
 		strlcpy(nickname, get_string_var(DEFAULT_USERNAME_VAR), 
 				sizeof nickname);
 
+	/*
+	 * All further naked arguments are taken as server descriptions.
+	 */
 	for (; *argv; argc--, argv++)
 		if (**argv)
 			serverdesc_insert(*argv);
@@ -864,7 +859,7 @@ static void	do_signals(void)
 	int sig_no;
 
 	signals_caught[0] = 0;
-	for (sig_no = 1; sig_no < NSIG; sig_no++)
+	for (sig_no = 1; sig_no < MY_SIG_MAX; sig_no++)
 	{
 		while (signals_caught[sig_no])
 		{
@@ -1053,14 +1048,8 @@ static void    load_ircrc (void)
 	if (startup_file || quick_startup)
 		return;
 
-	/* 
-	 * epicrc_file and ircrc_file can't be NULL here, but try 
-	 * telling clang's static analyzer that... bleh
-	 */
 	if (epicrc_file && access(epicrc_file, R_OK) == 0)
 		startup_file = malloc_strdup(epicrc_file);
-	else if (ircrc_file && access(ircrc_file, R_OK) == 0)
-		startup_file = malloc_strdup(ircrc_file);
 	else
 		startup_file = malloc_strdup("global");
 
@@ -1070,13 +1059,25 @@ static void    load_ircrc (void)
 /*************************************************************************/
 int 	main (int argc, char *argv[])
 {
+	/* Unless/until the user chooses something else, we use the "C" locale */
 	setlocale(LC_ALL, "");
 	setlocale(LC_NUMERIC, "C");
 
+	/* Some things are always done in UTF-8 */
 	create_utf8_locale();
-	setvbuf(stdout, NULL, _IOLBF, 1024);
-        get_time(&start_time);
 
+	/* Stdout and stderr are always line buffered, always */
+	setvbuf(stdout, NULL, _IOLBF, 1024);
+	setvbuf(stderr, NULL, _IOLBF, 1024);
+
+	/* The preliminaries are now done.  Let's boot! */
+	/*
+	 * These functions initialize/establish global variables
+	 * that used to be hardcoded at compile time.  The order
+	 * is important because some of them use global variables
+	 * initialized by previous functions.
+	 */
+        get_time(&start_time);
 	init_levels();
 	init_transforms();
 	init_recodings();
@@ -1093,6 +1094,9 @@ int 	main (int argc, char *argv[])
 	init_ares();
 	init_vhosts_stage2();
 
+	/*
+	 * If we've gotten this point, we've booted successfully.
+	 */
 	fprintf(stderr, "EPIC VI -- %s\n", ridiculous_version_name);
 	fprintf(stderr, "EPIC Software Labs (2025)\n");
 	fprintf(stderr, "Version (%s), Commit Id (%lu) -- Date (%s)\n", 
@@ -1101,29 +1105,59 @@ int 	main (int argc, char *argv[])
 	fprintf(stderr, "OpenSSL version: %#8.8lx\n", OpenSSL_version_num());
 
 	/* If we're a bot, do the bot thing. */
-	if (detached)
+	if (detached == -1)
 	{
 		pid_t	child_pid;
 
 		child_pid = fork();
+
+		/* Error */
 		if (child_pid == -1)
 		{
 			fprintf(stderr, "Could not fork a child process: %s\n",
 					strerror(errno));
 			_exit(1);
 		}
+
+		/* Parent */
 		else if (child_pid > 0)
 		{
 			fprintf(stderr, "Process [%d] running detached\n",
 					child_pid);
 			_exit(0);
 		}
+
+		/* Child */
+		else
+		{
+			if (setsid() < 0)
+			{
+				fprintf(stderr, "setsid() failed: %s \n",
+						strerror(errno));
+				_exit(0);
+			}
+			if (!freopen("/dev/null", "r", stdin)) 
+				(void) 0;
+			if (!freopen("/dev/null", "w", stdout)) 
+				(void) 0;
+			if (!freopen("/dev/null", "w", stderr))
+				(void) 0;
+			detached = 1;
+		}
 	}
 	else
 	{
 		fprintf(stderr, "Process [%d]", getpid());
 		if (isatty(0))
-			fprintf(stderr, " connected to tty [%s]", ttyname(0));
+		{
+			Filename	tname;
+
+			memset(&tname, 0, sizeof(tname));
+			if (ttyname_r(0, tname, sizeof(tname)))
+				fprintf(stderr, " I thought you were connected to a tty, but I guess I was wrong.");
+			else
+				fprintf(stderr, " connected to tty [%s]", tname);
+		}
 		else
 			terminfo_mode = 0;
 		fprintf(stderr, "\n");
@@ -1132,7 +1166,7 @@ int 	main (int argc, char *argv[])
 	init_signals();
 	init_signal_names();
 
-	/* these should be taken by both dumb and smart displays */
+	/* these should be taken by both terminfo and non-terminfo displays */
 	my_signal(SIGSEGV, coredump);
 	my_signal(SIGBUS, coredump);
 	my_signal(SIGQUIT, SIG_IGN);
@@ -1144,39 +1178,43 @@ int 	main (int argc, char *argv[])
 	my_signal(SIGALRM, nothing);
 	my_signal(SIGUSR1, sig_user1);
 	my_signal(SIGUSR2, sig_user2);
+	my_signal(SIGCONT, term_cont);
+	my_signal(SIGWINCH, sig_refresh_screen);
+	if (detached)
+	{
+		my_signal(SIGHUP, SIG_IGN);
+		terminfo_mode = 0;		/* Just in case */
+	}
 
+	init_display();
+        create_new_screen(1);
+        new_window(main_screen);
+        update_all_windows();
+	redraw_input(-1, UPDATE_ALL);
+
+	/*
+	 * AT THIS POINT YOU CAN/MUST USE SAY()/YELL()/etc
+	 * and you must not use fprintf(stderr) etc
+	 */
 	set_context(-1, -1, NULL, NULL, LEVEL_OTHER);
 
-	/* 
-	 * We use line mode for -d, -b, when stdout is redirected to a file,
-	 * or as a failover if init_screen() fails. 
+	/*
+	 * This initializes all /SETs, but the most important
+	 * ones are the status bar ones.  Status bar redraws
+	 * are turned off right now, so the first time we
+	 * call build_status() it will call init_status() and
+	 * initialize data structures.  Then we allow status
+	 * bar redraws, and call build_status() to actually
+	 * draw the status bars!
 	 */
-	if (terminfo_mode && (init_screen() == 0))
-	{
-		my_signal(SIGCONT, term_cont);
-		my_signal(SIGWINCH, sig_refresh_screen);
+	init_variables_stage2();
+	build_status(NULL);
+	permit_status_update(1);
+	build_status(NULL);
 
-		init_variables_stage2();
-		permit_status_update(1);
-		build_status(NULL);
-		update_input(-1, UPDATE_ALL);
-	}
-	else
-	{
-		if (detached)
-		{
-			my_signal(SIGHUP, SIG_IGN);
-			if (!freopen("/dev/null", "w", stdout)) 
-				(void) 0;
-		}
-		terminfo_mode = 0;		/* Just in case */
-		create_new_screen(1);
-		new_window(main_screen);
-		init_variables_stage2();
-		build_status(NULL);
-	}
-
-	/* Get the terminal-specific keybindings now */
+	/*
+	 * Initialize a bunch of /BINDs based on your TERM
+	 */
 	init_termkeys();
 
 	/* The all-collecting stack frame */
@@ -1184,10 +1222,8 @@ int 	main (int argc, char *argv[])
 
 	load_ircrc();
 
-	init_input();
-
 	if (dont_connect)
-		server_list_display();		/* Let user choose server */
+		say("You have chosen not to connect to a server.  Use /SERVER to see your server list");
 	else
 		set_window_server(0, 0);	/* Connect to default server */
 

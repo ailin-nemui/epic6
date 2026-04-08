@@ -43,25 +43,35 @@
  * to these actual values, so if you change these, it will break how
  * other people see your messages!
  */
-#define REV_TOG		'\026'		/* ^V */
+/* ^V */
+#define REV_TOG		'\026'		
 #define REV_TOG_STR	"\026"
-#define UND_TOG		'\037'		/* ^_ */
+/* ^_ */
+#define UND_TOG		'\037'		
 #define UND_TOG_STR	"\037"
-#define BOLD_TOG	'\002'		/* ^B */
+/* ^B */
+#define BOLD_TOG	'\002'		
 #define BOLD_TOG_STR	"\002"
-#define BLINK_TOG	'\006'		/* ^F (think flash) */
+/* ^F (think flash) */
+#define BLINK_TOG	'\006'		
 #define BLINK_TOG_STR	"\006"
-#define ALL_OFF		'\017'		/* ^O */
+/* ^O */
+#define ALL_OFF		'\017'		
 #define ALL_OFF_STR	"\017"
-#define ND_SPACE	'\023'		/* ^S */
+/* ^S */
+#define ND_SPACE	'\023'		
 #define ND_SPACE_STR	"\023"
-#define ALT_TOG		'\005'		/* ^E (think Extended) */
+/* ^E (think Extended) */
+#define ALT_TOG		'\005'		
 #define ALT_TOG_STR	"\005"
-#define ITALIC_TOG	'\020'		/* ^P */
+/* ^P */
+#define ITALIC_TOG	'\020'		
 #define ITALIC_TOG_STR	"\020"
-#define COLOR_TAG	'\003'		/* ^C */
+/* ^C */
+#define COLOR_TAG	'\003'		
 #define COLOR_TAG_STR	"\003"
-#define COLOR_EXTENDED_TAG	'\030'		/* ^X */
+/* ^X */
+#define COLOR_EXTENDED_TAG	'\030'		
 #define	COLOR_EXTENDED_TAG_STR  "\030"
 
 #define IRCD_BUFFER_SIZE	512
@@ -118,7 +128,7 @@ typedef enum OperatingMode_x {
 
 /* irc.c's global variables */
 extern		int	detached;
-extern		int	current_numeric;
+extern		int	current_numeric_;
 extern		int	dead;
 extern volatile	sig_atomic_t	dead_children_processes;
 extern		int	dont_connect;

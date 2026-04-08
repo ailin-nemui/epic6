@@ -460,24 +460,49 @@ BUILT_IN_COMMAND(foreach)
 
 /*
  * FE:  When you need to iteratively loop rather than recursively loop.
+ * Also, FEC.  Which should have been a different functions.
  */
 BUILT_IN_COMMAND(fe)
 {
-	char    *list = NULL,
-		*templist = NULL,
-		*placeholder,
-		*vars,
-		*var[255],
-		*todo = NULL;
-	unsigned	ind, y;
-	int	doing_fe = !strcmp(command, "FE");
-	char	*mapvar = NULL;
-	const char	*mapsep = doing_fe ? space : empty_string;
-	char	*map = NULL;
+	char    	*list = NULL,
+			*templist = NULL,
+			*placeholder,
+			*vars,
+#define MAX_FE_VARS 256
+			*var[MAX_FE_VARS],
+			*todo = NULL;
+	unsigned	ind, 
+			y;
+	int		doing_fe;
+	char		*mapvar = NULL;
+	const char	*mapsep;
+	char		*map = NULL;
 
+	/*
+	 * Phase 1 - Lex the arguments
+	 */
+
+	/* Are we doing /FE or /FEC? */
+	if (!strcmp(command, "FE"))
+		doing_fe = 1;
+	else
+		doing_fe = 0;		/* FEC */
+
+	/* You know, this is heinous. */
+	if (doing_fe == 1)
+		mapsep = space;
+	else
+		mapsep = empty_string;
+
+	/* The value of $* must always be something */
 	if (!subargs)
 		subargs = empty_string;
 
+	/*
+	 * We support two syntaxes:
+	 *	/FE lval		("mapvar")
+	 *	/FE (wordlist)
+	 */
 	if (*args == ':' || isalnum(*args)) {
 		mapvar = next_arg(args, &args);
 		templist = get_variable(mapvar);
@@ -488,36 +513,63 @@ BUILT_IN_COMMAND(fe)
 		return;
 	}    
 
+	/*
+	 * Requirement: The wordlist (which may be $mapvar) must not be empty.
+	 */
 	if (!templist || !*templist) {
 		new_free(&templist);
 		return;
 	}
 
+	/*
+	 * After the wordlist comes the variable list.
+	 * It contains an arbitrary number of words.
+	 * the variable list ends when we find the block ("{")
+	 */
 	vars = args;
+
+	/*
+	 * Requirement: The arglist must contain a block
+	 */
 	if (!(args = strchr(args, '{'))) {
 		my_error("%s: Missing commands", command);
 		new_free(&templist);
 		return;
 	}
+
+	/*
+	 * Requirement: There must be variables between the wordlist and the block
+	 */
 	if (vars == args) {
 		my_error("%s: You did not specify any variables", command);
 		new_free(&templist);
 		return;
 	}
 
+	/* 
+	 * Now we nul out the character before the {, which is heinous,
+	 * but it seperates 'vars'. 
+	 */
 	args[-1] = '\0';
-	ind = 0;
 
+	/*
+	 * Now we split up the words in the varlist into 'var'
+	 */
+	ind = 0;
 	while ((var[ind++] = next_arg(vars, &vars)))
 	{
-		if (ind > (sizeof(var) / sizeof(*var)))
+		/* For now we have a hardcoded limit */
+		if (ind >= MAX_FE_VARS)
 		{
 			my_error("%s: Too many variables", command);
 			new_free(&templist);
 			return;
 		}
 	}
-	ind = ind ? ind - 1: 0;
+
+	/* Since we post-incremented ind, we adjust that back */
+	if (ind)
+		ind--;
 
 	if (!(todo = next_expr(&args, '{')))
 	{

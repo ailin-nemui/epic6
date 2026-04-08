@@ -280,7 +280,7 @@ static int	scram_process_server_first_message(scram_state_t *state, const char *
         return -1;
     }
     state->iteration_count = (unsigned int)atoi(i_val);
-    if (state->iteration_count <= 0) {
+    if (state->iteration_count >= INT_MAX) {
         yell("Error: Invalid iteration count: %u", state->iteration_count);
         return -1;
     }

@@ -97,13 +97,14 @@ static FILE *	open_log (const char *logfile, FILE **fp)
 	if ((*fp = fopen(fullname, "a")) != NULL)
 	{
 		time_t		t;
-		struct	tm *	ltime;
+		struct	tm 	ltime;
 		char		timestr[256];
 
 		/* Convert the time to a string to insert in the file */
+		memset(&ltime, 0, sizeof(ltime));
 		time(&t);
-		ltime = localtime(&t);		/* Not gmtime, m'kay? */
-		strftime(timestr, 255, "%a %b %d %H:%M:%S %Y", ltime);
+		localtime_r(&t, &ltime);		/* Do not use gmtime! */
+		strftime(timestr, 255, "%a %b %d %H:%M:%S %Y", &ltime);
 
 		chmod(fullname, S_IRUSR | S_IWUSR);
 		say("Starting logfile %s", fullname);
@@ -123,12 +124,12 @@ static FILE *	close_log (FILE **fp)
 {
 	time_t	t;
 	char	my_buffer[256];
-struct	tm	*ugh;
+struct	tm	ugh;
 
+	memset(&ugh, 0, sizeof(ugh));
 	time(&t);
-	ugh = localtime(&t);		/* Not gmtime, m'kay? */
-	/* Ugh.  Solaris. */
-	strftime(my_buffer, 255, "%a %b %d %H:%M:%S %Y", ugh);
+	localtime_r(&t, &ugh);		/* Do not use gmtime! */
+	strftime(my_buffer, 255, "%a %b %d %H:%M:%S %Y", &ugh);
 
 	if (*fp)
 	{
@@ -186,7 +187,7 @@ void	logger (void *stuff)
 		do_log(flag, logfile, &irclog_fp);
 
 		/* If opening the logfile failed, set log off */
-		if (!irclog_fp && flag)
+		if (!irclog_fp)
 			v->integer = 0;
 	}
 }

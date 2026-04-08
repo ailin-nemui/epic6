@@ -52,6 +52,8 @@ Actual bugs
 * /SET NEW_SERVER_LASTLOG_LEVEL does not work properly because it doesn't check window servers.
 * Create /load ignore on top of /on context and /shh
 * Add /ON GEOMETRY to show columns and rows
+* Local variable pointers that hold pointers to malloc()ed memory that might be changed
+  by a do_hook() need to be (volatile) -- sigh!
 
 THE CHANGELOG SINCE THE LAST RELEASE:
 -------------------------------------
@@ -376,3 +378,54 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Sunset /BOTMODE -- just use -b 
 * Begin refactoring the command line argument parser to handle defaults more sensibly
 * At startup, explain where we got the user's username from
+* Use cppcheck to find countless code quality improvements.
+* Some useful things learned:
+  - All values (including NULLs) passed to variadic functions must be typed.
+  - Checking the NULLness of a pointer invalidates previous assumptions about its non-NULL-ness
+  - Code should not give instructions, it should specify requirements
+  - That is to say, "don't tell the compiler what to do, tell it what must be done"
+  - Clever code is always a trap in c99.  Don't be clever.
+  - Don't initialize variables just to do it if you reset them later.
+  - Don't use localtime(), ttyname(), or getpwuid().
+  - Literal strings should be const, even if they are  char var[].
+  - Don't do !~var  to see if a bitmask var has no bits set.  Just == 0.
+  - Use %02hhX to print a (unsigned char) as a two-digit hex
+  - %X always takes an unsigned type, always.
+  - "not" is apparently a reserved word these days.  go figure.
+  - Local variables that point to a global object need to be 'volatile' if a 
+    function call might change the underlying global object (such as do_hook())
+  - Code appearing after something that shouldn't return upsets the checker
+* Remove reference to the help files from the man page and redirect to the website
+* Rename init_input() to clear_input() to be clearer
+* Rename update_input() to redraw_input(), same
+* Change "current_numberic" from an int to a function so it can be per-server.
+* Always include <term.h> -- it's required for terminfo support
+* NSIG is non-standard before Issue 8, so it's better to use a magic value (128 for now)
+* Add a my_getpwuid() so we can use getpwuid_r() but still treat it like getpwuid()
+* Rename "init_screen()" to "init_display()" to indicate it's a tty thing not (Screen *) thing
+* Beginning of a terminfo refactor
+  - Be more straightforward in tracking SGR changes
+  - Don't keep track of things we can do that we don't actually need to do
+  - Don't go out of our way to support historical, obsolete ways that hardware terminals
+    used to do things.  Just do things the way terminal emulators do today.
+  - Switch from tparm() to tiparm()
+  - Don't try to reason what "normal" means, just send an SGR0
+  - Deprecate using outcap() -- a victim of sgr simplification
+  - Remove term_echo() and the ability to have invisible output.
+  - There were like 5 or 6 bona fide bugs it found. yay!
+* Sunset /MESG a command to help you avoid talk bombs (which are no longer a thing)
+* Sunset /OPER prompting you for a password either before or after a wrong password
+* Signficant rewrite of /FE (and /FEC) to make it less clever
+* Simplify how your username, nickname, and realname are determined at startup
+* Simplify/unify how epic decides what your startup file is
+* Add support for the IRCCHANNEL env variable for default channel
+* Avoid using the phrase "dumb mode", prefer "non-terminfo" or "non-fullscreen" mode
+* ircII calls it "basic mode" -- I might do that as well
+* Refactor how epic launches detached (bot) mode, the -d CLI flag
+* Refactor/unify how terminfo mode and non-terminfo mode bootstrap themselves.
+  - Eventually it'd be nice if you could switch this on or off at runtime
+* Change -S so it just tells you to use /server to see your server list.
+* Sunset the now-unused exec_pipe() internal function.
+* Don't exit the client if it's in detached mode and you're killed.
+* Major revamp to term_attribute() to use our new terminfo support
+  - This should cut down on bytes output on attribute changes

@@ -311,6 +311,8 @@ const 	char *	inbound_recode 		(const char *, int, const char *, const char *, c
 #ifndef HAVE_STRLCAT
 	size_t  strlcat 		(char *dst, const char *src, size_t dsize);
 #endif
+struct passwd *	my_getpwuid 		(uid_t uid);
+
 
 #endif /* _IRCAUX_H_ */
 

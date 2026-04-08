@@ -1533,7 +1533,8 @@ STATUS_FUNCTION(status_user)
 		short		map;
 		char		key;
 		int *		var;
-	} lookup[] = {
+	};
+	const struct dummystruct lookup[] = {
 	{ 0, 'U', &STATUS_USER_VAR }, { 0, 'X', &STATUS_USER1_VAR },
 	{ 0, 'Y', &STATUS_USER2_VAR }, { 0, 'Z', &STATUS_USER3_VAR },
 	{ 0, '0', &STATUS_USER_VAR }, { 0, '1', &STATUS_USER1_VAR },
@@ -1640,10 +1641,12 @@ STATUS_FUNCTION(status_window)
 				break;
 			if (get_screen_visible_windows(get_window_screennum(window_)) <= 1)
 				break;
+			__attribute__((fallthrough));
 			/* FALLTHROUGH */
 		case 3:
 			if (!IS_CURRENT_WINDOW)
 				break;
+			__attribute__((fallthrough));
 			/* FALLTHROUGH */
 		case 2:
 			return text;
@@ -1839,7 +1842,7 @@ STATUS_FUNCTION(status_sequence_point)
 
 	if (x_debug & DEBUG_SEQUENCE_POINTS)
 	{
-		snprintf(resultstr, sizeof(resultstr), UINTMAX_FORMAT, sequence_point);
+		snprintf(resultstr, sizeof(resultstr), INTMAX_FORMAT, sequence_point);
 		PRESS(sp_format, resultstr);
 		RETURN
 	}

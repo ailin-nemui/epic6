@@ -29,7 +29,7 @@ extern	FILE	*irclog_fp;
 	SIGNAL_HANDLER(sig_refresh_screen);
 	void	redraw_all_screens 	(void);
 	BUILT_IN_KEYBINDING(refresh_screen);
-	int	init_screen 		(void);
+	int	init_display		(void);
 	void   	file_put_it 		(FILE *fp, const char *format, ...);
 
         int     get_window_display              (void);

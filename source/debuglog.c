@@ -86,7 +86,7 @@ int	debuglog (const char *format, ...)
 	char	timebuf[10240];
 	struct timespec xnow;
 	time_t sec;
-	struct tm *tm;
+	struct tm tm;
 
         if (debuglogf && format)
         {
@@ -95,8 +95,9 @@ int	debuglog (const char *format, ...)
 
 		get_time(&xnow);
 		sec = xnow.tv_sec;
-		tm = localtime(&sec);
-		strftime(timebuf, 10240, "%F %T", tm);
+		memset(&tm, 0, sizeof(tm));
+		localtime_r(&sec, &tm);
+		strftime(timebuf, 10240, "%F %T", &tm);
 		fprintf(debuglogf, "[%s.%04ld] ", timebuf, (long)xnow.tv_nsec / 1000000);
                 vfprintf(debuglogf, format, args);
                 va_end(args);

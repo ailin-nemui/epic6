@@ -256,7 +256,7 @@ const	char *	get_server_nickname		(int);
 	void	change_server_nickname		(int, const char *);
 const	char *	get_pending_nickname		(int);
 	void	accept_server_nickname		(int, const char *);
-	void   nickname_change_rejected		(int, const char *);
+	void	nickname_change_rejected	(int, const char *);
 
 const	char*	get_server_005			(int, const char *);
 	void	set_server_005			(int, char*, const char*);
@@ -288,6 +288,9 @@ const char *	get_server_state_str		(int);
 	int	get_server_protocol_state	(int);
 	void	set_server_autoclose		(int, int);
 	int	get_server_autoclose		(int);
+	int     get_server_current_numeric 	(int refnum);
+	void	set_server_current_numeric 	(int refnum, int numberic);
+	int     current_numeric 		(void);
 
         void    set_server_invite_channel       (int, const char *);
 const char *    get_server_invite_channel       (int);

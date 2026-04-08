@@ -449,7 +449,7 @@ static int 	find_hook (char *name, int *first, int quiet)
  * entry to the list as specified by the rest of the parameters.  The new
  * entry is added in alphabetical order (by nick). 
  */
-static int	add_hook (int which, char *nick, ArgList *arglist, char *stuff, int noisy, int not, int sernum, int flexible)
+static int	add_hook (int which, char *nick, ArgList *arglist, char *stuff, int noisy, int not_, int sernum, int flexible)
 {
 	Hook	*new_h;
 	
@@ -468,7 +468,7 @@ static int	add_hook (int which, char *nick, ArgList *arglist, char *stuff, int n
 	malloc_strcpy(&new_h->nick, nick);
 	malloc_strcpy(&new_h->stuff, stuff);
 	new_h->noisy = noisy;
-	new_h->not = not;
+	new_h->not = not_;
 	new_h->sernum = sernum;
 	new_h->flexible = flexible;
 	new_h->skip = 0;
@@ -1916,7 +1916,7 @@ char *hookctl (char *input)
 		"SERIAL",
 		"SET",
 		"USERINFO",
-		NULL);
+		(const char *)NULL);
 
 	switch (go)
 	{
@@ -1998,7 +1998,7 @@ char *hookctl (char *input)
 				tmp_int = -2 + vmy_strnicmp(strlen(str), str, 
 					"NO_ACTION_TAKEN",	"SUPPRESS_DEFAULT",
 					"DONT_SUPPRESS_DEFAULT", "RESULT_PENDING",
-					NULL
+					(const char *)NULL
 				);
 			else
 				GET_INT_ARG(tmp_int, str);
@@ -2040,7 +2040,7 @@ char *hookctl (char *input)
 		else
 		{
 			GET_FUNC_ARG(str,input);
-			prop = vmy_strnicmp(strlen(str), str, "LISTS", "POPULATED_LISTS", "HOOKS", NULL);
+			prop = vmy_strnicmp(strlen(str), str, "LISTS", "POPULATED_LISTS", "HOOKS", (const char *)NULL);
 		}
 		if (input && *input)
 		{
@@ -2187,7 +2187,7 @@ char *hookctl (char *input)
 				"LIST",
 				"NOISE",
 				"NOISY",
-				NULL
+				(const char *)NULL
 			);
 				
 			if (action == 0)
@@ -2218,7 +2218,7 @@ char *hookctl (char *input)
 				"ARGUMENT_LIST",
 				"FLEXIBLE", 	"NICK", 	"NOT",		"NOISE", 
 				"NOISY", 		"PACKAGE",	"SERIAL", 	"SKIP",
-				"STUFF",		"TYPE", 	"STRING",	NULL);
+				"STUFF",		"TYPE", 	"STRING",	(const char *)NULL);
 			if (prop == 0)
 				RETURN_EMPTY;
 
@@ -2494,7 +2494,7 @@ char *hookctl (char *input)
 			GET_FUNC_ARG(str, input);
 			switch (vmy_strnicmp(strlen(str), str,
 				"ALERT", 	"CUSTOM", 	"DISPLAY", 	"IDENTIFIER",
-				"NAME", 	"SUPPRESS", "VALUE", 	NULL)
+				"NAME", 	"SUPPRESS", "VALUE", 	(const char *)NULL)
 			)
 			{
 				case 1: 	RETURN_INT(noise_info[id]->alert ? 1 : 0);
@@ -2534,7 +2534,7 @@ char *hookctl (char *input)
 				prop = vmy_strnicmp(strlen(str), str,
 					"FLAGS",		"MARK", 		"NAME",
 					"PARAMETRES", 	"PARAMETERS",	"PARAMS",
-					"IMPLIED",		NULL);
+					"IMPLIED",		(const char *)NULL);
 			}
 
 			switch (prop)

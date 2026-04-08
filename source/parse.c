@@ -689,7 +689,6 @@ static void 	p_invite (const char *from, const char *comm, const char **ArgList)
 static void	p_kill (const char *from, const char *comm, const char **ArgList)
 {
 	const char 	*victim, *reason;
-	int 	hooked;
 
 	if (!(victim = ArgList[0]))
 		{ rfc1459_odd(from, comm, ArgList); return; }
@@ -726,21 +725,8 @@ static void	p_kill (const char *from, const char *comm, const char **ArgList)
 	 */
 	if (!reason) { reason = "No Reason Given"; }
 
-	if ((hooked = do_hook(DISCONNECT_LIST, "Killed by %s (%s)",
-						from, reason)))
-	{
-		say("You have been killed by that fascist [%s] %s", 
-						from, reason);
-	}
-
-
-	/* 
-	 * If we are a bot, and /on disconnect didnt hook, 
-	 * then we arent going anywhere.  We might as well quit.
-	 * XXX This is bogus.  it should be handled in close_server().
-	 */
-	if (detached && !hooked)
-		irc_exit(1, NULL);
+	if (do_hook(DISCONNECT_LIST, "Killed by %s (%s)", from, reason))
+		say("You have been killed by that fascist [%s] %s", from, reason);
 }
 
 static void	p_ping (const char *from, const char *comm, const char **ArgList)

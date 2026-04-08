@@ -363,7 +363,7 @@ static long		find_index (an_array *array, long item)
 			srch--;
 		srch++;
 	}
-	while(array->index[srch] != item && srch < array->size)
+	while (srch < array->size && array->index[srch] != item)
 		srch++;
 
 	if (srch < 0 || srch >= array->size)

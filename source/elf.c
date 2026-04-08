@@ -423,7 +423,7 @@ int	string_fgetc(const char **file_contents, off_t *file_contents_size)
 off_t	string_fgets(char *buffer, size_t buffer_size, const char **file_contents, off_t *file_contents_size)
 {
 	size_t	offset = 0;
-	int	next_byte = 0;
+	int	next_byte;
 	int	read_any_byte = 0;
 
 	for (;;)

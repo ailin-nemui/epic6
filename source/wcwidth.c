@@ -229,27 +229,24 @@ int     next_code_point2 (const char *i_, ptrdiff_t *bytes_used, int resync)
     for (; *i; i++)
     {
         str = i;
-        a = b = c = d = 0;
+        b = c = d = 0;
 	result = -1;
 
 	/* Forcibly refuse to walk past the nul */
 	if (str[0] == 0)
 		return 0;
 
-        if (str[0])
-        {
-                a = (unsigned char)str[0];
-                if (str[1])
-                {
-                        b = (unsigned char)str[1];
-                        if (str[2])
-                        {
-                                c = (unsigned char)str[2];
-                                if (str[3])
-                                        d = (unsigned char)str[3];
-                        }
-                }
-        }
+	a = (unsigned char)str[0];
+	if (str[1])
+	{
+		b = (unsigned char)str[1];
+		if (str[2])
+		{
+			c = (unsigned char)str[2];
+			if (str[3])
+				d = (unsigned char)str[3];
+		}
+	}
 
         if ((a & 0x80) == 0x00)
         {

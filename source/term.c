@@ -5,7 +5,7 @@
  * Copyright (c) 1991, 1992 Troy Rollo.
  * Copyright (c) 1992-1996 Matthew Green.
  * Copyright 1998 J. Kean Johnston, used with permission.
- * Copyright 1995, 2008 EPIC Software Labs 
+ * Copyright 1995, 2026 EPIC Software Labs 
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -37,7 +37,6 @@
  * Ben Winslow deserves specific praise for his fine work adding 
  * terminfo support to EPIC.
  */
-#define __need_term_h__
 #define __need_putchar_x__
 #define __need_term_flush__
 #include "irc.h"
@@ -49,50 +48,27 @@
 #include "output.h"
 #include "newio.h"
 
-/*
- * If "HAVE_TERMINFO" is #define'd then we will use terminfo type function
- * calls.  If it is #undef'd, then we will use the more traditional termcap
- * type function calls.  If you can possibly get away with it, use terminfo
- * instead of termcap, as it is muck more likely your terminal descriptions
- * will be closer to reality.
+/* 
+ * In the early days, ircII was strictly a termcap program.
+ * Today, EPIC is a terminfo program and expects your system to have terminfo.
+ * Libncurses provides a very satisfactory terminfo API and most OSs use that.
+ *
+ * Irrespective of our use of libncurses to provide terminfo support,
+ * EPIC is not and does not ever intend to be a curses program.
  */
 
+volatile 	sig_atomic_t	need_redraw;
+	 static	struct termios	oldb, 
+				newb;
 
+/* XXX These should not be global variables */
+static	int		li;
+static	int		co;
 
-volatile sig_atomic_t	need_redraw;
-static	int		tty_des;		/* descriptor for the tty */
-static	struct	termios	oldb, newb;
-	char		my_PC;
+static	void	term_establish_last_column	(void);
+static	void	term_enable_last_column		(void);
+static	void	term_disable_last_column	(void);
 
-/*
- * We use macro wrappers to hide the difference between terminfo and termcap.
- */
-# define Tgetstr(x, y)	tigetstr(x.iname)
-# define Tgetnum(x)	tigetnum(x.iname);
-# define Tgetflag(x)	tigetflag(x.iname);
-
-/*
- * And for the final inanity, X/OPEN curses uses
- *     char *tparm (char *, int, int, int, int, int, int, int, int, int);
- * but everyone else (including ncurses and solaris) uses
- *     char *tparm (const char *, ...);
- * and there's no way to cover those two arglists with one prototype, so
- * we're left with these regretable wrapper functions.
- */
-static char *tparm1 (const char *str, int l1)
-{
-	return tparm(str, l1, 0, 0, 0, 0, 0, 0, 0, 0);
-}
-
-static char *tparm2 (const char *str, int l1, int l2)
-{
-	return tparm(str, l1, l2, 0, 0, 0, 0, 0, 0, 0);
-}
-
-static char *tparm4 (const char *str, int l1, int l2, int l3, int l4)
-{
-	return tparm(str, l1, l2, l3, l4, 0, 0, 0, 0, 0);
-}
 
 /*
  * The old code assumed termcap. termcap is almost always present, but on
@@ -616,31 +592,8 @@ static const cap2info tcaps[] =
 	{ "memory_unlock",		"memu",		"mu",	CAP_TYPE_STR,	&TI.TI_memu },
 	{ "box_chars_1",		"box1",		"bx",	CAP_TYPE_STR,	&TI.TI_box1 },
 };
-
-
-struct my_term *current_term = &TI;
-static const	int	numcaps = sizeof tcaps / sizeof tcaps[0];
-static	int	term_echo_flag = 1;
-static	int	li;
-static	int	co;
-
-static	void	term_establish_last_column (void);
-static void	term_enable_last_column (void);
-static void	term_disable_last_column (void);
-
-/*
- * term_echo: if 0, echo is turned off (all characters appear as blanks), if
- * non-zero, all is normal.  The function returns the old value of the
- * term_echo_flag 
- */
-int	term_echo (int flag)
-{
-	int	echo;
-
-	echo = term_echo_flag;
-	term_echo_flag = flag;
-	return (echo);
-}
+struct my_term *	current_term = &TI;
+static const int	numcaps = sizeof tcaps / sizeof tcaps[0];
 
 /*
  * term_inputline_putchar: This is what handles the outputting of the input 
@@ -652,12 +605,6 @@ int	term_echo (int flag)
  */
 void	term_inputline_putchar (unsigned char c)
 {
-	if (!term_echo_flag)
-	{
-		putchar_x(' ');
-		return;
-	}
-
 	/*
 	 * Any nonprintable characters we lop off.  In addition to this,
 	 * we catch the nasty 0x9b which is the escape character with
@@ -665,9 +612,9 @@ void	term_inputline_putchar (unsigned char c)
 	 */
 	if (c < 0x20/* || c == 0x9b*/)
 	{
-		term_standout_on();
+		term_reverse_on();
 		putchar_x((c | 0x40) & 0x7f);
-		term_standout_off();
+		term_reverse_off();
 	}
 
 	/*
@@ -675,9 +622,9 @@ void	term_inputline_putchar (unsigned char c)
 	 */
 	else if (c == 0x7f) 	/* delete char */
 	{
-		term_standout_on();
+		term_reverse_on();
 		putchar_x('?');
-		term_standout_off();
+		term_reverse_off();
 	}
 
 	/*
@@ -694,15 +641,11 @@ void	term_inputline_putchar (unsigned char c)
  */
 void	term_reset (void)
 {
-	tcsetattr(tty_des, TCSADRAIN, &oldb);
+	tcsetattr(STDIN_FILENO, TCSADRAIN, &oldb);
 
 	if (current_term->TI_csr)
-		tputs_x(tparm2(current_term->TI_csr, 0, get_screen_lines(main_screen) - 1));
-	term_gotoxy(0, get_screen_lines(main_screen) - 1);
-#if use_alt_screen
-	if (current_term->TI_rmcup)
-		tputs_x(current_term->TI_rmcup);
-#endif
+		tputs_x(tiparm(current_term->TI_csr, 0, get_screen_lines(main_screen) - 1));
+	term_move_cursor(0, get_screen_lines(main_screen) - 1);
 	term_disable_last_column();
 	term_flush();
 }
@@ -716,13 +659,9 @@ SIGNAL_HANDLER(term_cont)
 	foreground = (tcgetpgrp(0) == getpgrp());
 	if (foreground)
 	{
-#if use_alt_screen
-		if (current_term->TI_smcup)
-			tputs_x(current_term->TI_smcup);
-#endif
 		term_establish_last_column();
 		need_redraw = 1;
-		tcsetattr(tty_des, TCSADRAIN, &newb);
+		tcsetattr(STDIN_FILENO, TCSADRAIN, &newb);
 	}
 }
 
@@ -733,35 +672,50 @@ SIGNAL_HANDLER(term_cont)
  * wserv, we set the termial to RAW, no ECHO, so that all the signals are
  * ignored.. fixes quite a few problems...  -phone, jan 1993..
  */
-int	termfeatures = 0;
-
 int 	term_init (void)
 {
 	int	i,
 		desired;
 	char	*term;
+	int	termfeatures = 0;
 
+	/* This does not need to be a panic. */
 	if (!terminfo_mode)
-		panic(1, "term_init called  with terminfo_mode == 0");
+		return -1;
 
-	if ((term = getenv("TERM")) == (char *) 0)
+	/*
+	 *
+	 * PHASE 1: DETERMINE THE TERMINAL'S CAPABILITIES
+	 *
+	 */
+
+	/* Phase 1 Step 1 - You must have a TERM setting */
+	if (!(term = getenv("TERM")))
 	{
 		fprintf(stderr, "\n");
 		fprintf(stderr, "You do not have a TERM environment variable.\n");
-		fprintf(stderr, "So we'll be running in dumb mode...\n");
+		fprintf(stderr, "So we'll be running in non-fullscreen mode...\n");
 		return -1;
 	}
 	else
 		printf("Using terminal type [%s]\n", term);
 
-	setupterm(NULL, 1, &i);
-	if (i != 1)
+	/* Phase 1 Step 2 -- Your TERM setting must pass muster through setupterm() */
+	if ((setupterm(NULL, STDOUT_FILENO, &i)) || i != 1)
 	{
 		fprintf(stderr, "setupterm failed: %d\n", i);
-		fprintf(stderr, "So we'll be running in dumb mode...\n");
+		fprintf(stderr, "So we'll be running in non-fullscreen mode...\n");
 		return -1;
 	}
 
+	/* Phase 1 Step 3 -- Download the terminfo data to our own data structure */
+	/* XXX TODO - We should save cur_term [a magic global variable] to use with set_curterm() later */
+	/*
+	 * Download the TERM values into our TI data structure
+	 * XXX TODO -- TI should not be the permanent global source of truth.
+	 * 	       	We should zero it out, fill it in, and then memcpy() it to another 
+	 *		instance.  This would let us support multiple TERMs for wserv.
+	 */
 	for (i = 0; i < numcaps; i++)
 	{
 		int ival;
@@ -769,17 +723,17 @@ int 	term_init (void)
 
 		if (tcaps[i].type == CAP_TYPE_INT)
 		{
-			ival = Tgetnum(tcaps[i]);
+			ival = tigetnum(tcaps[i].iname);
 			*(int *)tcaps[i].ptr = ival;
 		}
 		else if (tcaps[i].type == CAP_TYPE_BOOL)
 		{
-			ival = Tgetflag(tcaps[i]);
+			ival = tigetflag(tcaps[i].iname);
 			*(int *)tcaps[i].ptr = ival;
 		}
 		else
 		{
-			cval = Tgetstr(tcaps[i], tptr);
+			cval = tigetstr(tcaps[i].iname);
 			if (cval == (char *) -1)
 				*(char * *)tcaps[i].ptr = NULL;
 			else
@@ -787,191 +741,58 @@ int 	term_init (void)
 		}
 	}
 
-	li = current_term->TI_lines;
-	co = current_term->TI_cols;
-	if (!co)
-		co = 79;
-	if (!li)
-		li = 24;
+#define TERM_CAN_CUP            (1 << 0)
+#define TERM_CAN_CLEAR          (1 << 1)
+#define TERM_CAN_CLREOL         (1 << 2)
+#define TERM_CAN_SCROLL         (1 << 3)
 
-	if (!current_term->TI_nel)
-		current_term->TI_nel = "\n";
-	if (!current_term->TI_cr)
-		current_term->TI_cr = "\r";
-
-	current_term->TI_normal[0] = 0;
-	if (current_term->TI_sgr0)
-		strlcat(current_term->TI_normal, current_term->TI_sgr0, 
-				sizeof current_term->TI_normal);
-	if (current_term->TI_rmso)
-	{
-		if (current_term->TI_sgr0 && 
-		    strcmp(current_term->TI_rmso, current_term->TI_sgr0))
-			strlcat(current_term->TI_normal, current_term->TI_rmso,
-					 sizeof current_term->TI_normal);
-	}
-	if (current_term->TI_rmul)
-	{
-		if (current_term->TI_sgr0 && 
-		    strcmp(current_term->TI_rmul, current_term->TI_sgr0))
-			strlcat(current_term->TI_normal, current_term->TI_rmul, 
-					sizeof current_term->TI_normal);
-	}
-	/*
-	 * On some systems, alternate char set mode isn't exited with sgr0
-	 */
-	if (current_term->TI_rmacs)
-		strlcat(current_term->TI_normal, current_term->TI_rmacs, 
-				sizeof current_term->TI_normal);
-
-
-	/*
-	 * Finally set up the current_term->TI_sgrstrs array.
-	 * Clean it out first...
-	 */
-	for (i = 0; i < TERM_SGR_MAXVAL; i++)
-		current_term->TI_sgrstrs[i] = "";
-
-	/*
-	 * Default to no colors. (ick)
-	 */
-	for (i = 0; i < 256; i++)
-		current_term->TI_forecolors[i] = current_term->TI_backcolors[i] = "";
-	for (i = 0; i < 8; i++)
-		current_term->TI_bold_forecolors[i] = current_term->TI_bold_backcolors[i] = "";
-
-	if (current_term->TI_bold)
-		current_term->TI_sgrstrs[TERM_SGR_BOLD_ON-1] = current_term->TI_bold;
-	if (current_term->TI_sgr0)
-	{
-		current_term->TI_sgrstrs[TERM_SGR_BOLD_OFF - 1] = current_term->TI_sgr0;
-		current_term->TI_sgrstrs[TERM_SGR_BLINK_OFF - 1] = current_term->TI_sgr0;
-	}
-	if (current_term->TI_blink)
-		current_term->TI_sgrstrs[TERM_SGR_BLINK_ON - 1] = current_term->TI_blink;
-	if (current_term->TI_smul)
-		current_term->TI_sgrstrs[TERM_SGR_UNDL_ON - 1] = current_term->TI_smul;
-	if (current_term->TI_rmul)
-		current_term->TI_sgrstrs[TERM_SGR_UNDL_OFF - 1] = current_term->TI_rmul;
-	if (current_term->TI_smso)
-		current_term->TI_sgrstrs[TERM_SGR_REV_ON - 1] = current_term->TI_smso;
-	if (current_term->TI_rmso)
-		current_term->TI_sgrstrs[TERM_SGR_REV_OFF - 1] = current_term->TI_rmso;
-	if (current_term->TI_smacs)
-		current_term->TI_sgrstrs[TERM_SGR_ALTCHAR_ON - 1] = current_term->TI_smacs;
-	if (current_term->TI_rmacs)
-		current_term->TI_sgrstrs[TERM_SGR_ALTCHAR_OFF - 1] = current_term->TI_rmacs;
-	if (current_term->TI_sitm)
-		current_term->TI_sgrstrs[TERM_SGR_ITALIC_ON - 1] = current_term->TI_sitm;
-	if (current_term->TI_ritm)
-		current_term->TI_sgrstrs[TERM_SGR_ITALIC_OFF - 1] = current_term->TI_ritm;
-
-	if (current_term->TI_normal[0])
-	{
-		current_term->TI_sgrstrs[TERM_SGR_NORMAL - 1] = current_term->TI_normal;
-		current_term->TI_sgrstrs[TERM_SGR_RESET - 1] = current_term->TI_normal;
-	}
-
-	/*
-	 * Now figure out whether or not this terminal is "capable enough"
-	 * for the client. This is a rather complicated set of tests, as
-	 * we have many ways of doing the same thing.
-	 * To keep the set of tests easier, we set up a bitfield integer
-	 * which will have the desired capabilities added to it. If after
-	 * all the checks we dont have the desired mask, we dont have a
-	 * capable enough terminal.
-	 */
-	desired = TERM_CAN_CUP | TERM_CAN_CLEAR | TERM_CAN_CLREOL |
-		TERM_CAN_RIGHT | TERM_CAN_LEFT | TERM_CAN_SCROLL;
+	/* Phase 1 Step 4 -- Verify that your TERM can do what we need */
+	desired = TERM_CAN_CUP | TERM_CAN_CLEAR | TERM_CAN_CLREOL | TERM_CAN_SCROLL;
 
 	termfeatures = 0;
 	if (current_term->TI_cup)
-		termfeatures |= TERM_CAN_CUP;
-	if (current_term->TI_hpa && current_term->TI_vpa)
-		termfeatures |= TERM_CAN_CUP;
-	if (current_term->TI_clear)
-		termfeatures |= TERM_CAN_CLEAR;
+		termfeatures |= TERM_CAN_CUP;	/* term_move_cursor() */
 	if (current_term->TI_ed)
-		termfeatures |= TERM_CAN_CLEAR;
-	if (current_term->TI_dl || current_term->TI_dl1)
-		termfeatures |= TERM_CAN_CLEAR;
-	if (current_term->TI_il || current_term->TI_il1)
 		termfeatures |= TERM_CAN_CLEAR;
 	if (current_term->TI_el)
 		termfeatures |= TERM_CAN_CLREOL;
-	if (current_term->TI_cub || current_term->TI_mrcup || current_term->TI_cub1 || current_term->TI_kbs)
-		termfeatures |= TERM_CAN_LEFT;
-	if (current_term->TI_cuf  || current_term->TI_cuf1 || current_term->TI_mrcup)
-		termfeatures |= TERM_CAN_RIGHT;
-	if (current_term->TI_dch || current_term->TI_dch1)
-		termfeatures |= TERM_CAN_DELETE;
-	if (current_term->TI_ich || current_term->TI_ich1)
-		termfeatures |= TERM_CAN_INSERT;
-	if (current_term->TI_rep)
-		termfeatures |= TERM_CAN_REPEAT;
-	if (current_term->TI_csr && (current_term->TI_ri || current_term->TI_rin) && (current_term->TI_ind || current_term->TI_indn))
+	if (current_term->TI_csr && current_term->TI_ri && current_term->TI_ind)
 		termfeatures |= TERM_CAN_SCROLL;
-	if (current_term->TI_wind && (current_term->TI_ri || current_term->TI_rin) && (current_term->TI_ind || current_term->TI_indn))
-		termfeatures |= TERM_CAN_SCROLL;
-	if ((current_term->TI_il || current_term->TI_il1) && (current_term->TI_dl || current_term->TI_dl1))
-		termfeatures |= TERM_CAN_SCROLL;
-	if (current_term->TI_bold && current_term->TI_sgr0)
-		termfeatures |= TERM_CAN_BOLD;
-	if (current_term->TI_blink && current_term->TI_sgr0)
-		termfeatures |= TERM_CAN_BLINK;
-	if (current_term->TI_smul && current_term->TI_rmul)
-		termfeatures |= TERM_CAN_UNDL;
-	if (current_term->TI_smso && current_term->TI_rmso)
-		termfeatures |= TERM_CAN_REVERSE;
-	if (current_term->TI_dispc)
-		termfeatures |= TERM_CAN_GCHAR;
-	if ((current_term->TI_setf && current_term->TI_setb) || (current_term->TI_setaf && current_term->TI_setab))
-		termfeatures |= TERM_CAN_COLOR;
 
 	if ((termfeatures & desired) != desired)
 	{
 		fprintf(stderr, "\nYour terminal (%s) cannot run EPIC in full screen mode.\n", term);
 		fprintf(stderr, "The following features are missing from your TERM setting.\n");
 		if (!(termfeatures & TERM_CAN_CUP))
-			fprintf (stderr, "\tCursor movement\n");
+			fprintf(stderr, "\tCursor movement\n");
 		if (!(termfeatures & TERM_CAN_CLEAR))
 			fprintf(stderr, "\tClear screen\n");
 		if (!(termfeatures & TERM_CAN_CLREOL))
 			fprintf(stderr, "\tClear to end-of-line\n");
-		if (!(termfeatures & TERM_CAN_RIGHT))
-			fprintf(stderr, "\tCursor right\n");
-		if (!(termfeatures & TERM_CAN_LEFT))
-			fprintf(stderr, "\tCursor left\n");
 		if (!(termfeatures & TERM_CAN_SCROLL))
 			fprintf(stderr, "\tScrolling\n");
 
-		fprintf(stderr, "So we'll be running in dumb mode...\n");
+		fprintf(stderr, "So we'll be running in non-fullscreen mode...\n");
 		return -1;
 	}
 
-	if (!current_term->TI_cub1)
-	{
-		if (current_term->TI_kbs)
-			current_term->TI_cub1 = current_term->TI_kbs;
-		else
-			current_term->TI_cub1 = "\b";
-	}
-	if (!current_term->TI_bel)
-		current_term->TI_bel = "\007";
 
-	/*
-	 * Set up colors.
-	 * Absolute fallbacks are for ansi-type colors
-	 */
+	/* Phase 1 Step 5 -- Figure out colors (eww, gross) */
+
+	/* Phase 1 Step 5 Substep 1 -- As a fallback, start with "no colors" */
+	for (i = 0; i < 256; i++)
+		current_term->TI_forecolors[i] = current_term->TI_backcolors[i] = "";
+	for (i = 0; i < 8; i++)
+		current_term->TI_bold_forecolors[i] = current_term->TI_bold_backcolors[i] = "";
+
+	/* Phase 1 Step 5 Substep 2 -- Basic colors ( < 16 ) */
 	for (i = 0; i < 16; i++)
 	{
 		char cbuf[128];
 
 		*cbuf = 0;
 		if (current_term->TI_setaf) 
-		    strlcat(cbuf, tparm2(current_term->TI_setaf, i & 0x07, 0), sizeof cbuf);
-		else if (current_term->TI_setf)
-		    strlcat(cbuf, tparm2(current_term->TI_setf, i & 0x07, 0), sizeof cbuf);
+		    strlcat(cbuf, tiparm(current_term->TI_setaf, i & 0x07, 0), sizeof cbuf);
 		else
 		    snprintf(cbuf, sizeof cbuf, "\033[%dm", (i & 0x07) + 30);
 
@@ -979,19 +800,14 @@ int 	term_init (void)
 
 		*cbuf = 0;
 		if (current_term->TI_setab)
-		    strlcat(cbuf, tparm2(current_term->TI_setab, i & 0x07, 0), sizeof cbuf);
-		else if (current_term->TI_setb)
-		    strlcat(cbuf, tparm2(current_term->TI_setb, i & 0x07, 0), sizeof cbuf);
+		    strlcat(cbuf, tiparm(current_term->TI_setab, i & 0x07, 0), sizeof cbuf);
 		else
 		    snprintf(cbuf, sizeof cbuf, "\033[%dm", (i & 0x07) + 40);
 
 		current_term->TI_backcolors[i] = malloc_strdup(cbuf);
 	}
 
-	/* 
-	 * These are the silly "aixterm" colors for emulators that are 
-	 * too stubborn to emulate bold+color like real emulators do
-	 */
+	/* Phase 1 Step 5 Substep 3 -- AIXterm colors for silly emulators that can't do bold+color */
 	for (i = 0; i < 8; i++)
 	{
 		char cbuf[128];
@@ -1005,7 +821,12 @@ int 	term_init (void)
 		current_term->TI_bold_backcolors[i] = malloc_strdup(cbuf);
 	}
 
-	/* I don't know any other way to set 256 colors, so ..... */
+	/* Phase 1 Step 5 Substep 4 -- 8-bit colors (> 16 < 256) */
+	/*
+	 * I don't know any other way to set 256 colors, so ..... 
+	 * XXX 
+	 * tiparm(current_term->TI_setaf) should work just fine -- test that out.
+	 */
 	for (i = 16; i < 256; i++)
 	{
 		char cbuf[128];
@@ -1019,9 +840,26 @@ int 	term_init (void)
 		current_term->TI_backcolors[i] = malloc_strdup(cbuf);
 	}
 
-/* Set up the terminal discipline */
-	tty_des = 0;			/* Has to be. */
-	tcgetattr(tty_des, &oldb);
+	/* Phase 1 Step 6 -- Let's ensure we have default values for everything */
+	if ((li = current_term->TI_lines) <= 0)
+		li = 24;
+	if ((co = current_term->TI_cols) <= 0)
+		co = 79;
+
+	if (!current_term->TI_nel)
+		current_term->TI_nel = "\n";
+	if (!current_term->TI_cr)
+		current_term->TI_cr = "\r";
+	if (!current_term->TI_bel)
+		current_term->TI_bel = "\007";
+
+
+	/*
+	 *
+	 * PHASE 2: ESTABLISH THE TERMINAL DISCIPLINE
+	 *
+	 */
+	tcgetattr(STDIN_FILENO, &oldb);
 
 	/*
 	 * So by default, the kernel intercepts a great deal of keypresses
@@ -1048,7 +886,7 @@ int 	term_init (void)
 
 	/*
 	 * Turning off IEXTEN tells the kernel not to honor any posix 
-	 * extenstions it might know about.  On 4.4BSD, this tells the 
+	 * extensions it might know about.  On 4.4BSD, this tells the 
 	 * kernel not to withhold the EOL2 (undefined), WERASE (^W), 
 	 * REPRINT (^R), LNEXT (^V), DISCARD (^O), and STATUS (^T) 
 	 * characters from us.  You wouldn't be able to /bind those keys
@@ -1082,25 +920,30 @@ int 	term_init (void)
 #	endif
 
 	/*
-	 * Now we have to turn off hardware flow control, in order to reclaim
-	 * the ^S (XOFF) and ^Q (XON) keys.  Hardware flow control is evil,
-	 * because while the flow control is off, epic will block when it
-	 * tries to output something, which could lead to you pinging out 
-	 * all your servers.
+	 * Now we have to turn off hardware flow control, in order to reclaim the 
+	 * ^S (XOFF) and ^Q (XON) keys.  Hardware flow control is not your friend,
+	 * because while the flow control is off, epic will block when it tries 
+	 * to output something, which could lead to you pinging out all your servers.
 	 */
 	newb.c_iflag &= ~(unsigned long)(IXON | IXOFF);	/* No XON/XOFF */
 
-#if use_alt_screen
 	/*
-	 * Some terminal emulators have two screens; the primary screen,
-	 * and the alternate screen.  Applications can optionally switch
-	 * to the alternate screen at startup, and then switch back to the
-	 * primary screen at shutdown.  I find this feature to be intensely
-	 * obnoxious.  It's here, if you want to #define it.
+	 * Next we tell the kernel that it should support 8 bits both
+	 * coming in and going out, and it should not strip the high bit
+	 * from any keypress.
 	 */
-	if (current_term->TI_smcup)
-		tputs_x(current_term->TI_smcup);
-#endif
+	newb.c_cflag |= CS8;
+	newb.c_iflag &= ~(unsigned long)ISTRIP;
+
+	/* Commit our changes and we're done! */
+	tcsetattr(STDIN_FILENO, TCSADRAIN, &newb);
+
+
+	/*
+	 *
+	 * PHASE 3 - ESTABLISHING OUR APPLICATION SETTINGS
+	 *
+	 */
 
 	/*
 	 * When you write a character to the last column of a line, most
@@ -1118,16 +961,6 @@ int 	term_init (void)
 	 */
 	term_establish_last_column();
 
-	/*
-	 * Next we tell the kernel that it should support 8 bits both
-	 * coming in and going out, and it should not strip the high bit
-	 * from any keypress.
-	 */
-	newb.c_cflag |= CS8;
-	newb.c_iflag &= ~(unsigned long)ISTRIP;
-
-	/* Commit our changes and we're done! */
-	tcsetattr(tty_des, TCSADRAIN, &newb);
 	return 0;
 }
 
@@ -1161,10 +994,10 @@ int	term_resize (void)
 	my_sleep(0.05);
 
 #ifdef HAVE_TCGETWINSIZE
-	if (tcgetwinsize(tty_des, &window) < 0)
+	if (tcgetwinsize(STDOUT_FILENO, &window) < 0)
 #else 
 #ifdef TIOCGWINSZ
-	if (ioctl(tty_des, TIOCGWINSZ, &window) < 0)
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &window) < 0)
 #else
 	if (1)
 #endif
@@ -1186,6 +1019,8 @@ int	term_resize (void)
 	{
 		old_li = current_term->TI_lines;
 		old_co = current_term->TI_cols;
+
+		/* XXX I do not like that this knows about screens */
 		if (main_screen >= 0)
 			set_screen_lines(main_screen, current_term->TI_lines);
 		if (main_screen >= 0)
@@ -1210,31 +1045,14 @@ static	void	term_establish_last_column (void)
 
 static void	term_enable_last_column (void)
 {
-	if (current_term->TI_am && current_term->TI_rmam)
+	if (current_term->TI_rmam)
 		tputs_x(current_term->TI_rmam);
 }
 
 static void	term_disable_last_column (void)
 {
-	if (current_term->TI_am && current_term->TI_smam)
+	if (current_term->TI_smam)
 		tputs_x(current_term->TI_smam);
-}
-
-/* term_CE_clear_to_eol(): the clear to eol function, right? */
-void	term_clreol	(void)
-{
-	tputs_x(current_term->TI_el);
-	return;
-}
-
-
-void	term_beep (void)
-{
-	if (get_int_var(BEEP_VAR) && global_beep_ok)
-	{
-		tputs_x(current_term->TI_bel);
-		term_flush();
-	}
 }
 
 void	set_automargin_override (void *__U(stuff))
@@ -1255,317 +1073,110 @@ void	set_automargin_override (void *__U(stuff))
 	need_redraw = 1;
 }
 
-
-/* Set the cursor position */
-void	term_gotoxy (int col, int row)
+/* term_CE_clear_to_eol(): the clear to eol function, right? */
+void	term_clear_to_eol	(void)
 {
-	if (current_term->TI_cup)
-		tputs_x(tparm2(current_term->TI_cup, row, col));
-	else
+	/* The init stuff verified TI_el is not NULL */
+	tputs_x(current_term->TI_el);
+}
+
+
+void	term_beep (void)
+{
+	if (get_int_var(BEEP_VAR) && global_beep_ok)
 	{
-		tputs_x(tparm1(current_term->TI_hpa, col));
-		tputs_x(tparm1(current_term->TI_vpa, row));
+		/* The init stuff ensured TI_bel is not NULL */
+		tputs_x(current_term->TI_bel);
+
+		/* XXX It seems bogus to force a flush here */
+		term_flush();
 	}
+}
+/* Set the cursor position */
+void	term_move_cursor (int col, int row)
+{
+	/* The init stuff ensured TI_cup is not NULL */
+	tputs_x(tiparm(current_term->TI_cup, row, col));
 }
 
 /* A no-brainer. Clear the screen. */
-void	term_clrscr (void)
+void	term_clear_screen (void)
 {
-	int i;
+	/* We can clear by going home and doing an erase-to-end-of-display */
+	term_move_cursor(0, 0);
 
-	/* We have a specific cap for clearing the screen */
-	if (current_term->TI_clear)
-	{
-		tputs_x(current_term->TI_clear);
-		term_gotoxy (0, 0);
-		return;
-	}
-
-	term_gotoxy (0, 0);
-	/* We can clear by doing an erase-to-end-of-display */
-	if (current_term->TI_ed)
-	{
-		tputs_x (current_term->TI_ed);
-		return;
-	}
-	/* We can also clear by deleteing lines ... */
-	else if (current_term->TI_dl)
-	{
-		tputs_x(tparm1(current_term->TI_dl, current_term->TI_lines));
-		return;
-	}
-	/* ... in this case one line at a time */
-	else if (current_term->TI_dl1)
-	{
-		for (i = 0; i < current_term->TI_lines; i++)
-			tputs_x (current_term->TI_dl1);
-		return;
-	}
-	/* As a last resort we can insert lines ... */
-	else if (current_term->TI_il)
-	{
-		tputs_x (tparm1(current_term->TI_il, current_term->TI_lines));
-		term_gotoxy (0, 0);
-		return;
-	}
-	/* ... one line at a time */
-	else if (current_term->TI_il1)
-	{
-		for (i = 0; i < current_term->TI_lines; i++)
-			tputs_x (current_term->TI_il1);
-		term_gotoxy (0, 0);
-	}
+	/* The init stuff ensured TI_ed is not NULL */
+	tputs_x(current_term->TI_ed);
 }
 
 /*
- * Move the cursor NUM spaces to the right
- */
-void	term_right (int num)
-{
-	if (num == 1 && current_term->TI_cuf1)
-		tputs_x(current_term->TI_cuf1);
-	else if (current_term->TI_cuf)
-		tputs_x (tparm1(current_term->TI_cuf, num));
-	else if (current_term->TI_mrcup)
-		tputs_x (tparm2(current_term->TI_mrcup, num, 0));
-	else if (current_term->TI_cuf1)
-		while (num--)
-			tputs_x(current_term->TI_cuf1);
-}
-
-/*
- * Scroll the screen N lines between lines TOP and BOT.
+ * term_scroll - Scroll a window (part of the screen) up
+ *
+ * When you /echo to a window, and the window is full, you need to scroll
+ * the window up to make a blank line for the new line of /echo.
+ * You tell this function the top and bottom lines of the scrollable part
+ * of the window (ie, not including the status bars) and it scroll sit up 
+ * N lines, leaving N blank lines at the bottom.
+ *
+ * Arguments:
+ *	top	- The top line (row) of the scrollable part of a window
+ *	bot	- The bottom line (row) of the scrollable part of a window
+ *	n	- How many lines to scroll the window (and thus how many 
+ *		  lines to leave blank at the bottom of the window)
+ *		  - This comes from /SET SCROLL_LINES
+ *
+ * Constraints:
+ * 	- 'n' has to be greater than 0.  We don't scroll "down"
+ * 	- 'top' has to be less than 'bot'.
  */
 void	term_scroll (int top, int bot, int n)
 {
-	int i,oneshot=0,rn,sr,er;
-	char thing[128], final[128], start[128];
+	int	i;
+static	char 	*start = NULL, 
+		*final = NULL;
 
 	/* Some basic sanity checks */
-	if (n == 0 || top == bot || bot < top)
+	if (n < 1 || top >= bot)
 		return;
-
-	sr = er = 0;
-	final[0] = start[0] = thing[0] = 0;
-
-	if (n < 0)
-		rn = -n;
-	else
-		rn = n;
 
 	/*
-	 * First thing we try to do is set the scrolling region on a 
-	 * line granularity.  In order to do this, we need to be able
-	 * to have termcap 'cs', and as well, we need to have 'sr' if
-	 * we're scrolling down, and 'sf' if we're scrolling up.
+	 * We will start by setting the scrolling region to (top, bottom)
+	 * 
+	 * XXX The use of static variables and malloc_strcpy()
+	 * is a hack so we do not have to new_free() them every time,
+	 * and we take advantage of malloc_strcpy() devolving to a strcpy()
+	 * if the buffer is already big enough.
+	 * This can go away when we switch to arena allocations.
 	 */
-	if (current_term->TI_csr && (current_term->TI_ri || current_term->TI_rin) && (current_term->TI_ind || current_term->TI_indn))
-	{
-		/*
-		 * Previously there was a test to see if the entire scrolling
-		 * region was the full screen.  That test *always* fails,
-		 * because we never scroll the bottom line of the screen.
-		 */
-		strlcpy(start, tparm2(current_term->TI_csr, top, bot), sizeof start);
-		strlcpy(final, tparm2(current_term->TI_csr, 0, current_term->TI_lines-1), sizeof final);
-
-		if (n > 0)
-		{
-			sr = bot;
-			er = top;
-			if (current_term->TI_indn)
-			{
-				oneshot = 1;
-				strlcpy(thing, tparm2(current_term->TI_indn, rn, rn), sizeof thing);
-			}
-			else
-				strlcpy(thing, current_term->TI_ind, sizeof thing);
-		}
-		else
-		{
-			sr = top;
-			er = bot;
-			if (current_term->TI_rin)
-			{
-				oneshot = 1;
-				strlcpy(thing, tparm2(current_term->TI_rin, rn, rn), sizeof thing);
-			}
-			else
-				strlcpy(thing, current_term->TI_ri, sizeof thing);
-		}
-	}
-
-	else if (current_term->TI_wind && (current_term->TI_ri || current_term->TI_rin) && (current_term->TI_ind || current_term->TI_indn))
-	{
-		strlcpy(start, tparm4(current_term->TI_wind, top, bot, 0, current_term->TI_cols-1), sizeof start);
-		strlcpy(final, tparm4(current_term->TI_wind, 0, current_term->TI_lines-1, 0, current_term->TI_cols-1), sizeof final);
-
-		if (n > 0)
-		{
-			sr = bot;
-			er = top;
-			if (current_term->TI_indn)
-			{
-				oneshot = 1;
-				strlcpy(thing, tparm2(current_term->TI_indn, rn, rn), sizeof thing);
-			}
-			else
-				strlcpy(thing, current_term->TI_ind, sizeof thing);
-		}
-		else
-		{
-			sr = top;
-			er = bot;
-			if (current_term->TI_rin)
-			{
-				oneshot = 1;
-				strlcpy(thing, tparm2(current_term->TI_rin, rn, rn), sizeof thing);
-			}
-			else
-				strlcpy(thing, current_term->TI_ri, sizeof thing);
-		}
-	}
-
-	else if ((current_term->TI_il || current_term->TI_il1) && (current_term->TI_dl || current_term->TI_dl1))
-	{
-		if (n > 0)
-		{
-			sr = top;
-			er = bot;
-
-			if (current_term->TI_dl)
-			{
-				oneshot = 1;
-				strlcpy(thing, tparm2(current_term->TI_dl, rn, rn), sizeof thing);
-			}
-			else
-				strlcpy(thing, current_term->TI_dl1, sizeof thing);
-
-			if (current_term->TI_il)
-			{
-				oneshot = 1;
-				strlcpy(final, tparm2(current_term->TI_il, rn, rn), sizeof final);
-			}
-			else
-				strlcpy(final, current_term->TI_il1, sizeof final);
-		}
-		else
-		{
-			sr = bot;
-			er = top;
-			if (current_term->TI_il)
-			{
-				oneshot = 1;
-				strlcpy(thing, tparm2(current_term->TI_il, rn, rn), sizeof thing);
-			}
-			else
-				strlcpy(thing, current_term->TI_il1, sizeof thing);
-
-			if (current_term->TI_dl)
-			{
-				oneshot = 1;
-				strlcpy(final, tparm2(current_term->TI_dl, rn, rn), sizeof thing);
-			}
-			else
-				strlcpy(final, current_term->TI_dl1, sizeof thing);
-		}
-	}
-
-
-	if (!thing[0])
-		return;
+	malloc_strcpy(&start, tiparm(current_term->TI_csr, top, bot));
+	malloc_strcpy(&final, tiparm(current_term->TI_csr, 0, current_term->TI_lines - 1));
 
 	/* Do the actual work here */
-	if (start[0])
-		tputs_x (start);
-	term_gotoxy (0, sr);
+	tputs_x(start);		/* Set the scroll region */
+	term_move_cursor(0, bot);	/* Go to the bottom line */
 
-	if (oneshot)
-		tputs_x (thing);
-	else
-	{
-		for (i = 0; i < rn; i++)
-			tputs_x(thing);
-	}
-	term_gotoxy (0, er);
-	if (final[0])
-		tputs_x(final);
-}
+	/* Then do "cursor down" N times, which does the scrolling */
+	for (i = 0; i < n; i++)
+		tputs_x(current_term->TI_ind);
+
+	term_move_cursor(0, top);	/* Got to the top line */
+	tputs_x(final);		/* And reset the scroll region */
 
 #if 0
-/*
- * term_getsgr(int opt, int fore, int back)
- * Return the string required to set the given mode. OPT defines what
- * we really want it to do. It can have these values:
- * TERM_SGR_BOLD_ON     - turn bold mode on
- * TERM_SGR_BOLD_OFF    - turn bold mode off
- * TERM_SGR_BLINK_ON    - turn blink mode on
- * TERM_SGR_BLINK_OFF   - turn blink mode off
- * TERM_SGR_UNDL_ON     - turn underline mode on
- * TERM_SGR_UNDL_OFF    - turn underline mode off
- * TERM_SGR_REV_ON      - turn reverse video on
- * TERM_SGR_REV_OFF     - turn reverse video off
- * TERM_SGR_NORMAL      - turn all attributes off
- * TERM_SGR_RESET       - all attributes off and back to default colors
- * TERM_SGR_FOREGROUND  - set foreground color
- * TERM_SGR_BACKGROUND  - set background color
- * TERM_SGR_COLORS      - set foreground and background colors
- * TERM_SGR_GCHAR       - print graphics character
- *
- * The colors are defined as:
- * 0    - black
- * 1    - red
- * 2    - green
- * 3    - brown
- * 4    - blue
- * 5    - magenta
- * 6    - cyan
- * 7    - white
- * 8    - grey (foreground only)
- * 9    - bright red (foreground only)
- * 10   - bright green (foreground only)
- * 11   - bright yellow (foreground only)
- * 12   - bright blue (foreground only)
- * 13   - bright magenta (foreground only)
- * 14   - bright cyan (foreground only)
- * 15   - bright white (foreground only)
- */
-const char *	term_getsgr (int opt, int fore, int __U(back))
-{
-	const char *ret = empty_string;
-
-	switch (opt)
-	{
-		case TERM_SGR_BOLD_ON:
-		case TERM_SGR_BOLD_OFF:
-		case TERM_SGR_BLINK_OFF:
-		case TERM_SGR_BLINK_ON:
-		case TERM_SGR_UNDL_ON:
-		case TERM_SGR_UNDL_OFF:
-		case TERM_SGR_REV_ON:
-		case TERM_SGR_REV_OFF:
-		case TERM_SGR_NORMAL:
-		case TERM_SGR_RESET:
-			ret = current_term->TI_sgrstrs[opt-1];
-			break;
-		case TERM_SGR_FOREGROUND:
-			ret = current_term->TI_forecolors[fore & 0x0f];
-			break;
-		case TERM_SGR_BACKGROUND:
-			ret = current_term->TI_backcolors[fore & 0x0f];
-			break;
-		case TERM_SGR_GCHAR:
-			if (current_term->TI_dispc)
-				ret = tparm1(current_term->TI_dispc, fore);
-			break;
-		default:
-			panic(1, "Unknown option '%d' to term_getsgr", opt);
-			break;
-	}
-	return (ret);
-}
+	new_free(&start);
+	new_free(&final);
 #endif
+}
 
+/*
+ * control_mangle - A helper function for get_term_capability
+ *
+ * Arguments:
+ *	text	- A value from your TERM setting
+ *
+ * Return value:
+ *	'text' but with all the control keys mangled (ie, \001 -> "^A")
+ */
 static char *	control_mangle (char *text)
 {
 static 	char	retval[256];
@@ -1595,6 +1206,25 @@ static 	char	retval[256];
 	return retval;
 }
 
+/*
+ * get_term_capability - Lookup a TERM value by key
+ * 
+ * Arguments:
+ *	name		- The name of a key in the TERM
+ *	querytype 	- Either CAP_TYPE_BOOL, CAP_TYPE_INT, or CAP_TYPE_STR
+ *			  Yes, you are expected to know the type is is.
+ *	mangle		- 0 - I want the raw string in binary
+ *				This is if you intend to tputs_x() it.
+ *			- 1 - I need you to make it printable (quote control chars)
+ *				This is if you intend to say() it.
+ *
+ * Return value:
+ *	The value for the "name" key in your current TERM setting.
+ *
+ * Used by:
+ *	init_termkeys	- To get keybindings for pageup, pagedown, cursor keys, etc.
+ *	$getcap()	- So the user can query it for /bind or whatever!
+ */
 const char *	get_term_capability (const char *name, int querytype, int mangle)
 {
 static	char		retval[128];
@@ -1632,6 +1262,79 @@ static	char		retval[128];
 		    }
 		}
 	}
-	return NULL;	
+	return NULL;
+}
+
+/*
+ * term_sgr - Conslidated attribute outputting
+ * 
+ * Arguments
+ *	<various highlight attributes, in order>
+ *
+ * Notes:
+ * 	If you provide 9 attributes in the correct order, you can use "sgr" to create a single
+ * 	string that outputs all of them at once.  This can save a lot of bytes on output!
+ *
+ * Used by: 
+ *	term_attributes() [in screen.c] to output the Attribute change
+ *
+ * Notes:
+ *	We could pass in "italics" and colors, and then create one big string.
+ *	We could also pass in "old attribute" and "new attribute" and then look for differences.
+ *		That would be very optimizing.
+ */
+void	term_sgr (int standout, int underline, int reverse, int blink, int dim, int bold, int invisible, int protected, int altcharset)
+{
+	char *combined = tiparm(current_term->TI_sgr, standout, underline, reverse, blink, dim, bold, invisible, protected, altcharset);
+	tputs_x(combined);
+}
+
+void	get_term_geometry (int *li_, int *co_)
+{
+	*li_ = current_term->TI_lines;
+	*co_ = current_term->TI_cols;
+}
+
+
+/*
+ * See https://pubs.opengroup.org/onlinepubs/7908799/xcurses/tigetflag.html
+ * for more information about the magic values used here
+ */
+cJSON *	export_terminfo_to_json (void) 
+{
+	cJSON *root;
+	int	i, 
+		ival;
+	char *	sval;
+
+	root = cJSON_CreateObject();
+	for (i = 0; boolnames[i]; i++) 
+	{
+		ival = tigetflag(boolnames[i]);
+		if (ival == -1)
+			continue;
+
+		cJSON_AddBoolToObject(root, boolnames[i], ival);
+	}
+
+	for (i = 0; numnames[i]; i++) 
+	{
+		ival = tigetnum(numnames[i]);
+		if (ival == -1 || ival == -2)
+			continue;
+
+		cJSON_AddNumberToObject(root, numnames[i], ival);
+	}
+
+	for (i = 0; strnames[i]; i++) 
+	{
+		sval = tigetstr(strnames[i]);
+		if (sval == NULL || sval == (char *) -1)
+			continue;
+
+		cJSON_AddStringToObject(root, strnames[i], sval);
+	}
+
+	return root;
 }
 

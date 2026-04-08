@@ -966,7 +966,7 @@ restart:
 			     * shown (because of a previous context), we just keep 
 			     * showing from there.
 			     */
-			    if (l && l == lastshown)
+			    if (l == lastshown)
 				break;
 
 			    /*
@@ -974,11 +974,11 @@ restart:
 			     * Note that "counter" counts the number of lines we want
 			     * to unconditionally show!
 			     */
-			    if (l && l->older)
+			    if (l->older)
 				l = l->older;
 			}
 
-			if (l && l == lastshown)
+			if (l == lastshown)
 			{
 				debug(DEBUG_LASTLOG, "I found the previous context at %d / %s", i, l->msg);
 
@@ -1157,7 +1157,7 @@ restart2:
 			     * shown (because of a previous context), we just keep 
 			     * showing from there.
 			     */
-			    if (l && l == lastshown)
+			    if (l == lastshown)
 				break;
 
 			    /*
@@ -1165,7 +1165,7 @@ restart2:
 			     * Note that "counter" counts the number of lines we want
 			     * to unconditionally show!
 			     */
-			    if (l && l->newer)		/* <<<<<< */
+			    if (l->newer)		/* <<<<<< */
 				l = l->newer;		/* <<<<<< */
 			}
 
@@ -1468,7 +1468,7 @@ BUILT_IN_FUNCTION(function_line, word)
 		RETURN_EMPTY;
 
 	/* Get the line from the lastlog */
-	for (start_pos = lastlog_newest; line; start_pos = start_pos->older)
+	for (start_pos = lastlog_newest; line > 0; start_pos = start_pos->older)
 	{
 		if (start_pos->window != win)
 			continue;
@@ -1485,9 +1485,12 @@ BUILT_IN_FUNCTION(function_line, word)
 				start_pos->newer)
 		start_pos = start_pos->newer;
 
+#if 0
+	/* XXX CPPCHECK - Checking for something is probably correct, but not 'start_pos' */
 	/* If there are no visible lastlog items, punt */
 	if (!start_pos)
 		RETURN_EMPTY;
+#endif
 
 	malloc_strcat(&retval, start_pos->msg);
 
@@ -1508,7 +1511,7 @@ BUILT_IN_FUNCTION(function_line, word)
  */
 BUILT_IN_FUNCTION(function_lastlog, word)
 {
-	const char *	windesc = zero;
+	const char *	windesc;
 	char *	pattern = NULL;
 	char *	retval = NULL;
 	Lastlog	*iter;

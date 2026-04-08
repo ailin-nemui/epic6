@@ -690,7 +690,7 @@ static void 	cleanup_dead_processes (void)
 			{
 			    if (get_int_var(NOTIFY_ON_TERMINATION_VAR))
 			    {
-				if (deadproc->termsig > 0 && deadproc->termsig < NSIG)
+				if (deadproc->termsig > 0 && deadproc->termsig < MY_SIG_MAX)
 				{
 					say("Process %d (%s) terminated "
 						"with signal %s (%d)", 
@@ -1161,7 +1161,6 @@ static int	start_process (Process *proc)
 		 * Something really died if we got here
 		 */
 		_exit(-1);
-		break;
 	}
 
 	default:
@@ -1709,7 +1708,7 @@ BUILT_IN_COMMAND(execcmd)
 			else
 				signum = get_signal_by_name(arg);
 
-			if (signum > 0 && signum < NSIG)
+			if (signum > 0 && signum < MY_SIG_MAX)
 				kill_process(process, signum);
 			else
 				say("No such signal: %s", arg);
@@ -1831,7 +1830,7 @@ char *  execctl (char *input)
 		else
 			signum = get_signal_by_name(input);
 
-		if (signum > 0 && signum < NSIG)
+		if (signum > 0 && signum < MY_SIG_MAX)
 		{
 			kill_process(proc, signum);
 			RETURN_INT(1);

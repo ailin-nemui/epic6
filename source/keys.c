@@ -2134,17 +2134,20 @@ static	void	handle_mouse_sequence (char *seq)
 	long	button, column, row;
 	char	op;
 
+	if (!seq)
+		return;
+
 	button = strtoul(seq, &seq, 10);
-	if (seq && *seq && (*seq == ':' || *seq == ';'))
+	if (*seq == ':' || *seq == ';')
 	{
 		seq++;
 		column = strtoul(seq, &seq, 10);
 		(void)column;		/* Be quiet, clang */
-		if (seq && *seq && (*seq == ':' || *seq == ';'))
+		if (*seq == ':' || *seq == ';')
 		{
 			seq++;
 			row = strtoul(seq, &seq, 10);
-			if (seq && *seq && (*seq == 'm' || *seq == 'M'))
+			if (*seq == 'm' || *seq == 'M')
 			{
 				int	winref;
 

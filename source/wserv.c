@@ -65,8 +65,8 @@ int	main (int argc, char **argv)
 	ssize_t	nread;
 	char * 	port;
 	char *	host;
-	char *	tmp;
-	char	stuff[100];
+	Filename	tmp;
+	char		stuff[100];
 	struct pollfd	fds[2];
 
 	my_signal(SIGHUP, SIG_IGN);
@@ -80,11 +80,8 @@ int	main (int argc, char **argv)
 	host = argv[1];
 	port = argv[2];
 
-	if ((data = connectory(host, port)) < 0)
-		my_exit(23);
-
-	if ((cmd = connectory(host, port)) < 0)
-		my_exit(25);
+	data = connectory(host, port);
+	cmd = connectory(host, port);
 
 	/*
 	 * First thing we do is tell the parent what protocol we plan on
@@ -115,7 +112,9 @@ int	main (int argc, char **argv)
 	 * that snprintf() is available in this program.  So I do the 
 	 * length check first, and fail if it would overrun.
 	 */
-	tmp = ttyname(0);
+	*tmp = 0;
+	if (ttyname_r(0, tmp, sizeof(tmp)))
+		my_exit(89);
 	if (strlen(tmp) > 90)
 		my_exit(90);
 	snprintf(stuff, sizeof(stuff), "tty=%s\n", tmp);

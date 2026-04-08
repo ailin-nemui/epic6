@@ -98,7 +98,10 @@ static const char *	find_forward_character (const char *input, const char *start
 	int	simple;
 	char	what;
 
-	if (whats && whats[0] && whats[1] == 0)
+	if (!whats)
+		return NULL;
+
+	if (whats[0] && whats[1] == 0)
 	{
 		simple = 1;
 		what = whats[0];
@@ -168,7 +171,10 @@ static const char *	find_backward_quote (const char *input, const char *start, c
 	char		what;
 	int		simple;
 
-	if (whats && whats[0] && whats[1] == 0)
+	if (!whats)
+		return NULL;
+
+	if (whats[0] && whats[1] == 0)
 	{
 		simple = 1;
 		what = whats[0];
@@ -286,11 +292,14 @@ static int	move_to_prev_word (const char **str, const char *start, int extended,
 	int	simple;
 	const char	*pos;
 
+	if (!delims)
+		return 0;
+
 	if (!str || *str <= start)
 		return 0;
 
 	/* Overhead -- work out if "" support will be cheap or expensive */
-	if (delims && delims[0] && delims[1] == 0) {
+	if (delims[0] && delims[1] == 0) {
 		debug(DEBUG_EXTRACTW_DEBUG, ".... move_to_prev_word: Simple processing");
 		simple = 1;
 		what = delims[0];
@@ -416,7 +425,7 @@ static int	move_to_prev_word (const char **str, const char *start, int extended,
  *	    of the previous word.
  *  'start' - The start of the string that (*str) points to.
  *  'extended' - Whether double quoted words shall be supported
- *  'delims' - The types of double quoets to honor (if applicable)
+ *  'delims' - The types of double quotes to honor (if applicable)
  *
  * Return value:
  *  If (*str) is NULL or points to the end of a string (there is no next
@@ -451,6 +460,9 @@ static int	move_to_next_word (const char **str, const char *start, int extended,
 	char	what;
 	int	simple;
 	const char *	pos;
+
+	if (!delims)
+		return 0;
 
 	/*
 	 * If there is not a word, then just stop right here.
@@ -575,6 +587,9 @@ const char *	real_move_to_abs_word (const char *start, const char **mark, int wo
 	const char *	pointer = start;
 	int 		counter = word;
 
+	if (!quotes)
+		return NULL;
+
 	debug(DEBUG_EXTRACTW_DEBUG, ">>>> real_move_to_abs_word: start [%s], count [%d], extended [%d], quotes [%s]", start, word, extended, quotes);
 
 	for (; counter > 0 && *pointer; counter--)
@@ -595,6 +610,9 @@ int	count_words (const char *str, int extended, const char *quotes)
 	const char *	pointer = str;
 	int		counter = 0;
 
+	if (!quotes)
+		return 0;
+
 	while (move_to_next_word(&pointer, str, extended, quotes))
 		counter++;
 
@@ -610,6 +628,9 @@ ssize_t	move_word_rel (const char *start, const char **mark, int word, int exten
 	int 		counter = word;
 	const char *	pointer = *mark;
 	const char *	end = start + strlen(start);
+
+	if (!quotes)
+		return 0;
 
 	if (end == start) 	/* null string, return it */
 		return 0;

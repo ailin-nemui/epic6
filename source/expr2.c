@@ -1773,19 +1773,49 @@ static int	zzlex (expr_info *c)
 		case '+':
 		{
 			/*
-			 * Note:  In general, any operand that depends on 
-			 * whether it is a unary or binary operator based
-			 * upon the context is required to call the func
-			 * 'check_implied_arg' to solidify the context.
-			 * That is because some operators are ambiguous,
-			 * And if you see   (# + 4), it can only be determined
-			 * on the fly how to lex that.
+			 * A note here about this.
+			 *
+			 * There are three operators that have "implied" arguments.
+			 * They are:	*	@ 	and 	#
+			 * They can be used a unary prefix operators
+ 			 *	*rval	@rval	#rval
+			 * They can be used *without* an operator but still be unary prefix
+			 *	@ x = *
+			 * When used as a unary prefix operator and not followed by an rval,
+			 * they use the implied $* value
+			 *	@ x = * + 3
+			 * This is indicated by c->operand == 2.
+			 *
+			 * So when we see one of these three operators in a place
+			 * where we would be expecting to see an operand, we say
+			 * "This might be a unary prefix operator, and it may or may
+			 * not be followed by an rval.  If we see an operator after
+			 * one of these things, then we need to push $* onto the
+			 * expression at this point.
+			 *
+			 * Thus the rule:
+			 *	Any operator which may itself be a unary prefix operator
+			 *	must check to see if the previous token was a unary prefix
+			 *	operator with an implied operand.  if it does, then it
+			 *	must push $* onto the expression.
+			 *
+			 * This is accomplished by calling check_implied_arg(c).
+			 * When check_implied_arg() returns, c->operand is guaranteed
+			 * to be either 0 or 1 as the case may be.
 			 */
 			check_implied_arg(c);
-			if (*c->ptr == '+' && (c->operand || !isalnum(*c->ptr))) 
+
+			/* 
+			 * This is the ++ operator, either ++lval or lval++.
+			 * It depends on c->operand
+			 */
+			if (*c->ptr == '+')
 			{
 				c->ptr++;
-				return c->operand ? PREPLUS : POSTPLUS;
+				if (c->operand)
+					return PREPLUS;
+				else
+					return POSTPLUS;
 			}
 			else if (*c->ptr == '=') 
 				OPERATOR("+=", 1, PLUSEQ)
@@ -1797,10 +1827,14 @@ static int	zzlex (expr_info *c)
 		case '-':
 		{
 			check_implied_arg(c);
-			if (*c->ptr == '-' && (c->operand || !isalnum(*c->ptr)))
+
+			if (*c->ptr == '-')
 			{
 				c->ptr++;
-				return (c->operand) ? PREMINUS : POSTMINUS;
+				if (c->operand)
+					return PREMINUS;
+				else
+					return POSTMINUS;
 			}
 			else if (*c->ptr == '=') 
 				OPERATOR("-=", 1, MINUSEQ)

@@ -285,7 +285,7 @@ int	str_to_mask (Mask *mask, const char *orig, char **rejects)
 	    str = rest;
 	}
 
-	if (rejects && *rejects)
+	if (*rejects)
 		return -1;
 
 	return 0;

@@ -56,8 +56,8 @@ int	unblock_signal (int sig_no)
 }
 
 /* array of signal handlers containing mostly NULL */
-sigfunc *		signal_handlers[NSIG];
-volatile sig_atomic_t	signals_caught[NSIG];
+sigfunc *		signal_handlers[MY_SIG_MAX];
+volatile sig_atomic_t	signals_caught[MY_SIG_MAX];
 
 /* grand unified signal handler, which sets flags for scriptable signals
  * - pegasus
@@ -105,9 +105,9 @@ sigfunc *	init_signals (void)
 	int sig_no;
 	sigfunc *error = NULL;
 
-	memset((void *)&signals_caught, 0, NSIG * sizeof(int));
+	memset((void *)&signals_caught, 0, MY_SIG_MAX * sizeof(int));
 
-	for (sig_no = 1; sig_no < NSIG; sig_no++)
+	for (sig_no = 1; sig_no < MY_SIG_MAX; sig_no++)
 	{
 		if ((reset_one_signal(sig_no, signal_handler)) == SIG_ERR)
 			error = SIG_ERR;

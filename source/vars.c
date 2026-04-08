@@ -61,6 +61,9 @@
 
 /*
  * About /SETs and BIVs
+ *
+ * Formally, /SETs are known as Built-In Variables ("BIVs") and you'll see that in 
+ * alias.c in the unified symbol table.  But the user usually calls them "SET"s
  * 
  * A /SET, is a persistent global variable.
  * A /SET has a type 
@@ -69,9 +72,6 @@
  * 	Integer
  * 	Character
  * Much of the behavior of the client is controlled/configured by /SETs.
- *
- * Formally, /SETs are known as Built-In Variables ("BIVs") and you'll see that in 
- * alias.c in the unified symbol table.
  *
  * But in this file here, BIVs refer to those /SETs that are hardcoded in the client,
  * and not /SETs that are created by the user at runtime.   BIVs are created when the
@@ -366,7 +366,9 @@ int	is_var_builtin (const char *varname)
 	return 0;
 }
 
-#define VAR(x, y, z) x ## _VAR = add_biv( #x, 1, y ## _VAR, z,NULL, DEFAULT_ ## x);
+typedef void (*SetFunc) (void *);
+
+#define VAR(x, y, z) x ## _VAR = add_biv( #x, 1, y ## _VAR, z, (char *)NULL, DEFAULT_ ## x);
 
 /*
  * init_variables -- Bootstrap the Built In Variables (BIV) /SETs during client bootup
@@ -384,93 +386,93 @@ void 	init_variables_stage1 (void)
 {
 	var_bucket = new_bucket();
 
-	VAR(ACCEPT_INVALID_SSL_CERT,	BOOL, NULL)
-	VAR(ALLOW_C1_CHARS, 		BOOL, NULL)
-	VAR(ALWAYS_SPLIT_BIGGEST, 	BOOL, NULL)
+	VAR(ACCEPT_INVALID_SSL_CERT,	BOOL, (SetFunc)0)
+	VAR(ALLOW_C1_CHARS, 		BOOL, (SetFunc)0)
+	VAR(ALWAYS_SPLIT_BIGGEST, 	BOOL, (SetFunc)0)
 	VAR(AUTOMARGIN_OVERRIDE,        BOOL, set_automargin_override)
-	VAR(BANNER, 			STR,  NULL)
-	VAR(BANNER_EXPAND, 		BOOL, NULL)
-	VAR(BEEP, 			BOOL, NULL)
+	VAR(BANNER, 			STR,  (SetFunc)0)
+	VAR(BANNER_EXPAND, 		BOOL, (SetFunc)0)
+	VAR(BEEP, 			BOOL, (SetFunc)0)
 	VAR(BLANK_LINE_INDICATOR,	STR,  update_all_windows_wrapper)
-	VAR(BROKEN_AIXTERM,		BOOL, NULL)
+	VAR(BROKEN_AIXTERM,		BOOL, (SetFunc)0)
 	VAR(CHANNEL_NAME_WIDTH, 	INT,  update_all_status_wrapper)
 #define DEFAULT_CLIENT_INFORMATION IRCII_COMMENT
-	VAR(CLIENT_INFORMATION, 	STR,  NULL)
+	VAR(CLIENT_INFORMATION, 	STR,  (SetFunc)0)
 	VAR(CLOCK, 			BOOL, my_set_clock);
 	VAR(CLOCK_24HOUR, 		BOOL, reset_clock);
 	VAR(CLOCK_FORMAT, 		STR,  set_clock_format);
 	VAR(CLOCK_INTERVAL, 		INT,  set_clock_interval);
-	VAR(CMDCHARS, 			STR,  NULL);
-	VAR(COMMENT_HACK, 		BOOL, NULL);
-	VAR(CONTINUED_LINE, 		STR,  NULL);
+	VAR(CMDCHARS, 			STR,  (SetFunc)0);
+	VAR(COMMENT_HACK, 		BOOL, (SetFunc)0);
+	VAR(CONTINUED_LINE, 		STR,  (SetFunc)0);
 	VAR(CURRENT_WINDOW_LEVEL, 	STR,  set_current_window_mask);
 #define DEFAULT_DEBUG 0
-	VAR(DEBUG, 			INT,  NULL);
-#define DEFAULT_DEFAULT_REALNAME NULL
-	VAR(DEFAULT_REALNAME, 		STR,  NULL);
-#define DEFAULT_DEFAULT_USERNAME NULL
-	VAR(DEFAULT_USERNAME, 		STR,  NULL);
-	VAR(DISPATCH_UNKNOWN_COMMANDS,	BOOL, NULL);
-	VAR(DISPLAY, 			BOOL, NULL);
-	VAR(FIRST_LINE,			STR,  NULL);
-	VAR(FLOATING_POINT_MATH, 	BOOL, NULL);
-	VAR(FLOATING_POINT_PRECISION,	INT,  NULL);
+	VAR(DEBUG, 			INT,  (SetFunc)0);
+#define DEFAULT_DEFAULT_REALNAME (char *)0
+	VAR(DEFAULT_REALNAME, 		STR,  (SetFunc)0);
+#define DEFAULT_DEFAULT_USERNAME (char *)0
+	VAR(DEFAULT_USERNAME, 		STR,  (SetFunc)0);
+	VAR(DISPATCH_UNKNOWN_COMMANDS,	BOOL, (SetFunc)0);
+	VAR(DISPLAY, 			BOOL, (SetFunc)0);
+	VAR(FIRST_LINE,			STR,  (SetFunc)0);
+	VAR(FLOATING_POINT_MATH, 	BOOL, (SetFunc)0);
+	VAR(FLOATING_POINT_PRECISION,	INT,  (SetFunc)0);
 	VAR(HIDE_PRIVATE_CHANNELS,	BOOL, update_all_status_wrapper);
-	VAR(HOLD_SLIDER,		INT,  NULL);
+	VAR(HOLD_SLIDER,		INT,  (SetFunc)0);
 	VAR(INDENT,			BOOL, set_indent);
-        VAR(INPUT_INDICATOR_LEFT,	STR,  NULL);
-        VAR(INPUT_INDICATOR_RIGHT,	STR,  NULL);
+        VAR(INPUT_INDICATOR_LEFT,	STR,  (SetFunc)0);
+        VAR(INPUT_INDICATOR_RIGHT,	STR,  (SetFunc)0);
         VAR(INPUT_PROMPT,		STR,  set_input_prompt);
 	VAR(INSERT_MODE,		BOOL, update_all_status_wrapper);
 	VAR(KEY_INTERVAL,		INT,  set_key_interval);
 	VAR(LASTLOG, 			INT,  set_lastlog_size);
 	VAR(LASTLOG_LEVEL,		STR,  set_lastlog_mask);
-	VAR(LASTLOG_REWRITE,		STR,  NULL);
-#define DEFAULT_LOAD_PATH NULL
-	VAR(LOAD_PATH,			STR,  NULL);
+	VAR(LASTLOG_REWRITE,		STR,  (SetFunc)0);
+#define DEFAULT_LOAD_PATH (char *)0
+	VAR(LOAD_PATH,			STR,  (SetFunc)0);
 	VAR(LOG,			BOOL, logger);
 	VAR(LOGFILE,			STR,  set_logfile);
-#define DEFAULT_LOG_REWRITE NULL
-	VAR(LOG_REWRITE,		STR,  NULL);
+#define DEFAULT_LOG_REWRITE (char *)0
+	VAR(LOG_REWRITE,		STR,  (SetFunc)0);
 #define DEFAULT_MANGLE_DISPLAY "NORMALIZE"
 	VAR(MANGLE_DISPLAY,		STR,  set_mangle_display);
-#define DEFAULT_MANGLE_INBOUND NULL
+#define DEFAULT_MANGLE_INBOUND (char *)0
 	VAR(MANGLE_INBOUND,		STR,  set_mangle_inbound);
-#define DEFAULT_MANGLE_LOGFILES NULL
+#define DEFAULT_MANGLE_LOGFILES (char *)0
 	VAR(MANGLE_LOGFILES,		STR,  set_mangle_logfiles);
-#define DEFAULT_MANGLE_OUTBOUND NULL
+#define DEFAULT_MANGLE_OUTBOUND (char *)0
 	VAR(MANGLE_OUTBOUND,		STR,  set_mangle_outbound);
 	VAR(METRIC_TIME,		BOOL, reset_clock);
-	VAR(MODE_STRIPPER,		BOOL, NULL);
+	VAR(MODE_STRIPPER,		BOOL, (SetFunc)0);
 	VAR(MOUSE,			BOOL, set_mouse_support);
 	VAR(NEW_SERVER_LASTLOG_LEVEL,	STR,  set_new_server_lastlog_mask);
 	VAR(NOTIFY_LEVEL,		STR,  set_notify_mask);
-	VAR(NOTIFY_ON_TERMINATION,	BOOL, NULL);
-	VAR(NO_CONTROL_LOG,		BOOL, NULL);	/* XXX /set mangle_logfile */
-	VAR(NO_FAIL_DISCONNECT,         BOOL, NULL);
+	VAR(NOTIFY_ON_TERMINATION,	BOOL, (SetFunc)0);
+	VAR(NO_CONTROL_LOG,		BOOL, (SetFunc)0);	/* XXX /set mangle_logfile */
+	VAR(NO_FAIL_DISCONNECT,         BOOL, (SetFunc)0);
 	VAR(OLD_SERVER_LASTLOG_LEVEL,   STR,  set_old_server_lastlog_mask);
-#define DEFAULT_OUTPUT_REWRITE NULL
-	VAR(OUTPUT_REWRITE,             STR,  NULL);
-	VAR(PAD_CHAR,                   CHAR, NULL);
-	VAR(QUIT_MESSAGE,               STR,  NULL);
-	VAR(SCREEN_OPTIONS,             STR,  NULL);
+#define DEFAULT_OUTPUT_REWRITE (char *)0
+	VAR(OUTPUT_REWRITE,             STR,  (SetFunc)0);
+	VAR(PAD_CHAR,                   CHAR, (SetFunc)0);
+	VAR(QUIT_MESSAGE,               STR,  (SetFunc)0);
+	VAR(SCREEN_OPTIONS,             STR,  (SetFunc)0);
 	VAR(SCROLLBACK,                 INT,  set_scrollback_size);
-	VAR(SCROLLBACK_RATIO,           INT,  NULL);
+	VAR(SCROLLBACK_RATIO,           INT,  (SetFunc)0);
 	VAR(SCROLL_LINES,               INT,  set_scroll_lines);
-	VAR(SHELL,                      STR,  NULL);
-	VAR(SHELL_FLAGS,                STR,  NULL);
-	VAR(SHELL_LIMIT,                INT,  NULL);
-	VAR(SHOW_CHANNEL_NAMES,         BOOL, NULL);
-	VAR(SHOW_NUMERICS,              BOOL, NULL);
+	VAR(SHELL,                      STR,  (SetFunc)0);
+	VAR(SHELL_FLAGS,                STR,  (SetFunc)0);
+	VAR(SHELL_LIMIT,                INT,  (SetFunc)0);
+	VAR(SHOW_CHANNEL_NAMES,         BOOL, (SetFunc)0);
+	VAR(SHOW_NUMERICS,              BOOL, (SetFunc)0);
 	VAR(SHOW_STATUS_ALL,            BOOL, update_all_status_wrapper);
-	VAR(SSL_CIPHERS,		STR, NULL);
+	VAR(SSL_CIPHERS,		STR, (SetFunc)0);
 	VAR(SSL_ROOT_CERTS_LOCATION,    STR, set_ssl_root_certs_location);
 	VAR(STATUS_AWAY,                STR,  build_status);
 	VAR(STATUS_CHANNEL,             STR,  build_status);
 	VAR(STATUS_CHANOP,              STR,  build_status);
 	VAR(STATUS_CLOCK,               STR,  build_status);
 #define DEFAULT_STATUS_DOES_EXPANDOS 0
-	VAR(STATUS_DOES_EXPANDOS,       BOOL, NULL);
+	VAR(STATUS_DOES_EXPANDOS,       BOOL, (SetFunc)0);
 	VAR(STATUS_FORMAT,              STR,  build_status);
 	VAR(STATUS_FORMAT1,             STR,  build_status);
 	VAR(STATUS_FORMAT2,             STR,  build_status);
@@ -538,17 +540,17 @@ void 	init_variables_stage1 (void)
 	VAR(STATUS_USER9,               STR,  build_status);
 	VAR(STATUS_VOICE,               STR,  build_status);
 	VAR(STATUS_WINDOW,              STR,  build_status);
-	VAR(SUPPRESS_FROM_REMOTE_SERVER, BOOL, NULL);
-	VAR(SWITCH_CHANNELS_BETWEEN_WINDOWS,  BOOL, NULL);
-	VAR(TERM_DOES_BRIGHT_BLINK,     BOOL, NULL);
-	VAR(TMUX_OPTIONS,               STR,  NULL);
-	VAR(USER_INFORMATION,           STR,  NULL);
-	VAR(WORD_BREAK,                 STR,  NULL);
+	VAR(SUPPRESS_FROM_REMOTE_SERVER, BOOL, (SetFunc)0);
+	VAR(SWITCH_CHANNELS_BETWEEN_WINDOWS,  BOOL, (SetFunc)0);
+	VAR(TERM_DOES_BRIGHT_BLINK,     BOOL, (SetFunc)0);
+	VAR(TMUX_OPTIONS,               STR,  (SetFunc)0);
+	VAR(USER_INFORMATION,           STR,  (SetFunc)0);
+	VAR(WORD_BREAK,                 STR,  (SetFunc)0);
 #define DEFAULT_WSERV_PATH WSERV_PATH
-	VAR(WSERV_PATH,                 STR,  NULL);
+	VAR(WSERV_PATH,                 STR,  (SetFunc)0);
 	VAR(WSERV_TYPE,                 STR,  set_wserv_type);
-	VAR(XTERM,                      STR,  NULL);
-	VAR(XTERM_OPTIONS,              STR,  NULL);
+	VAR(XTERM,                      STR,  (SetFunc)0);
+	VAR(XTERM_OPTIONS,              STR,  (SetFunc)0);
 }
 
 /*

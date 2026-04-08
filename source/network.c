@@ -294,7 +294,7 @@ int	network_client (SSu *l, socklen_t ll, SSu *r, socklen_t rl)
 		return -1;
 	}
 
-	if (l && r && family(l) != family(r))
+	if (l && family(l) != family(r))
 	{
 		syserr(-1, "network_client: local addr protocol (%d) is different "
 			"from remote addr protocol (%d)", 
@@ -304,7 +304,7 @@ int	network_client (SSu *l, socklen_t ll, SSu *r, socklen_t rl)
 
 	if (l)
 		family_ = family(l);
-	if (r)
+	else
 		family_ = family(r);
 
 	if ((fd = Socket(family_, SOCK_STREAM, 0)) < 0)
@@ -1332,7 +1332,7 @@ void	init_vhosts_stage1 (void)
 BUILT_IN_COMMAND(vhostscmd)
 {
 	int	i;
-	char	familystr[128];
+	char	familystr_[128];
 
 	if (args && *args)
 	{
@@ -1342,15 +1342,16 @@ BUILT_IN_COMMAND(vhostscmd)
 
 	for (i = 0; i < next_vhost; i++)
 	{
+		/* XXX - Perhaps this should use familystr() */
 		if (vhosts[i].family == AF_INET)
-			strlcpy(familystr, "ipv4", sizeof(familystr));
+			strlcpy(familystr_, "ipv4", sizeof(familystr_));
 		else if (vhosts[i].family == AF_INET6)
-			strlcpy(familystr, "ipv6", sizeof(familystr));
+			strlcpy(familystr_, "ipv6", sizeof(familystr_));
 		else
-			strlcpy(familystr, "????", sizeof(familystr));
+			strlcpy(familystr_, "????", sizeof(familystr_));
 
 		say("Vhost=%d, family=%s, hostname=%s, paddr=%s, sl=%d, is_default=%d", 
-			i, familystr, vhosts[i].hostname, vhosts[i].paddr, vhosts[i].sl, vhosts[i].is_default);
+			i, familystr_, vhosts[i].hostname, vhosts[i].paddr, vhosts[i].sl, vhosts[i].is_default);
 	}
 }
 

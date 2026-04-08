@@ -109,13 +109,19 @@ typedef struct
  * Are there still <size> bytes left to read in the input?
  * Note that <size> is counted from 1!
  */
+#if 0
 #define can_read(buffer, size) 			(( buffer ) && ((( buffer )->offset + size) <= ( buffer )->length))
+#endif
+#define can_read(buffer, size) 			( ((( buffer )->offset + size) <= ( buffer )->length))
 
 /*
  * Would the <index>th byte in the buffer be valid?
  * Note that <index> is counted from 0!
  */
+#if 0
 #define can_access_at_index(buffer, index) 	(( buffer ) && ((( buffer )->offset + index) < ( buffer )->length))
+#endif
+#define can_access_at_index(buffer, index) 	( ((( buffer )->offset + index) < ( buffer )->length))
 
 /*
  * Would the <index>th byte in the buffer be out of bounds?
@@ -861,10 +867,10 @@ static void	update_offset (cJSON_Generator *buffer)
 
 
 /* Render an array to text */
+/* XXX What if recursion is too deep? */
 static cJSON_bool	cJSON_GenerateArray (const cJSON *item, cJSON_Generator *output_buffer)
 {
 	char *	output_pointer = NULL;
-	size_t 	length = 0;
 	cJSON *	current_element = item->child;
 
 	if (!output_buffer)
@@ -888,6 +894,8 @@ static cJSON_bool	cJSON_GenerateArray (const cJSON *item, cJSON_Generator *outpu
 
 		if (current_element->next)
 		{
+			size_t 	length;
+
 			length = (size_t) (output_buffer->compact ? 1 : 2);
 			if (!(output_pointer = ensure(output_buffer, length + 1)))
 				return false_;

@@ -285,8 +285,9 @@ BUILT_IN_COMMAND(aliascmd)
 
 	/*
 	 * Find the argument body
+	 * XXX We should trap/return on args == NULL instead of this.
 	 */
-	while (my_isspace(*args))
+	while (args && my_isspace(*args))
 		args++;
 
 	/*
@@ -412,7 +413,7 @@ BUILT_IN_COMMAND(assigncmd)
 	/*
 	 * Find the stuff to assign to the variable
 	 */
-	while (my_isspace(*args))
+	while (args && my_isspace(*args))
 		args++;
 
 	/*
@@ -498,7 +499,7 @@ const 	char 	*usage = "Usage: STUB (alias|assign) <name> <file> [<file> ...]";
 	/*
 	 * Find the filename argument
 	 */
-	while (my_isspace(*args))
+	while (args && my_isspace(*args))
 		args++;
 
 	/*
@@ -575,43 +576,52 @@ BUILT_IN_COMMAND(localcmd)
 
 BUILT_IN_COMMAND(dumpcmd)
 {
-	const char 	*blah = empty_string;
-	int 	all = 0;
-	int 	dumped = 0;
+	int 		do_var,
+			do_alias,
+			do_on;
 
 	upper(args);
 
 	if (!args || !*args || !strncmp(args, "ALL", 3))
-		all = 1;
-
-	while (all || (blah = next_arg(args, &args)))
+		do_var = do_alias = do_on = 1;
+	else
 	{
-		dumped = 0;
+		const char 	*blah;
 
-		if (all || !strncmp(blah, "VAR", strlen(blah)))
+		do_var = do_alias = do_on = 0;
+		while ((blah = next_arg(args, &args)))
 		{
-			say("Dumping your global variables");
-			destroy_var_aliases(&globals);
-			dumped++;
-		}
-		if (all || !strncmp(blah, "ALIAS", strlen(blah)))
-		{
-			say("Dumping your global aliases");
-			destroy_cmd_aliases(&globals);
-			dumped++;
-		}
-		if (all || !strncmp(blah, "ON", strlen(blah)))
-		{
-			say("Dumping your ONs");
-			flush_on_hooks();
-			dumped++;
+			if (!strncmp(blah, "VAR", strlen(blah)))
+				do_var = 1;
+			else if (!strncmp(blah, "ALIAS", strlen(blah)))
+				do_alias = 1;
+			else if (!strncmp(blah, "ON", strlen(blah)))
+				do_on = 1;
+			else
+				say("DUMP: Did not recognize %s", blah);
 		}
 
-		if (!dumped)
-			say("Dump what? ('%s' is unrecognized)", blah);
+		if (do_var == 0 && do_alias == 0 && do_on == 0)
+		{
+			say("Usage: /DUMP VAR|ALIAS|ON|ALL");
+			return;
+		}
+	}
 
-		if (all)
-			break;
+	if (do_var)
+	{
+		say("Dumping your global variables");
+		destroy_var_aliases(&globals);
+	}
+	if (do_alias)
+	{
+		say("Dumping your global aliases");
+		destroy_cmd_aliases(&globals);
+	}
+	if (do_on)
+	{
+		say("Dumping your ONs");
+		flush_on_hooks();
 	}
 }
 
@@ -2191,7 +2201,7 @@ char **	get_subarray_elements (const char *orig_root, int *howmany, int type)
 /***************************************************************************/
 static	void	destroy_cmd_aliases (alist *my_alist)
 {
-	int cnt = 0;
+	int 	cnt;
 	Symbol *item;
 
 	for (;;)
@@ -2217,7 +2227,7 @@ static	void	destroy_cmd_aliases (alist *my_alist)
 
 static	void	destroy_var_aliases (alist *my_alist)
 {
-	int cnt = 0;
+	int	cnt;
 	Symbol *item;
 
 	for (;;)

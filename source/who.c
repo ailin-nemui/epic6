@@ -688,7 +688,7 @@ do
 			call_lambda_command("WHO", new_w->who_stuff, buffer);
 
 		else if (do_hook(WHO_LIST, "%s", buffer))
-		    if (do_hook(current_numeric, "%s", buffer))
+		    if (do_hook(current_numeric(), "%s", buffer))
 			put_it(format, channel, nick, status, user, host, name);
 	}
 }
@@ -725,7 +725,7 @@ void	xwhoreply (int refnum, const char *from, const char *comm, const char **Arg
 	PasteArgs(ArgList, 0);
 	if (new_w->who_stuff)
 		call_lambda_command("WHO", new_w->who_stuff, ArgList[0]);
-	else if (do_hook(current_numeric, "%s", ArgList[0]))
+	else if (do_hook(current_numeric(), "%s", ArgList[0]))
 		put_it("%s %s", banner(), ArgList[0]);
 	pop_context(l);
 }
@@ -733,24 +733,41 @@ void	xwhoreply (int refnum, const char *from, const char *comm, const char **Arg
 
 void	who_end (int refnum, const char *from, const char *comm, const char **ArgList)
 {
-	WhoEntry 	*new_w = who_queue_top(refnum);
+	WhoEntry 	*new_w,
+			*saved_new_w;
 	char 		buffer[1025];
 	char		*target;
 	int		l;
+	int		do_a_pop;
 
 	if (!ArgList[0])
 		{ rfc1459_odd(from, comm, ArgList); return; }
 
+	new_w = who_queue_top(refnum);
 	if (!new_w || !new_w->who_target)
 		return;
+	saved_new_w = new_w;
 
 	target = malloc_strdup(ArgList[0]);
-
 	PasteArgs(ArgList, 0);
 
+	do_a_pop = 0;
 	l = set_context(from_server, -1, from, new_w->who_target, LEVEL_OTHER);
 	do
 	{
+		/*
+		 * First of all, if this reply is not for the top of the
+		 * queue, then we won't touch the queue.
+		 */
+		if (strcmp(target, new_w->who_target))
+		{
+			say("Unexpected WHO END reply for %s (expecting %s)", target, (new_w->who_target));
+			say("You might need to /WHO -FLUSH to clear the queue.");
+			continue;
+		}
+		else
+			do_a_pop = 1;
+
 		/* Defer to another function, if neccesary.  */
 		if (new_w->end)
 			new_w->end(refnum, from, comm, ArgList);
@@ -760,31 +777,17 @@ void	who_end (int refnum, const char *from, const char *comm, const char **ArgLi
 			if (new_w->who_end)
 			    call_lambda_command("WHO_END", new_w->who_end, buffer);
 			else
-			    if (do_hook(current_numeric, "%s", buffer))
+			    if (do_hook(current_numeric(), "%s", buffer))
 				put_it("%s %s", banner(), buffer);
 		}
-
-		if (strchr(new_w->who_target, ',') && !strchr(target, ','))
-		{
-		    if (!remove_from_comma_list(new_w->who_target, target))
-			*new_w->who_target = 0;
-		}
-		else if (strcmp(target, new_w->who_target))
-			*new_w->who_target = 0;
-		else
-			*new_w->who_target = 0;
 	}
 	while (new_w->piggyback && (new_w = new_w->next));
 	pop_context(l);
 
-	if (new_w)
-	{
-	   if (!*new_w->who_target)
+	if (do_a_pop)
 		who_queue_pop(refnum);
-	   else
-		yell("WHOEND: Caution -- not popping off who queue -- [%s] is left on target list", new_w->who_target);
-	}
-	/* XXX - There should probably be an else here, to cover when new_w had a piggyback, but there was nothing to piggyback on */
+	else
+		yell("WHOEND: Caution -- not popping off who queue -- [%s] is left on target list", saved_new_w->who_target);
 
 	new_free(&target);
 }
@@ -1249,7 +1252,7 @@ void	ison_returned (int refnum, const char *from, const char *comm, const char *
 	if (!new_i)
 	{
 		/* XXX Hack to work around rogue /quote ison's */
-		if (do_hook(current_numeric, "%s", ArgList[0]))
+		if (do_hook(current_numeric(), "%s", ArgList[0]))
 			put_it("%s Currently online: %s", banner(), ArgList[0]);
 		return;
 	}
@@ -1277,7 +1280,7 @@ void	ison_returned (int refnum, const char *from, const char *comm, const char *
 		if (new_i->endcmd)
 			call_lambda_command("ISON", new_i->endcmd, NULL);
 		if (!new_i->oncmd && !new_i->offcmd &&
-				do_hook(current_numeric, "%s", ArgList[0]))
+				do_hook(current_numeric(), "%s", ArgList[0]))
 			put_it("%s Currently online: %s", banner(), ArgList[0]);
 	}
 
@@ -1525,10 +1528,8 @@ void	userhostbase (int refnum, char *args, const char *__U(subargs), void (*line
 	}
 
 	ptr = buffer;
-
 	if (server_query_reqd || (!line && !userhost_cmd))
 	{
-		ptr = buffer;
 		while (ptr && *ptr)
 		{
 			UserhostEntry *new_u = get_new_userhost_entry(refnum);
@@ -1702,7 +1703,7 @@ void	userhost_returned (int refnum, const char *from, const char *comm, const ch
 			 * so we offer the numeric, and if the user
 			 * doesnt bite, we output to the screen.
 			 */
-			else if (do_hook(current_numeric, "%s %s %s %s %s %s", 
+			else if (do_hook(current_numeric(), "%s %s %s %s %s %s", 
 						item.nick,
 						item.oper ? "+" : "-", 
 						item.away ? "-" : "+", 

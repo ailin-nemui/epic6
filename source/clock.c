@@ -83,7 +83,8 @@ static		int		hour = -1;
 	 */
 	get_time(&tv);
 	hideous = tv.tv_sec;
-	time_val = *localtime(&hideous);
+	memset(&time_val, 0, sizeof(time_val));
+	localtime_r(&hideous, &time_val);
 
 	if (time_format)	/* XXX Bogus XXX */
 		strftime(current_clock, sizeof current_clock, 

@@ -1095,7 +1095,7 @@ void 	ExecuteTimers (void)
 		unlink_timer(current);
 
 		/* Reschedule the timer if necessary */
-		if (current->events < 0 || (current->events != 1))
+		if (current->events != 1)
 		{
 			next = clone_timer(current);
 			if (next->events != -1)

@@ -469,19 +469,13 @@ int	file_error (int fd)
 
 int	file_rewind (int fd)
 {
-	File *ptr = lookup_file (fd);
-	if (!ptr)
+	File *ptr;
+
+	if (!(ptr = lookup_file(fd)))
 		return -1;
-	else
-	{
-		/* 
-		 * The dumb things i do to satisfy static analyzers...
-		 */
-		if (fseek(ptr->elf->fp, 0L, SEEK_SET))
-			return ferror(ptr->elf->fp);
-		else
-			return ferror(ptr->elf->fp);
-	}
+
+	fseek(ptr->elf->fp, 0L, SEEK_SET);
+	return 0;
 }
 
 /* LONG should support 64 bit */

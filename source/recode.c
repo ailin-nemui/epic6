@@ -275,19 +275,14 @@ static RecodeRule *	create_recoding_rule (const char *target, const char *encodi
 		/* 
 		 * Anything that isn't a channel that contains a 
 		 * slash is a [server]/[target]
+		 *
+		 * Both gcc13 -fanalyzer and cppcheck disagree on how
+		 * i should handle this.  bah.
 		 */
-		else if (strchr(target_copy, '/'))
+		else if ((r->target_part = strchr(target_copy, '/')) != NULL)
 		{
 			r->server_part = target_copy;
-			/* XXX GCC13 is extra concerned this might return NULL */
-			r->target_part = strchr(target_copy, '/');
-			if (r->target_part)
-				*r->target_part++ = 0;
-			else
-			{
-				r->server_part = NULL;
-				r->target_part = target_copy;
-			}
+			*r->target_part++ = 0;
 		}
 
 		/*
@@ -1176,8 +1171,7 @@ int	mkupper_l (int codepoint)
 {
 	if (utf8_locale)
 		return towupper_l(codepoint, utf8_locale);
-	else 
-	     if (codepoint >= 0x80)
+	else if (codepoint >= 0x80)
 		return codepoint;
 	else
 		return toupper(codepoint);
@@ -1188,8 +1182,7 @@ int	mklower_l (int codepoint)
 {
 	if (utf8_locale)
 		return towlower_l(codepoint, utf8_locale);
-	else 
-	      if (codepoint >= 0x80)
+	else if (codepoint >= 0x80)
 		return codepoint;
 	else
 		return tolower(codepoint);

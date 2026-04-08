@@ -38,9 +38,7 @@
  * escape sequences would never have been possible.
  */
 
-#define __need_term_h__
 #define __need_putchar_x__
-#define __need_ScreenStru__
 
 #include "irc.h"
 #include "alias.h"
@@ -692,38 +690,54 @@ static size_t	ignore_attributes (char *__U(output), size_t __U(output_size), Att
 /* Invoke all of the neccesary functions so output attributes reflect 'a'. */
 static void	term_attribute (Attribute *a)
 {
-	term_all_off();
-	if (a->reverse)		term_standout_on();
-	if (a->bold)		term_bold_on();
-	if (a->blink)		term_blink_on();
-	if (a->underline)	term_underline_on();
-	if (a->altchar)		term_altcharset_on();
-	if (a->italic)		term_italics_on();
+	/* If all of them are off, this sends an "all off" */
+	term_sgr(a->reverse, a->underline, a->reverse, a->blink, 0, a->bold, 0, 0, a->altchar);
 
-	if (IS_COLOR_NONE(a->fg)) {
+	/* SGR doesn't handle italics (why do we?) */
+	if (a->italic)		
+		term_italics_on();
+
+	/* SGR doesn't handle colors */
+	/* * */
+	if (IS_COLOR_NONE(a->fg)) 
+	{
 		/* */ (void) 0;
-	} else if (IS_COLOR_ANSI(a->fg)) {
+	} 
+	else if (IS_COLOR_ANSI(a->fg)) 
+	{
 		if (a->bold && get_int_var(BROKEN_AIXTERM_VAR))
+		{
 			term_set_bold_foreground(GET_ANSI_COLOR(a->fg));
+		}
 		else
+		{
 			term_set_foreground(GET_ANSI_COLOR(a->fg));
-	} else if (IS_COLOR_C(a->fg)) {
+		}
+	} 
+	else if (IS_COLOR_C(a->fg)) 
+	{
 		panic(1, "I don't support ^C colors internally just yet");
-	} else if (IS_COLOR_X(a->fg)) {
+	} 
+	else if (IS_COLOR_X(a->fg)) 
+	{
 		char 	buffer[BIG_BUFFER_SIZE];
 		int 	value;
-		value = GET_X_COLOR(a->fg);
 
+		value = GET_X_COLOR(a->fg);
 		snprintf(buffer, sizeof(buffer), "\x1B[38;5;%dm", value);
 		tputs_x(buffer);
-	} else if (IS_COLOR_RGB(a->fg)) {
+	} 
+	else if (IS_COLOR_RGB(a->fg)) 
+	{
 		char buffer[BIG_BUFFER_SIZE];
 		int	r, g, b;
+
 		GET_RGB_COLOR(a->fg, r, g, b);
 		snprintf(buffer, sizeof(buffer), "\x1B[38;2;%d;%d;%dm", r, g, b);
 		tputs_x(buffer);
 	} 
 
+	/* * */
 	if (IS_COLOR_NONE(a->bg)) {
 		/* */ (void) 0;
 	} else if (IS_COLOR_ANSI(a->bg)) {
@@ -736,13 +750,14 @@ static void	term_attribute (Attribute *a)
 	} else if (IS_COLOR_X(a->bg)) {
 		char 	buffer[BIG_BUFFER_SIZE];
 		int 	value;
-		value = GET_X_COLOR(a->bg);
 
+		value = GET_X_COLOR(a->bg);
 		snprintf(buffer, sizeof(buffer), "\x1B[48;5;%dm", value);
 		tputs_x(buffer);
 	} else if (IS_COLOR_RGB(a->bg)) {
 		char buffer[BIG_BUFFER_SIZE];
 		int	r, g, b;
+
 		GET_RGB_COLOR(a->bg, r, g, b);
 		snprintf(buffer, sizeof(buffer), "\x1B[48;2;%d;%d;%dm", r, g, b);
 		tputs_x(buffer);
@@ -778,7 +793,7 @@ static ssize_t	read_color_seq_new (const char *start, void *d)
 	 * We map C-colors to X-colors here
 	 * Unacceptable C-colors are mapped to COLOR_NONE (-1)
 	 */
-	static	uint32_t	fg_x_color_conv[] = {
+	static	const	uint32_t	fg_x_color_conv[] = {
 		 COLOR_X(231),  COLOR_X(16),  COLOR_X(18),  COLOR_X(28), 
 		 COLOR_X(196),  COLOR_X(88),  COLOR_X(90),  COLOR_X(208),	/*  0-7  */
 		 COLOR_X(226),  COLOR_X(46),  COLOR_X(30),  COLOR_X(51),  
@@ -795,7 +810,7 @@ static ssize_t	read_color_seq_new (const char *start, void *d)
 		 COLOR_X(10), COLOR_X(11), COLOR_X(12), COLOR_X(13), 	/* 48-55 */
 		 COLOR_X(14), COLOR_X(15), COLOR_NONE, COLOR_NONE, COLOR_NONE	/* 56-60 */
 	};
-	static	uint32_t	bg_x_color_conv[] = {
+	static	const uint32_t	bg_x_color_conv[] = {
 		 COLOR_X(231),  COLOR_X(16),  COLOR_X(18),  COLOR_X(28), 
 		 COLOR_X(196),  COLOR_X(88),  COLOR_X(90), COLOR_X(208),	/*  0-7  */
 		 COLOR_X(226),  COLOR_X(46),  COLOR_X(30),  COLOR_X(51),  
@@ -1134,7 +1149,7 @@ static ssize_t	read_rgb_seq (const char *start, void *d)
 		 */
 		if (isxdigit(d1) && isxdigit(d2) && 
 		    isxdigit(d3) && isxdigit(d4) &&
-		    isxdigit(d5) && isxdigit(d5) )
+		    isxdigit(d5) && isxdigit(d6) )
 		{
 			set = 1;
 			r = check_xdigit(d1) * 16 + check_xdigit(d2);
@@ -1594,15 +1609,26 @@ start_over:
 			case 38:	/* Set 256 fg color */
 			{
 				/* 38 takes at least one argument */
+				/* 
+				 * I would have liked to compare i == nargs
+				 * as a defensive mechanism against a buffer
+				 * overrun, but "i can't let you do that because
+				 * that's impossible" Bah. whatever, compiler.
+				 */
+#if 0
 				if (i == nargs)
 					break;		/* Invalid */
+#endif
 				i++;
 
 				/* 38-5 takes 1 argument */
 				if (args[i] == 5)
 				{
+					/* See my rant ^^^^ above */
+#if 0
 					if (i == nargs)
 					    break;	/* Invalid */
+#endif
 
 					a->fg = COLOR_X(args[++i]);
 					break;		
@@ -1640,9 +1666,11 @@ start_over:
 			}
 			case 48:	/* Set 256 bg color */
 			{
+#if 0
 				/* 48 takes at least one argument */
 				if (i == nargs)
 					break;		/* Invalid */
+#endif
 				i++;
 
 				/* 48-5 takes 1 argument */
@@ -1954,10 +1982,6 @@ normal_char:
 			if (strip_unprintable)
 				break;
 
-			/* XXX Sigh -- I bet anything this is wrong */
-			if (termfeatures & TERM_CAN_GCHAR)
-				goto normal_char;
-
 			if (normalize)
 			{
 				codepoint = (codepoint | 0x40U) & 0x7FU;
@@ -2145,7 +2169,6 @@ normal_char:
 		default:
 		{
 			panic(1, "Unknown normalize_string mode");
-			break;
 		}
 	    } /* End of huge ansi-state switch */
 	} /* End of while, iterating over input string */
@@ -2533,14 +2556,6 @@ const 	char 	*words;
 		if ((col > max_cols) || my_newline)
 		{
 			/*
-			 * We just incremented col, but we need to decrement
-			 * it in order to keep the count correct!
-			 *		--zinx
-			 */
-			if (col > max_cols)
-				col--;
-
-			/*
 			 * XXX Hackwork and trickery here.  In the rare
 			 * case where we end the output string *exactly* at
 			 * the end of the line, then do not do any more of
@@ -2752,7 +2767,7 @@ const 	char 	*words;
 			 * for the $leftpc() function, which sets a logical
 			 * screen width and asks us to "output" one line.
 			 */
-			if (*lused && *lused > 0 && line >= (size_t) *lused)
+			if (*lused > 0 && line >= (size_t) *lused)
 			{
 				*buffer = 0;
 				break;
@@ -3647,8 +3662,7 @@ static	int	refnumber = 0;
 	new_s->wserv_version = 0;
 	new_s->alive = 1;
 	new_s->promptlist = NULL;
-	new_s->li = current_term->TI_lines;
-	new_s->co = current_term->TI_cols;
+	get_term_geometry(&new_s->li, &new_s->co);
 	new_s->old_li = 0; 
 	new_s->old_co = 0;
 
@@ -3662,7 +3676,7 @@ static	int	refnumber = 0;
 	if (main_screen < 0)
 		main_screen = new_s->screennum;
 
-	init_input();
+	clear_input();
 }
 
 
@@ -4376,7 +4390,7 @@ void	fire_wait_prompt (uint32_t key)
 		return;		/* Oh well.... */
 	set_screen_prompt_list(last_input_screen, oldprompt->next);
 	set_screen_input_line(last_input_screen, oldprompt->saved_input_line);
-	update_input(last_input_screen, UPDATE_ALL);
+	redraw_input(last_input_screen, UPDATE_ALL);
 
 	ucs_to_utf8(key, utf8str, sizeof(utf8str));
 	(*oldprompt->func)(oldprompt->data, utf8str);
@@ -4393,7 +4407,7 @@ void	fire_normal_prompt (const char *utf8str)
 		return;		/* Oh well... */
 	set_screen_prompt_list(last_input_screen, oldprompt->next);
 	set_screen_input_line(last_input_screen, oldprompt->saved_input_line);
-	update_input(last_input_screen, UPDATE_ALL);
+	redraw_input(last_input_screen, UPDATE_ALL);
 
 	(*oldprompt->func)(oldprompt->data, utf8str);
 	oldprompt->data = NULL;			/* XXX Testing */
@@ -4468,8 +4482,8 @@ void 	add_wait_prompt (const char *prompt, void (*func)(void *data, const char *
 	New->next = get_screen_prompt_list(s);
 	set_screen_prompt_list(s, New);
 
-	init_input();
-	update_input(last_input_screen, UPDATE_ALL);
+	clear_input();
+	redraw_input(last_input_screen, UPDATE_ALL);
 	last_input_screen = old_last_input_screen;
 }
 
@@ -4479,11 +4493,12 @@ static void	destroy_prompt (int __U(s_), WaitPrompt **oldprompt)
 	(*oldprompt)->my_input_line = NULL;
 	new_free((char **)oldprompt);
 
-	update_input(last_input_screen, UPDATE_ALL);
+	redraw_input(last_input_screen, UPDATE_ALL);
 }
 
 /* 
  * chop_columns - Remove the first 'num' columns from 'str'.
+ *
  * Arguments:
  *	str	- A pointer to a Type 0 normalized string
  *		  Passing in a non-normalized string will probably crash
@@ -4561,7 +4576,7 @@ void	chop_columns (char **str, size_t num)
 		 * So once num == 0 *AND* we have a cp that takes up a column,
 		 * that's where we stop.
 		 */
-		if (num <= 0 && cols > 0)
+		if (num == 0 && cols > 0)
 		{
 			break;	/* Remember, DON'T include the char we 
 				 * just evaluated! */
@@ -4995,6 +5010,10 @@ void *          get_screen_last_key             (int screen_)
 	return s->last_key;
 }
 
+/*
+ * These values get passed to tiparm() eventually.
+ * so THEY MUST ALWAYS RETURN (INT)
+ */
 int             get_screen_columns              (int screen_)
 {
 	Screen *s = get_screen_by_refnum(screen_);
@@ -5026,7 +5045,7 @@ int             get_screen_old_lines            (int screen_)
 		return -1;
 	return s->old_li;
 }
-
+/* * * */
 
 void            set_screen_alive                (int screen_, int value)
 {

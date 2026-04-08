@@ -330,9 +330,9 @@ static void	delete_queue (Queue **list, const char *name)
 		*list = (*list)->next;
 	else
 	{
-		for (p = *list; p->next && p->next != q; p = p->next);
-		if (p)
-			p->next = q->next;
+		for (p = *list; p->next && p->next != q; p = p->next)
+			(void)0;
+		p->next = q->next;
 	}
 
 	new_free((char **)&q);
