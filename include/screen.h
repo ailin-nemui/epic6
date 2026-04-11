@@ -56,9 +56,13 @@ const	char *		all_off				(void);
 	int		get_screen_window_list		(int);
 	int		get_screen_visible_windows	(int);
 	WindowStack *	get_screen_window_stack		(int);
+#if 0
 	FILE *		get_screen_fpin			(int);
+#endif
 	int		get_screen_fdin			(int);
+#if 0
 	FILE *		get_screen_fpout		(int);
+#endif
 	int		get_screen_fdout		(int);
 	int		get_screen_control		(int);
 	int		get_screen_wserv_version	(int);

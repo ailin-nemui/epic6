@@ -44,9 +44,9 @@ static	void	do_alias_string (void *, const char *);
 /* If FLOATING_POINT_MATH isnt set, it truncates it to an integer */
 char *canon_number (char *input)
 {
-	int end = strlen(input);
+	size_t	end;
 
-	if (end)
+	if ((end = strlen(input)))
 		end--;
 	else
 		return input;		/* nothing to do */

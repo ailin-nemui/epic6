@@ -76,7 +76,7 @@
 
 #define IRCD_BUFFER_SIZE	512
 /* Last two bytes are always reserved for \r\n */
-#define MAX_PROTOCOL_SIZE	IRCD_BUFFER_SIZE - 2
+#define MAX_PROTOCOL_SIZE	(IRCD_BUFFER_SIZE - 2)
 #define BIG_BUFFER_SIZE		(IRCD_BUFFER_SIZE * 4)
 
 /* 
@@ -165,7 +165,6 @@ extern		char	realname[REALNAME_LEN + 1];
 extern	const	char	ridiculous_version_name[];
 extern	const unsigned long commit_id;
 extern		char *	send_umode;
-extern	const	char *	unknown_userhost;
 extern	const	char 	useful_info[];
 extern		char	username[NAME_LEN + 1];
 extern		char	userhost[NAME_LEN + 1];

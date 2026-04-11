@@ -684,9 +684,10 @@ BUILT_IN_COMMAND(logcmd)
 
         while ((arg = next_arg(args, &args)))
         {
-                int i;
-                int len = strlen(arg);
+                int	i;
+                size_t	len;
 
+		len = strlen(arg);
                 if (*arg == '-' || *arg == '/')         /* Ignore - or / */
                         arg++, len--;
 

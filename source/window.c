@@ -1066,8 +1066,6 @@ void 	add_to_invisible_list (int window_)
 
 	if (get_window_screennum(window_) >= 0)
 		set_window_my_columns(window_, get_screen_columns(get_window_screennum(window_)));
-	else
-		set_window_my_columns(window_, current_term->TI_cols);	/* Whatever */
 	set_window_screennum(window_, -1);
 }
 
@@ -2878,7 +2876,7 @@ static Window *	get_window_by_refnum_direct (int refnum)
 	if (refnum <= 0 || refnum > INTERNAL_REFNUM_CUTOVER * 2)
 		return NULL;
 
-	if (refnum > 1 && refnum < INTERNAL_REFNUM_CUTOVER)
+	if (refnum < INTERNAL_REFNUM_CUTOVER)
 	{
 		if (windows[refnum] && (refnum != (int)windows[refnum]->user_refnum))
 		{
@@ -5586,6 +5584,7 @@ WINDOWCMD(describe)
 	const char *	chan;
 	char *		c;
 	Window *	window;
+	int		li, co;
 
 	if (!(window = get_window_by_refnum_direct(refnum)))
 		return 0;
@@ -5608,8 +5607,8 @@ WINDOWCMD(describe)
 				window->scrolling_distance_from_display_ip,
 				window->holding_distance_from_display_ip,
 				window->scrollback_distance_from_display_ip);
-	say("\tCO, LI are [%d %d]", 
-				current_term->TI_cols, current_term->TI_lines);
+	get_term_geometry(&li, &co);
+	say("\tCO, LI are [%d %d]", li, co);
 
 	chan = get_window_echannel(window->refnum);
 	say("\tCurrent channel: %s", chan ? chan : "<None>");
@@ -8739,9 +8738,10 @@ BUILT_IN_COMMAND(windowcmd)
 	while ((arg = next_arg(args, &args)))
 	{
 		int	i;
-		int	len = strlen(arg);
+		size_t	len;
 		int	pass_null;
 
+		len = strlen(arg);
 		if (*arg == '-')
 			arg++, len--, pass_null = 1;
 		else

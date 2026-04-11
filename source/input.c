@@ -351,7 +351,6 @@ static int 	safe_puts (const char *str, int numcols)
 	char	utf8str[8];
 	int	code_point;
 	int	cols;
-	int	allow_c1_chars = -1;
 	ptrdiff_t	offset;
 
 	s = str;
@@ -359,16 +358,9 @@ static int 	safe_puts (const char *str, int numcols)
 	{
 		s += offset;
 
-		/* C1 chars have to be checked */
+		/* C1 chars are forbidden */
 		if (code_point >= 0x80 && code_point <= 0x9F)
-		{
-			if (allow_c1_chars == -1)
-			    allow_c1_chars = get_int_var(ALLOW_C1_CHARS_VAR);
-
-			/* We don't output C1 chars */
-			if (!allow_c1_chars)
-				continue;
-		}
+			continue;
 
 		if ((cols = codepoint_numcolumns(code_point)) == -1)
 			cols = 1;

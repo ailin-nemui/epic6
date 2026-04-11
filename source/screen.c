@@ -38,8 +38,6 @@
  * escape sequences would never have been possible.
  */
 
-#define __need_putchar_x__
-
 #include "irc.h"
 #include "alias.h"
 #include "clock.h"
@@ -123,9 +121,7 @@ struct	ScreenStru *	next;			/* Previous screen in list */
 	WindowStack *	window_stack;		/* Number of windows on my stack */
 
 	/* Output stuff */
-	FILE *		fpin;			/* The input FILE (eg, stdin) */
 	int		fdin;			/* The input FD (eg, 0) */
-	FILE *		fpout;			/* The output FILE (eg, stdout) */
 	int		fdout;			/* The output FD (eg, 1) */
 	int		control;		/* The control FD (to wserv) */
 	int		wserv_version;		/* The version of wserv talking to */
@@ -705,14 +701,12 @@ static void	term_attribute (Attribute *a)
 	} 
 	else if (IS_COLOR_ANSI(a->fg)) 
 	{
-		if (a->bold && get_int_var(BROKEN_AIXTERM_VAR))
-		{
-			term_set_bold_foreground(GET_ANSI_COLOR(a->fg));
-		}
+		/* If bold is turned on, shift 0-7 to 8-15 */
+		/* Not because it is right, but because it is what we have always done */
+		if (a->bold && GET_ANSI_COLOR(a->fg) < 8)
+			term_set_foreground(GET_ANSI_COLOR(a->fg) + 8);
 		else
-		{
 			term_set_foreground(GET_ANSI_COLOR(a->fg));
-		}
 	} 
 	else if (IS_COLOR_C(a->fg)) 
 	{
@@ -720,47 +714,35 @@ static void	term_attribute (Attribute *a)
 	} 
 	else if (IS_COLOR_X(a->fg)) 
 	{
-		char 	buffer[BIG_BUFFER_SIZE];
-		int 	value;
-
-		value = GET_X_COLOR(a->fg);
-		snprintf(buffer, sizeof(buffer), "\x1B[38;5;%dm", value);
-		tputs_x(buffer);
+		term_set_foreground(GET_X_COLOR(a->fg));
 	} 
 	else if (IS_COLOR_RGB(a->fg)) 
 	{
-		char buffer[BIG_BUFFER_SIZE];
 		int	r, g, b;
 
 		GET_RGB_COLOR(a->fg, r, g, b);
-		snprintf(buffer, sizeof(buffer), "\x1B[38;2;%d;%d;%dm", r, g, b);
-		tputs_x(buffer);
+		term_set_rgb_foreground(r, g, b);
 	} 
 
 	/* * */
 	if (IS_COLOR_NONE(a->bg)) {
 		/* */ (void) 0;
 	} else if (IS_COLOR_ANSI(a->bg)) {
-		if (a->blink && get_int_var(BROKEN_AIXTERM_VAR))
-			term_set_bold_background(GET_ANSI_COLOR(a->bg));
+		/* If bold is turned on, shift 0-7 to 8-15 */
+		/* Not because it is right, but because it is what we have always done */
+		if (a->blink && GET_ANSI_COLOR(a->bg) < 8)
+			term_set_background(GET_ANSI_COLOR(a->bg) + 8);
 		else
 			term_set_background(GET_ANSI_COLOR(a->bg));
 	} else if (IS_COLOR_C(a->bg)) {
 		panic(1, "I don't support ^C colors internally just yet");
 	} else if (IS_COLOR_X(a->bg)) {
-		char 	buffer[BIG_BUFFER_SIZE];
-		int 	value;
-
-		value = GET_X_COLOR(a->bg);
-		snprintf(buffer, sizeof(buffer), "\x1B[48;5;%dm", value);
-		tputs_x(buffer);
+		term_set_background(GET_X_COLOR(a->bg));
 	} else if (IS_COLOR_RGB(a->bg)) {
-		char buffer[BIG_BUFFER_SIZE];
 		int	r, g, b;
 
 		GET_RGB_COLOR(a->bg, r, g, b);
-		snprintf(buffer, sizeof(buffer), "\x1B[48;2;%d;%d;%dm", r, g, b);
-		tputs_x(buffer);
+		term_set_rgb_background(r, g, b);
 	} 
 
 }
@@ -1797,7 +1779,6 @@ STRIP_COLOR		-    -    -    X    -    -    -    -    -    -   X
 STRIP_*			-    -    -    -    X    -    -    -    -    -   -
 STRIP_UNPRINTABLE	-    X    S    S    X    X    X    X    -    -   S
 STRIP_OTHER		X    -    -    -    -    -    -    -    X    X   -
-(/SET ALLOW_C1)		-    X    -    -    -    -    -    -    -    -   -
 */
 
 /*
@@ -1826,9 +1807,6 @@ STRIP_OTHER		X    -    -    -    -    -    -    -    X    X   -
  *			STRIP_UNPRINTABLE has higher priority than NORMALIZE.
  *
  * Furthermore, the following two sets affect behavior:
- *	  /SET ALLOW_C1_CHARS
- *		ON  == Type 1 chars are treated as Type 0 chars (safe)
- *		OFF == Type 1 chars are treated as Type 5 chars (unsafe)
  *	  /SET TERM_DOES_BRIGHT_BLINK
  *		???
  *
@@ -1849,7 +1827,7 @@ char *	new_normalize_string (const char *str, int logical, int mangle)
 	int		strip_reverse, strip_bold, strip_blink, 
 			strip_underline, strip_altchar, strip_color, 
 			strip_all_off, strip_nd_space;
-	int		strip_unprintable, strip_other, strip_c1, strip_italic;
+	int		strip_unprintable, strip_other, strip_italic;
 	int		codepoint, state, cols;
 	char 		utf8str[16], *x;
 	size_t		(*attrout) (char *, size_t, Attribute *, Attribute *) = NULL;
@@ -1869,8 +1847,6 @@ char *	new_normalize_string (const char *str, int logical, int mangle)
 	strip_unprintable = ((mangle & STRIP_UNPRINTABLE) != 0);
 	strip_other	= ((mangle & STRIP_OTHER) != 0);
 	strip_italic	= ((mangle & STRIP_ITALIC) != 0);
-
-	strip_c1	= !get_int_var(ALLOW_C1_CHARS_VAR);
 
 	if (logical == 0)
 		attrout = write_internal_attribute;	/* prep for screen output */
@@ -1917,28 +1893,28 @@ char *	new_normalize_string (const char *str, int logical, int mangle)
 		/*
 		 * Unicode does not define any code points in the
 		 * U+0080 - U+009F zone ("C1 chars") and many terminal
-		 * emulators do weird things with them.   So we should
-		 * probably just strip them out.
+		 * emulators do weird things with them.   
 		 */
-		case 1:	     	/* C1 Chars */
+		case 1:	     	/* C1 Chars are forbidden */
+			break;
+
 		case 5:		/* Unprintable chars */
 		{
 			if (strip_unprintable)
 				break;
 			if (state == 5 && normalize)
 				break;
-			if (state == 1 && strip_c1)
-			{
-				codepoint = (codepoint | 0x60U) & 0x7FU;
+
+			codepoint = (codepoint | 0x60U) & 0x7FU;
 abnormal_char:
-				a.reverse = !a.reverse;
-				pos += attrout(output + pos, maxpos - pos, &olda, &a);
-				output[pos++] = (char)(codepoint);
-				a.reverse = !a.reverse;
-				pos += attrout(output + pos, maxpos - pos, &olda, &a);
-				pc += 1;
-				break;
-			}
+			a.reverse = !a.reverse;
+			pos += attrout(output + pos, maxpos - pos, &olda, &a);
+			output[pos++] = (char)(codepoint);
+			a.reverse = !a.reverse;
+			pos += attrout(output + pos, maxpos - pos, &olda, &a);
+			pc += 1;
+			break;
+
 			FALLTHROUGH
 			/* FALLTHROUGH */
 		}
@@ -2924,7 +2900,7 @@ const 	char	*ptr;
  * so that there is room to put the new text.  scroll_window() handles both
  * of these tasks for us.
  *
- * output_with_count() actually calls putchar_x() for each character in
+ * output_with_count() actually calls term_output_char() for each character in
  * the string, doing the physical output.  It also emits any attribute
  * markers that are in the string.  It does do a clear-to-line, but it does
  * NOT move the cursor away from the end of the line.  We do that after it
@@ -3049,12 +3025,9 @@ size_t 	output_with_count (const char *str1, int clreol, int output)
 		/* Any other printable character */
 		default:
 		{
-			/* C1 chars will be ignored unless you want them */
+			/* C1 chars are forbidden */
 			if (codepoint >= 0x80 && codepoint < 0xA0)
-			{
-				if (!get_int_var(ALLOW_C1_CHARS_VAR))
-					break;
-			}
+				break;
 
 			/* How many columns does this codepoint take? */
 			cols = codepoint_numcolumns(codepoint);
@@ -3063,7 +3036,7 @@ size_t 	output_with_count (const char *str1, int clreol, int output)
 			out += cols;
 
 			/*
-			 * Note that 'putchar_x()' is safe here because 
+			 * Note that 'term_output_char()' is safe here because 
 			 * normalize_string() has already removed all of the 
 			 * nasty stuff that could end up getting here.  And
 			 * for those things that are nasty that get here, its 
@@ -3073,7 +3046,7 @@ size_t 	output_with_count (const char *str1, int clreol, int output)
 			{
 				ucs_to_console(codepoint, utf8str, sizeof(utf8str));
 				for (x = utf8str; *x; x++)
-					putchar_x(*x);
+					term_output_char(*x);
 			}
 
 			break;
@@ -3582,7 +3555,7 @@ void 	repaint_window_body (int window_)
 			{
 				term_clear_to_eol();
 				if (x)
-					putchar_x(x[0]);
+					term_output_char(x[0]);
 				term_newline();
 			}
 			break;
@@ -3644,18 +3617,14 @@ static	int	refnumber = 0;
 	if (first)
 	{
 		new_s->fdin = 0;
-		new_s->fpin = stdin;
 		new_s->fdout = 1;
-		new_s->fpout = stdout;
 		if (foreground)
 			new_open(0, do_screens, NEWIO_READ, POLLIN, 0, -1);
 	}
 	else
 	{
 		new_s->fdin = -1;
-		new_s->fpin = NULL;
 		new_s->fdout = -1;
-		new_s->fpout = NULL;
 	}
 
 	new_s->control = -1;
@@ -3927,7 +3896,7 @@ int	create_additional_screen (void)
 	    }
 
 	    /* We got our first connection */
-	    else if (get_screen_fpin(new_s) == NULL)
+	    else if (get_screen_fdin(new_s) == -1)
 	    {
 		int	fd;	/* Hurt me harder, clang... */
 
@@ -4007,16 +3976,7 @@ void 	kill_screen (int screen_)
 	screen->last_window_refnum = -1;
 	screen->visible_windows = 0;
 	screen->window_stack = NULL;
-	if (screen->fpin)
-	{
-		fclose(screen->fpin);
-		screen->fpin = NULL;
-	}
-	if (screen->fpout)
-	{
-		fclose(screen->fpout);
-		screen->fpout = NULL;
-	}
+
 	screen->fdin = -1;
 	screen->fdout = -1;
 
@@ -4912,28 +4872,12 @@ WindowStack *   get_screen_window_stack         (int screen_)
 	return s->window_stack;
 }
 
-FILE *          get_screen_fpin                 (int screen_)
-{
-	Screen *s = get_screen_by_refnum(screen_);
-	if (!s)
-		return NULL;
-	return s->fpin;
-}
-
 int             get_screen_fdin                 (int screen_)
 {
 	Screen *s = get_screen_by_refnum(screen_);
 	if (!s)
 		return -1;
 	return s->fdin;
-}
-
-FILE *          get_screen_fpout                (int screen_)
-{
-	Screen *s = get_screen_by_refnum(screen_);
-	if (!s)
-		return NULL;
-	return s->fpout;
 }
 
 int             get_screen_fdout                (int screen_)
@@ -5013,6 +4957,7 @@ void *          get_screen_last_key             (int screen_)
 /*
  * These values get passed to tiparm() eventually.
  * so THEY MUST ALWAYS RETURN (INT)
+ * Not (long), not (unsigned), only (int).
  */
 int             get_screen_columns              (int screen_)
 {
@@ -5157,11 +5102,6 @@ void		set_screen_fdin			(int screen_, int value)
 	if (!s)
 		return;
 	s->fdin = value;
-
-	FILE *f = fdopen(value, "r+");
-	if (!f)
-		return;
-	s->fpin = f;
 }
 
 void		set_screen_fdout		(int screen_, int value)
@@ -5170,11 +5110,6 @@ void		set_screen_fdout		(int screen_, int value)
 	if (!s)
 		return;
 	s->fdout = value;
-
-	FILE *f = fdopen(value, "r+");
-	if (!f)
-		return;
-	s->fpout = f;
 }
 
 void		set_screen_control		(int screen_, int value)

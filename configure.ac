@@ -17,8 +17,13 @@ dnl
 dnl We do use some POSIX 1003.1-2024 (issue 8) features in epic6, 
 dnl but we check for those and compensate if they're missing.
 dnl Issue 8 spec: https://pubs.opengroup.org/onlinepubs/9799919799/
+dnl
+dnl The expectation of epic6 is that it no longer requires a c90
+dnl compiler, and it will work fine on any c99 *or later* compiler.
+dnl This is why we do not use "-std=c99". 
 dnl ------------------------------------------------------------
 dnl
+
 
 AC_INIT([epic6],[0])
 AC_CONFIG_SRCDIR([source/irc.c])
@@ -219,7 +224,7 @@ dnl We no longer check for header files required by posix.
 dnl We no longer check for functions required by posix.
 dnl We no longer try to support systems that are that weird.
 dnl
-AC_CHECK_HEADERS(term.h ieeefp.h xlocale.h,)
+AC_CHECK_HEADERS(term.h sys/ioctl.h ieeefp.h xlocale.h,)
 
 AC_CHECK_FUNC(unveil, AC_DEFINE([HAVE_UNVEIL], 1, [Define if you have unveil()]),)
 AC_CHECK_FUNC(pledge, AC_DEFINE([HAVE_PLEDGE], 1, [Define if you have pledge()]),)
@@ -228,27 +233,6 @@ AC_CHECK_FUNC(strlcpy, AC_DEFINE([HAVE_STRLCPY], 1, [Define if you have strlcpy(
 AC_CHECK_FUNC(strlcat, AC_DEFINE([HAVE_STRLCAT], 1, [Define if you have strlcat()]),)
 
 AC_FUNC_ALLOCA
-
-dnl ----------------------------------------------------------
-dnl
-dnl POSIX Issue 8 (2024) defines tcgetwinsize() and 
-dnl (struct winsize) is part of #include <termios.h>
-dnl POSIX Issue 7 (2018) doesn't define either, and at least
-dnl in linux you have to use ioctl() and #include <sys/ioctl.h>
-dnl
-dnl -----------------------------------------------------------
-AC_MSG_CHECKING([to see you have struct winsize in termios.h])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-        #include <termios.h>
-]],[[
-	struct winsize	w;
-	w.ws_row = 10;
-	return 0;
-]])],
-  	[ AC_DEFINE([HAVE_TERMIOS_WINSIZE], 1, [Define this if termios.h has struct winsize])
-	  AC_MSG_RESULT([yes]) ],
-  	[ AC_MSG_RESULT([no]) ], :)
-
 
 dnl ----------------------------------------------------------
 dnl

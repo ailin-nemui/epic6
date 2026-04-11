@@ -54,6 +54,9 @@
 /* Define if you have strlcpy() */
 #undef HAVE_STRLCPY
 
+/* Define to 1 if you have the <sys/ioctl.h> header file. */
+#undef HAVE_SYS_IOCTL_H
+
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H
 
@@ -62,9 +65,6 @@
 
 /* Define if you have tcgetwinsize() */
 #undef HAVE_TCGETWINSIZE
-
-/* Define this if termios.h has struct winsize */
-#undef HAVE_TERMIOS_WINSIZE
 
 /* Define to 1 if you have the <term.h> header file. */
 #undef HAVE_TERM_H

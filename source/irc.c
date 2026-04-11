@@ -58,7 +58,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3088;
+const unsigned long	commit_id = 3089;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -68,7 +68,6 @@ const unsigned long	commit_id = 3088;
  */
 const char ridiculous_version_name[] = "Otiose";
 
-#define __need_putchar_x__
 #include "status.h"
 #include "clock.h"
 #include "names.h"
@@ -99,18 +98,6 @@ const char ridiculous_version_name[] = "Otiose";
 /*
  * Global variables
  */
-
-	/* The ``DEFAULT'' port used for irc server connections. */
-	/*
-	 * Set by:	parse_args:  IRCPORT env, or -p command line argument
-	 * Used by:	serverinfo_to_newserv() - default port for new servers
-	 *
-	 * This is weird because if this is 6667, then it also sets the default TLS=no
-	 * If you change this to 6697, then it also changes the default TLS=yes
-	 * But if you change TLS=yes then we use 6697 no matter what this is.
-	 */
-	int		irc_port = 6667;
-
 	/* 
 	 * When a numeric is being processed, this holds the negative value
 	 * of the numeric.  Its negative so if we pass it to do_hook, it can
@@ -122,7 +109,65 @@ const char ridiculous_version_name[] = "Otiose";
 	 *		banner()  (with /set show_numerics for banner)
 	 * Thoughts:	Should be per-server, not global.
 	 */
-	int		current_numeric_ = -1;
+	int		current_numeric_ 	= -1;
+
+	/* Set to the time the client booted up */
+	/*
+	 * Set by:	main() -- as part of the boot process
+	 * Used by:	alias_online() -- $F
+	 */
+	Timespec	start_time;
+
+	/* Set to the current time, each time you press a key. */
+	/*
+	 * Set by:	main() as part of the boot process
+	 *		do_screens() each time you press a key
+	 * Used by:	reset_standard_clock -- for /ON IDLE
+	 *		alias_idle -- for $E
+	 */
+	Timespec	idle_time 		= { 0, 0 };
+
+/* Set to 0 when you want to suppress all beeps (such as window repaints) */
+	int		global_beep_ok 		= 1;
+
+/* Whether or not the client is dying. */
+	int		dead 			= 0;
+
+/* The number of pending SIGINTs (^C) still unprocessed. */
+volatile sig_atomic_t	cntl_c_hit 		= 0;
+
+/* This is 1 if you want all logging to be inhibited. Dont leave this on! */
+	int		inhibit_logging 	= 0;
+
+/* Output which is displayed without modification by the user */
+	int		privileged_output 	= 0;
+
+/* Output which should not trigger %F in hidden windows */
+	int		do_window_notifies 	= 1;
+
+	jmp_buf		panic_jumpseat;
+	int		system_reset 		= 0;
+	intmax_t	sequence_point 		= 0;
+	int		inbound_line_mangler 	= 0,
+			outbound_line_mangler 	= 0;
+	char *		cut_buffer 		= NULL;		/* global cut_buffer */
+volatile sig_atomic_t	dead_children_processes;
+volatile sig_atomic_t	segv_recurse = 0;
+
+/*
+ * If set, outbound connections will be bind()ed to the address
+ * specified.  if unset, the default address for your host will
+ * be used.  VHosts can be set by the /HOSTNAME command 
+ * or via the IRCHOST environment variable.  These variables should
+ * be considered read-only.  Dont ever change them.
+ *
+ * Its important (from a user's point of view) that these never be
+ * set to addresses that do not belong to the current hostname.
+ * If that happens, outbound connections will fail, and its not my fault.
+ */
+	char *		LocalIPv4HostName 	= NULL;
+	char *		LocalIPv6HostName 	= NULL;
+
 
 	/*
 	 * Flags are weird.
@@ -134,6 +179,18 @@ const char ridiculous_version_name[] = "Otiose";
 	 * Sometimes flags are named for what they *aren't*.
 	 */
 
+	/* The ``DEFAULT'' port used for irc server connections. */
+	/*
+	 * Set by:	parse_args:  IRCPORT env, or -p command line argument
+	 * Used by:	serverinfo_to_newserv() - default port for new servers
+	 *
+	 * This is weird because if this is 6667, then it also sets the default TLS=no
+	 * If you change this to 6697, then it also changes the default TLS=yes
+	 * But if you change TLS=yes then we use 6697 no matter what this is.
+	 */
+	int		irc_port 		= 6667;
+
+
 	/* Set if the client shall use a full-screen user interface (default: yes) */
 	/*
 	 *	When 1		The program shall use a full screen character-based user interface
@@ -144,7 +201,7 @@ const char ridiculous_version_name[] = "Otiose";
 	 * Used by:	XXX todo XXX
 	 * Thoughts:	Should be renamed. 
 	 */
-	int		terminfo_mode = 1;
+	int		terminfo_mode 		= 1;
 
 	/* Set if the client is supposed to fork(). (a bot.)  (default: no). */
 	/*
@@ -160,7 +217,7 @@ const char ridiculous_version_name[] = "Otiose";
 	 *		p_kill -- If killed and bot didn't handle, then exit program
 	 *			^^^ This is bogus.
 	 */
-	int		detached = 0;
+	int		detached 		= 0;
 
 	/* Set to 1 whenever we are in the foreground process group (presumptively: yes) */
 	/*
@@ -180,11 +237,7 @@ const char ridiculous_version_name[] = "Otiose";
 	 *		repaint_window_body() -- passed to output_with_count().
 	 *		redraw_status() - gated on foreground
 	 */
-	int		foreground = 1;
-
-	/*
-	 * END GROUP OF VARIABLES TO COLLAPSE
-	 */
+	int		foreground 		= 1;
 
 	/* Set if your IRCRC file is NOT to be loaded on startup. */
 	/*
@@ -193,7 +246,7 @@ const char ridiculous_version_name[] = "Otiose";
 	 *		load_ircrc -- loading your ~/.epicrc is gated on it
 	 * Notes: This is heinous
 	 */
-	int		quick_startup = 0;
+	int		quick_startup 		= 0;
 
 	/* Set if user does not want to auto-connect to a server upon startup */
 	/*
@@ -201,79 +254,18 @@ const char ridiculous_version_name[] = "Otiose";
 	 * Used by:	parse_args() -- cannot use -b -and -s at the same time
 	 *		main() -- To decide whether to connect or show server list at startup.
 	 */
-	int		dont_connect = 0;
+	int		dont_connect 		= 0;
 
-	/* Set to the time the client booted up */
-	/*
-	 * Set by:	main() -- as part of the boot process
-	 * Used by:	alias_online() -- $F
-	 */
-	Timespec	start_time;
-
-	/* Set to the current time, each time you press a key. */
-	/*
-	 * Set by:	main() as part of the boot process
-	 *		do_screens() each time you press a key
-	 * Used by:	reset_standard_clock -- for /ON IDLE
-	 *		alias_idle -- for $E
-	 */
-	Timespec	idle_time = { 0, 0 };
-
-/* Set to 0 when you want to suppress all beeps (such as window repaints) */
-	int		global_beep_ok = 1;
-
-/* The unknown userhost value.  Bogus, but DONT CHANGE THIS!  */
-	const char	*unknown_userhost = "<UNKNOWN>@<UNKNOWN>";
-
-/* Whether or not the client is dying. */
-	int		dead = 0;
-
-/* The number of pending SIGINTs (^C) still unprocessed. */
-volatile sig_atomic_t	cntl_c_hit = 0;
-
-/* This is 1 if you want all logging to be inhibited. Dont leave this on! */
-	int		inhibit_logging = 0;
-
-
-/* Output which is displayed without modification by the user */
-	int		privileged_output = 0;
-
-/* Output which should not trigger %F in hidden windows */
-	int		do_window_notifies = 1;
-
-	jmp_buf		panic_jumpseat;
-	int		system_reset = 0;
-
-	intmax_t	sequence_point = 0;
-
-	char *		tmp_hostname = NULL;
-
-/*
- * If set, outbound connections will be bind()ed to the address
- * specified.  if unset, the default address for your host will
- * be used.  VHosts can be set by the /HOSTNAME command 
- * or via the IRCHOST environment variable.  These variables should
- * be considered read-only.  Dont ever change them.
- *
- * Its important (from a user's point of view) that these never be
- * set to addresses that do not belong to the current hostname.
- * If that happens, outbound connections will fail, and its not my fault.
- */
-	char *		LocalIPv4HostName = NULL;
-	char *		LocalIPv6HostName = NULL;
-
-	int		inbound_line_mangler = 0,
-			outbound_line_mangler = 0;
-
-static	char	*epicrc_file = NULL;		/* full path .epicrc file */
-	char	*startup_file = NULL,		/* Set when epicrc loaded */
-		*my_homedir = (char *) 0,	/* path to users home dir */
-		*irc_lib = (char *) 0,		/* path to the ircII library */
-		*default_channel = NULL,	/* Channel to join on connect */
+static	char	*epicrc_file 	  = NULL;	/* full path .epicrc file */
+	char	*startup_file 	  = NULL,	/* Set when epicrc loaded */
+		*my_homedir 	  = NULL,	/* path to users home dir */
+		*irc_lib 	  = NULL,	/* path to the ircII library */
+		*default_channel  = NULL,	/* Channel to join on connect */
 		nickname[NICKNAME_LEN + 1],	/* users nickname */
-		*send_umode = NULL;		/* sent umode */
-	char	*cut_buffer = (char *) 0;	/* global cut_buffer */
+		*send_umode 	  = NULL;	/* sent umode */
+static	char 	*default_hostname = NULL;	/* Vhost the user wants to use */
 
+/* Constants */
 const char	empty_string[] = "",		/* just an empty string */
 		space[] = " ",			/* just a lonely space */
 		on[] = "ON",
@@ -306,10 +298,8 @@ static	char	switch_help[] =
       -p <port>\tThe program will use <port> as the default portnum   \n\
       -z <user>\tThe program will use <user> as your default username \n";
 
-volatile sig_atomic_t	dead_children_processes;
-volatile sig_atomic_t	segv_recurse = 0;
 
-
+/* * */
 typedef void 	(*AtExitFunction) (void);
 	AtExitFunction	at_exit_functions[128];
 	int		next_at_exit_function_refnum = 0;
@@ -701,7 +691,7 @@ static	void	parse_args (int argc, char **argv)
 	 * Default VHOST
 	 */
 	if ((cptr = getenv("IRCHOST")) && *cptr)
-		malloc_strcpy(&tmp_hostname, cptr);
+		malloc_strcpy(&default_hostname, cptr);
 
 	/*
 	 * Default Channel to join on first connect
@@ -784,7 +774,7 @@ static	void	parse_args (int argc, char **argv)
 				break;
 
 			case 'H':	/* Overrule IRCHOST */
-				malloc_strcpy(&tmp_hostname, optarg);
+				malloc_strcpy(&default_hostname, optarg);
 				break;
 
 			default:
@@ -844,13 +834,13 @@ static	void	init_vhosts_stage2 (void)
 	/*
 	 * Figure out our virtual hostname, if any.
 	 */
-	if (tmp_hostname)
+	if (default_hostname)
 	{
-		char *s = set_default_hostnames(tmp_hostname);
+		char *s = set_default_hostnames(default_hostname);
 		fprintf(stderr, "%s\n", s);
 		new_free(&s);
 	}
-	new_free(&tmp_hostname);
+	new_free(&default_hostname);
 }
 
 /* fire scripted signal events -pegasus */
@@ -922,6 +912,12 @@ static	int		level = 0,
 
 	sequence_point++;
 
+	/* Phase 1 - Housekeeping */
+	/*
+	 * When panic() is called, the program is returned to main().
+	 * Both this function and other functions need to be informed
+	 * so if they have a stack data structure they can clean that up.
+	 */
 	if (system_reset)
 	{
 		int	i;
@@ -929,13 +925,23 @@ static	int		level = 0,
 		system_reset = 0;
 		for (i = 0; i < 51; i++)
 			caller[i] = NULL;
+
+		/* 
+		 * The context queue tracks which window output 
+		 * should go to.  If there has been a panic(),
+		 * then that needs to be cleaned up as well.
+		 */
 		check_context_queue(1);
 		level = 0;
 	}
 
 	level++;
 
-	/* Don't let this accumulate behind the user's back. */
+	/*
+	 * If the user feels the client is jammed, they may hit ^C
+	 * repeatedly (to generate SIGINTs).  We reset that counter
+	 * here to affirm that the client is _not_ jammed.
+	 */
 	cntl_c_hit = 0;
 
 	if (x_debug & DEBUG_WAITS)
@@ -963,7 +969,9 @@ static	int		level = 0,
 
 	caller[level] = what;
 
-	/* Calculate the time to the next timer timeout */
+
+	/* Phase 2 - Let's do this! */
+	/* Calculate the time to the next synthetic event */
 	timer = TimerTimeout();
 
 	/* GO AHEAD AND WAIT FOR SOME DATA TO COME IN */
@@ -982,6 +990,7 @@ static	int		level = 0,
 		{
 			if (cntl_c_hit)		/* SIGINT is useful */
 			{
+				/* Again, the client is not jammed */
 				user_input_byte('\003');
 				cntl_c_hit = 0;
 			}
@@ -998,11 +1007,13 @@ static	int		level = 0,
 		} 
 	}
 
-	/* 
-	 * Various things that need to be done synchronously...
+	/*
+	 * Phase 3 - some things need to happen automatically, 
+	 * but are not event-triggered.  Each time through the
+	 * loop we do general client housekeeping synchronously.
 	 */
 
-	/* deal with caught signals - pegasus */
+	/* Throw /on signal for the user */
 	if (signals_caught[0] != 0)
 		do_signals();
 
@@ -1019,10 +1030,15 @@ static	int		level = 0,
 	/* Make sure all the channels are joined that ought to be */
 	window_check_channels();
 
-	/* Redraw the screen after a SIGCONT */
+	/* If someone requested a complete screen redraw, do it now */
 	if (need_redraw)
 		redraw_all_screens();
 
+	/* 
+	 * There is a status expando for the sequence point counter.
+	 * To avoid spurious status redraws, you have to tell epic
+	 * that you want each sequence point to update the status bar.
+	 */
 	if (x_debug & DEBUG_SEQUENCE_POINTS)
 		update_all_status();
 
@@ -1065,10 +1081,6 @@ int 	main (int argc, char *argv[])
 
 	/* Some things are always done in UTF-8 */
 	create_utf8_locale();
-
-	/* Stdout and stderr are always line buffered, always */
-	setvbuf(stdout, NULL, _IOLBF, 1024);
-	setvbuf(stderr, NULL, _IOLBF, 1024);
 
 	/* The preliminaries are now done.  Let's boot! */
 	/*

@@ -26,17 +26,25 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- */
-/*
- * written by matthew green, 1993.
  *
- * i stole bits of this from w. richard stevens' `advanced programming
- * in the unix environment' -mrg
+ * Extensive modifications in 2026 by EPIC Software Labs
  */
-
 #include "irc.h"
 #include "irc_std.h"
 
+/* DELIVERY OF SIGNALS [sigprocmask()] */
+/*
+ * block_signal	- Temporarily prohibit delivery of a signal
+ *
+ * Arguments:
+ *	sig_no	- A signal to suspend further delivery on
+ *
+ * By default, all signals start off their life "unblocked"
+ *
+ * During the handling of certain signals (for us, SIGCHILD), it may be catastrophic
+ * for a new signal to be generated while handling previous signals.
+ * For that reason, you may need to block/suspend a signal temporarily.
+ */
 int	block_signal (int sig_no)
 {
 	sigset_t set;
@@ -46,6 +54,15 @@ int	block_signal (int sig_no)
 	return sigprocmask(SIG_BLOCK, &set, NULL);
 }
 
+/*
+ * unblock_signal - Resume delivery of a signal
+ *
+ * Arguments:
+ *	sig_no	- A signal you previously passed to block_signal
+ *
+ * Of course after you're done with your critical section you need to resume
+ * delivery of the signal!
+ */
 int	unblock_signal (int sig_no)
 {
 	sigset_t set;
@@ -55,78 +72,94 @@ int	unblock_signal (int sig_no)
 	return sigprocmask(SIG_UNBLOCK, &set, NULL);
 }
 
-/* array of signal handlers containing mostly NULL */
-sigfunc *		signal_handlers[MY_SIG_MAX];
-volatile sig_atomic_t	signals_caught[MY_SIG_MAX];
+/* CALLBACKS OF SIGNALS [sigaction()] */
 
-/* grand unified signal handler, which sets flags for scriptable signals
- * - pegasus
+/* array of application signal handlers */
+	 sigfunc *	signal_handlers [MY_SIG_MAX];
+volatile sig_atomic_t	signals_caught  [MY_SIG_MAX];
+
+
+/*
+ * This is the signal handler we use for all signals.
+ * It manages the global signal state table (above)
+ * and calls your application callback synchronously
  */
-static void	signal_handler (int sig_no)
+static void	unified_signal_handler (int sig_no)
 {
 	signals_caught[0] = 1;
 	signals_caught[sig_no]++;
+
 	if (signal_handlers[sig_no])
 		signal_handlers[sig_no](sig_no);
 }
 
-static sigfunc *reset_one_signal (int sig_no, sigfunc *sig_handler)
+/*
+ * my_signal - Register a callback for a signal handler
+ *
+ * Arguments:
+ *	sig_no	- A signal for this callback
+ *	handler	- The callback when the signal is fired
+ *
+ * Notes:
+ *	EPIC always uses "unified_signal_handler()" for all signals.
+ *	It updates the global variables and then calls "handler".
+ *
+ * 	Although there are errors and failures, nobody would do anything 
+ *	about them anyhow.  But maybe someday that can change
+ */
+void	my_signal (int sig_no, sigfunc *handler)
 {
-	struct sigaction sa, osa;
+	struct sigaction	sa, 
+				osa;
 
-	if (sig_no < 0)
-		return NULL;			/* Signal not implemented */
+	/* Ensure the signal is valid */
+	if (sig_no < 0 || sig_no >= MY_SIG_MAX)
+		return;
 	if (sig_no == SIGKILL || sig_no == SIGSTOP)
-		return NULL;			/* Issue 6 requires these signals to be silently ignored */
+		return;
 
-	signal_handlers[sig_no] = NULL;
+	/* 
+	 * If you want a callback, then we save your callback.
+	 * If you want default/suppressed handling, then we pass that through.
+	 * Default/suppressed handling a signal inhibits the user getting /on signal.
+	 */
+	if (handler == SIG_IGN || handler == SIG_DFL)
+		signal_handlers[sig_no] = NULL;
+	else
+	{
+		signal_handlers[sig_no] = handler;
+		handler = unified_signal_handler;
+	}
 
-	sa.sa_handler = sig_handler;
+	/* Fill out a sigaction item */
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = handler;
 	sigemptyset(&sa.sa_mask);
 	sigaddset(&sa.sa_mask, sig_no);
 
+	/* Make sure only SIGALRM and SIGINT cause EINTR */
 	sa.sa_flags = 0;
 	if (sig_no != SIGALRM && sig_no != SIGINT)
 		sa.sa_flags |= SA_RESTART;
 
-	if (sigaction(sig_no, &sa, &osa) < 0)
-		return SIG_ERR;
-
-	return osa.sa_handler;
+	/* Although sigaction can fail, we wouldn't do anything about it anyways */
+	sigaction(sig_no, &sa, &osa);
 }
 
 
-/* hook_all_signals needs to be called in main() before my_signal()
+/* 
+ * hook_all_signals needs to be called in main() before my_signal()
  * if any signal hooks fail, it returns SIG_ERR, otherwise it returns
  * NULL. - pegasus
  */
-sigfunc *	init_signals (void)
+void	init_signals (void)
 {
-	int sig_no;
-	sigfunc *error = NULL;
+	int		sig_no;
 
-	memset((void *)&signals_caught, 0, MY_SIG_MAX * sizeof(int));
+	memset((void *)&signals_caught, 0, sizeof(signals_caught));
+	memset((void *)&signal_handlers, 0, sizeof(signal_handlers));
 
 	for (sig_no = 1; sig_no < MY_SIG_MAX; sig_no++)
-	{
-		if ((reset_one_signal(sig_no, signal_handler)) == SIG_ERR)
-			error = SIG_ERR;
-	}
-	return error;
+		my_signal(sig_no, NULL);
 }
 
-sigfunc *	my_signal (int sig_no, sigfunc *sig_handler)
-{
-	sigfunc	*old;
-
-	old = signal_handlers[sig_no];
-	if (sig_handler == SIG_IGN || sig_handler == SIG_DFL)
-		reset_one_signal(sig_no, sig_handler);
-	else
-	{
-		reset_one_signal(sig_no, signal_handler);
-		signal_handlers[sig_no] = (sigfunc *)sig_handler;
-	}
-
-	return old;
-}

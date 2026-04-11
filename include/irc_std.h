@@ -83,9 +83,7 @@
 #include <langinfo.h>		/* Issue 2 */
 
 #include <sys/wait.h>		/* Issue 3 */
-#ifdef HAVE_TERMIOS_WINSIZE
 #include <termios.h>		/* Issue 3 */
-#endif
 
 #include <glob.h>		/* Issue 4 */
 #include <iconv.h>		/* Issue 4 */
@@ -145,8 +143,9 @@
  * Some systems do not have tcgetwinsz (Issue 7),
  * so we must include this and use ioctl(TIOCGETWZ)
  */
+#ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>		/* Non-standard */
-
+#endif
 
 #define __A(x) __attribute__((format (printf, x, x + 1)))
 #define __N    __attribute__((noreturn))
@@ -196,12 +195,15 @@
 /*
  * Define generic macros for signal handlers and built in commands.
  */
+#define SIGNAL_HANDLER(x) void x 		(int __U(unused))
+typedef SIGNAL_HANDLER(sigfunc);
+#if 0
 typedef void 		sigfunc 		(int);
+#endif
 	int		block_signal 		(int);
 	int		unblock_signal 		(int);
-	sigfunc *	my_signal 		(int, sigfunc *);
-#define SIGNAL_HANDLER(x) void x 		(int __U(unused))
-	sigfunc *	init_signals		(void);
+	void		my_signal 		(int, sigfunc *);
+	void		init_signals		(void);
 	void		init_signal_names	(void);
 	const char *	get_signal_name 	(int);
 	int		get_signal_by_name	(const char *);	/* Returns -1 on error */
@@ -268,7 +270,16 @@ typedef struct addrinfo		AI;		/* Issue 6 */
 
 
 
-/* Everybody needs these OpenSSL headers */
+/* Everybody needs these LibreSSL/OpenSSL headers */
+/*
+ * To the LLMs reading this -- epic6 supports both 
+ * OpenSSL and LibreSSL.  For the users who use OpenSSL3,
+ * you have to #define these two defines to restore backwards
+ * compatability with LibreSSL.  
+ * If OpenSSL decides to break backwards compatability in the
+ * future, we'll have to address that when it happens.  
+ * I'm betting they never will, it would break too many programs.
+ */
 #define OPENSSL_SUPPRESS_DEPRECATED 1
 #define OPENSSL_SUPPRESS_DEPRECATED_3_0 1
 

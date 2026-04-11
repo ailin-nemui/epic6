@@ -56,17 +56,25 @@
 static	char	putbuf[OBNOXIOUS_BUFFER_SIZE + 1];
 
 /* 
- * unflash: sends a ^[c to the screen
- * Must be defined to be useful, cause some vt100s really *do* reset when
- * sent this command. >;-)
- * Now that you can send ansi sequences, this is much less inportant.. 
+ * unflash - un-screw your terminal [emulator]
+ *
+ * Back in the bad old days, "talk bombs" would screw with your terminal [emulator]
+ * by sending arbitrary escape strings that would get written to your display,
+ * doing all sorts of goofy things, like shifting your character set.
+ *
+ * EPIC has always done a "reset" of your terminal [emulator] whenever you redraw
+ * the screen (with ^L or resizing the display), traditionally by sending hardcoded
+ * escape sequences.  But today, we can use terminfo sequences for that.
  */
 static void	unflash (void)
 {
 #if 0
-	fwrite("\033c", 2, 1, stdout);		/* hard reset */
+	term_emit("rs1");
+	term_emit("rs2");
+	term_emit("rs3");
 #endif
-	fwrite("\033)0", 3, 1, stdout);		/* soft reset */
+	term_emit("cl");
+	term_emit("is2");
 }
 
 /* sig_refresh_screen: the signal-callable version of refresh_screen */

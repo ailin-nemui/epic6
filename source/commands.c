@@ -33,7 +33,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#define __need_putchar_x__
 #define __need_term_flush__
 #include "irc.h"
 #define __need_ArgList_t__
@@ -1063,7 +1062,7 @@ BUILT_IN_COMMAND(xechocmd)
 				output_screen = get_window_screennum(to_window_refnum);
 			else
 				output_screen = get_window_screennum(0);
-			tputs_x(args);
+			term_raw_bytes(args);
 			term_flush();
 			return;
 		}
@@ -2220,9 +2219,8 @@ BUILT_IN_COMMAND(pretend_cmd)
 		return;
 	}
 	
-	if (!(args_copy = alloca(IO_BUFFER_SIZE + 1)))
-		return;
-
+	/* Truncate unacceptably long lines */
+	args_copy = alloca(IO_BUFFER_SIZE + 1);
 	strlcpy(args_copy, args, IO_BUFFER_SIZE);
 	parse_server(args_copy, IO_BUFFER_SIZE);
 	from_server = s;

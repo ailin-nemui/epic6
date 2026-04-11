@@ -710,8 +710,8 @@ with_iconv
 with_valgrind
 with_clang_sanitizing
 with_python
-with_installtype
 with_pcre2
+with_installtype
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1346,8 +1346,8 @@ Optional Packages:
   --with-valgrind                 Include support for Valgrind Memcheck
   --with-clang-sanitizing         Include support for clang sanitizing
   --with-python=PATH_TO_PYTHON_CONFIG_EXE   Compile with Python support.
-  --with-installtype,   Either "std" (default) or "prod".
   --with-pcre2,   Compile with pcre2 support.
+  --with-installtype,   Either "std" (default) or "prod".
 
 Some influential environment variables:
   CC          C compiler command
@@ -4206,6 +4206,12 @@ then :
   printf "%s\n" "#define HAVE_TERM_H 1" >>confdefs.h
 
 fi
+ac_fn_c_check_header_compile "$LINENO" "sys/ioctl.h" "ac_cv_header_sys_ioctl_h" "$ac_includes_default"
+if test "x$ac_cv_header_sys_ioctl_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_SYS_IOCTL_H 1" >>confdefs.h
+
+fi
 ac_fn_c_check_header_compile "$LINENO" "ieeefp.h" "ac_cv_header_ieeefp_h" "$ac_includes_default"
 if test "x$ac_cv_header_ieeefp_h" = xyes
 then :
@@ -4424,40 +4430,6 @@ printf "%s\n" "#define STACK_DIRECTION $ac_cv_c_stack_direction" >>confdefs.h
 
 
 fi
-
-
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking to see you have struct winsize in termios.h" >&5
-printf %s "checking to see you have struct winsize in termios.h... " >&6; }
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-        #include <termios.h>
-
-int
-main (void)
-{
-
-	struct winsize	w;
-	w.ws_row = 10;
-	return 0;
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-printf "%s\n" "#define HAVE_TERMIOS_WINSIZE 1" >>confdefs.h
-
-	  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-else case e in #(
-  e)  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }  ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 
 
 
@@ -4851,35 +4823,6 @@ printf "%s\n" "no" >&6; }
 fi
 
 
-
-# Check whether --with-installtype was given.
-if test ${with_installtype+y}
-then :
-  withval=$with_installtype;
-else case e in #(
-  e) with_installtype=std ;;
-esac
-fi
-
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking what kind of install to support" >&5
-printf %s "checking what kind of install to support... " >&6; }
-if test "x$with_installtype" = "x" ; then
-	INSTALL_TYPE=std
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: std" >&5
-printf "%s\n" "std" >&6; }
-elif test "x$with_installtype" = "xstd" ; then
-	INSTALL_TYPE=std
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: std" >&5
-printf "%s\n" "std" >&6; }
-elif test "x$with_installtype" = "xprod" ; then
-	INSTALL_TYPE=prod
-	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: prod" >&5
-printf "%s\n" "prod" >&6; }
-else
-	as_fn_error $? "--with-installtype must be \"std\" or \"prod\"" "$LINENO" 5
-fi
-
-
 # Check whether --with-pcre2 was given.
 if test ${with_pcre2+y}
 then :
@@ -4985,11 +4928,40 @@ fi
 
 
 
+# Check whether --with-installtype was given.
+if test ${with_installtype+y}
+then :
+  withval=$with_installtype;
+else case e in #(
+  e) with_installtype=std ;;
+esac
+fi
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking what kind of install to support" >&5
+printf %s "checking what kind of install to support... " >&6; }
+if test "x$with_installtype" = "x" ; then
+	INSTALL_TYPE=std
+	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: std" >&5
+printf "%s\n" "std" >&6; }
+elif test "x$with_installtype" = "xstd" ; then
+	INSTALL_TYPE=std
+	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: std" >&5
+printf "%s\n" "std" >&6; }
+elif test "x$with_installtype" = "xprod" ; then
+	INSTALL_TYPE=prod
+	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: prod" >&5
+printf "%s\n" "prod" >&6; }
+else
+	as_fn_error $? "--with-installtype must be \"std\" or \"prod\"" "$LINENO" 5
+fi
+
+
+
 
 
 if test -z "$CFLAGS"; then CFLAGS="-g -O"; fi
 if test -z "$LDFLAGS"; then LDFLAGS= ; fi
-if test -z "$PYTHON_O"; then PYTHON_OH= ; fi
+if test -z "$PYTHON_O"; then PYTHON_O= ; fi
 if test -z "$WSERV_BIN"; then WSERV_BIN= ; fi
 if test -z "$WSERV_INSTALL"; then WSERV_INSTALL= ; fi
 if test -z "$bindir"; then bindir=\${prefix}/bin; fi

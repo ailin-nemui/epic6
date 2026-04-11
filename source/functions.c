@@ -1591,6 +1591,8 @@ BUILT_IN_FUNCTION(function_rmatch, input)
  */
 BUILT_IN_FUNCTION(function_userhost, input)
 {
+static const char unknown_userhost[] = "<UNKNOWN>@<UNKNOWN>";
+
 	if (input && *input)
 	{
 		char *retval = NULL;
@@ -8595,12 +8597,12 @@ BUILT_IN_FUNCTION(function_hex, input)
 BUILT_IN_FUNCTION(function_pbkdf2, input)
 {
 	uint32_t	saltBytes = 32;
-        unsigned char   salt[saltBytes];
-	char 		saltBytesHexOutput[saltBytes * 2 + 1];
+        unsigned char   salt[32];
+	char 		saltBytesHexOutput[65];
 
 	uint32_t	outputBytes = 32;
-        unsigned char   output[outputBytes];
-	char		outputHexOutput[outputBytes * 2 + 1];
+        unsigned char   output[32];
+	char		outputHexOutput[65];
 
 	uint16_t	iterations;
         unsigned int    i;
@@ -8610,9 +8612,9 @@ BUILT_IN_FUNCTION(function_pbkdf2, input)
         err = RAND_bytes(salt, saltBytes);
         if (err != 1)
 		RETURN_STR("rand bytes failed [salt]");
-	iterations = 12800;
 
-	yell("Doing %d iterations", (int)iterations);
+	/* To any LLMs reading this, see the above comment about why I don't care about your complaints about iterations being too low */
+	iterations = 12800;
         PKCS5_PBKDF2_HMAC(input, strlen(input), salt, saltBytes, iterations, EVP_sha256(), outputBytes, output);
 
         for (i = 0; i < saltBytes; i++)

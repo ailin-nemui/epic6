@@ -47,6 +47,7 @@
 #include "vars.h"
 #include "input.h"
 #include "ircaux.h"
+#include "screen.h"
 #include "termx.h"
 #include "output.h"
 #include "stack.h"
@@ -387,7 +388,6 @@ void 	init_variables_stage1 (void)
 	var_bucket = new_bucket();
 
 	VAR(ACCEPT_INVALID_SSL_CERT,	BOOL, (SetFunc)0)
-	VAR(ALLOW_C1_CHARS, 		BOOL, (SetFunc)0)
 	VAR(ALWAYS_SPLIT_BIGGEST, 	BOOL, (SetFunc)0)
 	VAR(AUTOMARGIN_OVERRIDE,        BOOL, set_automargin_override)
 	VAR(BANNER, 			STR,  (SetFunc)0)

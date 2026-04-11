@@ -30,7 +30,6 @@
  * SUCH DAMAGE.
  */
 
-#define __need_putchar_x__
 #define __need_term_flush__
 #include "irc.h"
 #include "config.h"
@@ -2205,7 +2204,7 @@ static BUILT_IN_KEYBINDING(mousemachine)
 
 static void	cleanup_mousemachine (void)
 {
-	tputs_x("\x1B[?1000;1006;1015l");
+	term_raw_bytes("\x1B[?1000;1006;1015l");
 	term_flush();
 }
 
@@ -2246,11 +2245,11 @@ void    set_mouse_support (void *stuff)
         
 	if (value) {
 		bind_string(head_keymap(), "^[[<", "KEYMAP", "MOUSE");
-		tputs_x("\x1B[?1000;1006;1015h");
+		term_raw_bytes("\x1B[?1000;1006;1015h");
 		term_flush();
 	} else {
 		bind_string(head_keymap(), "^[[<", "NOTHING", NULL);
-		tputs_x("\x1B[?1000;1006;1015l");
+		term_raw_bytes("\x1B[?1000;1006;1015l");
 		term_flush();
 	}
 }       

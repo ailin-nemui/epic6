@@ -1187,16 +1187,7 @@ int 	serverdesc_import_default_file (void)
 	if ((clang_is_frustrating = getenv("IRC_SERVERS_FILE")))
 		strlcpy(file_path, clang_is_frustrating, sizeof file_path);
 	else
-	{
-#ifdef SERVERS_FILE
-		*file_path = 0;
-		if (SERVERS_FILE[0] != '/' && SERVERS_FILE[0] != '~')
-			strlcpy(file_path, irc_lib, sizeof file_path);
-		strlcat(file_path, SERVERS_FILE, sizeof file_path);
-#else
 		return -1;
-#endif
-	}
 
 	return serverdesc_import_file(file_path);
 }

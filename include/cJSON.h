@@ -176,6 +176,12 @@ typedef struct cJSON
 	cJSON *		cJSON_AddObjectToDict 		(cJSON *, const char *);
 	cJSON *		cJSON_AddArrayToObject 		(cJSON *, const char *);
 
+	/* Given a JSON Object and a key, insert a new value into the object */
+	cJSON *		cJSON_UpsertBoolToObject 	(cJSON *, const char *, const cJSON_bool);
+	cJSON *		cJSON_UpsertNumberToObject	(cJSON *, const char *, const double);
+	cJSON *		cJSON_UpsertStringToObject	(cJSON *, const char *, const char *);
+
+
 	/* Remove and return ("pop") the Nth item from an array */
 	cJSON *		cJSON_DetachItemFromArray	(cJSON *array, int which);
 

@@ -429,3 +429,19 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Don't exit the client if it's in detached mode and you're killed.
 * Major revamp to term_attribute() to use our new terminfo support
   - This should cut down on bytes output on attribute changes
+* Check for <sys/ioctl.h> for linux for struct winsize
+* Fix typo with PYTHON_OH -> PYTHON_O
+* No longer explicitly check for struct winsize, it lives somewhere
+* Add functions for cJSON_Upsert*ToObject
+* Put parenthesis around #define MAX_PROTOCOL_SIZE
+* Make SIGNAL_HANDLER() a typedef not a #define
+* Completely refactor terminfo handling.
+* Cache all terminfo stuff in a cJSON instead of a hardcoded data struct
+* Sunset "current_term" and TI_* attrs. Yay!
+* Remove (FILE *)s in (Screen).  Yay!
+* Sunset /ALLOW_C1_CHARS
+* Fix a couple of calls to alloca()
+* Remove a few VLAs. 
+* Start thinking about refactoring the global vars for startup
+* Refactor signal handling, add comments.
+
