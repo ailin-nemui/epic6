@@ -58,7 +58,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3089;
+const unsigned long	commit_id = 3090;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -592,7 +592,7 @@ static	void	parse_args (int argc, char **argv)
 		cptr = getenv("NICK");
 	if (empty(cptr))
 		cptr = get_string_var(DEFAULT_USERNAME_VAR);
-	else
+	if (empty(cptr))
 		cptr = "EPICUser";		/* The most bogus of all fallbacks! */
 	strlcpy(nickname, cptr, sizeof nickname);
 
