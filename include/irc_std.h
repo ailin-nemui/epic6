@@ -163,14 +163,6 @@
 #define FALLTHROUGH 
 #endif
 
-#ifdef HAVE_ALLOCA_H
-#include <alloca.h>
-#else
-#ifndef alloca
-#define alloca __builtin_alloca
-#endif
-#endif
-
 /*
  * Define the MIN and MAX macros if they don't already exist.
  * XXX These are heinous and should go away...

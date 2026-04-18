@@ -1170,8 +1170,9 @@ char *	make_string_var_bydata_internal (int type, const VARIABLE *data)
 			break;
 		case CHAR_VAR:
 		{
-			char utf8str[16];
+			char *	utf8str;
 
+			utf8str = alloca(16);
 			ucs_to_utf8(data->integer, utf8str, sizeof(utf8str));
 			ret = malloc_strdup((const char *)utf8str);
 			break;

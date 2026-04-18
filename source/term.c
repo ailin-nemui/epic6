@@ -75,8 +75,10 @@ static	const char *	term_get_capstr 	(const char *name);
 
 #define tputs_x(s)	(tputs(s, 0, term_output_char))
 
-/* This should be a per-screen variable, not global */
-static	cJSON *terminfo_json;
+/* These should be per-screen variables, not global */
+static	cJSON *		terminfo_json;
+static	TERMINAL *	terminfo_session;
+
 
 /*
  * The old code assumed termcap. termcap is almost always present, but on
@@ -681,7 +683,12 @@ int 	term_init (void)
 	char	*term;
 
 	/* This does not need to be a panic. */
-	if (!terminfo_mode)
+	/*
+	 * XXX TODO - This is wrong.
+	 * Not being in fullscreen mode does not mean we don't want to interrogate TERM,
+	 * it just means we don't want to move the cursor and stuff.
+	 */
+	if (!fullscreen_mode)
 		return -1;
 
 	/*
@@ -708,6 +715,8 @@ int 	term_init (void)
 		fprintf(stderr, "So we'll be running in non-fullscreen mode...\n");
 		return -1;
 	}
+	/* cur_term is a magic global variable declared in <term.h> */
+	terminfo_session = cur_term;
 
 	/* Phase 1 Step 3 - Download the terminfo data into a JSON */
 	terminfo_json = export_terminfo_to_json();
@@ -735,6 +744,7 @@ int 	term_init (void)
 
 
 	/* Phase 1 Step 5 -- Figure out colors (eww, gross) */
+	/* I sourced these from infocmp, under the guidance of gemini */
 	if (!cJSON_GetObjectItem(terminfo_json, "setaf"))
 		cJSON_AddStringToObject(terminfo_json, "setaf", "\033[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m");
 	if (!cJSON_GetObjectItem(terminfo_json, "setab"))
@@ -952,7 +962,8 @@ static void	term_disable_last_column (void)
 
 void	set_automargin_override (void *__U(stuff))
 {
-	if (!terminfo_mode)
+	/* This is probably ok */
+	if (!fullscreen_mode)
 		return;
 
 	/*
@@ -1059,21 +1070,26 @@ static	char 	*start = NULL,
  * control_mangle - A helper function for get_term_capability
  *
  * Arguments:
- *	text	- A value from your TERM setting
+ *	text		- A value from your TERM setting
+ *	retval		- Where to put the copied/mangled string
+ *	retval_size	- How big retval is
  *
  * Return value:
  *	'text' but with all the control keys mangled (ie, \001 -> "^A")
  */
-static char *	control_mangle (const char *text)
+static void	control_mangle (const char *text, char *retval, size_t retval_size)
 {
-static 	char	retval[256];
-	int 	pos = 0;
-	
-	*retval = 0;
+	size_t	pos;
+
+	/* NULLs become zero-length strings */
 	if (!text)
-		return retval;
-		
-	for (; *text && (pos < 254); text++, pos++)
+	{
+		*retval = 0;
+		return;
+	}
+
+	/* Copy/mangle 'text' into 'retval */
+	for (pos = 0; *text && (pos < retval_size - 1); text++, pos++)
 	{
 		if ((unsigned char)*text < 32) 
 		{
@@ -1090,7 +1106,6 @@ static 	char	retval[256];
 	}
 
 	retval[pos] = 0;
-	return retval;
 }
 
 /*
@@ -1114,7 +1129,7 @@ static 	char	retval[256];
  */
 const char *	get_term_capability (const char *name, int querytype, int mangle)
 {
-static	char		retval[128];
+static	char		*retval = NULL;
 	const char *	compare = empty_string;
 	const cap2info *t;
 	int		x;
@@ -1134,8 +1149,22 @@ static	char		retval[128];
 		{
 			const char *s;
 
-			s = cJSON_GetStringValue(cJSON_GetObjectItem(terminfo_json, t->iname));
-			strlcpy(retval, mangle ?  control_mangle(s) : s, sizeof retval);
+			if (!(s = cJSON_GetStringValue(cJSON_GetObjectItem(terminfo_json, t->iname))))
+				return NULL;
+
+			if (mangle)
+			{
+				char *	mangled;
+				size_t	mangled_size;
+
+				mangled_size = strlen(s) * 2 + 3;
+				mangled = alloca(mangled_size);
+				control_mangle(s, mangled, mangled_size);
+				malloc_strcpy(&retval, mangled);
+			}
+			else
+				malloc_strcpy(&retval, s);
+
 			return retval;
 		}
 	}
@@ -1195,6 +1224,11 @@ static cJSON *	export_terminfo_to_json (void)
 		ival;
 	char *	sval;
 
+	/*
+	 * 'boolnames', 'numnames' and 'strnames' 
+	 * are magic global variables defined by the terminfo system.
+	 * They are declared/exposed in <term.h>
+	 */
 	root = cJSON_CreateObject();
 	for (i = 0; boolnames[i]; i++) 
 	{

@@ -393,10 +393,11 @@ void 	clear_regex_from_lastlog (int window, const char *regex)
 
 	if ((errcode = regcomp(&preg, regex, REG_EXTENDED|REG_ICASE|REG_NOSUB)))
 	{
-		char	buffer[8192];
+		char *	buffer;
 
+		buffer = alloca(8192);
 		*buffer = 0;
-		regerror(errcode, &preg, buffer, sizeof(buffer));
+		regerror(errcode, &preg, buffer, 8192);
 		yell("clear_regex_from_lastlog: could not compile regex "
 			"regcomp(%s) returned %d (%s)",
 			regex, errcode, buffer);
@@ -799,7 +800,9 @@ BUILT_IN_COMMAND(lastlog)
 
 		if ((errcode = regcomp(&realreg, regex, options)))
 		{
-			char errmsg[1024];
+			char *	errmsg;
+
+			errmsg = alloca(1024);
 			regerror(errcode, &realreg, errmsg, 1024);
 			yell("%s", errmsg);
 			goto bail;
@@ -813,7 +816,9 @@ BUILT_IN_COMMAND(lastlog)
 
 		if ((errcode = regcomp(&realnoreg, noregex, options)))
 		{
-			char errmsg[1024];
+			char *	errmsg;
+
+			errmsg = alloca(1024);
 			regerror(errcode, &realreg, errmsg, 1024);
 			yell("%s", errmsg);
 			goto bail;
@@ -1795,8 +1800,10 @@ void	move_lastlog_item_by_regex (int oldwin, int newwin, const char *str)
 	errcode = regcomp(&preg, str, REG_EXTENDED | REG_ICASE | REG_NOSUB);
 	if (errcode != 0)
 	{
-		char	errstr[256];
-		regerror(errcode, &preg, errstr, sizeof(errstr));
+		char *	errstr;
+
+		errstr = alloca(256);
+		regerror(errcode, &preg, errstr, 256);
 		say("Regular expression [%s] does not compile: %s", 
 			str, errstr);
 		return;

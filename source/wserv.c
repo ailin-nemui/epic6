@@ -62,11 +62,11 @@ static	int	connectory (const char *, const char *);
 
 int	main (int argc, char **argv)
 {
-	ssize_t	nread;
-	char * 	port;
-	char *	host;
+	ssize_t		nread;
+	char * 		port;
+	char *		host;
 	Filename	tmp;
-	char		stuff[100];
+	char *		stuff;
 	struct pollfd	fds[2];
 
 	my_signal(SIGHUP, SIG_IGN);
@@ -92,7 +92,8 @@ int	main (int argc, char **argv)
 	 * functions and some systems do not have snprintf!  This use of
 	 * sprintf is demonstrably safe.
 	 */
-	snprintf(stuff, sizeof(stuff), "version=%d\n", CURRENT_WSERV_VERSION);
+	stuff = alloca(100);
+	snprintf(stuff, 100, "version=%d\n", CURRENT_WSERV_VERSION);
 	if (!write(cmd, stuff, strlen(stuff))) 
 		(void) 0;
 
@@ -117,7 +118,7 @@ int	main (int argc, char **argv)
 		my_exit(89);
 	if (strlen(tmp) > 90)
 		my_exit(90);
-	snprintf(stuff, sizeof(stuff), "tty=%s\n", tmp);
+	snprintf(stuff, 100, "tty=%s\n", tmp);
 	if (!write(cmd, stuff, strlen(stuff))) 
 		(void) 0;
 

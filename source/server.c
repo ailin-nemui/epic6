@@ -1144,7 +1144,7 @@ static int 	serverdesc_import_file (const char *file_path)
 {
 	Filename	expanded;
 	FILE *		fp;
-	char		buffer[BIG_BUFFER_SIZE + 1];
+	char *		buffer;
 	char *		defaultgroup = NULL;
 
 	if (normalize_filename(file_path, expanded))
@@ -1153,6 +1153,7 @@ static int 	serverdesc_import_file (const char *file_path)
 	if (!(fp = fopen(expanded, "r")))
 		return -1;
 
+	buffer = alloca(BIG_BUFFER_SIZE + 1);
 	while (fgets(buffer, BIG_BUFFER_SIZE, fp))
 	{
 		chop(buffer, 1);
@@ -1600,17 +1601,20 @@ delete_usage_error:
 static	void	server_io (int fd)
 {
 	Server *s;
-	char	buffer[IO_BUFFER_SIZE + 1];
+	char *	buffer;
 	int	des,
 		i, l;
-	char *extra = NULL;
+	char *	extra = NULL;
 	int	found = 0;
 
+	buffer = alloca(IO_BUFFER_SIZE + 1);
 	for (i = 0; i < number_of_servers; i++)
 	{
-		ssize_t	junk;
-		char 	*bufptr = buffer;
-		int	retval = 0;
+		char *	bufptr;
+		int	retval;
+
+		bufptr = buffer;
+		retval = 0;
 
 		if (!(s = get_server(i)))
 			continue;
@@ -1639,12 +1643,14 @@ static	void	server_io (int fd)
 		 */
 		if (s->state == SERVER_DNS)
 		{
-			char	result_json[10240];
+			char *	result_json;
 			ssize_t	len;
 			int	failure_code = 0;
 
+			result_json = alloca(10240);
 			*result_json = 0;
-			len = dgets(s->des, result_json, sizeof(result_json), 0);
+
+			len = dgets(s->des, result_json, 10240, 0);
 			if (len < 0)
 			{
 				debug(DEBUG_SERVER_CONNECT, "server_io: Something went very wrong with the dns response on %d - %ld", s->des, len);
@@ -1930,6 +1936,8 @@ return_from_ssl_detour:
 		/* Everything else is a normal read. */
 		else
 		{
+			size_t	junk;
+
 			last_server = i;
 			junk = dgets(des, bufptr, get_server_line_length(i), 1);
 
@@ -2003,7 +2011,7 @@ return_from_ssl_detour:
 					if (*end == '\r')
 						*end-- = '\0';
 
-					rfc1459_any_to_utf8(bufptr, sizeof(buffer), &extra);
+					rfc1459_any_to_utf8(bufptr, IO_BUFFER_SIZE, &extra);
 					if (extra)
 						bufptr = extra;
 
@@ -2016,7 +2024,7 @@ return_from_ssl_detour:
 					if (do_hook(RAW_IRC_BYTES_LIST, "%s", buffer))
 					{
 					    /* XXX What should 2nd arg be? */
-					    parse_server(bufptr, sizeof buffer);
+					    parse_server(bufptr, IO_BUFFER_SIZE);
 					}
 					parsing_server_index = NOSERV;
 
@@ -2126,8 +2134,7 @@ void	send_to_server_with_payload (const char *payload, const char *format, ...)
 static void 	vsend_to_aserver_with_payload (int refnum, const char *payload, const char *format, va_list args)
 {
 	Server *s;
-	char	buffer[BIG_BUFFER_SIZE * 11 + 1]; /* make this buffer *much*
-						  * bigger than needed */
+	char *	buffer;
 	int	server_part_len;
 	int	len,
 		des;
@@ -2150,6 +2157,7 @@ static void 	vsend_to_aserver_with_payload (int refnum, const char *payload, con
 	if (!format)
 		return;
 
+	buffer = alloca(BIG_BUFFER_SIZE * 11 + 1);
 
 	/****************************************/
 	/*
@@ -2164,16 +2172,17 @@ static void 	vsend_to_aserver_with_payload (int refnum, const char *payload, con
 
 	if (outbound_line_mangler)
 	{
-	    char *s2;
-	    s2 = new_normalize_string(buffer, 1, outbound_line_mangler);
-	    strlcpy(buffer, s2, sizeof(buffer));
-	    new_free(&s2);
+		char *	s2;
+
+		s2 = new_normalize_string(buffer, 1, outbound_line_mangler);
+		strlcpy(buffer, s2, BIG_BUFFER_SIZE * 11);
+		new_free(&s2);
 	}
 
 	outbound_recode(zero, refnum, buffer, &extra);
 	if (extra)
 	{
-		strlcpy(buffer, extra, sizeof(buffer));
+		strlcpy(buffer, extra, BIG_BUFFER_SIZE * 11);
 		new_free(&extra);
 	}
 
@@ -2183,16 +2192,17 @@ static void 	vsend_to_aserver_with_payload (int refnum, const char *payload, con
 	 */
 	if (payload)
 	{
-		strlcat(buffer, " :", sizeof(buffer));
+		strlcat(buffer, " :", BIG_BUFFER_SIZE * 11);
 		if (outbound_line_mangler)
 		{
-		    char *s2;
+		    char *	s2;
+
 		    s2 = new_normalize_string(payload, 1, outbound_line_mangler);
-		    strlcat(buffer, s2, sizeof(buffer));
+		    strlcat(buffer, s2, BIG_BUFFER_SIZE * 11);
 		    new_free(&s2);
 		}
 		else
-		    strlcat(buffer, payload, sizeof(buffer));
+		    strlcat(buffer, payload, BIG_BUFFER_SIZE * 11);
 	}
 
 	/****************************************/
@@ -2205,7 +2215,7 @@ static void 	vsend_to_aserver_with_payload (int refnum, const char *payload, con
 		buffer[IRCD_BUFFER_SIZE - 2] = 0;
 	debug(DEBUG_RFC1459, "[%d] -> [%s]", des, buffer);
 	debug(DEBUG_OUTBOUND, "[%d] -> [%s]", des, buffer);
-	strlcat(buffer, "\r\n", sizeof buffer);
+	strlcat(buffer, "\r\n", BIG_BUFFER_SIZE * 11);
 
 	/* This "from_server" hack is for the benefit of do_hook. */
 	ofs = from_server;
@@ -2358,8 +2368,8 @@ static int	server_connect_next_address_internal (int server)
 	int	fd = -1;
 	SSu	localaddr;
 	socklen_t locallen = 0;
-	char	p_addr[256];
-	char	p_port[24];
+	char *	p_addr;
+	char *	p_port;
 
 	if (!(s = get_server(server)))
 	{
@@ -2443,6 +2453,8 @@ static int	server_connect_next_address_internal (int server)
 			continue;
 		}
 
+		p_addr = alloca(256);
+		p_port = alloca(24);
 		if (ssu_to_paddr(&s->addrs[s->addr_counter], p_addr, 256, p_port, 24, NI_NUMERICHOST))
 			say("Connecting to server refnum %d (%s), using address %d",
 				server, get_server_host(server), s->addr_counter);
@@ -2646,7 +2658,6 @@ void	server_close_internal (int refnum, const char *message, int soft_reset)
 	Server *s;
 	int	was_registered;
 	char *  sub_format;
-	char 	final_message[IRCD_BUFFER_SIZE];
 
 	/* Make sure server refnum is valid */
 	if (!(s = get_server(refnum)))
@@ -2655,7 +2666,6 @@ void	server_close_internal (int refnum, const char *message, int soft_reset)
 		return;
 	}
 
-	*final_message = 0;
 	was_registered = is_server_registered(refnum);
 	set_server_state(refnum, SERVER_CLOSING);
 	if (s->waiting_out > s->waiting_in)		/* XXX - hack! */
@@ -2681,13 +2691,15 @@ void	server_close_internal (int refnum, const char *message, int soft_reset)
 	}
 	else
 	{
+		char *	final_message = NULL;
+
 		if (was_registered)
 		{
 			if (!message)
 			    if (!(message = get_server_quit_message(refnum)))
 				message = "Leaving";
 			sub_format = convert_sub_format(message, 's');
-			snprintf(final_message, sizeof(final_message), sub_format, irc_version);
+			malloc_sprintf(&final_message, sub_format, irc_version);
 			new_free(&sub_format);
 
 			debug(DEBUG_RFC1459, "Closing server %d because [%s]", refnum, final_message);
@@ -2697,9 +2709,12 @@ void	server_close_internal (int refnum, const char *message, int soft_reset)
 
 			server_is_unregistered(refnum);
 		}
+		else
+			final_message = malloc_strdup(empty_string);
 
 		do_hook(SERVER_LOST_LIST, "%d %s %s", 
 				refnum, get_server_host(refnum), final_message);
+		new_free(&final_message);
 		s->des = new_close(s->des);
 		set_server_state(refnum, SERVER_CLOSED);
 	}
@@ -2811,8 +2826,10 @@ const char *	get_server_umode (int refnum)
 static void	set_user_mode (int refnum, int mode)
 {
 	Server *s;
-	char c, *p, *o;
-	char new_umodes[1024];		/* Too huge for words */
+	char 	c, 
+		*p, 
+		*o;
+	char *	new_umodes;
 	int	i;
 
 	if (!(s = get_server(refnum)))
@@ -2823,6 +2840,7 @@ static void	set_user_mode (int refnum, int mode)
 	 * 'o' is the umodes that are already set
 	 * 'p' is the string that we are building that adds 'c' to 'o'.
 	 */
+	new_umodes = alloca(1024);
 	c = (char)mode;
 	o = s->umode;
 	p = new_umodes;
@@ -2853,8 +2871,10 @@ static void	set_user_mode (int refnum, int mode)
 static void	unset_user_mode (int refnum, int mode)
 {
 	Server *s;
-	char c, *o, *p;
-	char new_umodes[1024];		/* Too huge for words */
+	char 	c, 
+		*o, 
+		*p;
+	char *	new_umodes;
 	int	i;
 
 	if (!(s = get_server(refnum)))
@@ -2865,6 +2885,7 @@ static void	unset_user_mode (int refnum, int mode)
 	 * 'o' is the umodes that are already set
 	 * 'p' is the string that we are building that adds 'c' to 'o'.
 	 */
+	new_umodes = alloca(1024);
 	c = (char)mode;
 	o = s->umode;
 	p = new_umodes;
@@ -4027,8 +4048,9 @@ void	set_server_protocol_state (int refnum, int state)
 void 	server_hard_wait (int i)
 {
 	Server *s;
-	int	proto, old_from_server;
-	char	reason[1024];
+	int	proto, 
+		old_from_server;
+	char *	reason = NULL;
 
 	if (!(s = get_server(i)))
 		return;
@@ -4036,7 +4058,7 @@ void 	server_hard_wait (int i)
 	if (!is_server_registered(i))
 		return;
 
-	snprintf(reason, 1024, "WAIT on server %d", i);
+	malloc_sprintf(&reason, "WAIT on server %d", i);
 	proto = get_server_protocol_state(i);
 	old_from_server = from_server;
 
@@ -4048,6 +4070,7 @@ void 	server_hard_wait (int i)
 
 	set_server_protocol_state(i, proto);
 	from_server = old_from_server;
+	new_free(&reason);
 }
 
 /*
@@ -4562,7 +4585,8 @@ void	set_server_005 (int refnum, char *setting, const char *value)
 		return;
 
 	if (!(new_option = (OPTION_item *)alist_lookup((&s->options), setting, 0)))
-		new_option = new_005_item(refnum, setting);
+		if (!(new_option = new_005_item(refnum, setting)))
+			return;		/* Give up! */
 	malloc_strcpy(&(*new_option).value, malloc_strdup(value));
 	new_option->type = 0;
 
@@ -5212,16 +5236,18 @@ Server *      get_server (int server)
 /* This was moved from ircaux.c */
 static char *  get_my_fallback_userhost (void)
 {
-        static char 	uh[BIG_BUFFER_SIZE];
+static 	char *		uh = NULL;
         const char *	u;
-	char 		h[NAME_LEN + 1];
+	char *		h;
 
 	u = get_string_var(DEFAULT_USERNAME_VAR);
 	if (!u || !*u)
 		u = "Unknown";
-	gethostname(h, sizeof(h));
 
-	snprintf(uh, sizeof(uh), "%s@%s", u, h);
+	h = alloca(NAME_LEN + 1);
+	gethostname(h, NAME_LEN);
+
+	malloc_sprintf(&uh, "%s@%s", u, h);
         return uh;
 }
 

@@ -93,15 +93,17 @@ BUILT_IN_COMMAND(xdebugcmd)
 
 	if (!args || !*args)
 	{
-		char buffer[512];
-		int i = 0;
+		char *	buffer;
+		int 	i = 0;
 
-		buffer[0] = 0;
+		buffer = alloca(512);
+		*buffer = 0;
+
 		for (i = 0; opts[i].command; i++)
 		{
 			if (buffer[0])
-				strlcat(buffer, ", ", sizeof buffer);
-			strlcat(buffer, opts[i].command, sizeof buffer);
+				strlcat(buffer, ", ", 512);
+			strlcat(buffer, opts[i].command, 512);
 		}
 
 		say("Usage: XDEBUG [-][+]%s", buffer);

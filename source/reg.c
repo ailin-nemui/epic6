@@ -489,12 +489,10 @@ int wild_match (const char *p, const char *str)
 			 */
 			while ((arg = new_next_arg(placeholder, &placeholder)))
 			{
-				int tmpval;
-				char my_buff[BIG_BUFFER_SIZE + 1];
+				int	tmpval;
+				char *	my_buff;
 
-				strlcpy(my_buff, pattern, sizeof my_buff);
-				strlcat(my_buff, arg, sizeof my_buff);
-				strlcat(my_buff, ptr, sizeof my_buff);
+				my_buff = malloc_strcdup(3, pattern, arg, ptr);
 
 				/*
 				 * The total_explicit we return is whatever
@@ -505,6 +503,7 @@ int wild_match (const char *p, const char *str)
 					if (tmpval > best_total)
 						best_total = tmpval;
 				}
+				new_free(&my_buff);
 			}
 
 			return best_total; /* end of expansion section */

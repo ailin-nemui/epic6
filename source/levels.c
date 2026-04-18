@@ -131,7 +131,7 @@ int	add_new_level_alias (int level, const char *name)
 
 char *	get_all_levels (void)
 {
-	char *buffer = NULL;
+	char *	buffer = NULL;
 	int	i;
 	int	next = 1;
 
@@ -150,7 +150,7 @@ char *	get_all_levels (void)
 
 static const char *	mask_to_positive_str (const Mask *mask)
 {
-	static char	buffer[512];
+static	char	buffer[512];
 	int	i;
 	int	next = 1;
 
@@ -174,7 +174,7 @@ static const char *	mask_to_positive_str (const Mask *mask)
 
 static const char *	mask_to_negative_str (const Mask *mask)
 {
-	static char	buffer[512];
+static	char	buffer[512];
 	int	i;
 	int	next = 1;
 
@@ -200,7 +200,7 @@ static const char *	mask_to_negative_str (const Mask *mask)
 
 const char *	mask_to_str (const Mask *mask)
 {
-	static	char	buffer[512]; /* this *should* be enough for this */
+static	char		buffer[512]; /* this *should* be enough for this */
 	const char 	*str1, *str2;
 
 	if (mask_isall(mask))

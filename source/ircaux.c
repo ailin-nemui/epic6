@@ -386,7 +386,7 @@ void *	really_new_realloc (void **ptr, size_t size, const char *fn, int line)
  *		   2. A pointer to a NULL pointer (will be changed)
  *			- YOU OWN THE NEW VALUE
  *		   3. A pointer to a new_malloc()ed string
- *		        - THIS POINTER BELONGS TO THIS FUNCTION.
+ *		        - YOU SURRENDER THE POINTER TO THIS FUNCTION.
  *			- THE POINTED TO VALUE WILL BE NEW_FREE()D
  *			   AND A NEW VALUE PUT IN ITS PLACE
  *			- YOU OWN THE NEW VALUE
@@ -398,6 +398,7 @@ void *	really_new_realloc (void **ptr, size_t size, const char *fn, int line)
  *	If 'format' is not NULL:
  *		A new_malloc()ed C string created by sprintf()ing the format
  *		with the rest of the arguments.  YOU OWN THIS STRING!
+ *		See the note(s) below.
  *	If 'format' is NULL:
  *		Returns NULL.
  *
@@ -441,8 +442,26 @@ char *	malloc_vsprintf (char **ptr, const char *format, va_list args)
 	        va_copy(orig_args, args);
 		for (;;)
 		{
+			/* 
+			 * Issue 5 assures us that c99 promises that the 
+			 * return value of vsnprintf() is "the number of bytes
+			 * that would have been written to (buffer) if it were 
+			 * sufficiently sized", or "it may also return a
+			 * negative value in case of an error."
+			 *
+			 * So for us, if vsn_retval > buffer_size, then buffer_size
+			 * was not big enough, and we can use vsn_retval to resize
+			 * We repeat this until it "succeeds".
+			 *
+			 * This is optimized to only do the second call to vsnprintf()
+			 * if it's necessary.
+			 */
 			vsn_retval = vsnprintf(buffer, buffer_size, format, args);
 
+			/*
+			 * XXX TODO - This doesn't look like the right way 
+			 * to handle errors here.
+			 */
 			if (vsn_retval < 0)		/* DIE DIE DIE */
 				buffer_size += 16;
 			else if ((size_t)vsn_retval < buffer_size)
@@ -1049,11 +1068,14 @@ static char *	strmap (char *str, int (*func)(int))
 		 */
 		if (c != d)
 		{
-			char c_utf8str[16];
-			char d_utf8str[16];
+			char *	c_utf8str;
+			char *	d_utf8str;
 
-			ucs_to_utf8(c, c_utf8str, sizeof(c_utf8str));
-			ucs_to_utf8(d, d_utf8str, sizeof(d_utf8str));
+			c_utf8str = alloca(16);
+			ucs_to_utf8(c, c_utf8str, 16);
+			d_utf8str = alloca(16);
+			ucs_to_utf8(d, d_utf8str, 16);
+
 			if ((ssize_t)strlen(d_utf8str) != (s - x))
 			{
 				yell("The string [%s] contains a character [%s] whose new version [%s] is not the same length.  I didn't convert it for your safety.", str, c_utf8str, d_utf8str);
@@ -2221,7 +2243,7 @@ size_t	escape_chars (const char *input, const char *stuff, char *output, size_t 
 
 void	panic (int __U(quitmsg), const char *format, ...)
 {
-	char buffer[BIG_BUFFER_SIZE * 10 + 1];
+	char *	buffer = NULL;
 static	int recursion = 0;		/* Recursion is bad */
 
 	if (recursion)
@@ -2232,9 +2254,11 @@ static	int recursion = 0;		/* Recursion is bad */
 	{
 		va_list arglist;
 		va_start(arglist, format);
-		vsnprintf(buffer, BIG_BUFFER_SIZE * 10, format, arglist);
+		malloc_vsprintf(&buffer, format, arglist);
 		va_end(arglist);
 	}
+	else
+		buffer = malloc_strdup("Unspecified panic");
 
 	fprintf(stderr, "A critical logic error has occurred.\n");
 	fprintf(stderr, "To protect you from a crash, the client has aborted what you were doing.\n");
@@ -2242,6 +2266,7 @@ static	int recursion = 0;		/* Recursion is bad */
 	fprintf(stderr, "Panic: [%s (%lu):%s]\n", irc_version, commit_id, buffer);
 	fprintf(stderr, "You can refresh your screen to make this message go away\n");
 	panic_dump_call_stack();
+	new_free(&buffer);
 
 	recursion--;
 	if (dead)
@@ -3518,13 +3543,15 @@ int 	count_char (const char *src, const char look)
 char *	strlpcat (char *source, size_t size, const char *format, ...)
 {
 	va_list args;
-	char	buffer[size];
+	char *	buffer = NULL;
 
 	va_start(args, format);
-	vsnprintf(buffer, size, format, args);
+	malloc_vsprintf(&buffer, format, args);
 	va_end(args);
 
-	strlcat(source, buffer, size);
+	if (buffer)
+		strlcat(source, buffer, size);
+	new_free(&buffer);
 	return source;
 }
 
@@ -3543,13 +3570,14 @@ char *	strlpcat (char *source, size_t size, const char *format, ...)
  */
 unsigned long	random_number (unsigned long l)
 {
-	unsigned char	bytes[sizeof(unsigned long)];
+	unsigned char *	bytes;
 	int		err;
 	unsigned long	retval;
 
 	if (l != 0)
 		return 0;
 
+	bytes = alloca(sizeof(unsigned long));
 	err = RAND_bytes(bytes, sizeof(unsigned long));
 	if (err != 1)
 		return 0;
@@ -3888,7 +3916,7 @@ void	dequoter (char **str, int full, int extended, const char *delims)
 
 char *	new_new_next_arg_count (char *str, char **new_ptr, char *type)
 {
-	char kludge[2];
+	char *	kludge;
 
 	/* Skip leading spaces, blah blah blah */
         while (str && *str && my_isspace(*str))
@@ -3902,6 +3930,7 @@ char *	new_new_next_arg_count (char *str, char **new_ptr, char *type)
 	else
 		*type = '"';
 
+	kludge = alloca(2);
 	kludge[0] = *type;
 	kludge[1] = 0;
 	return universal_next_arg_count(str, new_ptr, 1, DWORD_YES, 1, kludge);
@@ -3945,7 +3974,7 @@ char *	endstr (char *src)
 void	add_mode_to_str (char *modes, size_t len, int mode)
 {
 	char c, *p, *o;
-	char new_modes[1024];		/* Too huge for words */
+	char *	new_modes;
 	int	i;
 
 	/* 
@@ -3955,6 +3984,7 @@ void	add_mode_to_str (char *modes, size_t len, int mode)
 	 */
 	c = (char)mode;
 	o = modes;
+	new_modes = alloca(1024);	/* Too huge for words */
 	p = new_modes;
 
 	/* Copy the modes in 'o' that are alphabetically less than 'c' */
@@ -3983,7 +4013,7 @@ void	add_mode_to_str (char *modes, size_t len, int mode)
 void	remove_mode_from_str (char *modes, size_t len, int mode)
 {
 	char c, *o, *p;
-	char new_modes[1024];		/* Too huge for words */
+	char *	new_modes;
 	int	i;
 
 	/* 
@@ -3993,6 +4023,7 @@ void	remove_mode_from_str (char *modes, size_t len, int mode)
 	 */
 	c = (char)mode;
 	o = modes;
+	new_modes = alloca(1024);	/* Too huge for words */
 	p = new_modes;
 
 	/*
@@ -4166,13 +4197,12 @@ char *	after_expando (char *start, int lvalue, int *call)
 
 /****************************************************************************/
 /*
- * XXX - CE is gonna kill me. :/
- */
-/*
- * Here's the plan.  A "Bucket" is a container of named stuff.  You start
- * by creating a Bucket object, and pass that into a bucket collector.  
+ * Here's the plan.  A "Bucket" is a container of key-value pairs, except
+ * the "value" is expected to be a C object.
+ *
+ * You start by creating a Bucket object, and pass that into a bucket collector.  
  * What you should get back is an array of structs that contain a name 
- * and a pointer.  You never own anything in the bucket, it belogns to the
+ * and a pointer.  You never own anything in the bucket, it belongs to the
  * collector.  If the collector malloc()s memory, it must provide a free
  * function when you're done with the bucket.
  *
@@ -4186,9 +4216,18 @@ char *	after_expando (char *start, int lvalue, int *call)
  *	int max;
  *	BucketItem *list;
  * };
- *
  */
-
+/*
+ * To conceptualize this as JSON
+ *
+ *  [ 
+ *	{ "name": <name>, "stuff": <(void *) ptr>},
+ *	{ "name": <name>, "stuff": <(void *) ptr>}
+ *  ]
+ *
+ * If JSON supported void pointers, i suppose i would use that.
+ * That gives me an idea...
+ */
 Bucket *new_bucket (void)
 {
 	Bucket *b;
@@ -4488,7 +4527,7 @@ char *	fix_string_width (const char *orig_str, int justify, int fillchar, size_t
 	char *	orig_str_copy;
 	char *	input;
 	int	input_cols;
-	char	fillstr[16];
+	char *	fillstr;
 	int	adjust_columns;
 	int	left_chop = 0, right_chop = 0;
 	int	left_add = 0, right_add = 0;
@@ -4506,7 +4545,8 @@ char *	fix_string_width (const char *orig_str, int justify, int fillchar, size_t
 	if (codepoint_numcolumns(fillchar) != 1)
 		fillchar = ' ';		/* No time for this nonsense. */
 
-	ucs_to_utf8(fillchar, fillstr, sizeof(fillstr));
+	fillstr = alloca(16);
+	ucs_to_utf8(fillchar, fillstr, 16);
 
 	/* How many columns do we need to adjust? */
 	adjust_columns = (int)newlen - (int)input_cols;
@@ -4881,9 +4921,12 @@ static ssize_t	base85_encode (const unsigned char *input, size_t input_len, char
 	char *	current_output;
 	size_t 	i, j;
 	size_t	s;
+	unsigned char *	encoded_chars;
 
 	if (!input || !output) 
 		return -1; 
+
+	encoded_chars = alloca(5);
 
 	current_output = output;
 	*current_output++ = '<'; 
@@ -4920,8 +4963,6 @@ static ssize_t	base85_encode (const unsigned char *input, size_t input_len, char
 			 * We calculate 5 chars, even if this is a short set (we will
 			 * truncate it at the bottom
 			 */
-			unsigned char encoded_chars[5];
-
 			encoded_chars[4] = (value % 85) + '!';
 			value /= 85;
 			encoded_chars[3] = (value % 85) + '!';
@@ -4977,7 +5018,7 @@ static ssize_t	base85_decode (const char *input, unsigned char *output, size_t o
 	unsigned char *	current_output;
 	int 		char_count = 0, 
 			extra = 0;;
-	unsigned char 	decoded_chars[5]; 
+	unsigned char *	decoded_chars;
 	const unsigned char *	last_output_byte;
 
 	if (!input || !output)
@@ -4987,6 +5028,7 @@ static ssize_t	base85_decode (const char *input, unsigned char *output, size_t o
 	if (*current_input++ != '<' || *current_input++ != '~') 
 		return -1; 
 
+	decoded_chars = alloca(5);
 	current_output = output;
 	last_output_byte = output + (output_size - 1);
 
@@ -6469,11 +6511,12 @@ static char *	uuid4_generate_internal (int dashes)
 static const char *template_with_dashes = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx";
 static const char *template_without_dashes = "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx";
 static const char *chars = "0123456789abcdef";
-	unsigned char 	s[16];
+	unsigned char *	s;
 	const char *	p;
 	int 		i, n;
 	char		*dst, *retval;
 
+	s = alloca(16);
 	RAND_bytes(s, sizeof(s));
 
 	dst = retval = new_malloc(64);
@@ -6607,7 +6650,7 @@ char *  cp437_to_utf8 (const char *input, size_t inputlen, size_t *destlen)
 	size_t		s, d;
 	char *		y;
 	uint32_t	codepoint;
-	char		utf8str[16];
+	char *		utf8str;
 
 	/*
 	 * We are going to convert 'src' to 'dest'.
@@ -6623,10 +6666,11 @@ char *  cp437_to_utf8 (const char *input, size_t inputlen, size_t *destlen)
 	 * Then we convert the code point to utf8.
 	 * Then we append that utf8 to the destination string.
 	 */
+	utf8str = alloca(16);
 	for (s = d = 0; s < inputlen; s++)
 	{
 		codepoint = cp437_to_ucs((unsigned char)input[s]);
-		ucs_to_utf8(codepoint, utf8str, sizeof(utf8str));
+		ucs_to_utf8(codepoint, utf8str, 16);
 		y = utf8str;
 		while (*y)
 		{

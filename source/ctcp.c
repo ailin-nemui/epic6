@@ -604,13 +604,13 @@ static	time_t	last_ctcp_reply = 0;
 	l = set_context(from_server, -1, NULL, to, LEVEL_CTCP);
 	if (format)
 	{
-		const char *pb;
-		char *	extra = NULL;
-		char 	putbuf [BIG_BUFFER_SIZE + 1];
-		va_list args;
+		const char *	pb;
+		char *		extra = NULL;
+		char *		putbuf = NULL;
+		va_list 	args;
 
 		va_start(args, format);
-		vsnprintf(putbuf, BIG_BUFFER_SIZE, format, args);
+		malloc_vsprintf(&putbuf, format, args);
 		va_end(args);
 
 		/*
@@ -627,6 +627,7 @@ static	time_t	last_ctcp_reply = 0;
 		snprintf(putbuf2, len, "%c%s %s%c", 
 				CTCP_DELIM_CHAR, type, pb, CTCP_DELIM_CHAR);
 
+		new_free(&putbuf);
 		new_free(&extra);
 	}
 	else
@@ -717,19 +718,23 @@ BUILT_IN_FUNCTION(function_ctcpctl, input)
 	op_len = strlen(op);
 
 	if (!my_strnicmp(op, "ALL", op_len)) {
-                char buffer[BIG_BUFFER_SIZE + 1];
+                char * 	buffer;
+
+		buffer = alloca(BIG_BUFFER_SIZE + 1);
                 *buffer = '\0';
 
                 for (i = 0; i < ctcp_bucket->numitems; i++)
                 {
                         const char *name = CTCP_NAME(i);
-                        strlcat(buffer, name, sizeof buffer);
-                        strlcat(buffer, " ", sizeof buffer);
+                        strlcat(buffer, name, BIG_BUFFER_SIZE);
+                        strlcat(buffer, " ", BIG_BUFFER_SIZE);
                 }
 		RETURN_FSTR(buffer);
 	}
 	else if (!my_strnicmp(op, "ACTIVE", op_len)) {
-                char buffer[BIG_BUFFER_SIZE + 1];
+                char * 	buffer;
+
+		buffer = alloca(BIG_BUFFER_SIZE + 1);
                 *buffer = '\0';
 
                 for (i = 0; i < ctcp_bucket->numitems; i++)
@@ -738,14 +743,16 @@ BUILT_IN_FUNCTION(function_ctcpctl, input)
 			if ((CTCP(i)->flag) & CTCP_ACTIVE)
 			{
 				const char *name = CTCP_NAME(i);
-				strlcat(buffer, name, sizeof buffer);
-				strlcat(buffer, " ", sizeof buffer);
+				strlcat(buffer, name, BIG_BUFFER_SIZE);
+				strlcat(buffer, " ", BIG_BUFFER_SIZE);
 			}
                 }
 		RETURN_FSTR(buffer);
 	}
 	else if (!my_strnicmp(op, "INACTIVE", op_len)) {
-                char buffer[BIG_BUFFER_SIZE + 1];
+                char * 	buffer;
+
+		buffer = alloca(BIG_BUFFER_SIZE + 1);
                 *buffer = '\0';
 
                 for (i = 0; i < ctcp_bucket->numitems; i++)
@@ -754,8 +761,8 @@ BUILT_IN_FUNCTION(function_ctcpctl, input)
 			if (!((CTCP(i)->flag) & CTCP_ACTIVE))
 			{
 				const char *name = CTCP_NAME(i);
-				strlcat(buffer, name, sizeof buffer);
-				strlcat(buffer, " ", sizeof buffer);
+				strlcat(buffer, name, BIG_BUFFER_SIZE);
+				strlcat(buffer, " ", BIG_BUFFER_SIZE);
 			}
                 }
 		RETURN_FSTR(buffer);

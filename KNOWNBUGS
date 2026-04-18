@@ -445,4 +445,12 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Start thinking about refactoring the global vars for startup
 * Refactor signal handling, add comments.
 * Fix initial nickname generation (rb fusion)
+* No longer use the obsolete AC_FUNCTION_ALLOC macro (configure.ac)
+* Rename "terminfo mode" to "fullscreen mode"
+* Begin migrating stack-strings "char x[1024];" to using alloca explicitly
+* This enables a later switch to arena allocations.
+* There are so many of these, i might have botched some of them.
+* Remove size limitations by using malloc_sprintf() instead of snprintf()
+* This makes /echo unlimited. yay!
+* Begin rewriting scrambox.c to improve its quality
 

@@ -52,8 +52,13 @@
 #include "levels.h"
 
 /* make this buffer *much* bigger than needed */
+#if 0
 #define OBNOXIOUS_BUFFER_SIZE BIG_BUFFER_SIZE * 10
 static	char	putbuf[OBNOXIOUS_BUFFER_SIZE + 1];
+#endif
+
+static	char *	putbuf = NULL;
+
 
 /* 
  * unflash - un-screw your terminal [emulator]
@@ -200,8 +205,7 @@ void	put_it (const char *format, ...)
 	{
 		va_list args;
 		va_start (args, format);
-		/* XXX TODO - Use malloc_vsprintf() */
-		vsnprintf(putbuf, sizeof putbuf, format, args);
+		malloc_vsprintf(&putbuf, format, args);
 		va_end(args);
 		put_echo(putbuf);
 	}
@@ -224,7 +228,7 @@ void	file_put_it (FILE *fp, const char *format, ...)
 	{
 		va_list args;
 		va_start (args, format);
-		vsnprintf(putbuf, sizeof putbuf, format, args);
+		malloc_vsprintf(&putbuf, format, args);
 		va_end(args);
 		if (fp)
 		{
@@ -254,30 +258,24 @@ static void 	vsay (const char *format, va_list args)
 {
 	if (get_window_display() && format)
 	{
-		const char *str;
+		const char *	str;
+		char *		extra = NULL;
+		char *		booya = NULL;
 
-		*putbuf = 0;
 		if ((str = get_string_var(BANNER_VAR)))
 		{
 			if (get_int_var(BANNER_EXPAND_VAR))
-			{
-			    char *foo;
-
-			    foo = expand_alias(str, empty_string);
-			    strlcpy(putbuf, foo, sizeof putbuf);
-			    new_free(&foo);
-			}
-			else
-			    strlcpy(putbuf, str, sizeof putbuf);
-
-			strlcat(putbuf, " ", sizeof putbuf);
+			    str = extra = expand_alias(str, empty_string);
 		}
+		else
+			str = empty_string;
 
-		vsnprintf(putbuf + strlen(putbuf), 
-			sizeof(putbuf) - strlen(putbuf) - 1, 
-			format, args);
-
+		malloc_vsprintf(&booya, format, args);
+		malloc_sprintf(&putbuf, "%s %s", str, booya);
 		put_echo(putbuf);
+
+		new_free(&extra);
+		new_free(&booya);
 	}
 }
 
@@ -325,7 +323,7 @@ void	yell (const char *format, ...)
 	{
 		va_list args;
 		va_start (args, format);
-		vsnprintf(putbuf, sizeof putbuf, format, args);
+		malloc_vsprintf(&putbuf, format, args);
 		va_end(args);
 		if (do_hook(YELL_LIST, "%s", putbuf))
 			put_echo(putbuf);
@@ -352,7 +350,7 @@ void	privileged_yell (const char *format, ...)
 	{
 		va_list args;
 		va_start (args, format);
-		vsnprintf(putbuf, sizeof putbuf, format, args);
+		malloc_vsprintf(&putbuf, format, args);
 		va_end(args);
 
 		privileged_output++;
@@ -385,7 +383,7 @@ void 	my_error (const char *format, ...)
 	{
 		va_list args;
 		va_start (args, format);
-		vsnprintf(putbuf, sizeof putbuf, format, args);
+		malloc_vsprintf(&putbuf, format, args);
 		va_end(args);
 		do_hook(YELL_LIST, "%s", putbuf);
 		put_echo(putbuf);
@@ -416,7 +414,7 @@ void	debug (unsigned long flag, const char *format, ...)
 		{
 			va_list args;
 			va_start (args, format);
-			vsnprintf(putbuf, sizeof putbuf, format, args);
+			malloc_vsprintf(&putbuf, format, args);
 			va_end(args);
 			if (do_hook(YELL_LIST, "%s", putbuf))
 				put_echo(putbuf);
@@ -447,6 +445,8 @@ void	debug (unsigned long flag, const char *format, ...)
 static void     vsyserr (int server, const char *format, va_list args)
 {
 	const char *  	str;
+	char *		extra = NULL;
+	char *		booya = NULL;
 	int     	l, 
 			old_from_server,
 			i_set_from_server;
@@ -457,26 +457,16 @@ static void     vsyserr (int server, const char *format, va_list args)
 	old_from_server = from_server;
 	i_set_from_server = 0;
 
-	*putbuf = 0;
 	if ((str = get_string_var(BANNER_VAR)))
 	{
 		if (get_int_var(BANNER_EXPAND_VAR))
-		{
-		    char *foo;
-
-		    foo = expand_alias(str, empty_string);
-		    strlcpy(putbuf, foo, sizeof putbuf);
-		    new_free(&foo);
-		}
-		else
-		    strlcpy(putbuf, str, sizeof putbuf);
-
-		strlcat(putbuf, " INFO -- ", sizeof putbuf);
+		    str = extra = expand_alias(str, empty_string);
 	}
+	else
+		str = empty_string;
 
-	vsnprintf(putbuf + strlen(putbuf),
-		sizeof(putbuf) - strlen(putbuf) - 1,
-		format, args);
+	malloc_vsprintf(&booya, format, args);
+	malloc_sprintf(&putbuf, "%s INFO -- %s", str, booya);
 
 	if (is_server_valid(server))
 	{
@@ -492,6 +482,9 @@ static void     vsyserr (int server, const char *format, va_list args)
 
 	if (i_set_from_server)
 		from_server = old_from_server;
+
+	new_free(&extra);
+	new_free(&booya);
 }
 
 void    syserr (int server, const char *format, ...)

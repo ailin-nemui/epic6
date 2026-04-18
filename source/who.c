@@ -622,10 +622,10 @@ do
 
 	if (*status == 'S')	/* this only true for the header WHOREPLY */
 	{
-		char buffer[1024];
+		char *	buffer = NULL;
 
 		channel = "Channel";
-		snprintf(buffer, 1024, "%s %s %s %s %s %s %s", channel,
+		malloc_sprintf(&buffer, "%s %s %s %s %s %s %s", channel,
 				nick, status, user, host, server, name);
 
 		if (new_w->who_stuff)
@@ -633,6 +633,7 @@ do
 		else if (do_hook(WHO_LIST, "%s", buffer))
 			put_it(format, channel, nick, status, user, host, name);
 
+		new_free(&buffer);
 		return;
 	}
 
@@ -679,9 +680,9 @@ do
 
 	if (ok)
 	{
-		char buffer[1024];
+		char *	buffer = NULL;
 
-		snprintf(buffer, 1023, "%s %s %s %s %s %s %s", channel,
+		malloc_sprintf(&buffer, "%s %s %s %s %s %s %s", channel,
 				nick, status, user, host, server, name);
 
 		if (new_w->who_stuff)
@@ -690,6 +691,8 @@ do
 		else if (do_hook(WHO_LIST, "%s", buffer))
 		    if (do_hook(current_numeric(), "%s", buffer))
 			put_it(format, channel, nick, status, user, host, name);
+
+		new_free(&buffer);
 	}
 }
 while (new_w->piggyback && (new_w = new_w->next));
@@ -735,7 +738,7 @@ void	who_end (int refnum, const char *from, const char *comm, const char **ArgLi
 {
 	WhoEntry 	*new_w,
 			*saved_new_w;
-	char 		buffer[1025];
+	char *		buffer = NULL;
 	char		*target;
 	int		l;
 	int		do_a_pop;
@@ -773,12 +776,15 @@ void	who_end (int refnum, const char *from, const char *comm, const char **ArgLi
 			new_w->end(refnum, from, comm, ArgList);
 		else
 		{
-			snprintf(buffer, 1024, "%s %s", from, ArgList[0]);
+			malloc_sprintf(&buffer, "%s %s", from, ArgList[0]);
 			if (new_w->who_end)
 			    call_lambda_command("WHO_END", new_w->who_end, buffer);
 			else
+			{
 			    if (do_hook(current_numeric(), "%s", buffer))
 				put_it("%s %s", banner(), buffer);
+			}
+			new_free(&buffer);
 		}
 	}
 	while (new_w->piggyback && (new_w = new_w->next));
@@ -850,11 +856,11 @@ int	fake_who_end (int refnum, const char *from, const char *comm, const char *wh
 		}
 		else if (new_w->who_end)
 		{
-		    char	buffer[1025];
+			char *buffer = NULL;
 
-		    snprintf(buffer, 1024, "%s %s", 
-				from, new_w->who_target);
-		    call_lambda_command("WHO_END", new_w->who_end, buffer);
+			malloc_sprintf(&buffer, "%s %s", from, new_w->who_target);
+			call_lambda_command("WHO_END", new_w->who_end, buffer);
+			new_free(&buffer);
 		}
 	} 
 	while (new_w->piggyback && (new_w = new_w->next));
@@ -1446,7 +1452,7 @@ void	userhostbase (int refnum, char *args, const char *__U(subargs), void (*line
 		userhost_cmd = 0;
 	int	server_query_reqd = 0;
 	char	*nick;
-	char	buffer[BIG_BUFFER_SIZE + 1];
+	char *	buffer = NULL;
 	char 	*ptr, 
 		*next_ptr,
 		*body = NULL;
@@ -1457,6 +1463,7 @@ void	userhostbase (int refnum, char *args, const char *__U(subargs), void (*line
 	if (!is_server_registered(refnum))
 		return;
 
+	buffer = alloca(BIG_BUFFER_SIZE + 1);
 	*buffer = 0;
 	while ((nick = next_arg(args, &args)) != NULL)
 	{
@@ -1467,8 +1474,8 @@ void	userhostbase (int refnum, char *args, const char *__U(subargs), void (*line
 				server_query_reqd++;
 
 			if (*buffer)
-				strlcat(buffer, " ", sizeof buffer);
-			strlcat(buffer, nick, sizeof buffer);
+				strlcat(buffer, " ", BIG_BUFFER_SIZE);
+			strlcat(buffer, nick, BIG_BUFFER_SIZE);
 		}
 
 		else if (!my_strnicmp(nick, "-direct", 2))
@@ -1524,7 +1531,7 @@ void	userhostbase (int refnum, char *args, const char *__U(subargs), void (*line
 	if (!userhost_cmd && !total)
 	{
 		server_query_reqd++;
-		strlcpy(buffer, get_server_nickname(refnum), sizeof buffer);
+		strlcpy(buffer, get_server_nickname(refnum), BIG_BUFFER_SIZE);
 	}
 
 	ptr = buffer;

@@ -295,9 +295,10 @@ static void	new_io_event (int fd, int revents)
 static int	unix_read (int fd, int quiet, int __U(revents))
 {
 	ssize_t	c;
-	char	buffer[8192];
+	char *	buffer;
 
-	c = read(fd, buffer, sizeof buffer);
+	buffer = alloca(8192);
+	c = read(fd, buffer, 8192);
 	if (c == 0)
 	{
 		if (!quiet)
@@ -326,9 +327,10 @@ static int	unix_read (int fd, int quiet, int __U(revents))
 static int	unix_recv (int fd, int quiet, int __U(revents))
 {
 	ssize_t	c;
-	char	buffer[8192];
+	char *	buffer;
 
-	c = recv(fd, buffer, sizeof buffer, 0);
+	buffer = alloca(8192);
+	c = recv(fd, buffer, 8192, 0);
 	if (c == 0)
 	{
 		if (!quiet)
@@ -416,10 +418,11 @@ static int	unix_connect (int fd, int __U(quiet), int __U(revents))
 
 static int	passthrough_event (int fd, int __U(quiet), int __U(revents))
 {
-	char	revents_str[1024];
+	char *	revents_str;
 
 	/* Tell the caller what the revents are */
-	snprintf(revents_str, 1024, "%d\n", revents);
+	revents_str = alloca(16);
+	snprintf(revents_str, 16, "%d\n", revents);
 	dgets_buffer(fd, revents_str, strlen(revents_str));
 	return 1;
 }

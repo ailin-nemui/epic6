@@ -279,10 +279,13 @@ int	sdbm_store (SDBM *db, Datum key, Datum val, int flags)
 static int	sdbm__makroom (SDBM *db, long hash, int need)
 {
 	long newp;
-	char twin[PBLKSIZ];
+	char *twin;
+	char *new;
 	char *pag = db->pagbuf;
-	char *new = twin;
 	int smax = SPLTMAX;
+
+	twin = alloca(PBLKSIZ);
+	new = twin;
 
 	do {
 /*
@@ -720,9 +723,11 @@ static void	sdbm__splpage (char *pag, char *new, long sbit)
 
 	int n;
 	int my_off = PBLKSIZ;
-	char cur[PBLKSIZ];
-	short *ino = (short *) cur;
+	char *cur;
+	short *ino;
 
+	cur = alloca(PBLKSIZ);
+	ino = (short *)cur;
 	(void) memmove(cur, pag, PBLKSIZ);
 	(void) memset(pag, 0, PBLKSIZ);
 	(void) memset(new, 0, PBLKSIZ);

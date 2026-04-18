@@ -98,9 +98,10 @@ static FILE *	open_log (const char *logfile, FILE **fp)
 	{
 		time_t		t;
 		struct	tm 	ltime;
-		char		timestr[256];
+		char *		timestr;
 
 		/* Convert the time to a string to insert in the file */
+		timestr = alloca(256);
 		memset(&ltime, 0, sizeof(ltime));
 		time(&t);
 		localtime_r(&t, &ltime);		/* Do not use gmtime! */
@@ -123,9 +124,10 @@ static FILE *	open_log (const char *logfile, FILE **fp)
 static FILE *	close_log (FILE **fp)
 {
 	time_t	t;
-	char	my_buffer[256];
+	char *	my_buffer;
 struct	tm	ugh;
 
+	my_buffer = alloca(256);
 	memset(&ugh, 0, sizeof(ugh));
 	time(&t);
 	localtime_r(&t, &ugh);		/* Do not use gmtime! */
@@ -273,10 +275,11 @@ static	int	recursive = 0;
 	if (rewriter)
 	{
 		char    *prepend_exp;
-		char    argstuff[10240];
+		char *	argstuff;
 		int	user_refnum = get_window_user_refnum(window);
 
 		/* First, create the $* list for the expando */
+		argstuff = alloca(10240);
 		snprintf(argstuff, 10240, "%d %s", user_refnum, local_line);
 		new_free(&local_line);
 

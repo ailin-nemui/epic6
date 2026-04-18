@@ -58,7 +58,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3090;
+const unsigned long	commit_id = 3091;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -201,7 +201,7 @@ volatile sig_atomic_t	segv_recurse = 0;
 	 * Used by:	XXX todo XXX
 	 * Thoughts:	Should be renamed. 
 	 */
-	int		terminfo_mode 		= 1;
+	int		fullscreen_mode 		= 1;
 
 	/* Set if the client is supposed to fork(). (a bot.)  (default: no). */
 	/*
@@ -324,7 +324,7 @@ static SIGNAL_HANDLER(sig_irc_exit)
 /* irc_exit: cleans up and leaves */
 void	irc_exit (int really_quit, const char *format, ...)
 {
-	char 	buffer[BIG_BUFFER_SIZE];
+	char *	buffer = NULL;
 	char *	quit_message = NULL;
 	int	old_window_display;
 	int	value;
@@ -350,20 +350,22 @@ void	irc_exit (int really_quit, const char *format, ...)
 	{
 		va_list arglist;
 		va_start(arglist, format);
-		vsnprintf(buffer, sizeof(buffer), format, arglist);
+		malloc_vsprintf(&buffer, format, arglist);
 		va_end(arglist);
 		quit_message = buffer;
 	}
 	else
 	{
-		strlcpy(buffer, "Default", sizeof(buffer));
+		buffer = malloc_strdup("Default");
 		quit_message = NULL;
 	}
 
 	/* Do some clean up */
 	do_hook(EXIT_LIST, "%s", buffer);
+	servers_close_all(quit_message);	/* XXX Why not use buffer? */
+	new_free(&buffer);
+	quit_message = NULL;
 
-	servers_close_all(quit_message);
 	value = 0;
 	logger(&value);
 	get_child_exit(-1);  /* In case some children died in the exit hook. */
@@ -371,7 +373,7 @@ void	irc_exit (int really_quit, const char *format, ...)
 	close_all_dbms();
 
 	/* Arrange to have the cursor on the input line after exit */
-	if (terminfo_mode)
+	if (fullscreen_mode)
 	{
 		cursor_to_input();
 		term_cr();
@@ -537,7 +539,7 @@ static	void	show_version (void)
  *	irc_lib
  *	send_umode
  *	/SET LOAD_PATH
- *	terminfo_mode
+ *	fullscreen_mode
  *	quick_startup
  *	dont_connect
  *	detached
@@ -592,7 +594,7 @@ static	void	parse_args (int argc, char **argv)
 		cptr = getenv("NICK");
 	if (empty(cptr))
 		cptr = get_string_var(DEFAULT_USERNAME_VAR);
-	if (empty(cptr))
+	if (!cptr || !*cptr)
 		cptr = "EPICUser";		/* The most bogus of all fallbacks! */
 	strlcpy(nickname, cptr, sizeof nickname);
 
@@ -723,8 +725,8 @@ static	void	parse_args (int argc, char **argv)
 				irc_port = my_atol(optarg);
 				break;
 
-			case 'd': 	/* disable terminfo mode */
-				terminfo_mode = 0;
+			case 'd': 	/* disable fullscreen mode */
+				fullscreen_mode = 0;
 				break;
 
 			case 'l': 	/* Overrule IRCRC/EPICRC */
@@ -749,7 +751,7 @@ static	void	parse_args (int argc, char **argv)
 				break;
 
 			case 'b':	/* "bot mode" - implies -d as well */
-				terminfo_mode = 0;
+				fullscreen_mode = 0;
 				detached = -1;
 				break;
 
@@ -1155,6 +1157,7 @@ int 	main (int argc, char *argv[])
 			if (!freopen("/dev/null", "w", stderr))
 				(void) 0;
 			detached = 1;
+			fullscreen_mode = 0;
 		}
 	}
 	else
@@ -1171,7 +1174,7 @@ int 	main (int argc, char *argv[])
 				fprintf(stderr, " connected to tty [%s]", tname);
 		}
 		else
-			terminfo_mode = 0;
+			fullscreen_mode = 0;
 		fprintf(stderr, "\n");
 	}
 
@@ -1195,7 +1198,7 @@ int 	main (int argc, char *argv[])
 	if (detached)
 	{
 		my_signal(SIGHUP, SIG_IGN);
-		terminfo_mode = 0;		/* Just in case */
+		fullscreen_mode = 0;		/* Just in case */
 	}
 
 	init_display();

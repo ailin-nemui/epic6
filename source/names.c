@@ -778,7 +778,7 @@ static void	decifer_mode (const char *modes, Channel *chan)
 	char *	rest;
 	Nick *	nick;
 	char *	mode_str;
-	char	local_buffer[BIG_BUFFER_SIZE];
+	char *	local_buffer;
 	int	type;
 
 	/* Make a copy of it.*/
@@ -926,16 +926,17 @@ static void	decifer_mode (const char *modes, Channel *chan)
 	if (!is_string_empty(rest))
 		yell("WARNING:  Extra unhandled arguments found in MODE: %s", rest);
 
-	strlcpy(local_buffer, chan->base_modes, sizeof local_buffer);
+	local_buffer = alloca(BIG_BUFFER_SIZE + 1);
+	strlcpy(local_buffer, chan->base_modes, BIG_BUFFER_SIZE);
 	if (chan->key)
 	{
-		strlcat(local_buffer, " ", sizeof local_buffer);
-		strlcat(local_buffer, chan->key, sizeof local_buffer);
+		strlcat(local_buffer, " ", BIG_BUFFER_SIZE);
+		strlcat(local_buffer, chan->key, BIG_BUFFER_SIZE);
 	}
 	if (chan->limit)
 	{
-		strlcat(local_buffer, " ", sizeof local_buffer);
-		strlcat(local_buffer, ltoa(chan->limit), sizeof local_buffer);
+		strlcat(local_buffer, " ", BIG_BUFFER_SIZE);
+		strlcat(local_buffer, ltoa(chan->limit), BIG_BUFFER_SIZE);
 	}
 	malloc_strcpy(&chan->modestr, local_buffer);
 }
@@ -1044,52 +1045,44 @@ int	is_channel_anonymous (const char *channel, int server_index)
  */
 static void 	show_channel (Channel *chan)
 {
-	char		local_buf[BIG_BUFFER_SIZE * 10 + 1];
-	char		*ptr;
-	int		nick_len;
-	int		len;
-	int		i;
+	char *	buffer = NULL;
+	char *	ptr;
+	int	i;
 
-	ptr = local_buf;
-	*ptr = 0;
-	nick_len = BIG_BUFFER_SIZE * 10;
+	ptr = alloca(BIG_BUFFER_SIZE);
 
 	for (i = 0; i < chan->nicks.max; i++)
 	{
-		strlcpy(ptr, NICK(chan->nicks, i)->nick, nick_len);
+		strlcpy(ptr, NICK(chan->nicks, i)->nick, BIG_BUFFER_SIZE);
 		if (NICK(chan->nicks, i)->userhost)
 		{
-			strlcat(ptr, "!", nick_len);
-			strlcat(ptr, NICK(chan->nicks, i)->userhost, nick_len);
+			strlcat(ptr, "!", BIG_BUFFER_SIZE);
+			strlcat(ptr, NICK(chan->nicks, i)->userhost, BIG_BUFFER_SIZE);
 		}
-		strlcat(ptr, space, nick_len);
-
-		len = strlen(ptr);
-		nick_len -= len;
-		ptr += len;
-
-		if (nick_len <= 0)
-			break;		/* No more space. */
+		strlcat(ptr, space, BIG_BUFFER_SIZE);
+		malloc_strcat_wordlist(&buffer, space, ptr);
 	}
 
 	say("\t%s +%s (%s) (Win: %d): %s", 
 		chan->channel, 
 		get_cmode(chan),
 		get_server_name(chan->server), 
-		chan->window > 0 ? get_window_user_refnum(chan->window) : -1,
-		local_buf);
+		(chan->window > 0) ? get_window_user_refnum(chan->window) : -1,
+		buffer);
+	new_free(&buffer);
 }
 
 char	*scan_channel (char *cname)
 {
 	Channel *	wc = find_channel(cname, from_server);
-	char		buffer[NICKNAME_LEN + 5];
+	char *		buffer;
 	char		*retval = NULL;
 	int		i;
 
 	if (!wc)
 		return malloc_strdup(empty_string);
 
+	buffer = alloca(NICKNAME_LEN + 5);
 	for (i = 0; i < wc->nicks.max; i++)
 	{
 		if (NICK(wc->nicks, i)->chanop)
@@ -1106,7 +1099,7 @@ char	*scan_channel (char *cname)
 		else
 			buffer[1] = '.';
 
-		strlcpy(buffer + 2, NICK(wc->nicks, i)->nick, sizeof(buffer) - 2);
+		strlcpy(buffer + 2, NICK(wc->nicks, i)->nick, NICKNAME_LEN);
 		malloc_strcat_word(&retval, space, buffer, DWORD_NO);
 	}
 

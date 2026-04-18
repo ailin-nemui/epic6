@@ -472,8 +472,10 @@ static void	key_exec_bt (Key *key)
 		char *buf;
 
 		buf = alloca(len + 1);
-		memmove(buf + 1, kstr, len);
+		memset(buf, 0, len + 1);
+
 		buf[0] = key->val;
+		memmove(buf + 1, kstr, len);
 		kstr = buf;
 		len++;
 		key = key->owner;
@@ -945,6 +947,12 @@ static char *	bind_string_compress (const char *str, int *len)
 	        case '^':
 		    str++; /* pass over the caret */
 
+		    if (*str == 0)
+		    {
+			s[(*len)++] = '^';	/* End of string, no quote */
+			break;
+		    }
+
 		    /*
 		     * ^? is DEL (127)
 		     */
@@ -979,6 +987,13 @@ static char *	bind_string_compress (const char *str, int *len)
 
 		case '\\':
 		    str++;
+
+		    if (*str == 0)
+		    {
+			s[(*len)++] = '\\';	/* End of string, no escape */
+			break;
+		    }
+
 		    if (isoctaln(*str)) 
 		    {
 			c = (*str - 48);
@@ -1004,10 +1019,8 @@ static char *	bind_string_compress (const char *str, int *len)
 			s[(*len)++] = '\033'; /* ^[ (escape) */
 			str++;
 		    } 
-		    else if (*str) /* anything else that was escaped */
+		    else 		/* anything else that was escaped */
 			s[(*len)++] = *str++;
-		    else 
-		    	s[(*len)++] = '\\'; /* end-of-string.  no escape. */
 
 		    break;
 
@@ -1260,7 +1273,7 @@ static Key *	find_sequence (Key *top, const char *seq, int slen)
 void	init_keys (void)
 {
 	int 	c;
-	char 	s[2];
+	char *	s;
 
 	_head_keymap = construct_keymap(NULL);
 	add_to_alist(&keyspaces, "HEAD", _head_keymap);
@@ -1269,10 +1282,12 @@ void	init_keys (void)
 
 #define BIND(x, y) bind_string(_head_keymap, x, y, NULL);
 	/* bind characters 32 - 255 to SELF_INSERT. */
-	s[1] = '\0';
-	for (c = 32;c <= KEYMAP_SIZE - 1;c++) 
+	s = alloca(8);
+	memset(s, 0, 8);
+	for (c = 32; c <= KEYMAP_SIZE - 1; c++) 
 	{
-		s[0] = (char )c;
+		s[0] = (char)c;
+		s[1] = 0;
 		BIND(s, "SELF_INSERT");
 	}
 
@@ -2072,10 +2087,10 @@ static void	bindctl_getmap (Key *map, const char *str, int len, char **ret)
 	decomp = alloca(((len + 1) * 2) + 1);
 
 	/* grab all keys that are bound, put them in ret, and continue. */
-	newstr[len + 1] = '\0';
 	for (c = 1; c <= KEYMAP_SIZE - 1;c++) 
 	{
 		newstr[len] = c;
+		newstr[len + 1] = '\0';
 		if (map[c].bound)
 			malloc_strcat_wordlist(ret, " ", bind_string_decompress(decomp, newstr, len + 1));
 		if (map[c].map)
@@ -2220,13 +2235,15 @@ static void	init_mousemachine (void)
 	{
 #define BIND(x, y) bind_string(mouse_keymap, x, y, NULL);
 		int	c;
-		char	s[2];
+		char *	s;
 
 		/* bind characters 32 - 255 to SELF_INSERT. */
-		s[1] = '\0';
+		s = alloca(8);
+		memset(s, 0, 8);
 		for (c = 32;c <= KEYMAP_SIZE - 1;c++) 
 		{
-			s[0] = (char )c;
+			s[0] = (char)c;
+			s[1] = 0;
 			BIND(s, "MOUSEMACHINE");
 		}
 	}

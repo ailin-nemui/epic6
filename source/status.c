@@ -239,14 +239,17 @@ struct status_formats status_expandos[] = {
  * converted, all subsequence occurences are left unchanged.  This routine
  * mallocs the returned string. 
  */
-char	*convert_sub_format (const char *format, char c)
+char *	convert_sub_format (const char *format, char c)
 {
-	char	buffer[BIG_BUFFER_SIZE + 1];
+	char *	buffer;
 	int	pos = 0;
 	int	dont_got_it = 1;
 
 	if (!format)
 		return NULL;		/* NULL in, NULL out */
+
+	buffer = alloca(BIG_BUFFER_SIZE + 1);
+	pos = 0;
 
 	while (*format && pos < BIG_BUFFER_SIZE - 4)
 	{
@@ -292,16 +295,19 @@ char	*convert_sub_format (const char *format, char c)
  */
 static void	build_status_format (Status *s, int k)
 {
-	char	buffer[BIG_BUFFER_SIZE + 1];
-	int	cp;
-	short	map;
-	char	key;
+	char *		buffer;
+	int		cp;
+	short		map;
+	char		key;
 	unsigned	i;
-	const char	*raw = s->line[k].raw;
-	char	*format = buffer;
+	const char *	raw;
+	char *		format;
 
 	debuglog("build_status_format for status line %d", k);
 
+	buffer = alloca(BIG_BUFFER_SIZE + 1);
+	format = buffer;
+	raw = s->line[k].raw;
 	cp = s->line[k].count = 0;
 	while (raw && *raw && (format - buffer < BIG_BUFFER_SIZE - 4))
 	{
@@ -317,7 +323,7 @@ static void	build_status_format (Status *s, int k)
 		/* Find the map, if neccesary */
 		if (*++raw == '{')
 		{
-			char	*endptr;
+			char *	endptr;
 
 			raw++;
 			map = strtoul(raw, &endptr, 10);
@@ -474,9 +480,7 @@ void	compile_status (int window_, Status *s)
 int	make_status (int window_, Status *status)
 {
 	int		status_line;
-	char	buffer	    [BIG_BUFFER_SIZE + 1];
-	char	lhs_buffer  [BIG_BUFFER_SIZE + 1];
-	char	rhs_buffer  [BIG_BUFFER_SIZE + 1];
+	char 		*buffer, *lhs_buffer, *rhs_buffer;
 	const char	*func_value [MAX_FUNCTIONS];
 	size_t		save_size;
 	int		anything_changed = 0;
@@ -508,25 +512,44 @@ int	make_status (int window_, Status *status)
 	else
 		screen_columns = get_screen_columns(get_window_screennum(window_));
 
+	/* Hurt me harder! */
+	if (screen_columns < 0)
+		screen_columns = 80;
+
+	buffer = alloca(BIG_BUFFER_SIZE + 1);
+	lhs_buffer = alloca(BIG_BUFFER_SIZE + 1);
+	rhs_buffer = alloca(BIG_BUFFER_SIZE + 1);
+
+	/*
+	 * There's a point at which you ask yourself, should this just
+	 * be in its own function?
+	 */
 	for (status_line = 0; status_line < status->number; status_line++)
 	{
 		int	fillchar;
-		char	*lhp = lhs_buffer,
-			*rhp = rhs_buffer;
-		char 	*cp,
-			*str = NULL;
-	const char *	start_rhs = 0;
-		int	pr_lhs = 0,
-			pr_rhs = 0,
-			line = 0,	/* XXX gcc4 wackiness */
-			*prc = &pr_lhs, 
+		char	*lhp,
+			*rhp,
+			*cp,
+			*str;
+	const char *	start_rhs;
+		int	pr_lhs,
+			pr_rhs,
+			line,
+			*prc,
 			i;
 	const char *	s;
-		int	code_point;
-		int	cols;
+		int	code_point,
+			cols;
 		ptrdiff_t	offset;
 
 		fillchar = 0;
+		lhp = lhs_buffer;
+		rhp = rhs_buffer;
+		str = NULL;
+		start_rhs = NULL;
+		pr_lhs = pr_rhs = 0;
+		prc = &pr_lhs;
+
 
 		/*
 		 * Figure out which of the three status bars we're creating.
@@ -615,7 +638,7 @@ int	make_status (int window_, Status *status)
 			swap_window_display(owd);
 			from_server = old_fs;
 			make_window_current_informally(ocw);
-			strlcpy(buffer, str, sizeof buffer);
+			strlcpy(buffer, str, BIG_BUFFER_SIZE);
 			new_free(&str);
 		}
 
@@ -691,7 +714,7 @@ int	make_status (int window_, Status *status)
 			 */
 			else
 			{
-				char	utf8str[16];
+				char *	utf8str;
 				const char *x;
 	
 				if (!start_rhs)
@@ -702,7 +725,8 @@ int	make_status (int window_, Status *status)
 					cols = 0;
 				*prc += cols;
 
-				ucs_to_utf8(code_point, utf8str, sizeof(utf8str));
+				utf8str = alloca(16);
+				ucs_to_utf8(code_point, utf8str, 16);
 				for (x = utf8str; *x; x++)
 					*cp++ = *x;
 			}
@@ -727,8 +751,8 @@ int	make_status (int window_, Status *status)
 		 */
 		/* Not attached, so don't "fix" it */
 		{
-			char	utf8str[16];
-			int 		numf = 0;
+			char *	utf8str;
+			int 	numf = 0;
 
 			if ((cols = codepoint_numcolumns(fillchar)) < 1)
 			{
@@ -736,7 +760,9 @@ int	make_status (int window_, Status *status)
 				fillchar = 32;
 				cols = 1;
 			}
-			ucs_to_utf8(fillchar, utf8str, sizeof(utf8str));
+
+			utf8str = alloca(16);
+			ucs_to_utf8(fillchar, utf8str, 16);
 
 			numf = screen_columns - pr_lhs - 1;
 			if (start_rhs)
@@ -744,15 +770,15 @@ int	make_status (int window_, Status *status)
 
 			while (numf >= 0)
 			{
-				strlcat(lhs_buffer, utf8str, sizeof lhs_buffer);
+				strlcat(lhs_buffer, utf8str, BIG_BUFFER_SIZE);
 				numf -= cols;
 			}
 		}
 
 		save_size = strlen(all_off());
-		strlcpy(buffer, lhs_buffer, sizeof buffer - save_size);
-		strlcat(buffer, rhs_buffer, sizeof buffer - save_size);
-		strlcat(buffer, all_off(), sizeof buffer);
+		strlcpy(buffer, lhs_buffer, BIG_BUFFER_SIZE - save_size);
+		strlcat(buffer, rhs_buffer, BIG_BUFFER_SIZE - save_size);
+		strlcat(buffer, all_off(), BIG_BUFFER_SIZE);
 		new_free(&str);
 
 		if (!status->line[line].result ||
@@ -845,7 +871,8 @@ int	redraw_status (int window_, Status *status)
 			continue;
 		}
 
-		if (!terminfo_mode || !foreground || get_window_screennum(window_) < 0)
+		/* This is correct.  We do everything except physically draw the status line */
+		if (!fullscreen_mode || !foreground || get_window_screennum(window_) < 0)
 		{
 			debuglog("redraw_status(%d/%d/%d): line/bg/invisible",
 				user_refnum, status_line, line);
@@ -1222,7 +1249,7 @@ STATUS_FUNCTION(status_notify_windows)
 {
 	STATUS_VARS
 	int	doneone = 0;
-	char	buf2[BIG_BUFFER_SIZE];
+	char *	buf2;
 	int	w = 0;
 
 	/*
@@ -1235,6 +1262,7 @@ STATUS_FUNCTION(status_notify_windows)
 	 * Look for any notifying windows that have had some output while
 	 * they've been invisible and collect their refnums.
 	 */
+	buf2 = alloca(BIG_BUFFER_SIZE);
 	*buf2 = 0;
 	while (traverse_all_windows2(&w))
 	{
@@ -1323,7 +1351,7 @@ STATUS_FUNCTION(status_mode)
 STATUS_FUNCTION(status_umode)
 {
 	STATUS_VARS
-	char	localbuf[20];
+	char *	localbuf;
 
 	/*
 	 * If we are only on one server and this isnt the current-type 
@@ -1338,7 +1366,8 @@ STATUS_FUNCTION(status_umode)
 	if (get_window_server(window_) < 0)
 		return empty_string;
 
-	strlcpy(localbuf, get_server_umode(get_window_server(window_)), sizeof localbuf);
+	localbuf = alloca(20);
+	strlcpy(localbuf, get_server_umode(get_window_server(window_)), 20);
 	if (!*localbuf)
 		return empty_string;
 
@@ -1422,9 +1451,9 @@ STATUS_FUNCTION(status_hold_lines)
 STATUS_FUNCTION(status_channel)
 {
 	STATUS_VARS
-	const char *chan;
-	char 	channel[IRCD_BUFFER_SIZE + 1];
-	int	num;
+	const char *	chan;
+	char *		channel;
+	int		num;
 
 	if (get_window_server(window_) == NOSERV || !channel_format)
 		return empty_string;
@@ -1432,11 +1461,12 @@ STATUS_FUNCTION(status_channel)
 	if (!(chan = get_window_echannel(window_)))
 		return empty_string;
 
+	channel = alloca(IRCD_BUFFER_SIZE + 1);
 	if (get_int_var(HIDE_PRIVATE_CHANNELS_VAR) && 
 	    is_channel_private(chan, get_window_server(window_)))
-		strlcpy(channel, "*private*", sizeof channel);
+		strlcpy(channel, "*private*", IRCD_BUFFER_SIZE);
 	else
-		strlcpy(channel, chan, sizeof channel);
+		strlcpy(channel, chan, IRCD_BUFFER_SIZE);
 
 	num = get_int_var(CHANNEL_NAME_WIDTH_VAR);
 	if (num > 0 && (int)strlen(channel) > num)
@@ -1838,11 +1868,12 @@ BUILT_IN_FUNCTION(function_status_oneoff, input)
 STATUS_FUNCTION(status_sequence_point)
 {
 	STATUS_VARS
-	char resultstr[100];
+	char *	resultstr;
 
 	if (x_debug & DEBUG_SEQUENCE_POINTS)
 	{
-		snprintf(resultstr, sizeof(resultstr), INTMAX_FORMAT, sequence_point);
+		resultstr = alloca(32);
+		snprintf(resultstr, 32, INTMAX_FORMAT, sequence_point);
 		PRESS(sp_format, resultstr);
 		RETURN
 	}

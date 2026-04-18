@@ -1,14 +1,5 @@
 /* include/defs.h.in.  Generated from configure.ac by autoheader.  */
 
-/* Define to 1 if using 'alloca.c'. */
-#undef C_ALLOCA
-
-/* Define to 1 if you have 'alloca', as a function or macro. */
-#undef HAVE_ALLOCA
-
-/* Define to 1 if <alloca.h> works. */
-#undef HAVE_ALLOCA_H
-
 /* Define if you can use __attribute__((fallthrough)) */
 #undef HAVE_ATTRIBUTE_FALLTHROUGH
 
@@ -108,18 +99,7 @@
 /* Define this add stuff.... */
 #undef PYTHON_O
 
-/* If using the C implementation of alloca, define if you know the
-   direction of stack growth for your system; otherwise it will be
-   automatically deduced at runtime.
-	STACK_DIRECTION > 0 => grows toward higher addresses
-	STACK_DIRECTION < 0 => grows toward lower addresses
-	STACK_DIRECTION = 0 => direction of growth unknown */
-#undef STACK_DIRECTION
-
 /* Define to 1 if all of the C89 standard headers exist (not just the ones
    required in a freestanding environment). This macro is provided for
    backward compatibility; new code need not use it. */
 #undef STDC_HEADERS
-
-/* Define as 'unsigned int' if <stddef.h> doesn't define. */
-#undef size_t

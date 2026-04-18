@@ -1650,14 +1650,17 @@ static	int	dummy = 1;
 
 static int	lexerr (expr_info *c, const char *format, ...)
 {
-	char 	buffer[BIG_BUFFER_SIZE + 1];
+	char *	buffer = NULL;
 	va_list	a;
 
+	buffer = alloca(BIG_BUFFER_SIZE + 1);
 	va_start(a, format);
-	vsnprintf(buffer, BIG_BUFFER_SIZE, format, a);
+	malloc_vsprintf(&buffer, format, a);
 	va_end(a);
 
 	math_error(c, "%s", buffer);
+	new_free(&buffer);
+
 	c->errflag = 1;
 	return EOI;
 }
@@ -2639,16 +2642,21 @@ cleanup:
  */
 static void 	math_error (expr_info *c, const char *format, ...)
 {
-	static	char	math_error_buffer1[BIG_BUFFER_SIZE * 10 + 1];
-	static	char	math_error_buffer2[BIG_BUFFER_SIZE * 100 + 1];
+	/* 
+	 * These are static so they don't have to be freed.
+	 * In the future, these would be handled with arena allocations
+	 * This makes this function non-re-entrant
+	 */
+static 	char *	math_error_buffer1 = NULL;
+static 	char *	math_error_buffer2 = NULL;
 
 	if (c && format)
 	{
 		va_list args;
 		va_start (args, format);
-		vsnprintf(math_error_buffer1, sizeof math_error_buffer1, format, args);
+		malloc_vsprintf(&math_error_buffer1, format, args);
 		va_end(args);
-		snprintf(math_error_buffer2, sizeof math_error_buffer2, "In the expression \"%s\", an error occurred: %s", c->orig_expr, math_error_buffer1);
+		malloc_sprintf(&math_error_buffer2, "In the expression \"%s\", an error occurred: %s", c->orig_expr, math_error_buffer1);
 		do_hook(YELL_LIST, "%s", math_error_buffer2);
 		put_echo(math_error_buffer2);
 	}

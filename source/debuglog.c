@@ -83,10 +83,13 @@ BUILT_IN_COMMAND(debuglogcmd)
 
 int	debuglog (const char *format, ...)
 {
-	char	timebuf[10240];
+	char *		timebuf;
 	struct timespec xnow;
-	time_t sec;
-	struct tm tm;
+	time_t 		sec;
+	struct tm 	tm;
+
+	timebuf = alloca(10240);
+	*timebuf = 0;
 
         if (debuglogf && format)
         {

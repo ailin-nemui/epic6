@@ -605,7 +605,7 @@ static void	p_join (const char *from, const char *comm, const char **ArgList)
 	const char	*channel;
 	char 	*c;
 	int 	op = 0, vo = 0, ha = 0;
-	char 	extra[20];
+	char *	extra;
 	int	l;
 
 	/* We cannot join channel 0 */
@@ -639,6 +639,7 @@ static void	p_join (const char *from, const char *comm, const char **ArgList)
 
 	set_server_joined_nick(from_server, from);
 
+	extra = alloca(20);
 	*extra = 0;
 	if (op)
 		strlcat(extra, " (+o)", sizeof extra);

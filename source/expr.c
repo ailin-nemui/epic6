@@ -162,13 +162,14 @@ char	*expand_alias	(const char *string, const char *args)
 		*ptr,
 		*stuff = NULL,
 		*escape_str = NULL;
-	char	escape_temp[2];
+	char	*escape_temp;
 	char	ch;
 	int	is_quote = 0;
 
 	if (!string || !*string)
 		return malloc_strdup(empty_string);
 
+	escape_temp = alloca(2);
 	escape_temp[1] = 0;
 
 	ptr = stuff = LOCAL_COPY(string);

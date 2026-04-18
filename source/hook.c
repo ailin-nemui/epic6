@@ -948,13 +948,13 @@ static int 	do_hook_internal (int which, char **result, const char *format, va_l
 	if (retval == SUPPRESS_DEFAULT || !h->implied)
 		return retval;
 
-    implied_hook:
+implied_hook:
     do
     {
 	char *	func_call = NULL;
 	char *	func_retval;
-	char	my_buffer[BIG_BUFFER_SIZE * 10 + 1];
-	const char *old_current_implied_on_hook = current_implied_on_hook;
+	char *	my_buffer = NULL;
+	const char *old_current_implied_on_hook;
 
 	if (!h->implied)
 		break;
@@ -962,11 +962,12 @@ static int 	do_hook_internal (int which, char **result, const char *format, va_l
 	if (!format)
 		panic(1, "do_hook: format is NULL");
 
-	strlcpy(my_buffer, *result, sizeof(my_buffer));
+	my_buffer = malloc_strdup(*result);
 
 	if (which >= 0)
 		h->mark++;
 
+ 	old_current_implied_on_hook = current_implied_on_hook;
 	current_implied_on_hook = h->name;
 	if (h->implied_protect)
 	{
@@ -984,6 +985,7 @@ static int 	do_hook_internal (int which, char **result, const char *format, va_l
 
 	new_free(&func_call);
 	new_free(&func_retval);
+	new_free(&my_buffer);
 	retval = SUPPRESS_DEFAULT;
 
 	if (which >= 0)
@@ -2384,12 +2386,13 @@ char *hookctl (char *input)
 
 			case HOOKCTL_GET_HOOK_STRING:
 			{
-				char *retval = NULL;
-				char	blah[10];
+				char *	retval;
+				char *	blah;
 
 				/* Just to start off */
 				retval = new_malloc(128);
 				*retval = 0;
+				blah = alloca(10);
 
 				/* ON <SERIAL-INDICATOR><NOISE><TYPE> <SERIAL-NUMBER>
 						<QUOTE><PATTERN><QUOTE> {<STUFF>} */
@@ -2407,7 +2410,7 @@ char *hookctl (char *input)
 
 				if (hook->sernum)
 				{
-					snprintf(blah, sizeof blah, " %d", hook->sernum);
+					snprintf(blah, 10, " %d", hook->sernum);
 					malloc_strcat(&retval, blah);
 				}
 
@@ -2436,7 +2439,9 @@ char *hookctl (char *input)
 
 				if (hook->arglist)
 				{
-					char *arglist = print_arglist(hook->arglist);
+					char *arglist;
+
+					arglist = print_arglist(hook->arglist);
 
 					blah[0] = '(';
 					blah[1] = 0;
@@ -2444,7 +2449,7 @@ char *hookctl (char *input)
 					malloc_strcat(&retval, arglist);
 					blah[0] = ')';
 					malloc_strcat(&retval, blah);
-				    malloc_strcat(&retval, space);
+				        malloc_strcat(&retval, space);
 					new_free(&arglist);
 				}
 

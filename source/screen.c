@@ -125,6 +125,8 @@ struct	ScreenStru *	next;			/* Previous screen in list */
 	int		fdout;			/* The output FD (eg, 1) */
 	int		control;		/* The control FD (to wserv) */
 	int		wserv_version;		/* The version of wserv talking to */
+	cJSON *		terminfo_json;		/* Everything about TERM for output fd */
+	TERMINAL *	terminfo_session;	/* A terminfo context for terminfo_json */
 
 	void *		il;			/* InputLine (opaque - see input.c) */
 	WaitPrompt *	promptlist;
@@ -138,6 +140,7 @@ struct	ScreenStru *	next;			/* Previous screen in list */
 	int		li;
 	int		old_co;
 	int		old_li;
+
 
 #define MAX_WINDOWS_ON_SCREEN	1000
 	WindowAttachment	_windows[MAX_WINDOWS_ON_SCREEN + 1];	/* This is experimental, for now */
@@ -1829,7 +1832,7 @@ char *	new_normalize_string (const char *str, int logical, int mangle)
 			strip_all_off, strip_nd_space;
 	int		strip_unprintable, strip_other, strip_italic;
 	int		codepoint, state, cols;
-	char 		utf8str[16], *x;
+	char *		x;
 	size_t		(*attrout) (char *, size_t, Attribute *, Attribute *) = NULL;
 	ptrdiff_t	offset;
 
@@ -1925,6 +1928,8 @@ abnormal_char:
 		 */
 		case 0:
 		{
+			char *	utf8str;
+
 			if (strip_other)
 				break;
 
@@ -1934,7 +1939,8 @@ normal_char:
 				cols = 0;
 			pc += cols;
 
-			ucs_to_utf8(codepoint, utf8str, sizeof(utf8str));
+			utf8str = alloca(16);
+			ucs_to_utf8(codepoint, utf8str, 16);
 			for (x = utf8str; *x; x++)
 				output[pos++] = *x;
 
@@ -2341,7 +2347,7 @@ const 	char 	*words;
 	char *	x;
 	Attribute	a, olda;
 	int	codepoint;
-	char	utf8str[16];
+	char *	utf8str;
 	char *	buffer = NULL;
 	size_t	bufsiz;
 	size_t	pos = 0;            /* Current position in "buffer" */
@@ -2361,6 +2367,8 @@ const 	char 	*words;
 		words = " \t";
 	if (!(cont_ptr = get_string_var(CONTINUED_LINE_VAR)))
 		cont_ptr = empty_string;
+
+	utf8str = alloca(16);
 
 	bufsiz = BIG_BUFFER_SIZE * 10 + 1;
 	buffer = new_malloc(bufsiz);
@@ -2458,7 +2466,7 @@ const 	char 	*words;
 					cols = 0;
 				col += cols;
 
-				ucs_to_utf8(codepoint, utf8str, sizeof(utf8str));
+				ucs_to_utf8(codepoint, utf8str, 16);
 				for (x = utf8str; *x; x++)
 					buffer[pos++] = *x;
 				break;
@@ -2499,7 +2507,7 @@ const 	char 	*words;
 				cols = 0;
 			col += cols;
 
-			ucs_to_utf8(codepoint, utf8str, sizeof(utf8str));
+			ucs_to_utf8(codepoint, utf8str, 16);
 			for (x = utf8str; *x; x++)
 				buffer[pos++] = *x;
 
@@ -2786,22 +2794,23 @@ const 	char 	*words;
  */
 char *prepare_display_fixed_size (const char *orig_str, int max_cols, int allow_truncate, char fillchar, int denormalize)
 {
-	int 	pos = 0,            /* Current position in "buffer" */
-		col = 0,            /* Current column in display    */
-		my_newline = 0;        /* Number of newlines           */
+	int 	pos,
+		col = 0,            	/* Current column in display    */
+		my_newline = 0;        	/* Number of newlines           */
 	char 	*str = NULL;
 	char	*retval = NULL;
 const 	char	*ptr;
-	char 	buffer[BIG_BUFFER_SIZE + 1];
+	char *	buffer;
 	char *	real_retval;
 	int	codepoint;
-	char 	utf8str[16];
 	char *	x;
 	int	cols;
 	ptrdiff_t	offset;
 
         str = new_normalize_string((const char *)orig_str, 3, NORMALIZE);
-	buffer[0] = 0;
+	buffer = alloca(BIG_BUFFER_SIZE + 1);
+	*buffer = 0;
+	pos = 0;
 
 	/*
 	 * Start walking through the entire string.
@@ -2835,12 +2844,15 @@ const 	char	*ptr;
 		/* Any other printable character */
 		default:
 		{
+			char *	utf8str;
+
 			/* How many columns does this codepoint take? */
 			cols = codepoint_numcolumns(codepoint);
 			if (cols == -1)
 				cols = 0;
 			col += cols;
 
+			utf8str = alloca(16);
 			ucs_to_utf8(codepoint, utf8str, sizeof(utf8str));
 			for (x = utf8str; *x; x++)
 				buffer[pos++] = *x;
@@ -2868,7 +2880,9 @@ const 	char	*ptr;
 	 */
 	if (col < max_cols && fillchar != '\0')
 	{
-		char fillstr[2];
+		char *	fillstr;
+
+		fillstr = alloca(2);
 		fillstr[0] = fillchar;
 		fillstr[1] = 0;
 
@@ -2974,7 +2988,6 @@ size_t 	output_with_count (const char *str1, int clreol, int output)
 	Attribute	a;
 	const char *	str;
 	int		codepoint;
-	char		utf8str[16];
 	char *		x;
 	int		cols;
 	ptrdiff_t	offset;
@@ -3044,6 +3057,9 @@ size_t 	output_with_count (const char *str1, int clreol, int output)
 			 */
 			if (output)
 			{
+				char *	utf8str;
+
+				utf8str = alloca(16);
 				ucs_to_console(codepoint, utf8str, sizeof(utf8str));
 				for (x = utf8str; *x; x++)
 					term_output_char(*x);
@@ -3086,7 +3102,13 @@ void 	add_to_screen (const char *buffer)
 	if (get_who_output_suppressed())
 		return;
 
-	if (!terminfo_mode)
+	/*
+	 * XXX TODO - This should not be a short-circuit path.
+	 * This wrongfully assumes there is only one window in 
+	 * non-fullscreen mode, which is not a valid assumption.
+	 * Output can be limited without the logic being limited
+	 */
+	if (!fullscreen_mode)
 	{
 		add_to_lastlog(get_window_refnum(0), buffer);
 
@@ -3414,7 +3436,12 @@ static int	ok_to_output (int window_)
  */
 static void 	scroll_window (int window_)
 {
-	if (!terminfo_mode)
+	/*
+	 * XXX TODO -- Scrolling the window has both a logical and a physical
+	 * component.  Only the physical component should be gated on 
+	 * fullscreen_mode
+	 */
+	if (!fullscreen_mode)
 		return;
 
 	if (get_window_cursor(window_) > get_window_display_lines(window_))
@@ -3495,7 +3522,8 @@ void 	repaint_window_body (int window_)
 	if (!window_is_valid(window_))
 		return;
 
-	if (!terminfo_mode || get_window_screennum(window_) < 0)
+	/* This is ok.  this function does only physical output */
+	if (!fullscreen_mode || get_window_screennum(window_) < 0)
 		return;
 
 	global_beep_ok = 0;		/* Suppress beeps */
@@ -3665,12 +3693,10 @@ int	create_additional_screen (void)
 	socklen_t	new_sock_size;
 	const char *	wserv_path;
 
-	char 		subcmd[128];
 	char *		opts;
 	const char *	xterm;
 	char *		args[64];
 	char **		args_ptr = args;
-	char 		geom[32];
 	int 		i;
 
 
@@ -3766,7 +3792,9 @@ int	create_additional_screen (void)
 	}
 	else if (screen_type == ST_XTERM)
 	{
-	    snprintf(geom, 31, "%dx%d", 
+	    char *	geom = NULL;
+
+	    malloc_sprintf(&geom, "%dx%d", 
 		get_screen_columns(oldscreen) + 1, 
 		get_screen_lines(oldscreen));
 
@@ -3777,7 +3805,7 @@ int	create_additional_screen (void)
 
 	    *args_ptr++ = malloc_strdup(xterm);
 	    *args_ptr++ = malloc_strdup("-geometry");
-	    *args_ptr++ = malloc_strdup(geom);
+	    *args_ptr++ = geom;
 	    while (opts && *opts)
 		*args_ptr++ = malloc_strdup(new_next_arg(opts, &opts));
 	    *args_ptr++ = malloc_strdup("-e");
@@ -3788,7 +3816,9 @@ int	create_additional_screen (void)
 	}
 	else if (screen_type == ST_TMUX)
 	{
-	    snprintf(subcmd, 127, "%s %s %hu", 
+	    char *	subcmd = NULL;
+
+	    malloc_sprintf(&subcmd, "%s %s %hu", 
 			wserv_path, "localhost", port);
 
 	    *args_ptr++ = malloc_strdup("tmux");
@@ -3798,7 +3828,7 @@ int	create_additional_screen (void)
 		*args_ptr++ = malloc_strdup(new_next_arg(opts, &opts));
 
 	    *args_ptr++ = malloc_strdup("new-window");
-	    *args_ptr++ = malloc_strdup(subcmd);
+	    *args_ptr++ = subcmd;
 	    *args_ptr++ = NULL;
 	}
 
@@ -3855,6 +3885,9 @@ int	create_additional_screen (void)
 			_exit(0);
 		}
 	}
+
+	/* XXX TODO XXX - what about args? */
+	/* We need to clean up 'args' here. its an array of malloc()ed stuff */
 
 	/* All the rest of this is the parent.... */
 	new_sock_size = sizeof(new_socket.ss);
@@ -4026,12 +4059,14 @@ int	get_screen_bottom_window (int screen_)
 static void 	do_screens (int fd)
 {
 	Screen *screen;
-	char 	buffer[IO_BUFFER_SIZE + 1];
+	char *	buffer;
+
 	int	saved_from_server;
 	int	n, i;
 	int	proto;
 
 	saved_from_server = from_server;
+	buffer = alloca(IO_BUFFER_SIZE + 1);
 
 	/* We do not check STDIN when STDIN is not available */
 	if (foreground)
@@ -4123,7 +4158,8 @@ static void 	do_screens (int fd)
 		set_window_priority(0, current_window_priority++);
 
 		/* When not in full screen mode we only accept complete lines from the user */
-		if (!terminfo_mode)
+		/* XXX Not sure if this is correct -- review */
+		if (!fullscreen_mode)
 		{
 			if (dgets(screen->fdin, buffer, IO_BUFFER_SIZE, 1) < 0)
 			{
@@ -4137,7 +4173,7 @@ static void 	do_screens (int fd)
 		}
 
 		/* Ordinary full screen input is handled one byte at a time */
-		else if ((n = dgets(screen->fdin, buffer, BIG_BUFFER_SIZE, -1)) > 0)
+		else if ((n = dgets(screen->fdin, buffer, IO_BUFFER_SIZE, -1)) > 0)
 		{
 			for (i = 0; i < n; i++)
 				user_input_byte((unsigned char)buffer[i]);
@@ -4297,7 +4333,8 @@ static	void	user_input_codepoint (uint32_t key)
 	int		old_quote_hit;
 	WaitPrompt *	wp;
 
-        if (!terminfo_mode)
+	/* XXX - Does it do harm to let it ride?  this breaks /input */
+        if (!fullscreen_mode)
                 return;
 
         /*
@@ -4344,7 +4381,7 @@ static	void	user_input_codepoint (uint32_t key)
 void	fire_wait_prompt (uint32_t key)
 {
 	WaitPrompt *	oldprompt;
-        char   utf8str[8];
+	char *		utf8str;
 
 	if (!(oldprompt = get_screen_prompt_list(last_input_screen)))
 		return;		/* Oh well.... */
@@ -4352,6 +4389,7 @@ void	fire_wait_prompt (uint32_t key)
 	set_screen_input_line(last_input_screen, oldprompt->saved_input_line);
 	redraw_input(last_input_screen, UPDATE_ALL);
 
+	utf8str = alloca(8);
 	ucs_to_utf8(key, utf8str, sizeof(utf8str));
 	(*oldprompt->func)(oldprompt->data, utf8str);
 	oldprompt->data = NULL;			/* XXX Testing */

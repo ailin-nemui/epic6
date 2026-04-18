@@ -132,7 +132,7 @@ extern		int	current_numeric_;
 extern		int	dead;
 extern volatile	sig_atomic_t	dead_children_processes;
 extern		int	dont_connect;
-extern		int	terminfo_mode;
+extern		int	fullscreen_mode;
 extern		int	foreground;
 extern		int	global_beep_ok;
 extern		int	inhibit_logging;

@@ -352,7 +352,12 @@ int	new_window (int screen_)
 	int		i;
 	int		window_;
 
-	if (!terminfo_mode && current_window_ >= 1)
+	/* 
+	 * XXX TODO - This is totally wrong.
+	 * We want to support multiple (logical) windows
+	 * in non-fullscreen mode.
+	 */
+	if (!fullscreen_mode && current_window_ >= 1)
 		return -1;
 
 	/*
@@ -704,12 +709,14 @@ static int	unlink_window (int window_)
 static void	delete_window_contents (int window_)
 {
 	Window *window;
-	char 	buffer[BIG_BUFFER_SIZE + 1];
+	char *	buffer;
 	int	oldref;
 	int	i;
 
 	if (!(window = get_window_by_refnum_direct(window_)))
 		return;
+
+	buffer = alloca(BIG_BUFFER_SIZE + 1);
 
 	/*
 	 * OK!  Now we have completely unlinked this window from whatever
@@ -721,9 +728,9 @@ static void	delete_window_contents (int window_)
 	 */
 	/* Save a copy of the refnum for /on window_kill later. */
 	if (window->name)
-		strlcpy(buffer, window->name, sizeof buffer);
+		strlcpy(buffer, window->name, BIG_BUFFER_SIZE);
 	else
-		strlcpy(buffer, ltoa(window->user_refnum), sizeof buffer);
+		strlcpy(buffer, ltoa(window->user_refnum), BIG_BUFFER_SIZE);
 	oldref = window->user_refnum;
 
 	/*
@@ -1141,7 +1148,8 @@ static int	add_to_window_list (int screen_, int window_)
 		if (screen_add_window_first(screen_, new_w->refnum) == 0)
 			yell("screen_add_window_first(%d, %d) failed!", screen_, new_w->refnum);
 
-		if (!terminfo_mode)
+		/* XXX Not sure if this is correct */
+		if (!fullscreen_mode)
 		{
 			new_w->display_lines = 24;
 			set_screens_current_window(screen_, new_w->refnum);
@@ -1866,7 +1874,10 @@ static void	resize_window_display (int window_)
 	Display 	*tmp;
 	Window *	window;
 
-	if (!terminfo_mode)
+	/*
+	 * XXX TODO This is not correct, or maybe it is?
+	 */
+	if (!fullscreen_mode)
 		return;
 
 	if (!window_is_valid(window_))
@@ -2004,7 +2015,7 @@ void 	redraw_all_windows (void)
 {
 	int	refnum = 0;
 
-	if (!terminfo_mode)
+	if (!fullscreen_mode)
 		return;
 
 	while (traverse_all_windows2(&refnum)) {
@@ -2213,7 +2224,7 @@ static void	rebalance_windows (int screen_)
 	int each, extra;
 	int window_resized = 0, window_count = 0;
 
-	if (!terminfo_mode)
+	if (!fullscreen_mode)
 		return;
 
 	/*
@@ -2285,7 +2296,7 @@ void 	recalculate_windows (int screen_)
 	int	window_count = 0;
 	int	tmp_;
 
-	if (!terminfo_mode)
+	if (!fullscreen_mode)
 		return;
 
 	/*
@@ -3914,7 +3925,7 @@ static void 	clear_window (int window_)
 {
 	Window *window;
 
-	if (!terminfo_mode)
+	if (!fullscreen_mode)
 		return;
 
 	if (!(window = get_window_by_refnum_direct(window_)))
@@ -3966,7 +3977,7 @@ static void	unclear_window (int window_)
 	Window *window;
 	int i;
 
-	if (!terminfo_mode)
+	if (!fullscreen_mode)
 		return;
 
 	if (!(window = get_window_by_refnum_direct(window_)))
@@ -6515,9 +6526,10 @@ WINDOWCMD(log)
 {
 	const char *	logfile;
 	int		add_ext;
-	char		buffer[BIG_BUFFER_SIZE + 1];
+	char *		buffer;
 	Window *	window;
 
+	buffer = alloca(BIG_BUFFER_SIZE + 1);
 	if (!(window = get_window_by_refnum_direct(refnum)))
 		return 0;
 	if (!args)
@@ -6536,21 +6548,21 @@ WINDOWCMD(log)
 	else
 		add_ext = 1;
 
-	strlcpy(buffer, logfile, sizeof buffer);
+	strlcpy(buffer, logfile, BIG_BUFFER_SIZE);
 
 	if (add_ext)
 	{
 		const char *title;
 
-		strlcat(buffer, ".", sizeof buffer);
+		strlcat(buffer, ".", BIG_BUFFER_SIZE);
 		if ((title = get_window_echannel(window->refnum)))
-			strlcat(buffer, title, sizeof buffer);
+			strlcat(buffer, title, BIG_BUFFER_SIZE);
 		else if ((title = get_window_equery(window->refnum)))
-			strlcat(buffer, title, sizeof buffer);
+			strlcat(buffer, title, BIG_BUFFER_SIZE);
 		else
 		{
-			strlcat(buffer, "Window_", sizeof buffer);
-			strlcat(buffer, ltoa(window->user_refnum), sizeof buffer);
+			strlcat(buffer, "Window_", BIG_BUFFER_SIZE);
+			strlcat(buffer, ltoa(window->user_refnum), BIG_BUFFER_SIZE);
 		}
 	}
 
@@ -7977,12 +7989,12 @@ static int	new_search_term (const char *arg)
 				REG_EXTENDED | REG_ICASE | REG_NOSUB);
 	if (errcode != 0)
 	{
-		char	errstr[1024];
+		char *	errstr;
 
-		regerror(errcode, last_regex, errstr, sizeof(errstr));
+		errstr = alloca(1024);
+		regerror(errcode, last_regex, errstr, 1024);
 		debuglog("regex compile failed: %s : %s", arg, errstr);
-		say("The regex [%s] isn't acceptable because [%s]", 
-				arg, errstr);
+		say("The regex [%s] isn't acceptable because [%s]", arg, errstr);
 		new_free((char **)&last_regex);
 		return -1;
 	}
@@ -9589,13 +9601,15 @@ BUILT_IN_KEYBINDING(scrollback_start)
  */
 BUILT_IN_KEYBINDING(unstop_all_windows)
 {
-	char	my_off[4];
-	char *	ptr;
 	int	window_;
 
 	for (window_ = 0; traverse_all_windows2(&window_); )
 	{
-		strlcpy(my_off, "OFF", sizeof(my_off));
+		char *	my_off;
+		char *	ptr;
+
+		my_off = alloca(5);
+		strlcpy(my_off, "OFF", 4);
 		ptr = my_off;
 		windowcmd_hold_mode(window_, (char **)&ptr);
 	}

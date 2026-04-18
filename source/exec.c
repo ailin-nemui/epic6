@@ -179,8 +179,12 @@ static void	execcmd_list_processes (void)
 {
 	int		i;
 	Process	*	proc;
-	char		outbuf[BIG_BUFFER_SIZE + 1];
-	size_t		outbufsiz = sizeof(outbuf);
+	char *		outbuf;
+	size_t		outbufsiz;
+
+	outbufsiz = BIG_BUFFER_SIZE + 1;
+	outbuf = alloca(outbufsiz);
+	*outbuf = 0;
 
 	if (process_list)
 	{
@@ -258,7 +262,7 @@ static void 		do_exec (int fd)
  */
 static void 	handle_filedesc (Process *proc, int *fd, int __U(hook_nonl), int hook_nl)
 {
-	char 	exec_buffer[IO_BUFFER_SIZE + 1];
+	char *	exec_buffer;
 	ssize_t	len;
 	int	ofs;
 	const char *callback = NULL;
@@ -267,6 +271,9 @@ static void 	handle_filedesc (Process *proc, int *fd, int __U(hook_nonl), int ho
 	const char *logical_name;
 	const char	*utf8_text;
 	char *extra = NULL;
+
+	exec_buffer = alloca(IO_BUFFER_SIZE + 1);
+	*exec_buffer = 0;
 
 	/* 1 -> line buffering; used to be 0 -> No buffering */
 	switch ((len = dgets(*fd, exec_buffer, IO_BUFFER_SIZE, 1))) 

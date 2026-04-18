@@ -824,7 +824,7 @@ c_p_f_cleanup:
 void	do_python_fd (int fd)
 {
 	PythonFDCallback *callback;
-	char	buffer[BIG_BUFFER_SIZE];
+	char *	buffer;
 	int	n;
 
 	if (!((callback = get_python_fd_callback(fd))))
@@ -834,6 +834,7 @@ void	do_python_fd (int fd)
 		return;
 	}
 
+	buffer = alloca(BIG_BUFFER_SIZE);
 	if ((n = dgets(fd, buffer, BIG_BUFFER_SIZE, -1)) > 0)
 	{
 		if (callback->read_callback)

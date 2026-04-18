@@ -280,15 +280,18 @@ BUILT_IN_KEYBINDING(debug_input_line)
 	int	i;
 	int	offset, column;
 	int	codepoint;
-	char	buffer[2048];
-	char	byte[8];
+	char *	buffer;
+	char *	byte;
 
+	byte = alloca(8);
+	buffer = alloca(2048);
 	*buffer = 0;
+
 	for (i = 0; i < INPUT_BUFFER_SIZE; i++)
 	{
-		snprintf(byte, sizeof(byte), "%X", INPUT_BUFFER[i]);
-		strlcat(buffer, " ", sizeof(buffer));
-		strlcat(buffer, byte, sizeof(buffer));
+		snprintf(byte, 8, "%X", INPUT_BUFFER[i]);
+		strlcat(buffer, " ", 2048);
+		strlcat(buffer, byte, 2048);
 		if (INPUT_BUFFER[i] == 0)
 			break;
 	}
@@ -345,14 +348,17 @@ int	cursor_position (int screennum)
  */
 static int 	safe_puts (const char *str, int numcols)
 {
-	int 	i = 0;
-	const char *s;
-	const char *x;
-	char	utf8str[8];
-	int	code_point;
-	int	cols;
+	int 		i;
+const 	char *		s;
+const 	char *		x;
+	char *		utf8str;
+	int		code_point;
+	int		cols;
 	ptrdiff_t	offset;
 
+	utf8str = alloca(8);
+
+	i = 0;
 	s = str;
 	while ((code_point = next_code_point2(s, &offset, 1)))
 	{
@@ -369,7 +375,7 @@ static int 	safe_puts (const char *str, int numcols)
 			break;
 
 		/* Convert code_point from utf8 to users encoding */
-		ucs_to_console(code_point, utf8str, sizeof(utf8str));
+		ucs_to_console(code_point, utf8str, 8);
 
 		for (x = utf8str; *x; x++)
 			term_inputline_putchar((unsigned char)*x);
@@ -518,7 +524,7 @@ const char *	prompt;
 	/*
 	 * Input line only in fullscreen mode when in the foreground
 	 */
-	if (!terminfo_mode || !foreground)
+	if (!fullscreen_mode || !foreground)
 		return;
 
 	/* Save the state of things */
@@ -1310,10 +1316,11 @@ BUILT_IN_KEYBINDING(input_delete_next_word)
  */
 BUILT_IN_KEYBINDING(input_add_character)
 {
-	char utf8str[8];
+	char *	utf8str;
 	int	utf8strlen;
 
-	utf8strlen = ucs_to_utf8(key, utf8str, sizeof(utf8str));
+	utf8str = alloca(16);
+	utf8strlen = ucs_to_utf8(key, utf8str, 16);
 
 	/* Don't permit the input buffer to get too big. */
 	if ((int)(strlen(INPUT_BUFFER) + utf8strlen)  >= INPUT_BUFFER_SIZE)

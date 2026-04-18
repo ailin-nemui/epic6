@@ -971,12 +971,13 @@ const char *	inbound_recode (const char *from, int server, const char *to, const
  */
 int     ucs_to_console (uint32_t codepoint, char *deststr, size_t deststrsiz)
 {
-	char	utf8str[16];
+	char *	utf8str;
 	size_t	utf8strsiz;
 	iconv_t	xlat = (iconv_t)-1;
 	char *	source;
 	char *	dest;
 
+	utf8str = alloca(16);
 	utf8strsiz = ucs_to_utf8(codepoint, utf8str, 16) + 1;
 	source = utf8str;
 

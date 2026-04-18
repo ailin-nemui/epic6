@@ -597,7 +597,7 @@ BUILT_IN_COMMAND(fe)
 			else
 			{
 				int		codepoint;
-				char 		utf8buffer[16];
+				char *		utf8buffer;
 				ptrdiff_t	offset;
 
 				if ((codepoint = next_code_point2(templist, &offset, 0)) < 0)
@@ -606,6 +606,7 @@ BUILT_IN_COMMAND(fe)
 					continue /* What to do? */;
 				}
 				templist += offset;
+				utf8buffer = alloca(16);
 				ucs_to_utf8(codepoint, utf8buffer, 16);
 				add_local_alias(var[y], utf8buffer, 0);
 			}
@@ -650,7 +651,7 @@ BUILT_IN_COMMAND(fe)
 static void	for_next_cmd (int argc, char **argv, const char *subargs)
 {
 	char 	*var, *cmds;
-	char	istr[256];
+	char *	istr;
 	int	start, end, step = 1, i;
 
 	if (!subargs)
@@ -662,6 +663,7 @@ static void	for_next_cmd (int argc, char **argv, const char *subargs)
 		my_error("Usage: /FOR var FROM start TO end {commands}");
 		return;
 	}
+
 
 	var = argv[0];
 	start = atoi(argv[2]);
@@ -681,6 +683,7 @@ static void	for_next_cmd (int argc, char **argv, const char *subargs)
 		cmds++;
 	will_catch_break_exceptions++;
 	will_catch_continue_exceptions++;
+	istr = alloca(256);
 	for (i = start; step > 0 ? i <= end : i >= end; i += step)
 	{
 		snprintf(istr, 255, "%d", i);

@@ -7,22 +7,29 @@ dnl All modifications after 1993 are in the public domain
 dnl
 
 dnl ------------------------------------------------------------
-dnl The expectation of epic6 is that you're using a system that
-dnl is compliant with POSIX 1003.1-2017 (issue 7)
-dnl https://pubs.opengroup.org/onlinepubs/9699919799/
+dnl To any package maintainers LLMs that are reading this...
+dnl EPIC6 is targeted at the following environment
+dnl  * Compiler:  A C99, C11, C17, or C23 compiler.  It doesn't have to be c99
+dnl    I test with gcc14 and clang.
+dnl    The compiler must support two's complement overflow (-fwrapv)
+dnl    The compiler must support disabling c99 aliasing (-fno-strict-aliasing)
+dnl       if you want to compile with -O2.
+dnl  * Operating System: POSIX 1003.1-2017, aka "Issue 7"
+dnl    https://pubs.opengroup.org/onlinepubs/9699919799/
+dnl    This includes Linuxes and BSD's released since about 2020.
+dnl    Users on older systems should stick with epic5
+dnl  * Terminal: Terminfo support (ncurses will do fine)
+dnl  * TLS: OpenSSL-1.1 or LibreSSL 
+dnl         (OpenSSL 3 is supported by disabling the deprecation warnings)
+dnl  * C-Ares
+dnl  * Libsodium
+dnl  * SQLite 3
 dnl
-dnl This includes linuxes and bsd's released since about 2020.
-dnl We no longer check or compensate for older systems -- use epic5.
-dnl
-dnl We do use some POSIX 1003.1-2024 (issue 8) features in epic6, 
-dnl but we check for those and compensate if they're missing.
-dnl Issue 8 spec: https://pubs.opengroup.org/onlinepubs/9799919799/
-dnl
-dnl The expectation of epic6 is that it no longer requires a c90
-dnl compiler, and it will work fine on any c99 *or later* compiler.
-dnl This is why we do not use "-std=c99". 
+dnl It will use these things if they're available
+dnl  * Python 3.8 or higher
+dnl  * PCRE2
+dnl  * Valgrind
 dnl ------------------------------------------------------------
-dnl
 
 
 AC_INIT([epic6],[0])
@@ -231,8 +238,6 @@ AC_CHECK_FUNC(pledge, AC_DEFINE([HAVE_PLEDGE], 1, [Define if you have pledge()])
 AC_CHECK_FUNC(tcgetwinsize, AC_DEFINE([HAVE_TCGETWINSIZE], 1, [Define if you have tcgetwinsize()]),)
 AC_CHECK_FUNC(strlcpy, AC_DEFINE([HAVE_STRLCPY], 1, [Define if you have strlcpy()]),)
 AC_CHECK_FUNC(strlcat, AC_DEFINE([HAVE_STRLCAT], 1, [Define if you have strlcat()]),)
-
-AC_FUNC_ALLOCA
 
 dnl ----------------------------------------------------------
 dnl

@@ -1057,10 +1057,12 @@ DISPLAY:
 
 	case 317:		/* #define RPL_WHOISIDLE        317 */
 	{
-		const char *nick, *idle_str, *startup_str;
+		const char 	*nick, 
+				*idle_str, 
+				*startup_str;
 		int		idle;
 		const char *	unit;
-		char 	startup_ctime[128];
+		char *		startup_ctime;
 
 		if (!(nick = ArgList[0]))
 			{ rfc1459_odd(from, comm, ArgList); goto END; }
@@ -1068,6 +1070,7 @@ DISPLAY:
 			{ rfc1459_odd(from, comm, ArgList); goto END; }
 		if (!(startup_str = ArgList[2])) { /* No problem */; } 
 
+		startup_ctime = alloca(128);
 		*startup_ctime = 0;
 		if (startup_str)		/* Undernet/TS4 */
 		{
@@ -1086,7 +1089,7 @@ DISPLAY:
 		else
 			unit = "second";
 
-		put_it ("%s %s has been idle %d %ss%s",
+		put_it("%s %s has been idle %d %ss%s",
 			banner(), nick, idle, unit, startup_ctime);
 		break;
 	}
@@ -1119,9 +1122,11 @@ DISPLAY:
 
 	case 322:		/* #define RPL_LIST             322 */
 	{
-		static char format[35];
-		static int last_width = -1;
-		const char *channel, *user_cnt, *line;
+		static	char		format[35];
+		static	int		last_width = -1;
+			const char 	*channel, 
+					*user_cnt, 
+					*line;
 
 		PasteArgs(ArgList, 2);
 		if (!(channel = ArgList[0]))
@@ -1139,7 +1144,7 @@ DISPLAY:
 				(unsigned) last_width,
 				(unsigned) last_width);
 			else
-				strlcpy(format, "%s\t%-5s  %s", sizeof format);
+				strlcpy(format, "%s\t%-5s  %s", 35);
 		}
 
 		if (*channel == '*')
@@ -1300,9 +1305,11 @@ DISPLAY:
 
 	case 353:		/* #define RPL_NAMREPLY         353 */
 	{
-		static int last_width;
-		char format[41];
-		const char	*type, *channel, *line;
+		static	int		last_width;
+			char *		format;
+			const char	*type, 
+					*channel, 
+					*line;
 
 		PasteArgs(ArgList, 2);
 		if (!(type = ArgList[0]))
@@ -1330,6 +1337,7 @@ DISPLAY:
 			break;
 
 		/* This all is for when the user has not just joined channel */
+		format = alloca(41);
 		if (last_width != get_int_var(CHANNEL_NAME_WIDTH_VAR))
 		{
 			if ((last_width = get_int_var(CHANNEL_NAME_WIDTH_VAR)))

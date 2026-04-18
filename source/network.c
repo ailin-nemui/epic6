@@ -170,7 +170,7 @@ void	setssuport (SSu *ssu, int port)
 static int	Socket (int domain, int type, int protocol)
 {
         int     opt;
-        int     optlen = sizeof(opt);
+        int     optlen;
 	int	s;
 
 	if ((s = socket(domain, type, protocol)) < 0)
@@ -185,9 +185,10 @@ static int	Socket (int domain, int type, int protocol)
 
 		/* Turning of "lingering" ordinarily makes close(2) non-blocking if the socket is jammed */
 		lin.l_onoff = lin.l_linger = 0;
-		setsockopt(s, SOL_SOCKET, SO_LINGER, (char *)&lin, optlen);
+		setsockopt(s, SOL_SOCKET, SO_LINGER, (char *)&lin, sizeof(lin));
 	}
 
+	optlen = sizeof(opt);
 	opt = 1;
         setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, optlen);
         opt = 1;
@@ -401,10 +402,11 @@ static	int			ares_optmask_;
 
 static	void	do_ares_callback (int fd)
 {
-	char	datastr[128];
+	char *	datastr;
 	int	revents, readable = 0, writable = 0;;
 
-	if ((dgets(fd, datastr, sizeof(datastr), 1)) <= 0)
+	datastr = alloca(128);
+	if ((dgets(fd, datastr, 128, 1)) <= 0)
 	{
 		debug(DEBUG_SERVER_CONNECT, "I closed ares_callback fd %d.", fd);
 		new_close(fd);
@@ -549,11 +551,14 @@ char *	ssu_to_paddr_quick (SSu *name_)
 {
 	int		retval;
 	socklen_t 	len;
-	char		host[256];
-	char		port[256];
+	char *		host;
+	char *		port;
+
+	host = alloca(256);
+	port = alloca(256);
 
 	len = socklen(name_);
-	if ((retval = Getnameinfo(name_, len, host, sizeof(host), port, sizeof(port), 0)))
+	if ((retval = Getnameinfo(name_, len, host, 256, port, 256, 0)))
 	{
 		syserr(-1, "ssu_to_paddr_quick: Getnameinfo(sockaddr->p_addr) failed: %s", 
 					gai_strerror(retval));
@@ -567,11 +572,14 @@ int	ssu_to_port_quick (SSu *name_)
 {
 	int		retval;
 	socklen_t 	len;
-	char		host[256];
-	char		port[256];
+	char *		host;
+	char *		port;
+
+	host = alloca(256);
+	port = alloca(256);
 
 	len = socklen(name_);
-	if ((retval = Getnameinfo(name_, len, host, sizeof(host), port, sizeof(port), 0)))
+	if ((retval = Getnameinfo(name_, len, host, 256, port, 256, 0)))
 	{
 		syserr(-1, "ssu_to_port_quick: Getnameinfo(sockaddr->p_addr) failed: %s", 
 					gai_strerror(retval));
@@ -587,12 +595,14 @@ int	ssu_to_port_quick (SSu *name_)
  */
 static	char * sa_to_paddr_quick (struct sockaddr *name_)
 {
-	char	addrbuf[128];
+	char *	addrbuf;
+
+	addrbuf = alloca(128);
 
 	if (name_->sa_family == AF_INET)
-		inet_ntop(name_->sa_family, &((struct sockaddr_in *)name_)->sin_addr, addrbuf, sizeof(addrbuf));
+		inet_ntop(name_->sa_family, &((struct sockaddr_in *)name_)->sin_addr, addrbuf, 128);
 	else if (name_->sa_family == AF_INET6)
-		inet_ntop(name_->sa_family, &((struct sockaddr_in6 *)name_)->sin6_addr, addrbuf, sizeof(addrbuf));
+		inet_ntop(name_->sa_family, &((struct sockaddr_in6 *)name_)->sin6_addr, addrbuf, 128);
 	else
 		*addrbuf = 0;
 
@@ -647,7 +657,6 @@ int	hostname_to_ssu (int fd, int family, const char *host, const char *port, SSu
 	}
 
 	memset(&data, 0, sizeof(data));
-
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = family;
 	hints.ai_socktype = SOCK_STREAM;
@@ -679,8 +688,9 @@ int	hostname_to_ssu (int fd, int family, const char *host, const char *port, SSu
 int	hostname_to_json (int fd, int family, const char *host, const char *port, int flags)
 {
 	struct ares_addrinfo_hints 	hints;
-	int	*fd_ = new_malloc(sizeof(int));
+	int *				fd_;
 
+	fd_ = (int *)new_malloc(sizeof(int));
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = family;
 	hints.ai_socktype = SOCK_STREAM;
@@ -1012,8 +1022,10 @@ static cJSON *	convert_ares_addrinfo_to_json (const struct ares_addrinfo *result
 
 
         // Address
-        char addr_str[INET6_ADDRSTRLEN]; // Max size for IPv6
-        if (sockaddr_to_string(current_node->ai_addr, addr_str, sizeof(addr_str))) {
+	char *	addr_str;		/* Max size for IPv6 */
+
+	addr_str = alloca(INET6_ADDRSTRLEN);
+        if (sockaddr_to_string(current_node->ai_addr, addr_str, INET6_ADDRSTRLEN)) {
             if (!cJSON_AddItemToObject(node_obj, "address", cJSON_CreateString(addr_str))) {
                 cJSON_DeleteItem(&root); return NULL; // Cleanup on error
             }
@@ -1275,7 +1287,7 @@ static	int	max_vhost = 1024;
 
 void	init_one_vhost (struct ifaddrs *addr)
 {
-	char	addrbuf[128];
+	char *	addrbuf;
 	int	i;
 
 	if (!addr->ifa_addr)
@@ -1284,10 +1296,11 @@ void	init_one_vhost (struct ifaddrs *addr)
 	if (addr->ifa_addr->sa_family != AF_INET && addr->ifa_addr->sa_family != AF_INET6)
 		return;
 
+	addrbuf = alloca(128);
 	if (addr->ifa_addr->sa_family == AF_INET)
-		inet_ntop(addr->ifa_addr->sa_family, &((struct sockaddr_in *)addr->ifa_addr)->sin_addr, addrbuf, sizeof(addrbuf));
+		inet_ntop(addr->ifa_addr->sa_family, &((struct sockaddr_in *)addr->ifa_addr)->sin_addr, addrbuf, 128);
 	if (addr->ifa_addr->sa_family == AF_INET6)
-		inet_ntop(addr->ifa_addr->sa_family, &((struct sockaddr_in6 *)addr->ifa_addr)->sin6_addr, addrbuf, sizeof(addrbuf));
+		inet_ntop(addr->ifa_addr->sa_family, &((struct sockaddr_in6 *)addr->ifa_addr)->sin6_addr, addrbuf, 128);
 
 	/* Cache the result */
 	if (next_vhost >= max_vhost)
@@ -1332,7 +1345,7 @@ void	init_vhosts_stage1 (void)
 BUILT_IN_COMMAND(vhostscmd)
 {
 	int	i;
-	char	familystr_[128];
+	char *	familystr_;
 
 	if (args && *args)
 	{
@@ -1340,15 +1353,16 @@ BUILT_IN_COMMAND(vhostscmd)
 		return;
 	}
 
+	familystr_ = alloca(128);
 	for (i = 0; i < next_vhost; i++)
 	{
 		/* XXX - Perhaps this should use familystr() */
 		if (vhosts[i].family == AF_INET)
-			strlcpy(familystr_, "ipv4", sizeof(familystr_));
+			strlcpy(familystr_, "ipv4", 128);
 		else if (vhosts[i].family == AF_INET6)
-			strlcpy(familystr_, "ipv6", sizeof(familystr_));
+			strlcpy(familystr_, "ipv6", 128);
 		else
-			strlcpy(familystr_, "????", sizeof(familystr_));
+			strlcpy(familystr_, "????", 128);
 
 		say("Vhost=%d, family=%s, hostname=%s, paddr=%s, sl=%d, is_default=%d", 
 			i, familystr_, vhosts[i].hostname, vhosts[i].paddr, vhosts[i].sl, vhosts[i].is_default);

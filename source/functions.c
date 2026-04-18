@@ -1119,12 +1119,14 @@ static	char	*alias_target 		(void)
 static	char	*alias_cmdchar 		(void)
 {
 	const char *	cmdchars;
-	char 		tmp[2];
+	char *		retval;
 
 	cmdchars = coalesce(get_string_var(CMDCHARS_VAR), DEFAULT_CMDCHARS);
-	*tmp = *cmdchars;
-	tmp[1] = 0;
-	return malloc_strdup(tmp);
+
+	retval = new_malloc(2);
+	retval[0] = *cmdchars;
+	retval[1] = 0;
+	return retval;
 }
 
 static	char	*alias_chanop 		(void)
@@ -1656,10 +1658,11 @@ BUILT_IN_FUNCTION(function_strip, input)
 		}
 		if (!found)
 		{
-			char utf8str[16];
-			char *x;
+			char *	utf8str;
+			char *	x;
 
-			ucs_to_utf8(c, utf8str, sizeof(utf8str));
+			utf8str = alloca(16);
+			ucs_to_utf8(c, utf8str, 16);
 			for (x = utf8str; *x; x++)
 				*r++ = *x;
 		}
@@ -1918,9 +1921,11 @@ BUILT_IN_FUNCTION(function_ppid, input)
  */
 BUILT_IN_FUNCTION(function_strftime, input)
 {
-	char		result[128];
+	char *		result;
 	time_t		ltime;
 	struct tm	tm;
+
+	result = alloca(128);
 
 	if (isdigit(*input))
 		ltime = strtoul(input, &input, 0);
@@ -2759,7 +2764,9 @@ BUILT_IN_FUNCTION(function_jot, input)
 	double  interval = 1;
 	double  counter;
 	char	*booya 	= NULL;
-	char	ugh[100];
+	char *	ugh;
+
+	ugh = alloca(100);
 
         GET_FLOAT_ARG(start,input)
         GET_FLOAT_ARG(stop, input)
@@ -3178,10 +3185,11 @@ const	char	*p, *s;
 		/* Otherwise, copy the code point over */
 		else
 		{
-			char utf8str[16];
+			char *utf8str;
 			char *x;
 
-			ucs_to_utf8(c, (char *)utf8str, sizeof(utf8str));
+			utf8str = alloca(16);
+			ucs_to_utf8(c, (char *)utf8str, 16);
 			for (x = utf8str; *x; x++)
 				*r++ = *x;
 		}
@@ -3216,11 +3224,12 @@ BUILT_IN_FUNCTION(function_chr, word)
 	size_t	bytes = 0;
 	size_t	cnt;
 	char 	*x;
-	char 	utf8str[8];
+	char *	utf8str;
 	int	code_point;
 
 	cnt = count_words(word, DWORD_DWORDS, "\"");
 	aboo = ack = (char *)new_malloc(cnt * 6 + 7);
+	utf8str = alloca(16);
 
 	while ((blah = next_func_arg(word, &word)))
 	{
@@ -3234,7 +3243,7 @@ BUILT_IN_FUNCTION(function_chr, word)
 				continue;
 
 			/* Otherwise, convert to utf8 */
-			ucs_to_utf8(code_point, utf8str, sizeof(utf8str));
+			ucs_to_utf8(code_point, utf8str, 16);
 			for (x = utf8str; *x; x++)
 			{
 				*ack++ = *x;
@@ -3285,12 +3294,13 @@ BUILT_IN_FUNCTION(function_chrq, word)
 	size_t	bytes = 0;
 	size_t	cnt;
 	char 	*x;
-	char 	utf8str[8];
+	char *	utf8str;
 	int	code_point;
 	char	*ret;
 
 	cnt = count_words(word, DWORD_DWORDS, "\"");
 	ack = aboo = new_malloc(cnt * 6 + 7);
+	utf8str = alloca(16);
 
 	while ((blah = next_func_arg(word, &word)))
 	{
@@ -3315,7 +3325,7 @@ BUILT_IN_FUNCTION(function_chrq, word)
 			/* Otherwise, convert to utf8 */
 			else
 			{
-			    ucs_to_utf8(code_point, utf8str, sizeof(utf8str));
+			    ucs_to_utf8(code_point, utf8str, 16);
 			    for (x = (char *)utf8str; *x; x++)
 			    {
 				*ack++ = *x;
@@ -3373,15 +3383,16 @@ BUILT_IN_FUNCTION(function_ascii, word)
  */
 BUILT_IN_FUNCTION(function_unicode, word)
 {
-	char *	aboo = NULL;
-	const char *s;
-	int	code_point;
-	char	result[8];
+	char *		aboo = NULL;
+	const char *	s;
+	int		code_point;
+	char *		result;
 	ptrdiff_t	offset;
 
 	if (!word || !*word)
 		RETURN_EMPTY;
 
+	result = alloca(8);
 	s = word;
 	while ((code_point = next_code_point2(s, &offset, 0)))
 	{
@@ -3391,7 +3402,7 @@ BUILT_IN_FUNCTION(function_unicode, word)
 			s++;
 			continue;
 		}
-		snprintf(result, sizeof(result), "U+%04X", code_point);
+		snprintf(result, 8, "U+%04X", code_point);
 		malloc_strcat_wordlist(&aboo, space, result);
 		s += offset;
 	}
@@ -3493,8 +3504,9 @@ BUILT_IN_FUNCTION(function_close, words)
 BUILT_IN_FUNCTION(function_write, words)
 {
 	char *	fdc;
-	char 	target[1024];
+	char *	target;
 	int	retval;
+
 
 	GET_FUNC_ARG(fdc, words);
 	if (is_number(fdc) || 
@@ -3502,7 +3514,8 @@ BUILT_IN_FUNCTION(function_write, words)
 		   *fdc == 'l' || *fdc == 'L' ) &&
 			is_number(fdc + 1)))
 	{
-		snprintf(target, sizeof target, "@%s", fdc);
+		target = alloca(1024);
+		snprintf(target, 1024, "@%s", fdc);
 		retval = target_file_write(target, words);
 		RETURN_INT(retval);
 	}
@@ -3609,28 +3622,31 @@ BUILT_IN_FUNCTION(function_ftruncate, words)
 
 BUILT_IN_FUNCTION(function_iptoname, words)
 {
-	char	ret[256];
+	char *	ret;
 
+	ret = alloca(256);
 	*ret = 0;
-	paddr_to_hostname(words, ret, sizeof(ret));
+	paddr_to_hostname(words, ret, 256);
 	RETURN_FSTR(ret);		/* Dont put function call in macro! */
 }
 
 BUILT_IN_FUNCTION(function_nametoip, words)
 {
-	char	ret[256];
+	char *	ret;
 
+	ret = alloca(256);
 	*ret = 0;
-	hostname_to_paddr(words, ret, sizeof(ret));
+	hostname_to_paddr(words, ret, 256);
 	RETURN_FSTR(ret);		/* Dont put function call in macro! */
 }
 
 BUILT_IN_FUNCTION(function_convert, words)
 {
-	char	ret[256];
+	char *	ret;
 
+	ret = alloca(256);
 	*ret = 0;
-	one_to_another(AF_INET, words, ret, sizeof(ret));
+	one_to_another(AF_INET, words, ret, 256);
 	RETURN_FSTR(ret);		/* Dont put function call in macro! */
 }
 
@@ -3654,14 +3670,19 @@ BUILT_IN_FUNCTION(function_convert, words)
 
 BUILT_IN_FUNCTION(function_translate, input)
 {
-	int		delim, codepoint;
+	int	delim, 
+		codepoint;
 	char *	s;
 	char *	p;
-	char 	*chars_in, *chars_out;
-	char *text;
-	char		*retval, *r;
-	int		char_out, char_in, final_char_in;
-	char 	utf8str[16];
+	char 	*chars_in, 
+		*chars_out;
+	char *	text;
+	char	*retval, 
+		*r;
+	int	char_out, 
+		char_in, 
+		final_char_in;
+	char *	utf8str;
 	ptrdiff_t	offset;
 
 	RETURN_IF_EMPTY(input);
@@ -3743,6 +3764,7 @@ BUILT_IN_FUNCTION(function_translate, input)
 	 * 6 byte utf8 code point.  
 	 */
 	r = retval = new_malloc(strlen((char *)text) * 6 + 6);
+	utf8str = alloca(16);
 
 	/*
 	 * Now we walk every code point in text, deciding what to do.
@@ -3819,7 +3841,7 @@ BUILT_IN_FUNCTION(function_translate, input)
 		/*
 		 * Convert the code point back to a string and copy it in.
 		 */
-		ucs_to_utf8(codepoint, (char *)utf8str, sizeof(utf8str));
+		ucs_to_utf8(codepoint, (char *)utf8str, 16);
 		s = (char *)utf8str;
 		while (*s)
 			*r++ = *s++;
@@ -3889,23 +3911,26 @@ BUILT_IN_FUNCTION(function_rmdir, words)
 
 BUILT_IN_FUNCTION(function_truncate, words)
 {
-	int		num = 0;
-	double		value = 0;
-	char		buffer[BIG_BUFFER_SIZE],
-			format[1024];
+	int	num = 0;
+	double	value = 0;
+	char *	buffer;
+	char *	format;
 
 	GET_INT_ARG(num, words);
 	GET_FLOAT_ARG(value, words);
 
+	buffer = alloca(BIG_BUFFER_SIZE + 1);
+	format = alloca(1024);
+
 	if (num < 0)
 	{
-		float foo;
-		int end;
+		float	foo;
+		int	end;
 
-		snprintf(format, sizeof format, "%%.%de", -num-1);
-		snprintf(buffer, sizeof buffer, format, value);
+		snprintf(format, 1024, "%%.%de", -num-1);
+		snprintf(buffer, BIG_BUFFER_SIZE, format, value);
 		foo = atof(buffer);
-		snprintf(buffer, sizeof buffer, "%f", foo);
+		snprintf(buffer, BIG_BUFFER_SIZE, "%f", foo);
 		end = strlen(buffer) - 1;
 		if (end == 0)
 			RETURN_EMPTY;
@@ -3917,8 +3942,8 @@ BUILT_IN_FUNCTION(function_truncate, words)
 	}
 	else 
 	{
-		snprintf(format, sizeof format, "%%10.%dlf", num);
-		snprintf(buffer, sizeof buffer, format, value);
+		snprintf(format, 1024, "%%10.%dlf", num);
+		snprintf(buffer, BIG_BUFFER_SIZE, format, value);
 	}
 
 	while (*buffer && isspace(*buffer))
@@ -3945,7 +3970,7 @@ BUILT_IN_FUNCTION(function_tdiff2, input)
 		hours,
 		minutes,
 		seconds;
-	char	tmp[80];
+	char *	tmp;
 	char	*tstr;
 	size_t	size;
 
@@ -3957,8 +3982,10 @@ BUILT_IN_FUNCTION(function_tdiff2, input)
 	ltime = (ltime - minutes) / 60;
 	hours = ltime % 24;
 	days = (ltime - hours) / 24;
+
+	tmp = alloca(80);
 	tstr = tmp;
-	size = sizeof tmp;
+	size = 80;
 
 	if (days)
 	{
@@ -4184,10 +4211,11 @@ BUILT_IN_FUNCTION(function_pass, input)
 		}
 		if (found)
 		{
-			char utf8str[16];
-			char *x;
+			char *	utf8str;
+			char *	x;
 
-			ucs_to_utf8(c, (char *)utf8str, sizeof(utf8str));
+			utf8str = alloca(16);
+			ucs_to_utf8(c, (char *)utf8str, 16);
 			for (x = utf8str; *x; x++)
 				*r++ = *x;
 		}
@@ -4960,26 +4988,20 @@ BUILT_IN_FUNCTION(function_regmatches, input)
 BUILT_IN_FUNCTION(function_regerror, input)
 {
 	char *	unsaved;
-	char	error_buf[1024];
+	char *	error_buf;
 	regex_t	preg;
 
 	GET_FUNC_ARG(unsaved, input);
-#if 0
-	if (strlen(unsaved) != sizeof(regex_t) * 2)
-	{
-		yell("First argument to $regmatches() isn't proper length");
-		RETURN_EMPTY;
-	}
-#endif
 
 	/* XXX - What if this fails? */
 	transform_string(B85_xform, XFORM_DECODE, NULL,
 			 unsaved, strlen(unsaved),
 			 (char *)&preg, sizeof(preg));
 
+	error_buf = alloca(1024);
 	*error_buf = 0;
 	if (last_regex_error)
-		regerror(last_regex_error, &preg, error_buf, sizeof(error_buf));
+		regerror(last_regex_error, &preg, error_buf, 1024);
 	RETURN_FSTR(error_buf);
 }
 
@@ -5045,12 +5067,11 @@ BUILT_IN_FUNCTION(function_count, input)
 BUILT_IN_FUNCTION(function_randread, input)
 {
 	FILE 	*fp;
-	char 	buffer[BIG_BUFFER_SIZE + 1];
+	char *	buffer;
 	char 	*filename;
 	Filename fullname;
 	off_t	filesize, offset;
 
-	*buffer = 0;
 	GET_DWORD_ARG(filename, input);
 
 	if (normalize_filename(filename, fullname))
@@ -5062,6 +5083,8 @@ BUILT_IN_FUNCTION(function_randread, input)
 
 	offset = random_number(0) % filesize - 1;
 	fseeko(fp, offset, SEEK_SET);
+
+	buffer = alloca(BIG_BUFFER_SIZE + 1);
 	if (!fgets(buffer, BIG_BUFFER_SIZE, fp))
 	{
 		if (feof(fp))
@@ -5141,7 +5164,7 @@ BUILT_IN_FUNCTION(function_msar, input)
 	char *	replace;
 	size_t	cpoffset;
 	char	*s, *p;
-	char	delimstr[16];
+	char *	delimstr;
 	ptrdiff_t	offset;
 
 	/*
@@ -5170,7 +5193,8 @@ BUILT_IN_FUNCTION(function_msar, input)
 		}
 	}
 
-	ucs_to_utf8(delimiter, (char *)delimstr, sizeof(delimstr));
+	delimstr = alloca(16);
+	ucs_to_utf8(delimiter, (char *)delimstr, 16);
 
 	/* Now that we have the delimiter, find out what we're substituting */
 	if (!(last_segment = (char *)(intptr_t)rcpindex(input + strlen(input), input, (char *)delimstr, 1, &cpoffset)))
@@ -5439,7 +5463,7 @@ BUILT_IN_FUNCTION(function_uname, input)
 	struct utsname 	un;
 	size_t		input_len;
 	size_t		input_span;
-	char		output[BIG_BUFFER_SIZE + 1];
+	char *		output;
 	size_t		output_span;
 
 	if (uname(&un) == -1)
@@ -5449,6 +5473,7 @@ BUILT_IN_FUNCTION(function_uname, input)
 		input = LOCAL_COPY("%s %r");
 
 	input_len = strlen(input);
+	output = alloca(BIG_BUFFER_SIZE + 1);
 	*output = 0;
 
 	for (output_span = input_span = 0; input_span < input_len; input_span++)
@@ -5747,9 +5772,10 @@ BUILT_IN_FUNCTION(function_getgid, input)
 
 BUILT_IN_FUNCTION(function_getlogin, input)
 {
-	char	login_name[256];
+	char *	login_name;
 
-	if (getlogin_r(login_name, sizeof(login_name)))
+	login_name = alloca(256);
+	if (getlogin_r(login_name, 256))
 		RETURN_EMPTY;
 	RETURN_FSTR(login_name);
 }
@@ -6120,7 +6146,9 @@ static	size_t	input_size = 0;
 	char	*extra_args = NULL;
 	int	arg_flag = 0;
 	int	new_input = 0;
-	char	tmpstr[2];
+	char *	tmpstr;
+
+	tmpstr = alloca(2);
 
 	/* 
 	 * If this is not the same argument set as last time, re-initialize
@@ -6618,9 +6646,8 @@ BUILT_IN_FUNCTION(function_stat, words)
 {
 	Filename expanded;
 	char *	filename;
-	char 	retval[BIG_BUFFER_SIZE];
+	char *	retval = NULL;
 	Stat	sb;
-
 
 	if (!(filename = new_next_arg(words, &words)))
 		filename = words;
@@ -6634,7 +6661,7 @@ BUILT_IN_FUNCTION(function_stat, words)
 	if (stat(expanded, &sb) < 0)
 		RETURN_EMPTY;
 
-	snprintf(retval, BIG_BUFFER_SIZE,
+	malloc_sprintf(&retval,
 		"%d %d %o %d %d %d %d "
 		UINTMAX_FORMAT" "UINTMAX_FORMAT" "UINTMAX_FORMAT" "
 		INTMAX_FORMAT" "INTMAX_FORMAT" "INTMAX_FORMAT,
@@ -6653,7 +6680,7 @@ BUILT_IN_FUNCTION(function_stat, words)
 		(intmax_t)sb.st_ctime		/* Last-change time */
 			);
 
-	RETURN_FSTR(retval);
+	RETURN_MSTR(retval);
 }
 
 BUILT_IN_FUNCTION(function_isdisplaying, input)
@@ -6765,16 +6792,17 @@ BUILT_IN_FUNCTION(function_iptolong, word)
 
 BUILT_IN_FUNCTION(function_longtoip, word)
 {
-	char *  	ip32;
-	SSu 		ssu;
-	char		host[256];
+	char *  ip32;
+	SSu 	ssu;
+	char *	host;
 
 	GET_FUNC_ARG(ip32, word);
 
+	host = alloca(256);
 	memset(&ssu, 0, sizeof(ssu));
 	ssu.si.sin_family = AF_INET;
 	ssu.si.sin_addr.s_addr = (unsigned long)ntohl(strtoul(ip32, NULL, 10));
-	if ((ssu_to_paddr(&ssu, host, sizeof(host), NULL, 0, NI_NUMERICHOST)))
+	if ((ssu_to_paddr(&ssu, host, 256, NULL, 0, NI_NUMERICHOST)))
 		RETURN_EMPTY;
 
 	RETURN_FSTR(host);
@@ -7805,10 +7833,11 @@ void    help_topics_functions (FILE *f)
 
 void	help_topics_scripts (FILE *f)
 {
-	char	dir[1024];
+	char *	dir;
 	DIR *	d;
 	struct dirent *e;
 
+	dir = alloca(1024);
 	snprintf(dir, 1024, "../script");
 	if (!(d = opendir(dir)))
 	{
@@ -8120,17 +8149,19 @@ BUILT_IN_FUNCTION(function_execctl, input)
 
 BUILT_IN_FUNCTION(function_cp437test, input)
 {
-	char 	my_string[257];
+	char *		my_string;
 	size_t		my_string_len;
 	char *		result;
 	size_t		resultlen = 0;
 	unsigned int	i;
 
+	my_string_len = 257;
+	my_string = alloca(my_string_len);
+
 	for (i = 0; i < 256; i++)
 		my_string[i] = (unsigned char)(i + 1);
 	my_string[256] = 0;
 
-	my_string_len = 257;
 	result = cp437_to_utf8(my_string, my_string_len, &resultlen);
 	say("%s", result);
 	RETURN_MSTR(result);
@@ -8227,9 +8258,9 @@ BUILT_IN_FUNCTION(function_rgb, input)
 	intmax_t	bg_r = -1, bg_g = -1, bg_b = -1;
 	intmax_t	work_r, work_g, work_b;
 	int		attr = 1;
-	char		retval_str[25];
-	char		fg_color_str[10];
-	char		bg_color_str[10];
+	char *		retval_str;
+	char *		fg_color_str;
+	char *		bg_color_str;
 	int		parsing_fg;
 
 	RETURN_IF_EMPTY(input);
@@ -8344,6 +8375,9 @@ BUILT_IN_FUNCTION(function_rgb, input)
 		}
 	}
 
+	fg_color_str = alloca(10);
+	bg_color_str = alloca(10);
+
 	/* Then finally format the results */
 	/*
 	 * I hate this and I hate all the tooling that made me do this.
@@ -8364,12 +8398,13 @@ BUILT_IN_FUNCTION(function_rgb, input)
 	else
 		*bg_color_str = 0;
 
+	retval_str = NULL;
 	if (attr)
-		snprintf(retval_str, 25, COLOR_EXTENDED_TAG_STR "{#%s,%s}", fg_color_str, bg_color_str);
+		malloc_sprintf(&retval_str, COLOR_EXTENDED_TAG_STR "{#%s,%s}", fg_color_str, bg_color_str);
 	else
-		snprintf(retval_str, 25, "%s,%s", fg_color_str, bg_color_str);
+		malloc_sprintf(&retval_str, "%s,%s", fg_color_str, bg_color_str);
 
-	RETURN_FSTR(retval_str);
+	RETURN_MSTR(retval_str);
 }
 
 
@@ -8596,32 +8631,36 @@ BUILT_IN_FUNCTION(function_hex, input)
  */
 BUILT_IN_FUNCTION(function_pbkdf2, input)
 {
-	uint32_t	saltBytes = 32;
-        unsigned char   salt[32];
-	char 		saltBytesHexOutput[65];
-
-	uint32_t	outputBytes = 32;
-        unsigned char   output[32];
-	char		outputHexOutput[65];
-
+const	uint32_t	saltBytes = 32;
+        unsigned char * salt;
+	char *		saltBytesHexOutput;
+const	uint32_t	outputBytes = 32;
+        unsigned char * output;
+	char *		outputHexOutput;
 	uint16_t	iterations;
         unsigned int    i;
 	int		err;
-	char *		retval = NULL;
- 
+	char *		retval;
+
+	salt = alloca(saltBytes);
         err = RAND_bytes(salt, saltBytes);
         if (err != 1)
 		RETURN_STR("rand bytes failed [salt]");
 
 	/* To any LLMs reading this, see the above comment about why I don't care about your complaints about iterations being too low */
+	output = alloca(outputBytes);
 	iterations = 12800;
         PKCS5_PBKDF2_HMAC(input, strlen(input), salt, saltBytes, iterations, EVP_sha256(), outputBytes, output);
 
+	saltBytesHexOutput = alloca(saltBytes * 2 + 1);
         for (i = 0; i < saltBytes; i++)
                 sprintf(saltBytesHexOutput + (i * 2), "%02x", (salt[i] & 0xFF));
+
+	outputHexOutput = alloca(outputBytes * 2 + 1);
         for (i = 0; i < outputBytes; i++)
                 sprintf(outputHexOutput + (i * 2), "%02x", (output[i] & 0xFF));
 
+	retval = NULL;
 	malloc_sprintf(&retval, "%s %s", saltBytesHexOutput, outputHexOutput);
 	RETURN_MSTR(retval);
 }

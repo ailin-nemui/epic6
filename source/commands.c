@@ -1729,7 +1729,7 @@ static void	loader_std (const char *file_contents, off_t file_contents_size, con
 	int	paste_level, paste_line;
 	char 	*start, *real_start, *current_row;
 #define MAX_LINE_SIZE BIG_BUFFER_SIZE * 5
-	char	buffer[MAX_LINE_SIZE * 2 + 1];
+	char	*buffer;
 
         loadinfo->loader = "std";
 
@@ -1740,6 +1740,7 @@ static void	loader_std (const char *file_contents, off_t file_contents_size, con
 	no_semicolon = 1;
 	real_start = NULL;
 	current_row = NULL;
+	buffer = alloca(MAX_LINE_SIZE * 2 + 1);
 
 	for (;;loadinfo->line++)
 	{
@@ -2193,8 +2194,9 @@ BUILT_IN_COMMAND(oper)
 BUILT_IN_COMMAND(pingcmd)
 {
 	Timespec	t;
-	char		buffer[64];
+	char *		buffer;
 
+	buffer = alloca(64);
 	get_time(&t);
 	snprintf(buffer, 63, "%s PING %ld %ld", args, 
 				(long)t.tv_sec, (long)(t.tv_nsec / 1000));
@@ -2711,10 +2713,10 @@ BUILT_IN_COMMAND(waitcmd)
 			}
 			else
 			{
-				char	reason[1024];
+				char *	reason;
 
-				snprintf(reason, 1024, "WAIT on EXEC %s", 
-						ctl_arg);
+				reason = alloca(1024);
+				snprintf(reason, 1024, "WAIT on EXEC %s", ctl_arg);
 				lock_stack_frame();
 				while (is_valid_process(ctl_arg))
 					io(reason);
