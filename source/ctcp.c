@@ -275,9 +275,7 @@ static int split_CTCP (char *raw_message, char *ctcp_dest, char *after_ctcp)
  */
 char *	do_ctcp (int request, const char *from, const char *to, char *str)
 {
-	char 	local_ctcp_buffer [BIG_BUFFER_SIZE + 1],
-		the_ctcp          [IRCD_BUFFER_SIZE + 1],
-		after             [IRCD_BUFFER_SIZE + 1];
+	char	*local_ctcp_buffer, *the_ctcp, *after;
 	char	*ctcp_command,
 		*ctcp_argument;
 	char 	*original_ctcp_argument;
@@ -287,6 +285,10 @@ char *	do_ctcp (int request, const char *from, const char *to, char *str)
 	int	l;
 	char *	extra = NULL;
 	int 	delim_char;
+
+	local_ctcp_buffer = alloca(BIG_BUFFER_SIZE + 1);
+	the_ctcp = alloca(IRCD_BUFFER_SIZE + 1);
+	after = alloca(IRCD_BUFFER_SIZE + 1);
 
 	/*
 	 * Messages with less than 2 CTCP delims don't have a CTCP in them.
@@ -314,8 +316,8 @@ char *	do_ctcp (int request, const char *from, const char *to, char *str)
 
 
 	/* For each CTCP we extract from 'local_ctcp_buffer'.... */
-	strlcpy(local_ctcp_buffer, str, sizeof(local_ctcp_buffer) - 2);
-	for (;;new_free(&extra), strlcat(local_ctcp_buffer, after, sizeof(local_ctcp_buffer) - 2))
+	strlcpy(local_ctcp_buffer, str, BIG_BUFFER_SIZE - 2);
+	for (;;new_free(&extra), strlcat(local_ctcp_buffer, after, BIG_BUFFER_SIZE - 2))
 	{
 		/* Extract next CTCP. If none found, we're done! */
 		if (split_CTCP(local_ctcp_buffer, the_ctcp, after))
@@ -471,7 +473,7 @@ char *	do_ctcp (int request, const char *from, const char *to, char *str)
 				}
 				else
 				{
-					snprintf(local_ctcp_buffer, sizeof(local_ctcp_buffer), "%s", ptr);
+					snprintf(local_ctcp_buffer, BIG_BUFFER_SIZE, "%s", ptr);
 					new_free(&ptr);
 					if (CTCP(i)->flag & CTCP_RESTARTABLE)
 						continue; 
@@ -606,11 +608,11 @@ static	time_t	last_ctcp_reply = 0;
 	{
 		const char *	pb;
 		char *		extra = NULL;
-		char *		putbuf = NULL;
+		char *		putbuf_ = NULL;
 		va_list 	args;
 
 		va_start(args, format);
-		malloc_vsprintf(&putbuf, format, args);
+		malloc_vsprintf(&putbuf_, format, args);
 		va_end(args);
 
 		/*
@@ -620,14 +622,14 @@ static	time_t	last_ctcp_reply = 0;
 		 * CTCP message with a fancy type name, the behavior
 		 * is unspecified.
 		 */
-		pb = outbound_recode(to, from_server, putbuf, &extra);
+		pb = outbound_recode(to, from_server, putbuf_, &extra);
 
 		do_hook(SEND_CTCP_LIST, "%s %s %s %s", 
 				protocol, to, type, pb);
 		snprintf(putbuf2, len, "%c%s %s%c", 
 				CTCP_DELIM_CHAR, type, pb, CTCP_DELIM_CHAR);
 
-		new_free(&putbuf);
+		new_free(&putbuf_);
 		new_free(&extra);
 	}
 	else

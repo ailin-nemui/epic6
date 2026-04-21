@@ -1646,7 +1646,7 @@ static void	reduce (expr_info *cx, int what)
 
 
 /**************************** EXPRESSION LEXER ******************************/
-static	int	dummy = 1;
+static	int	expr_dummy = 1;
 
 static int	lexerr (expr_info *c, const char *format, ...)
 {
@@ -1701,7 +1701,7 @@ static TOKEN 	unary (expr_info *c, const char *x, int y, TOKEN z)
 		return lexerr(c, "A unary operator (%s) was found where "
 				 "a binary operator was expected", x);
 	c->ptr += y;
-	c->operand = dummy;
+	c->operand = expr_dummy;
 	return z;
 }
 
@@ -1716,7 +1716,7 @@ static int	zzlex (expr_info *c)
 #define OPERATOR(x, y, z) return operator(c, x, y, z);
 #define UNARY(x, y, z) return unary(c, x, y, z);
 
-	dummy = 1;
+	expr_dummy = 1;
 	debug(DEBUG_NEW_MATH_DEBUG, "Parsing next token from: [%s]", c->ptr);
 
 	for (;;)
@@ -1855,7 +1855,7 @@ static int	zzlex (expr_info *c)
 					OPERATOR("**=", 1, POWEREQ)
 				else if (c->operand)
 				{
-					dummy = 2;
+					expr_dummy = 2;
 					UNARY("**", 0, REEXP)
 				}
 				else
@@ -1865,7 +1865,7 @@ static int	zzlex (expr_info *c)
 				OPERATOR("*=", 1, MULEQ)
 			else if (c->operand)
 			{
-				dummy = 2;
+				expr_dummy = 2;
 				UNARY("*", 0, DEREF)
 			}
 			else
@@ -1966,7 +1966,7 @@ static int	zzlex (expr_info *c)
 				OPERATOR("#~", 1, STRPREEQ)
 			else if (c->operand)
 			{
-				dummy = 2;
+				expr_dummy = 2;
 				UNARY("#", 0, WORDC)
 			}
 			else
@@ -1974,7 +1974,7 @@ static int	zzlex (expr_info *c)
 		}
 
 		case '@':
-			dummy = 2;
+			expr_dummy = 2;
 			UNARY("@", 0, STRLEN)
 
 		case '<':

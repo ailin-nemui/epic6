@@ -465,6 +465,7 @@ void 	init_variables_stage1 (void)
 	VAR(SHOW_CHANNEL_NAMES,         BOOL, (SetFunc)0);
 	VAR(SHOW_NUMERICS,              BOOL, (SetFunc)0);
 	VAR(SHOW_STATUS_ALL,            BOOL, update_all_status_wrapper);
+	/* XXX Shouldn't this be calling set_ssl_ciphers()? */
 	VAR(SSL_CIPHERS,		STR, (SetFunc)0);
 	VAR(SSL_ROOT_CERTS_LOCATION,    STR, set_ssl_root_certs_location);
 	VAR(STATUS_AWAY,                STR,  build_status);

@@ -199,7 +199,7 @@ typedef	struct	WindowStru
 }	Window;
 
 
-static const char *onoff[] = { "OFF", "ON" };
+static const char *window_onoff[] = { "OFF", "ON" };
 
 /* Resize relatively or absolutely? */
 #define RESIZE_REL 1
@@ -1366,12 +1366,12 @@ int	get_window_by_screen_row (int screen_, int row)
 static void	recalculate_window_positions (int screen_)
 {
 	int	window_ = 0;
-	short	top;
+	short	top_;
 
 	if (screen_ < 0)
 		return;		/* Window is invisible.  Dont bother */
 
-	top = 0;
+	top_ = 0;
 	while (traverse_all_windows_on_screen2(&window_, screen_))
 	{
 		Window	*w = NULL;
@@ -1380,10 +1380,10 @@ static void	recalculate_window_positions (int screen_)
 		if (!w)
 			continue;
 
-		top += w->toplines_showing;
-		w->top = top;
-		w->bottom = top + w->display_lines;
-		top += w->display_lines + w->status.number;
+		top_ += w->toplines_showing;
+		w->top = top_;
+		w->bottom = top_ + w->display_lines;
+		top_ += w->display_lines + w->status.number;
 
 		window_body_needs_redraw(w->refnum);
 		window_statusbar_needs_redraw(w->refnum);
@@ -5091,7 +5091,7 @@ static int 	get_boolean (const char *name, char **args, short *var)
 	newval = *var;
 	if (!(arg = next_arg(*args, args)))
 	{
-		say("Window %s is %s", name, onoff[newval]);
+		say("Window %s is %s", name, window_onoff[newval]);
 		return 0;
 	}
 
@@ -5102,7 +5102,7 @@ static int 	get_boolean (const char *name, char **args, short *var)
 	}
 
 	/* The say() MUST BE DONE BEFORE THE ASSIGNMENT! */
-	say("Window %s is %s", name, onoff[newval]);
+	say("Window %s is %s", name, window_onoff[newval]);
 	*var = newval;
 	return 1;
 }
@@ -5658,14 +5658,14 @@ WINDOWCMD(describe)
 				window->status.number);
 
 	say("\tLogging is %s", 
-				onoff[window->log]);
+				window_onoff[window->log]);
         if (window->logfile)
 	    say("\tLogfile is %s", window->logfile);
         else
 	    say("\tNo logfile given");
 
 	say("\tNotification is %s", 
-				onoff[window->notify_when_invisible]);
+				window_onoff[window->notify_when_invisible]);
 	say("\tNotify level is %s", 
 				mask_to_str(&window->notify_mask));
 
@@ -5679,22 +5679,22 @@ WINDOWCMD(describe)
 				window->lastlog_max);
 
 	say("\tHold mode is %s", 
-				onoff[window->holding_top_of_display ? 1 : 0]);
+				window_onoff[window->holding_top_of_display ? 1 : 0]);
 	say("\tHold Slider percentage is %hd",
 				window->hold_slider);
 	say("\tUpdate %%B on status bar every %hd lines",
 				window->hold_interval);
 
 	say("\tFixed mode is %s", 
-				onoff[window->fixed_size ? 1 : 0]);
+				window_onoff[window->fixed_size ? 1 : 0]);
 	say("\tSkipped mode is %s", 
-				onoff[window->skip ? 1 : 0]);
+				window_onoff[window->skip ? 1 : 0]);
 	say("\tSwappable mode is %s", 
-				onoff[window->swappable ? 1 : 0]);
+				window_onoff[window->swappable ? 1 : 0]);
 	say("\tBeep always mode is %s",
-				onoff[window->beep_always ? 1 : 0]);
+				window_onoff[window->beep_always ? 1 : 0]);
 	say("\tAdjust Scrollback on Resize mode is %s",
-				onoff[window->scrolladj ? 1 : 0]);
+				window_onoff[window->scrolladj ? 1 : 0]);
 
 	return refnum;
 }
@@ -8628,7 +8628,7 @@ typedef struct window_ops_T {
 	window_func 	func;
 } window_ops;
 
-static const window_ops options [] = {
+static const window_ops windowcmd_options [] = {
 	{ "ADD",		windowcmd_add 			},
 	{ "BACK",		windowcmd_back 			},
 	{ "BALANCE",		windowcmd_balance 		},
@@ -8762,9 +8762,9 @@ BUILT_IN_COMMAND(windowcmd)
 		l = set_context(get_window_server(refnum), refnum > 0 ? refnum : -1, 
 					get_who_sender(), get_who_from(), get_who_level());
 
-		for (i = 0; options[i].func ; i++)
+		for (i = 0; windowcmd_options[i].func ; i++)
 		{
-			if (!my_strnicmp(arg, options[i].command, len))
+			if (!my_strnicmp(arg, windowcmd_options[i].command, len))
 			{
 				int	window;
 
@@ -8772,9 +8772,9 @@ BUILT_IN_COMMAND(windowcmd)
 					from_server = get_window_server(refnum);
 				window = refnum > 0 ? get_window_user_refnum(refnum) : -1;
 				if (pass_null)
-					refnum = options[i].func(refnum, NULL);
+					refnum = windowcmd_options[i].func(refnum, NULL);
 				else
-					refnum = options[i].func(refnum, &args); 
+					refnum = windowcmd_options[i].func(refnum, &args); 
 				nargs++;
 
 				if (refnum < 1)
@@ -8787,7 +8787,7 @@ BUILT_IN_COMMAND(windowcmd)
 			}
 		}
 
-		if (!options[i].func)
+		if (!windowcmd_options[i].func)
 		{
 			int	s_window;
 			nargs++;
@@ -9619,9 +9619,10 @@ BUILT_IN_KEYBINDING(unstop_all_windows)
 /* toggle_stop_screen: the BIND function TOGGLE_STOP_SCREEN */
 BUILT_IN_KEYBINDING(toggle_stop_screen)
 {
-	char toggle[7], *p = toggle;
+	char	*toggle, *p;
 
-	strlcpy(toggle, "TOGGLE", sizeof toggle);
+	p = toggle = alloca(8);
+	strlcpy(toggle, "TOGGLE", 7);
 	windowcmd_hold_mode(0, (char **)&p);
 	update_all_windows();
 }
@@ -10585,7 +10586,7 @@ void    help_topics_window (FILE *f)
 {
         int     x;
 
-        for (x = 0; options[x].func; x++)
-                fprintf(f, "window %s\n", options[x].command);
+        for (x = 0; windowcmd_options[x].func; x++)
+                fprintf(f, "window %s\n", windowcmd_options[x].command);
 }
 #endif

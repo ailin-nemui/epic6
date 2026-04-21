@@ -1164,15 +1164,13 @@ static	char	*alias_server_version  (void)
 }
 
 
-/*	*	*	*	*	*	*	*	*	*
-		These are the built-in functions.
-
-	About 80 of them are here, the rest are in array.c.  All of the
-	stock client's functions are supported, as well as about 60 more.
-	Most of the 30 stock client's functions have been re-written for
-	optimization reasons, and also to further distance ircii's code
-	from EPIC.
- *	*	*	*	*	*	*	*	*	*/
+/* * * * * */
+/* 
+ * Built-in Functions
+ *
+ * Of note:
+ *	Integers (GET_INT_ARG()) are always (intmax_t)
+ */
 
 /*
  * Usage: $left(number text)
@@ -1343,7 +1341,8 @@ BUILT_IN_FUNCTION(function_mid, word)
  */
 BUILT_IN_FUNCTION(function_rand, word)
 {
-	unsigned long	maxval, randomval;
+	intmax_t	maxval,
+			randomval;
 
 	GET_INT_ARG(maxval, word);
 	randomval = random_number(0);
@@ -1384,11 +1383,11 @@ BUILT_IN_FUNCTION(function_time, input)
  */
 BUILT_IN_FUNCTION(function_stime, input)
 {
-	time_t	ltime;
+	intmax_t	ltime_;
 	const char	*ret;
 
-	GET_INT_ARG(ltime, input);
-	ret = my_ctime(ltime);
+	GET_INT_ARG(ltime_, input);
+	ret = my_ctime(ltime_);
 	RETURN_STR(ret);		/* Dont put function call in macro! */
 }
 
@@ -1561,13 +1560,17 @@ BUILT_IN_FUNCTION(function_match, input)
  * Example: $rmatch(foobar f*bar foo*ar g*ant) returns 2 
  *	    $rmatch(booya f*bar foo*ar g*ant) returns 0
  * 
- * Note: It is possible to embed spaces into a word or pattern simply by
- *       including the entire word or pattern within quotation marks (")
+ * This function accepts dwords (double quoted words), so you can surround
+ * patterns with double quotes if they contain spaces
  */
 BUILT_IN_FUNCTION(function_rmatch, input)
 {
-	char	*pattern,	*word;
-	int	current_match,	best_match = 0,	match = 0, rmatch_index = 0;
+	char	*pattern,	
+		*word;
+	int	current_match,	
+		best_match = 0,	
+		match = 0, 
+		rmatch_index = 0;
 
 	GET_FUNC_ARG(word, input);
 
@@ -1585,11 +1588,19 @@ BUILT_IN_FUNCTION(function_rmatch, input)
 }
 
 /*
- * Usage: $userhost()
+ * Usage: 	$userhost() 		Return userhost of last sender
+ *		$userhost(nick)		Return userhost of a person
+ *
  * Returns: the userhost (if any) of the most previously recieved message.
- * Caveat: $userhost() changes with every single line that appears on
- *         your screen, so if you want to save it, you will need to assign
- *         it to a variable.
+ * 
+ * Notes:
+ *	Userhosts are part of most rfc1459 message, but in the very 
+ *	beginning they weren't.  Things like /on public were established
+ *	as just nicknames, because that's all they had.
+ *
+ * 	When Userhosts were introduced, there needed to be a way to 
+ *	pass this RFC1459 information in a side channel.
+ *	You'll notice we did similiar things with $tags().
  */
 BUILT_IN_FUNCTION(function_userhost, input)
 {
@@ -1597,20 +1608,17 @@ static const char unknown_userhost[] = "<UNKNOWN>@<UNKNOWN>";
 
 	if (input && *input)
 	{
-		char *retval = NULL;
-		char *nick;
-		const char *uh;
-		const char *chan = NULL;
+		char *		nick;
+		const char *	uh;
+		char *		retval = NULL;
 
 		while (input && *input)
 		{
 			GET_FUNC_ARG(nick, input);
-			if (is_channel(nick))
-				chan = nick;
-			if ((uh = fetch_userhost(from_server, chan, nick)))
-				malloc_strcat_word(&retval, space, uh, DWORD_NO);
-			else
-				malloc_strcat_word(&retval, space, unknown_userhost, DWORD_NO);
+
+			if (!(uh = fetch_userhost(from_server, NULL, nick)))
+				uh = unknown_userhost;
+			malloc_strcat_word(&retval, space, uh, DWORD_NO);
 		}
 		RETURN_MSTR(retval);
 	}
@@ -1628,11 +1636,14 @@ static const char unknown_userhost[] = "<UNKNOWN>@<UNKNOWN>";
  */
 BUILT_IN_FUNCTION(function_strip, input)
 {
-	char *	search;
-	char 	*s, *p;
-	int	c, d;
-	int	found;
-	char *	result, *r;
+	char *		search;
+	char 		*s, 
+			*p;
+	int		c, 
+			d;
+	int		found;
+	char 		*result, 
+			*r;
 	ptrdiff_t	offset;
 
 	GET_DWORD_ARG(search, input);
@@ -1700,11 +1711,9 @@ BUILT_IN_FUNCTION(function_ischannel, input)
  * Note: Contrary to popular belief, this function can only tell you
  *       who the channel operators are for channels you are already on!
  *
- * Boo Hiss:  This should be $ischanop(channel nick <nick...nick>)
- *	      and return a list (1 1 ... 0), which would allow us to
- *	      call is_chanop() without ripping off the nick, and allow 
- *	      us to abstract is_chanop() to take a list. oh well... 
- *	      Too late to change it now. :/
+ * If you would like to query multiple nicks, I recommend the
+ * $channel() function which will return all nicks with @ and +
+ * prefixes.
  */
 BUILT_IN_FUNCTION(function_ischanop, input)
 {
@@ -3392,7 +3401,7 @@ BUILT_IN_FUNCTION(function_unicode, word)
 	if (!word || !*word)
 		RETURN_EMPTY;
 
-	result = alloca(8);
+	result = alloca(9);
 	s = word;
 	while ((code_point = next_code_point2(s, &offset, 0)))
 	{
@@ -3402,7 +3411,7 @@ BUILT_IN_FUNCTION(function_unicode, word)
 			s++;
 			continue;
 		}
-		snprintf(result, 8, "U+%04X", code_point);
+		snprintf(result, 9, "U+%04X", code_point);
 		malloc_strcat_wordlist(&aboo, space, result);
 		s += offset;
 	}
@@ -6957,9 +6966,11 @@ BUILT_IN_FUNCTION(function_killpid, input)
 	{
 		for (sig = 1; sig < MY_SIG_MAX; sig++)
 		{
-			if (!get_signal_name(sig))
-				continue;
-			if (!my_stricmp(get_signal_name(sig), sig_str))
+			const char *	s;
+
+			/* This never returns NULL */
+			s = get_signal_name(sig);
+			if (!my_stricmp(s, sig_str))
 				goto do_kill;	/* Oh, bite me. */
 		}
 
@@ -7420,9 +7431,9 @@ BUILT_IN_FUNCTION(function_xform, input)
 #define MAX_TRANSFORMS 16
 	char *	directives;
 	int	x, i = 0;
-	int	types[MAX_TRANSFORMS];
-	char *	args[MAX_TRANSFORMS] = {NULL};
-	int	encodings[MAX_TRANSFORMS];
+	int *	types;
+	char **	args;
+	int *	encodings;
 
 	char *	typestr;
 	int	type;
@@ -7434,6 +7445,13 @@ BUILT_IN_FUNCTION(function_xform, input)
 	size_t	srcbuflen, destbuflen, ptrbuflen;
 	size_t	refbuflen;
 	int	expand, overh;
+
+	types = alloca(sizeof(int) * MAX_TRANSFORMS);
+	memset(types, 0, sizeof(int) * MAX_TRANSFORMS);
+	args = alloca(sizeof(char *) * MAX_TRANSFORMS);
+	memset(args, 0, sizeof(char *) * MAX_TRANSFORMS);
+	encodings = alloca(sizeof(int) * MAX_TRANSFORMS);
+	memset(encodings, 0, sizeof(int) * MAX_TRANSFORMS);
 
 	/*
 	 * First we have to calculate how many args there are before

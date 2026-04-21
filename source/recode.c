@@ -1208,7 +1208,8 @@ static int	sanity_check_encoding (const char *encodingx, int verbose)
 	unsigned char	c;
 	char		*cstr;
 	size_t		c_size;
-	char		utf8str[16], *x;
+	char 		*utf8str,
+			*x;
 	size_t		x_size;
 	int		i, errors;
 
@@ -1248,6 +1249,7 @@ static int	sanity_check_encoding (const char *encodingx, int verbose)
 	}
 
 	/* 3. Most of the characters convert */
+	utf8str = alloca(16);
 	errors = 0;
 	for (i = 32; i < 255; i++)
 	{
@@ -1255,7 +1257,7 @@ static int	sanity_check_encoding (const char *encodingx, int verbose)
 		cstr = (char *)&c;
 		c_size = 1;
 		x = utf8str;
-		x_size = sizeof(utf8str);
+		x_size = 16;
 
 		if (iconv(ti, &cstr, &c_size, &x, &x_size) != 0)
 		{

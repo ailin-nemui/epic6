@@ -516,15 +516,14 @@ int	copy_internal_attribute (const char *input_, char *output_, size_t output_si
  */
 static size_t	write_ircii_attributes (char *output, size_t output_size, Attribute *old_a, Attribute *a)
 {
-	char	*str = output;
-	size_t	count = 0;
-	Attribute dummy;
+	char		*str = output;
+	size_t		count = 0;
+	Attribute	placeholder;
 
 	if (old_a == NULL)
 	{
-
-		zero_attribute(&dummy);
-		old_a = &dummy;
+		zero_attribute(&placeholder);
+		old_a = &placeholder;
 		if (count + 1 < output_size)
 			*str++ = ALL_OFF, count++;
 	}
@@ -1371,7 +1370,7 @@ static ssize_t	read_esc_seq (const char *start, void *ptr_a, int *nd_spaces)
 {
 	Attribute *	a = NULL;
 	Attribute 	safe_a;
-	int 		args[10];
+	int *		args;
 	int		nargs;
 	unsigned char 	chr;
 	ssize_t		len;
@@ -1387,6 +1386,8 @@ static ssize_t	read_esc_seq (const char *start, void *ptr_a, int *nd_spaces)
 
 	*nd_spaces = 0;
 	len = 0;
+
+	args = alloca(sizeof(int) * 10);
 
 	switch (start[len])
 	{
@@ -1917,9 +1918,6 @@ abnormal_char:
 			pos += attrout(output + pos, maxpos - pos, &olda, &a);
 			pc += 1;
 			break;
-
-			FALLTHROUGH
-			/* FALLTHROUGH */
 		}
 
 		/*
@@ -3693,10 +3691,10 @@ int	create_additional_screen (void)
 	socklen_t	new_sock_size;
 	const char *	wserv_path;
 
-	char *		opts;
+	char *		create_opts;
 	const char *	xterm;
-	char *		args[64];
-	char **		args_ptr = args;
+	char **		args;
+	char **		args_ptr;
 	int 		i;
 
 
@@ -3778,13 +3776,19 @@ int	create_additional_screen (void)
 	port = ntohs(local_sockaddr.si.sin_port);
 	yell("Now listening on port %d", (int)port);
 
+
+
+	args = alloca(sizeof(char *) * 64);
+	memset(args, 0, sizeof(char *) * 64);
+	args_ptr = args;
+
 	/* Create the command line arguments... */
 	if (screen_type == ST_SCREEN)
 	{
-	    opts = malloc_strdup(get_string_var(SCREEN_OPTIONS_VAR));
+	    create_opts = malloc_strdup(get_string_var(SCREEN_OPTIONS_VAR));
 	    *args_ptr++ = malloc_strdup("screen");
-	    while (opts && *opts)
-		*args_ptr++ = malloc_strdup(new_next_arg(opts, &opts));
+	    while (create_opts && *create_opts)
+		*args_ptr++ = malloc_strdup(new_next_arg(create_opts, &create_opts));
 	    *args_ptr++ = malloc_strdup(wserv_path);
 	    *args_ptr++ = malloc_strdup("localhost");
 	    *args_ptr++ = malloc_strdup(ltoa((long)port));
@@ -3798,7 +3802,7 @@ int	create_additional_screen (void)
 		get_screen_columns(oldscreen) + 1, 
 		get_screen_lines(oldscreen));
 
-	    opts = malloc_strdup(get_string_var(XTERM_OPTIONS_VAR));
+	    create_opts = malloc_strdup(get_string_var(XTERM_OPTIONS_VAR));
 	    if (!(xterm = getenv("XTERM")))
 		if (!(xterm = get_string_var(XTERM_VAR)))
 		    xterm = "xterm";
@@ -3806,8 +3810,8 @@ int	create_additional_screen (void)
 	    *args_ptr++ = malloc_strdup(xterm);
 	    *args_ptr++ = malloc_strdup("-geometry");
 	    *args_ptr++ = geom;
-	    while (opts && *opts)
-		*args_ptr++ = malloc_strdup(new_next_arg(opts, &opts));
+	    while (create_opts && *create_opts)
+		*args_ptr++ = malloc_strdup(new_next_arg(create_opts, &create_opts));
 	    *args_ptr++ = malloc_strdup("-e");
 	    *args_ptr++ = malloc_strdup(wserv_path);
 	    *args_ptr++ = malloc_strdup("localhost");
@@ -3823,9 +3827,9 @@ int	create_additional_screen (void)
 
 	    *args_ptr++ = malloc_strdup("tmux");
 
-	    opts = malloc_strdup(get_string_var(TMUX_OPTIONS_VAR));
-	    while (opts && *opts)
-		*args_ptr++ = malloc_strdup(new_next_arg(opts, &opts));
+	    create_opts = malloc_strdup(get_string_var(TMUX_OPTIONS_VAR));
+	    while (create_opts && *create_opts)
+		*args_ptr++ = malloc_strdup(new_next_arg(create_opts, &create_opts));
 
 	    *args_ptr++ = malloc_strdup("new-window");
 	    *args_ptr++ = subcmd;

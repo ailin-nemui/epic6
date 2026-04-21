@@ -469,7 +469,7 @@ BUILT_IN_COMMAND(fe)
 			*placeholder,
 			*vars,
 #define MAX_FE_VARS 256
-			*var[MAX_FE_VARS],
+			**var,
 			*todo = NULL;
 	unsigned	ind, 
 			y;
@@ -477,6 +477,9 @@ BUILT_IN_COMMAND(fe)
 	char		*mapvar = NULL;
 	const char	*mapsep;
 	char		*map = NULL;
+
+	var = alloca(sizeof(char *) * MAX_FE_VARS);
+	memset(var, 0, sizeof(char *) * MAX_FE_VARS);
 
 	/*
 	 * Phase 1 - Lex the arguments

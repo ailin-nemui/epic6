@@ -1081,7 +1081,7 @@ static cJSON_bool	cJSON_GenerateNumber (const cJSON *item, cJSON_Generator *outp
 	double 		d;
 	int 		length 		= 0;
 	size_t 		i 		= 0;
-	char 		number_buffer[26] = {0}; /* temporary buffer to print the number into */
+	char *		number_buffer;
 	char 		decimal_point 	= '.';
 	double 		test 		= 0.0;
 
@@ -1089,22 +1089,25 @@ static cJSON_bool	cJSON_GenerateNumber (const cJSON *item, cJSON_Generator *outp
 		return false_;
 	d = item->valuedouble;
 
+	number_buffer = alloca(26);
+	memset(number_buffer, 0, 26);
+
 	/* This checks for NaN and Infinity */
 	if (isnan(d) || isinf(d))
-		length = snprintf(number_buffer, sizeof(number_buffer), "null");
+		length = snprintf(number_buffer, 26, "null");
 	else
 	{
 		/* Try 15 decimal places of precision to avoid nonsignificant nonzero digits */
-		length = snprintf(number_buffer, sizeof(number_buffer), "%1.15g", d);
+		length = snprintf(number_buffer, 26, "%1.15g", d);
 
 		/* Check whether the original double can be recovered */
 		/* If not, print with 17 decimal places of precision */
 		if ((sscanf(number_buffer, "%lg", &test) != 1) || !compare_double((double)test, d))
-			length = snprintf(number_buffer, sizeof(number_buffer), "%1.17g", d);
+			length = snprintf(number_buffer, 26, "%1.17g", d);
 	}
 
 	/* snprintf failed or buffer overrun occurred */
-	if ((length < 0) || (length > (int)(sizeof(number_buffer) - 1)))
+	if ((length < 0) || (length > 25))
 		return false_;
 
 	/* reserve appropriate space in the output */

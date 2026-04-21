@@ -94,11 +94,12 @@ BUILT_IN_FUNCTION(function_ecdsatool, args)
 {
         tool_applet_t *	tool;
 	int		argc;
-	char *		argv[10];
+	char **		argv;
 
 	if (!args || !*args)
 		RETURN_EMPTY;
 
+	argv = alloca(sizeof(char *) * 10);
 	argc = split_args(args, argv, 10);
         if (!(tool = tool_applet_find(argv[0])))
 	{
@@ -211,7 +212,7 @@ static char *	tool_sign (int argc, char *argv[])
 static char *	tool_verify (int argc, char *argv[])
 {
 	ecdsa_key_t *	key;
-	char *		inbuf;
+	char *		inbuf = NULL;
 	bool 		verify;
 	char *		retval;
 

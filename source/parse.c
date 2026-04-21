@@ -57,7 +57,7 @@
 #define LOCAL_CHANNEL 	'&'
 #define ID_CHANNEL	'!'
 
-#define space 		' '	/* Taken from rfc 1459 */
+#define parse_space 	' '	/* Taken from rfc 1459 */
 #define	MAXPARA		20	/* RFC1459 says 15, but RusNet uses more */
 
 static	void		strip_modes (const char *, const char *, const char *);
@@ -230,9 +230,9 @@ static void 	BreakArgs (char *Input, const char **Sender, const char **OutPut)
 	{
 		Tags = ++Input;
 
-		while (*Input && *Input != space)
+		while (*Input && *Input != parse_space)
 			Input++;
-		while (*Input == space)
+		while (*Input == parse_space)
 			*Input++ = 0;
 	} else
 		Tags = empty_string;
@@ -250,9 +250,9 @@ static void 	BreakArgs (char *Input, const char **Sender, const char **OutPut)
 		char	*fuh;
 
 		fuh = ++Input;
-		while (*Input && *Input != space)
+		while (*Input && *Input != parse_space)
 			Input++;
-		while (*Input == space)
+		while (*Input == parse_space)
 			*Input++ = 0;
 
 		/*
@@ -272,7 +272,7 @@ static void 	BreakArgs (char *Input, const char **Sender, const char **OutPut)
 		*Sender = FromUserHost = empty_string;
 
 	/*
-	 * This changes all spaces (" ") in the protocol command to nuls ('\0')
+	 * This changes all parse_spaces (" ") in the protocol command to nuls ('\0')
 	 * and puts pointers at the start of every token into OutPut[].  Note
 	 * that if a token is followed by more than one space, they will be
 	 * all changed into nul's.  The PasteArgs() function (above) handles
@@ -295,24 +295,24 @@ static void 	BreakArgs (char *Input, const char **Sender, const char **OutPut)
 		if (ArgCount > MAXPARA)
 			break;
 
-		while (*Input && *Input != space)
+		while (*Input && *Input != parse_space)
 			Input++;
-		while (*Input && *Input == space)
+		while (*Input && *Input == parse_space)
 			*Input++ = 0;
 	}
 	OutPut[ArgCount] = NULL;
 }
 
 /* in response to a TOPIC message from the server */
-static void	p_topic (const char *from, const char *comm, const char **ArgList)
+static void	p_topic (const char *from, const char *comm, const char **arglist)
 {
 	const char 	*channel, *new_topic;
 	int	l;
 
-	if (!(channel = ArgList[0])) 
-		{ rfc1459_odd(from, comm, ArgList); return; }
-	if (!(new_topic = ArgList[1])) 
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	if (!(channel = arglist[0])) 
+		{ rfc1459_odd(from, comm, arglist); return; }
+	if (!(new_topic = arglist[1])) 
+		{ rfc1459_odd(from, comm, arglist); return; }
 
 	l = set_context(from_server, -1, from, channel, LEVEL_TOPIC);
 	if (do_hook(TOPIC_LIST, "%s %s %s", from, channel, new_topic))
@@ -321,14 +321,14 @@ static void	p_topic (const char *from, const char *comm, const char **ArgList)
 	pop_context(l);
 }
 
-static void	p_wallops (const char *from, const char *comm, const char **ArgList)
+static void	p_wallops (const char *from, const char *comm, const char **arglist)
 {
 	const char 	*message;
 	int 	server_wallop;
 	int	l;
 
-	if (!(message = ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	if (!(message = arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
 
 	server_wallop = strchr(from, '.') ? 1 : 0;
 
@@ -366,9 +366,9 @@ static void	p_wallops (const char *from, const char *comm, const char **ArgList)
  * Arguments:
  *	from	- The sender of the PRIVMSG (usually a nick; servers uncommon)
  *	comm	- The actual protocol command ("PRIVMSG")
- *	ArgList - Arguments to the PRIVMSG:
- *	  ArgList[0] - The receiver of the message (nick or channel)
- *	  ArgList[1] - Payload of the message
+ *	arglist - Arguments to the PRIVMSG:
+ *	  arglist[0] - The receiver of the message (nick or channel)
+ *	  arglist[1] - Payload of the message
  *
  * Notes:
  *   PRIVMSGs may be sent to
@@ -395,7 +395,7 @@ static void	p_wallops (const char *from, const char *comm, const char **ArgList)
  *
  *   Processing
  *   ==========
- *   CTCPs are delivered via PRIVMSGs, causing a rewrite of ArgList[1].
+ *   CTCPs are delivered via PRIVMSGs, causing a rewrite of arglist[1].
  *	+ Most CTCPs are just removed (CTCP requests)
  *	+ Some do in-place substitution (Encryption - ie, CTCP CAST5)
  *	+ CTCP handling happens first, before anything below
@@ -412,7 +412,7 @@ static void	p_wallops (const char *from, const char *comm, const char **ArgList)
  *
  *   Finally, /NOTIFY is checked.
  */
-static void	p_privmsg (const char *from, const char *comm, const char **ArgList)
+static void	p_privmsg (const char *from, const char *comm, const char **arglist)
 {
 	const char	*real_target, *target, *message;
 	int		hook_type,
@@ -420,11 +420,11 @@ static void	p_privmsg (const char *from, const char *comm, const char **ArgList)
 	const char	*hook_format;
 	int	l;
 
-	PasteArgs(ArgList, 1);
-	if (!(target = ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
-	if (!(message = ArgList[1]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	PasteArgs(arglist, 1);
+	if (!(target = arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
+	if (!(message = arglist[1]))
+		{ rfc1459_odd(from, comm, arglist); return; }
 
 	set_server_doing_privmsg(from_server, 1);
 
@@ -503,11 +503,11 @@ static void	p_privmsg (const char *from, const char *comm, const char **ArgList)
 	{
 	    if (hook_type == MSG_LIST)
 	    {
-		const char *away = get_server_away_message(NOSERV);
+		const char *away_ = get_server_away_message(NOSERV);
 
 		if (do_hook(hook_type, "%s %s", from, message))
 		{
-		    if (away)
+		    if (away_)
 			put_it("*%s* %s <%.16s>", from, message, my_ctime(time(NULL)));
 		    else
 			put_it("*%s* %s", from, message);
@@ -523,15 +523,15 @@ static void	p_privmsg (const char *from, const char *comm, const char **ArgList)
 	set_server_doing_privmsg(from_server, 0);
 }
 
-static void	p_quit (const char *from, const char *comm, const char **ArgList)
+static void	p_quit (const char *from, const char *comm, const char **arglist)
 {
 	const char *	quit_message;
 	int		one_prints = 1;
 	const char *	chan;
 	int		l;
 
-	if (!(quit_message = ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	if (!(quit_message = arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
 
 	for (chan = walk_channels(1, from); chan; chan = walk_channels(0, from))
 	{
@@ -554,16 +554,16 @@ static void	p_quit (const char *from, const char *comm, const char **ArgList)
 	remove_from_channel(NULL, from, from_server);
 }
 
-static void	p_pong (const char *from, const char *comm, const char **ArgList)
+static void	p_pong (const char *from, const char *comm, const char **arglist)
 {
 	const char *	pong_server, *pong_message;
 	int	server_pong = 0;
 
-	PasteArgs(ArgList, 1);
-	if (!(pong_server = ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
-	if (!(pong_message = ArgList[1]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	PasteArgs(arglist, 1);
+	if (!(pong_server = arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
+	if (!(pong_message = arglist[1]))
+		{ rfc1459_odd(from, comm, arglist); return; }
 
 	if (strchr(pong_server, '.'))
 		server_pong = 1;
@@ -585,13 +585,13 @@ static void	p_pong (const char *from, const char *comm, const char **ArgList)
 							from, pong_message);
 }
 
-static void	p_error (const char *from, const char *comm, const char **ArgList)
+static void	p_error (const char *from, const char *comm, const char **arglist)
 {
 	const char *	the_error;
 
-	PasteArgs(ArgList, 0);
-	if (!(the_error = ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	PasteArgs(arglist, 0);
+	if (!(the_error = arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
 
 	if (!from || !isgraph(*from))
 		from = star;
@@ -600,7 +600,7 @@ static void	p_error (const char *from, const char *comm, const char **ArgList)
 		say("%s %s", from, the_error);
 }
 
-static void	p_join (const char *from, const char *comm, const char **ArgList)
+static void	p_join (const char *from, const char *comm, const char **arglist)
 {
 	const char	*channel;
 	char 	*c;
@@ -609,10 +609,10 @@ static void	p_join (const char *from, const char *comm, const char **ArgList)
 	int	l;
 
 	/* We cannot join channel 0 */
-	if (!(channel = ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	if (!(channel = arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
 	if (!strcmp(channel, zero))
-		{ rfc1459_odd(from, comm, ArgList); return; }
+		{ rfc1459_odd(from, comm, arglist); return; }
 
 	/*
 	 * Workaround for extremely gratuitous protocol change in av2.9
@@ -655,15 +655,15 @@ static void	p_join (const char *from, const char *comm, const char **ArgList)
 	pop_context(l);
 }
 
-static void 	p_invite (const char *from, const char *comm, const char **ArgList)
+static void 	p_invite (const char *from, const char *comm, const char **arglist)
 {
 	const char	/* *invitee, */ *invited_to;
 	int	l;
 
-	if (!(/* invitee = */ ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
-	if (!(invited_to = ArgList[1]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	if (!(/* invitee = */ arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
+	if (!(invited_to = arglist[1]))
+		{ rfc1459_odd(from, comm, arglist); return; }
 
 	set_server_invite_channel(from_server, invited_to);
 	set_server_recv_nick(from_server, from);
@@ -687,13 +687,13 @@ static void 	p_invite (const char *from, const char *comm, const char **ArgList)
  * All we do now is throw /on disconnect and/or tell you what
  * happened and it's someone else's problem what to do with that.
  */
-static void	p_kill (const char *from, const char *comm, const char **ArgList)
+static void	p_kill (const char *from, const char *comm, const char **arglist)
 {
 	const char 	*victim, *reason;
 
-	if (!(victim = ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
-	if (!(reason = ArgList[1])) { }
+	if (!(victim = arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
+	if (!(reason = arglist[1])) { }
 
 	/* 
 	 * Old MS Comic Chat servers (exchange) sent a KILL instead of 
@@ -701,7 +701,7 @@ static void	p_kill (const char *from, const char *comm, const char **ArgList)
 	 */
 	if (!is_me(from_server, victim))
 	{
-		p_quit(from, comm, ArgList);
+		p_quit(from, comm, arglist);
 		return;
 	}
 
@@ -730,25 +730,25 @@ static void	p_kill (const char *from, const char *comm, const char **ArgList)
 		say("You have been killed by that fascist [%s] %s", from, reason);
 }
 
-static void	p_ping (const char *from, const char *comm, const char **ArgList)
+static void	p_ping (const char *from, const char *comm, const char **arglist)
 {
 	const char *	message;
 
-        PasteArgs(ArgList, 0);
-	if (!(message = ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
+        PasteArgs(arglist, 0);
+	if (!(message = arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
 
 	if (do_hook(PING_LIST, "%s %s", from, message))
 		send_to_server("PONG %s", message);
 }
 
-static void	p_silence (const char *from, const char *comm, const char **ArgList)
+static void	p_silence (const char *from, const char *comm, const char **arglist)
 {
 	const char *target;
 	char mag;
 
-	if (!(target = ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	if (!(target = arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
 
 	mag = *target++;
 	if (do_hook(SILENCE_LIST, "%c %s", mag, target))
@@ -762,17 +762,17 @@ static void	p_silence (const char *from, const char *comm, const char **ArgList)
 	}
 }
 
-static void	p_cap (const char *from, const char *comm, const char **ArgList)
+static void	p_cap (const char *from, const char *comm, const char **arglist)
 {
 	const char /**disp,*/ *cmd, *args;
 
-	PasteArgs(ArgList, 2);
-	if (!(/* disp = */ ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
-	if (!(cmd = ArgList[1]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
-	if (!(args = ArgList[2]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	PasteArgs(arglist, 2);
+	if (!(/* disp = */ arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
+	if (!(cmd = arglist[1]))
+		{ rfc1459_odd(from, comm, arglist); return; }
+	if (!(args = arglist[2]))
+		{ rfc1459_odd(from, comm, arglist); return; }
 
 	if (!from || !*from)
 		from = "*";
@@ -836,7 +836,7 @@ static void	p_cap (const char *from, const char *comm, const char **ArgList)
 	//yell("<<< p_cap exiting from %s %s %s", disp, cmd, args);
 }
 
-static void	p_nick (const char *from, const char *comm, const char **ArgList)
+static void	p_nick (const char *from, const char *comm, const char **arglist)
 {
 	const char	*new_nick;
 	int		been_hooked = 0,
@@ -844,8 +844,8 @@ static void	p_nick (const char *from, const char *comm, const char **ArgList)
 	const char	*chan;
 	int		l;
 
-	if (!(new_nick = ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	if (!(new_nick = arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
 
 	/*
 	 * Is this me changing nick?
@@ -881,19 +881,19 @@ static void	p_nick (const char *from, const char *comm, const char **ArgList)
 	rename_nick(from, new_nick, from_server);
 }
 
-static void	p_mode (const char *from, const char *comm, const char **ArgList)
+static void	p_mode (const char *from, const char *comm, const char **arglist)
 {
 	const char	*target, *changes;
 	const char	*m_target;
 	const char	*type;
 	int		l;
 
-	while (ArgList[0] && !*ArgList[0])
-		++ArgList;			 /* Ride Austhex breakage */
-	PasteArgs(ArgList, 1);
-	if (!(target = ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
-	if (!(changes = ArgList[1])) { return; } /* Ignore UnrealIRCD */
+	while (arglist[0] && !*arglist[0])
+		++arglist;			 /* Ride Austhex breakage */
+	PasteArgs(arglist, 1);
+	if (!(target = arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
+	if (!(changes = arglist[1])) { return; } /* Ignore UnrealIRCD */
 	if (!*changes) { return; }		 /* Ignore UnrealIRCD */
 
 	if (get_int_var(MODE_STRIPPER_VAR))
@@ -1002,16 +1002,16 @@ static void strip_modes (const char *from, const char *channel, const char *line
 
 }
 
-static void	p_kick (const char *from, const char *comm, const char **ArgList)
+static void	p_kick (const char *from, const char *comm, const char **arglist)
 {
 	const char	*channel, *victim, *comment;
 	int	l;
 
-	if (!(channel = ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
-	if (!(victim = ArgList[1]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
-	if (!(comment = ArgList[2])) { comment = "(no comment)"; }
+	if (!(channel = arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
+	if (!(victim = arglist[1]))
+		{ rfc1459_odd(from, comm, arglist); return; }
+	if (!(comment = arglist[2])) { comment = "(no comment)"; }
 
 
 	/*
@@ -1080,15 +1080,15 @@ static void	p_kick (const char *from, const char *comm, const char **ArgList)
 	remove_from_channel(channel, victim, from_server);
 }
 
-static void	p_part (const char *from, const char *comm, const char **ArgList)
+static void	p_part (const char *from, const char *comm, const char **arglist)
 {
 	const char	*channel, *reason;
 	int	l;
 
-	PasteArgs(ArgList, 1);
-	if (!(channel = ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
-	if (!(reason = ArgList[1])) { }
+	PasteArgs(arglist, 1);
+	if (!(channel = arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
+	if (!(reason = arglist[1])) { }
 
 	{
 		l = set_context(from_server, -1, from, channel, LEVEL_PART);
@@ -1119,27 +1119,27 @@ static void	p_part (const char *from, const char *comm, const char **ArgList)
 /*
  * Egads. i hope this is right.
  */
-static void	p_rpong (const char *from, const char *comm, const char **ArgList)
+static void	p_rpong (const char *from, const char *comm, const char **arglist)
 {
 	const char /* *nick, */ *target_server, *millisecs, *orig_time;
 	time_t delay;
 
-	if (!(/* nick = */ ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
-	if (!(target_server = ArgList[1]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
-	if (!(millisecs = ArgList[2]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
-	if (!(orig_time = ArgList[3]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	if (!(/* nick = */ arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
+	if (!(target_server = arglist[1]))
+		{ rfc1459_odd(from, comm, arglist); return; }
+	if (!(millisecs = arglist[2]))
+		{ rfc1459_odd(from, comm, arglist); return; }
+	if (!(orig_time = arglist[3]))
+		{ rfc1459_odd(from, comm, arglist); return; }
 
 	/*
 	 * :server RPONG yournick remoteserv ms :yourargs
 	 *
-	 * ArgList[0] -- our nickname (presumably)
-	 * ArgList[1] -- The server we RPING'd
-	 * ArgList[2] -- The number of ms it took to return
-	 * ArgList[3] -- The arguments we passed (presumably)
+	 * arglist[0] -- our nickname (presumably)
+	 * arglist[1] -- The server we RPING'd
+	 * arglist[2] -- The number of ms it took to return
+	 * arglist[3] -- The arguments we passed (presumably)
 	 */
 
 	delay = time(NULL) - atol(orig_time);
@@ -1253,18 +1253,18 @@ static 	void 	p_snotice (const char *from, const char *to, const char *line)
  * The main handler for NOTICE commands...
  * This is as much like p_privmsg as i can get away with.
  */
-static void 	p_notice (const char *from, const char *comm, const char **ArgList)
+static void 	p_notice (const char *from, const char *comm, const char **arglist)
 {
 	const char 	*target, *message;
 	const char	*real_target;
 	int		hook_type;
 	int		l;
 
-	PasteArgs(ArgList, 1);
-	if (!(target = ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
-	if (!(message = ArgList[1]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	PasteArgs(arglist, 1);
+	if (!(target = arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
+	if (!(message = arglist[1]))
+		{ rfc1459_odd(from, comm, arglist); return; }
 
 	set_server_doing_notice(from_server, 1);
 
@@ -1335,13 +1335,13 @@ static void 	p_notice (const char *from, const char *comm, const char **ArgList)
 	set_server_doing_notice(from_server, 0);
 }
 
-static void	p_authenticate (const char *from, const char *comm, const char **ArgList)
+static void	p_authenticate (const char *from, const char *comm, const char **arglist)
 {
 	const char *plus;
 
-	PasteArgs(ArgList, 0);
-	if (!(plus = ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	PasteArgs(arglist, 0);
+	if (!(plus = arglist[0]))
+		{ rfc1459_odd(from, comm, arglist); return; }
 
 	if (!from || !*from)
 		from = "*";
@@ -1349,12 +1349,12 @@ static void	p_authenticate (const char *from, const char *comm, const char **Arg
 	do_hook(AUTHENTICATE_LIST, "%s %s", from, plus);
 }
 
-void	rfc1459_odd (const char *from, const char *comm, const char **ArgList)
+void	rfc1459_odd (const char *from, const char *comm, const char **arglist)
 {
 	const char *	stuff;
 
-	PasteArgs(ArgList, 0);
-	if (!(stuff = ArgList[0]))
+	PasteArgs(arglist, 0);
+	if (!(stuff = arglist[0]))
 		stuff = empty_string;
 
 	if (!from || !*from)
@@ -1424,7 +1424,7 @@ static protocol_command rfc1459[] = {
 #define NUMBER_OF_COMMANDS (sizeof(rfc1459) / sizeof(protocol_command)) - 2;
 static int 	num_protocol_cmds = -1;
 
-#define islegal(c) ((((c) >= 'A') && ((c) <= '~')) || \
+#define isnicklegal(c) ((((c) >= 'A') && ((c) <= '~')) || \
                     (((c) >= '0') && ((c) <= '9')) || \
 		     ((c) == '*') || \
 		     ((c) & 0x80))
@@ -1437,8 +1437,8 @@ void 	parse_server (const char *__U(orig_line), size_t __U(orig_line_size))
 {
 	const char	*from;
 	const char	*comm;
-	const char	**ArgList;
-	const char	*TrueArgs[MAXPARA + 2];	/* Include space for command */
+	const char	**arglist;
+	const char **	TrueArgs;
 	const char 	*OldFromUserHost;
 	int	loc;
 	char	*line;
@@ -1469,24 +1469,27 @@ void 	parse_server (const char *__U(orig_line), size_t __U(orig_line_size))
 
 	OldFromUserHost = FromUserHost;
 	FromUserHost = empty_string;
-	ArgList = TrueArgs;
-	BreakArgs(line, &from, ArgList);
 
-	if ((!(comm = *ArgList++)) || !from || !*ArgList)
+	/* Include space for command */
+	TrueArgs = alloca(sizeof(char *) * (MAXPARA + 2));
+	arglist = TrueArgs;
+	BreakArgs(line, &from, arglist);
+
+	if ((!(comm = *arglist++)) || !from || !*arglist)
 	{ 
-		rfc1459_odd(from, comm, ArgList);
+		rfc1459_odd(from, comm, arglist);
 		return;		/* Serious protocol violation -- ByeBye */
 	}
 
-	if (*from && !islegal(*from))
+	if (*from && !isnicklegal(*from))
 	{ 
-		rfc1459_odd(from, comm, ArgList);
+		rfc1459_odd(from, comm, arglist);
 		return;		
 	}
 
 	/* Some day all this needs to be replaced with an alist. */
 	if (is_number(comm))
-		numbered_command(from, comm, ArgList);
+		numbered_command(from, comm, arglist);
 	else
 	{
 		for (loc = 0; rfc1459[loc].command; loc++)
@@ -1494,9 +1497,9 @@ void 	parse_server (const char *__U(orig_line), size_t __U(orig_line_size))
 				break;
 
 		if (rfc1459[loc].command && rfc1459[loc].inbound_handler)
-			rfc1459[loc].inbound_handler(from, comm, ArgList);
+			rfc1459[loc].inbound_handler(from, comm, arglist);
 		else
-			rfc1459_odd(from, comm, ArgList);
+			rfc1459_odd(from, comm, arglist);
 	}
 
 	FromUserHost = OldFromUserHost;

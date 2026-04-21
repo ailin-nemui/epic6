@@ -5,13 +5,8 @@
  * Copyright 1997 EPIC Software Labs
  */
 
-#ifndef __vars_h__
-#define __vars_h__
-
-/* indexes for the irc_variable array */
-/*
-enum VAR_TYPES {
-*/
+/* #ifndef __vars_h__ */
+/* #define __vars_h__ */
 
 #ifndef VARS_C
 extern
@@ -179,6 +174,9 @@ int	ACCEPT_INVALID_SSL_CERT_VAR,
 	XTERM_OPTIONS_VAR,
 	NUMBER_OF_VARIABLES
 /* } */ ;
+
+#ifndef __vars_h__ 
+#define __vars_h__
 
 /* var_settings indexes ... also used in display.c for highlights */
 #define OFF 			0

@@ -49,11 +49,11 @@
 #include "ifcmd.h"
 #include "functions.h"
 
-typedef struct WaitCmdStru
+typedef struct ExecWaitCmdStru
 {
-	struct WaitCmdStru *	next;
+	struct ExecWaitCmdStru *	next;
 	char *			commands;
-}	WaitCmd;
+}	ExecWaitCmd;
 
 /* Process: the structure that has all the info needed for each process */
 typedef struct
@@ -87,7 +87,7 @@ typedef struct
 	char *	stderrc;		/* Commands to run on each line of stderr (-ERROR) */
 	char *	stderrpc;		/* Commands to run on each partial line of error (-ERRORPART) */
 	char *	exitpc;			/* Commands to run on process cleanup (-EXIT) */
-	WaitCmd *waitcmds;		/* Commands to run on process exit (-END or /WAIT -CMD) */
+	ExecWaitCmd *waitcmds;		/* Commands to run on process exit (-END or /WAIT -CMD) */
 
 	Timespec	started_at;	/* When the process began */
 	int	lines_recvd;		/* How many lines we've received from process */
@@ -562,7 +562,7 @@ int 		text_to_process (const char *target, const char *text, int show)
 void 		add_process_wait (const char *target, const char *cmd)
 {
 	Process *proc;
-	WaitCmd *new_ewl, *posn;
+	ExecWaitCmd *new_ewl, *posn;
 	int	process_refnum;
 
 	if (!(process_refnum = get_process_refnum(target)))
@@ -577,7 +577,7 @@ void 		add_process_wait (const char *target, const char *cmd)
 		return;
 	}
 
-	new_ewl = new_malloc(sizeof(WaitCmd));
+	new_ewl = new_malloc(sizeof(ExecWaitCmd));
 	new_ewl->next = NULL;
 	new_ewl->commands = malloc_strdup(cmd);
 
@@ -626,7 +626,7 @@ void 		add_process_wait (const char *target, const char *cmd)
 static void 	cleanup_dead_processes (void)
 {
 	int	i;
-	WaitCmd	*cmd, *next;
+	ExecWaitCmd	*cmd, *next;
 	Process *deadproc, *proc;
 	char	*exit_info;
 	int	old_from_server, l;

@@ -549,6 +549,7 @@ BUILT_IN_COMMAND(lastlog)
 	window = get_window_refnum(0);
 	lc = set_context(from_server, window, NULL, NULL, LEVEL_OTHER);
 	cnt = get_window_lastlog_size(window);
+	memset(&save_mask, 0, sizeof(save_mask));
 	get_window_lastlog_mask(window, &save_mask);
 	clear_window_lastlog_mask(window);
 	mask_unsetall(&level_mask);
@@ -795,10 +796,10 @@ BUILT_IN_COMMAND(lastlog)
 	}
 	if (regex)
 	{
-		int	options = REG_EXTENDED | REG_ICASE | REG_NOSUB;
+		int	options_ = REG_EXTENDED | REG_ICASE | REG_NOSUB;
 		int	errcode;
 
-		if ((errcode = regcomp(&realreg, regex, options)))
+		if ((errcode = regcomp(&realreg, regex, options_)))
 		{
 			char *	errmsg;
 
@@ -811,10 +812,10 @@ BUILT_IN_COMMAND(lastlog)
 	}
 	if (noregex)
 	{
-		int	options = REG_EXTENDED | REG_ICASE | REG_NOSUB;
+		int	options_ = REG_EXTENDED | REG_ICASE | REG_NOSUB;
 		int	errcode;
 
-		if ((errcode = regcomp(&realnoreg, noregex, options)))
+		if ((errcode = regcomp(&realnoreg, noregex, options_)))
 		{
 			char *	errmsg;
 

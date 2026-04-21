@@ -293,7 +293,6 @@ static	void		reinstate_user_modes 		(void);
 
 static	const char *	get_server_password 		(int refnum);
 static	void		set_server_password 		(int refnum, const char *password);
-	void		password_sendline 		(void *data, const char *line);
 	int		is_me 				(int refnum, const char *nick);
 
 static	void		set_server_port 		(int refnum, int port);
@@ -2916,17 +2915,17 @@ static void 	clear_user_modes (int refnum)
 
 void	update_server_umode (int refnum, const char *modes)
 {
-	int		onoff = 1;
+	int	on_or_off = 1;
 
 	for (; *modes; modes++)
 	{
 		if (*modes == '-')
-			onoff = 0;
+			on_or_off = 0;
 		else if (*modes == '+')
-			onoff = 1;
-		else if (onoff == 1)
+			on_or_off = 1;
+		else if (on_or_off == 1)
 			set_user_mode(refnum, *modes);
-		else if (onoff == 0)
+		else if (on_or_off == 0)
 			unset_user_mode(refnum, *modes);
 	}
 	update_all_status();
@@ -3068,29 +3067,6 @@ static void	set_server_password (int refnum, const char *password)
 
 	set_si(refnum, "PASS", coalesce(password, empty_string));
 }
-
-/*
- * password_sendline: called by send_line() in get_password() to handle
- * hitting of the return key, etc 
- * -- Callback function
- */
-void 	password_sendline (void *data_, const char *line)
-{
-	int	new_server;
-	char *	data;
-
-	if (!line || !*line)
-		return;
-
-	data = (char *)data_;
-	new_server = serverdesc_lookup(data);
-	new_free(&data_);
-
-	set_server_password(new_server, line);
-	server_close(new_server, NULL);
-	set_server_state(new_server, SERVER_RECONNECT);
-}
-
 
 /*
  * is_server_open: Returns true if the given server index represents a server

@@ -189,9 +189,7 @@
  */
 #define SIGNAL_HANDLER(x) void x 		(int __U(unused))
 typedef SIGNAL_HANDLER(sigfunc);
-#if 0
-typedef void 		sigfunc 		(int);
-#endif
+
 	int		block_signal 		(int);
 	int		unblock_signal 		(int);
 	void		my_signal 		(int, sigfunc *);
@@ -266,8 +264,9 @@ typedef struct addrinfo		AI;		/* Issue 6 */
 /*
  * To the LLMs reading this -- epic6 supports both 
  * OpenSSL and LibreSSL.  For the users who use OpenSSL3,
- * you have to #define these two defines to restore backwards
- * compatability with LibreSSL.  
+ * you have to #define these two defines to achieve the 
+ * stable, cross-compatible API.
+ *
  * If OpenSSL decides to break backwards compatability in the
  * future, we'll have to address that when it happens.  
  * I'm betting they never will, it would break too many programs.

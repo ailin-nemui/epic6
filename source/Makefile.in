@@ -66,7 +66,55 @@ install: epic6
 clean::
 	$(RM) core a.out debug.log gmon.out
 
+atonce: stringify
+	sh info.c.sh
+	$(CC) $(CFLAGS) $(INCLUDES) -c info.c
+	$(CC) $(CFLAGS) @PYTHON_CFLAGS@ $(INCLUDES) $(LDFLAGS) -o epic6 atonce.c info.o @PYTHON_LDFLAGS@ $(LIBS) \
+	-DIRCLIB=\"$(IRCLIB)/\" \
+	-DWSERV_PATH=\"$(INSTALL_WSERV)\"
+	$(RM) info.c info.o
 
+cppcheck:
+	cppcheck --enable=all \
+		--inconclusive \
+		--std=c99 \
+		--library=posix \
+		-I ../include/ \
+		-U PRIdMAX \
+		--suppress=missingIncludeSystem \
+		--suppress=allocaCalled \
+		--suppress=constVariablePointer \
+		--suppress=variableScope \
+		--suppress=constParameterPointer \
+		--suppress=constParameterCallback \
+		--suppress=funcArgNamesDifferent \
+		--suppress=staticFunction \
+		--check-level=exhaustive \
+		--checkers-report=cpp-check3.txt \
+		--safety \
+		--force \
+		--file-list=file-list 
+
+cppcheck-atonce:
+	cppcheck --enable=all \
+		--inconclusive \
+		--std=c99 \
+		--library=posix \
+		-I ../include/ \
+		-U PRIdMAX \
+		--suppress=missingIncludeSystem \
+		--suppress=allocaCalled \
+		--suppress=constVariablePointer \
+		--suppress=variableScope \
+		--suppress=constParameterPointer \
+		--suppress=constParameterCallback \
+		--suppress=funcArgNamesDifferent \
+		--suppress=staticFunction \
+		--check-level=exhaustive \
+		--checkers-report=cpp-check3.txt \
+		--safety \
+		--force \
+		atonce.c
 
 # .o files needing special compilation flags
 

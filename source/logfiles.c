@@ -655,7 +655,7 @@ typedef struct logfile_ops_T {
 	logfile_func	func;
 } logfile_ops;
 
-static const logfile_ops options [] = {
+static const logfile_ops logfile_options [] = {
 	{ "ACTIVITY",	logfile_activity	},
 	{ "ADD",	logfile_add		},
 	{ "DESCRIBE",	logfile_describe	},
@@ -691,17 +691,17 @@ BUILT_IN_COMMAND(logcmd)
                 if (*arg == '-' || *arg == '/')         /* Ignore - or / */
                         arg++, len--;
 
-                for (i = 0; options[i].func ; i++)
+                for (i = 0; logfile_options[i].func ; i++)
                 {
-                        if (!my_strnicmp(arg, options[i].command, len))
+                        if (!my_strnicmp(arg, logfile_options[i].command, len))
                         {
-                                log = options[i].func(log, &args);
+                                log = logfile_options[i].func(log, &args);
                                 nargs++;
                                 break;
                         }
                 }
 
-                if (!options[i].func)
+                if (!logfile_options[i].func)
                 {
 			Logfile *s_log;
                         if ((s_log = get_log_by_desc(arg)))

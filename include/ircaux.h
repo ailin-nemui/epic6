@@ -188,7 +188,9 @@ struct 	metric_time 	timespec_to_metric	(const Timespec *);
 	void	add_mode_to_str		(char *, size_t, int);
 	void	remove_mode_from_str	(char *, size_t, int);
 	void	clear_modes		(char *);
+#if 0
 	void	update_mode_str		(char *, size_t, const char *);
+#endif
 
 	cJSON * kwarg_string_to_json 	(const char *, const char **);
 

@@ -724,35 +724,35 @@ int 	term_init (void)
 	/* Phase 1 Step 4 -- Correct for TERM deficiencies */
 	/* I reviewed several TERM settings used by people to ensure these were consistent */
 	if (!cJSON_GetObjectItem(terminfo_json, "cup"))
-		cJSON_AddStringToObject(terminfo_json, "cup", "\033[%i%p1%d;%p2%dH");
+		cJSON_AddStringToObject(terminfo_json, "cup", "\033" "[%i%p1%d;%p2%dH");
 	if (!cJSON_GetObjectItem(terminfo_json, "ed"))
-		cJSON_AddStringToObject(terminfo_json, "ed", "\033[J");
+		cJSON_AddStringToObject(terminfo_json, "ed", "\033" "[J");
 	if (!cJSON_GetObjectItem(terminfo_json, "el"))
-		cJSON_AddStringToObject(terminfo_json, "el", "\033[K");
+		cJSON_AddStringToObject(terminfo_json, "el", "\033" "[K");
 	if (!cJSON_GetObjectItem(terminfo_json, "csr"))
-		cJSON_AddStringToObject(terminfo_json, "csr", "\033[%i%p1%d;%p2%dr");
+		cJSON_AddStringToObject(terminfo_json, "csr", "\033" "[%i%p1%d;%p2%dr");
 	if (!cJSON_GetObjectItem(terminfo_json, "ri"))
-		cJSON_AddStringToObject(terminfo_json, "ri", "\033M");
+		cJSON_AddStringToObject(terminfo_json, "ri", "\033" "M");
 	if (!cJSON_GetObjectItem(terminfo_json, "ind"))
 		cJSON_AddStringToObject(terminfo_json, "ind", "\n");
 
 	/* Our extensions */
 	if (!cJSON_GetObjectItem(terminfo_json, "rmrev"))
-		cJSON_AddStringToObject(terminfo_json, "rmrev", "\03327m");
+		cJSON_AddStringToObject(terminfo_json, "rmrev", "\033" "[27m");
 	if (!cJSON_GetObjectItem(terminfo_json, "c7c1t"))
-		cJSON_AddStringToObject(terminfo_json, "c7c1t", "\033F");
+		cJSON_AddStringToObject(terminfo_json, "c7c1t", "\033" "F");
 
 
 	/* Phase 1 Step 5 -- Figure out colors (eww, gross) */
 	/* I sourced these from infocmp, under the guidance of gemini */
 	if (!cJSON_GetObjectItem(terminfo_json, "setaf"))
-		cJSON_AddStringToObject(terminfo_json, "setaf", "\033[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m");
+		cJSON_AddStringToObject(terminfo_json, "setaf", "\033" "[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m");
 	if (!cJSON_GetObjectItem(terminfo_json, "setab"))
-		cJSON_AddStringToObject(terminfo_json, "setaf", "\033[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m");
+		cJSON_AddStringToObject(terminfo_json, "setaf", "\033" "[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m");
 	if (!cJSON_GetObjectItem(terminfo_json, "setrgbf"))
-		cJSON_AddStringToObject(terminfo_json, "setrgbf", "\033[38;2;%p1%d;%p2%d;%p3%dm");
+		cJSON_AddStringToObject(terminfo_json, "setrgbf", "\033" "[38;2;%p1%d;%p2%d;%p3%dm");
 	if (!cJSON_GetObjectItem(terminfo_json, "setrgbb"))
-		cJSON_AddStringToObject(terminfo_json, "setrgbb", "\033[48;2;%p1%d;%p2%d;%p3%dm");
+		cJSON_AddStringToObject(terminfo_json, "setrgbb", "\033" "[48;2;%p1%d;%p2%d;%p3%dm");
 
 	/* Phase 1 Step 6 -- Let's ensure we have default values for everything */
 	cJSON_UpsertNumberToObject(terminfo_json, "li", 24);

@@ -101,6 +101,9 @@ uninstallbin: uninstallepic6-@INSTALL_TYPE@ uninstallwserv4 uninstalloldbins
 
 VPATH=@srcdir@
 
+atonce:
+	@+cd source; $(MAKE2) atonce
+
 #
 # Main irc binary
 #

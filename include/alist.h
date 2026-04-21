@@ -36,7 +36,7 @@ static uint32_t  cs_alist_hash (const char *s, uint32_t *mask)
 #endif
 
 #ifdef __need_ci_alist_hash__
-extern unsigned char *stricmp_tables[2];
+extern unsigned char *stricmp_tables[3];
 /*
  * This hash routine is for case insensitive keys.  Specifically keys that
  * cannot be prefolded to an appropriate case but are still insensitive

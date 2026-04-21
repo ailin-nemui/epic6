@@ -1596,6 +1596,7 @@ static void	delete_cmd_alias (const char *orig_name, int noisy)
 	new_free(&name);
 }
 
+#if 0
 void	delete_builtin_command (const char *orig_name)
 {
 	Symbol *item;
@@ -1663,6 +1664,7 @@ void	delete_builtin_variable (const char *orig_name)
 	}
 	new_free(&name);
 }
+#endif
 
 /* * * */
 #if 0
@@ -2792,6 +2794,9 @@ int	stack_push_var_alias (const char *name)
 	Symbol *item, *sym;
 	int	cnt = 0, loc = 0;
 
+	if (!name)
+		return -1;
+
 	item = find_alist_item(&globals, name, &cnt, &loc);
 	if (!item || cnt >= 0)
 	{
@@ -2813,6 +2818,9 @@ int	stack_pop_var_alias (const char *name)
 {
 	Symbol *item, *sym, *s, *ss;
 	int	cnt = 0, loc = 0;
+
+	if (!name)
+		return -1;
 
 	item = find_alist_item(&globals, name, &cnt, &loc);
 	if (!item || cnt >= 0)
@@ -2843,6 +2851,9 @@ int	stack_list_var_alias (const char *name)
 	Symbol *item, *sym;
 	int	counter = 0;
 
+	if (!name)
+		return -1;
+
 	if (!(item = lookup_symbol(name)))
 		return -1;
 
@@ -2871,6 +2882,9 @@ int	stack_push_cmd_alias (char *name)
 	Symbol *item, *sym;
 	int	cnt = 0, loc = 0;
 
+	if (!name)
+		return -1;
+
 	item = find_alist_item(&globals, name, &cnt, &loc);
 	if (!item || cnt >= 0)
 	{
@@ -2893,6 +2907,9 @@ int	stack_pop_cmd_alias (const char *name)
 {
 	Symbol *item, *sym, *s, *ss;
 	int	cnt = 0, loc = 0;
+
+	if (!name)
+		return -1;
 
 	item = find_alist_item(&globals, name, &cnt, &loc);
 	if (!item || cnt >= 0)
@@ -2925,6 +2942,8 @@ int	stack_list_cmd_alias (const char *name)
 	Symbol *item, *sym;
 	int	counter = 0;
 
+	if (!name)
+		return -1;
 	if (!(item = lookup_symbol(name)))
 		return -1;
 
@@ -2956,6 +2975,9 @@ int	stack_push_builtin_cmd_alias (const char *name)
 	Symbol *item, *sym;
 	int	cnt = 0, loc = 0;
 
+	if (!name)
+		return -1;
+
 	item = find_alist_item(&globals, name, &cnt, &loc);
 	if (!item || cnt >= 0)
 	{
@@ -2975,6 +2997,9 @@ int	stack_pop_builtin_cmd_alias (const char *name)
 {
 	Symbol *item, *sym, *s, *n;
 	int	cnt = 0, loc = 0;
+
+	if (!name)
+		return -1;
 
 	item = find_alist_item(&globals, name, &cnt, &loc);
 	if (!item || cnt >= 0)
@@ -3004,6 +3029,8 @@ int	stack_list_builtin_cmd_alias (const char *name)
 	Symbol *item, *sym;
 	int	counter = 0;
 
+	if (!name)
+		return -1;
 	if (!(item = lookup_symbol(name)))
 		return -1;
 
@@ -3026,10 +3053,14 @@ int	stack_list_builtin_cmd_alias (const char *name)
 #endif
 
 /* * * */
+#if 0
 int	stack_push_builtin_func_alias (const char *name)
 {
 	Symbol *item, *sym;
 	int	cnt = 0, loc = 0;
+
+	if (!name)
+		return -1;
 
 	item = find_alist_item(&globals, name, &cnt, &loc);
 	if (!item || cnt >= 0)
@@ -3050,6 +3081,9 @@ int	stack_pop_builtin_function_alias (const char *name)
 {
 	Symbol *item, *sym, *s, *n;
 	int	cnt = 0, loc = 0;
+
+	if (!name)
+		return -1;
 
 	item = find_alist_item(&globals, name, &cnt, &loc);
 	if (!item || cnt >= 0)
@@ -3079,6 +3113,8 @@ int	stack_list_builtin_function_alias (const char *name)
 	Symbol *item, *sym;
 	int	counter = 0;
 
+	if (!name)
+		return -1;
 	if (!(item = lookup_symbol(name)))
 		return -1;
 
@@ -3098,13 +3134,17 @@ int	stack_list_builtin_function_alias (const char *name)
 		return 0;
 	return -1;
 }
+#endif
 
 /* * * */
+#if 0
 int	stack_push_builtin_expando_alias (const char *name)
 {
 	Symbol *item, *sym;
 	int	cnt = 0, loc = 0;
 
+	if (!name)
+		return -1;
 	item = find_alist_item(&globals, name, &cnt, &loc);
 	if (!item || cnt >= 0)
 	{
@@ -3125,6 +3165,8 @@ int	stack_pop_builtin_expando_alias (const char *name)
 	Symbol *item, *sym, *s, *n;
 	int	cnt = 0, loc = 0;
 
+	if (!name)
+		return -1;
 	item = find_alist_item(&globals, name, &cnt, &loc);
 	if (!item || cnt >= 0)
 		return -1;
@@ -3153,6 +3195,8 @@ int	stack_list_builtin_expando_alias (const char *name)
 	Symbol *item, *sym;
 	int	counter = 0;
 
+	if (!name)
+		return -1;
 	if (!(item = lookup_symbol(name)))
 		return -1;
 
@@ -3172,7 +3216,7 @@ int	stack_list_builtin_expando_alias (const char *name)
 		return 0;
 	return -1;
 }
-
+#endif
 
 /* * * */
 int	stack_push_builtin_var_alias (const char *name)
@@ -3180,6 +3224,8 @@ int	stack_push_builtin_var_alias (const char *name)
 	Symbol *item, *sym;
 	int	cnt = 0, loc = 0;
 
+	if (!name)
+		return -1;
 	item = find_alist_item(&globals, name, &cnt, &loc);
 	if (!item || cnt >= 0)
 	{
@@ -3200,6 +3246,8 @@ int	stack_pop_builtin_var_alias (const char *name)
 	Symbol *item, *sym, *s, *n;
 	int	cnt = 0, loc = 0;
 
+	if (!name)
+		return -1;
 	item = find_alist_item(&globals, name, &cnt, &loc);
 	if (!item || cnt >= 0)
 		return -1;
@@ -3228,6 +3276,8 @@ int	stack_list_builtin_var_alias (const char *name)
 	Symbol *item, *sym;
 	int	counter = 0;
 
+	if (!name)
+		return -1;
 	if (!(item = lookup_symbol(name)))
 		return -1;
 

@@ -988,7 +988,7 @@ const char 	*get_channel_key (const char *channel, int server)
 	if (tmp && tmp->key)
 		return tmp->key;
 	else
-		return empty_string;
+		return NULL;
 }
 
 

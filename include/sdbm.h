@@ -4,6 +4,9 @@
  * author: oz@nexus.yorku.ca
  * status: public domain. 
  */
+#ifndef __have_sdbm_h__
+#define __have_sdbm_h__
+
 struct SDBM;
 typedef struct SDBM SDBM;
 
@@ -30,3 +33,4 @@ typedef struct {
 	Datum 	sdbm_nextkey 	(SDBM *);
 	int	sdbm_error 	(SDBM *);
 
+#endif

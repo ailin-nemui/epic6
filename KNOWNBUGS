@@ -453,4 +453,11 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Remove size limitations by using malloc_sprintf() instead of snprintf()
 * This makes /echo unlimited. yay!
 * Begin rewriting scrambox.c to improve its quality
+* Introduce make targets for cppcheck
+    make cppcheck
+* Introduce "atonce" compiling for debug purposes
+  - make atonce   make cppcheck-atonce
+* Fix various issues found by cppcheck-atonce, scan-build atonce
+* Fix namespace shadow issues uncovered by atonce (global-vs-local conflicts)
+* Migrate more stack strings.  These are surprisingly tricky to regex!
 

@@ -2795,13 +2795,75 @@ Timespec	time_add (const Timespec t1, const Timespec t2)
 }
 
 
-const char *	my_ctime (time_t when)
+/*
+ * my_ctime - Turn a epoch time into a human readable datetime
+ *
+ * Arguments:
+ *	when	- Seconds since the epoch (see notes)
+ *
+ * Return value:
+ *	"when" represented as a human readable date/timestamp
+ *
+ * Notes:
+ *	This function's existance is a consequence of the Y2038 issue.
+ *	The world will have to move to 64 bit (time_t)'s and in order 
+ *	to get a human readable representation of a (time_t), we use ctime().
+ *	That converts our (time_t) into a (struct tm), with two defects:
+ *	   1. There are 64 bit (time_t) values which cannot be represented
+ *	      as a (struct tm) because it overflows the int tm_year.
+ *	   2. ctime() is not specified to fail, and some implementations
+ *	      will return NULL on errors and others will return a placeholder
+ *	      value.
+ *	This defect was noticed by some who sent rogue CTCP UTC messages 
+ *	with invalid (time_t) values that caused a null dereference in 
+ *	ircII clients running on systems where cflags() can return NULL.
+ *
+ * 	So the solution to this is to use localtime_r().  This function is
+ *	aware of the defects and is defined to return NULL/EOVERFLOW when
+ *	a time_t value cannot be represented.
+ *
+ *	Additionally, the system may or may not have a time_t that is smaller
+ *	that an intmax_t, so we must be careful about that truncation.
+ *
+ *	NEVER CALL CTIME(), IT'S UNSAFE.
+ */
+const char *	my_ctime (intmax_t seconds)
 {
-	static char 	x[50];
+static	char 		x[50];
 	struct tm	time_val;
+	time_t		when;
 
+	if (sizeof(time_t) < sizeof(intmax_t))
+	{
+		/* First ensure we have a (time_t) */
+		if (sizeof(time_t) == sizeof(long))
+		{
+		    if (seconds > (intmax_t) LONG_MAX || seconds < (intmax_t) LONG_MIN)
+		    {
+			snprintf(x, sizeof(x), "%jd <invalid>", seconds);
+			return x;
+		    }
+		}
+		else     /* time_t is an int, if it's not an intmax_t or a long */
+		{
+		    if (seconds > (intmax_t) INT_MAX || seconds < (intmax_t) INT_MIN)
+		    {
+			snprintf(x, sizeof(x), "%jd <invalid>", seconds);
+			return x;
+		    }
+		}
+	}
+
+	/* Second, ensure the (time_t) doesn't overflow. */
+	when = (time_t) seconds;
 	memset(&time_val, 0, sizeof(time_val));
-	localtime_r(&when, &time_val);
+	if (!(localtime_r(&when, &time_val)))
+	{
+		snprintf(x, sizeof(x), "%jd <invalid>", seconds);
+		return x;
+	}
+
+	/* Ok, we're good! */
 	strftime(x, sizeof(x), "%c", &time_val);
 	return x;
 }
@@ -3977,6 +4039,9 @@ void	add_mode_to_str (char *modes, size_t len, int mode)
 	char *	new_modes;
 	int	i;
 
+	if (!modes)
+		return;
+
 	/* 
 	 * 'c' is the mode that is being added
 	 * 'o' is the umodes that are already set
@@ -4016,6 +4081,9 @@ void	remove_mode_from_str (char *modes, size_t len, int mode)
 	char *	new_modes;
 	int	i;
 
+	if (!modes)
+		return;
+
 	/* 
 	 * 'c' is the mode that is being deleted
 	 * 'o' is the umodes that are already set
@@ -4045,6 +4113,7 @@ void 	clear_modes (char *modes)
 	*modes = 0;
 }
 
+#if 0
 void	update_mode_str (char *modes, size_t len, const char *changes)
 {
 	int		onoff = 1;
@@ -4065,6 +4134,7 @@ void	update_mode_str (char *modes, size_t len, const char *changes)
 	}
 	update_all_status();
 }
+#endif
 
 /*
  * This function is 8 bit clean (it ignores nuls) so please do not just
@@ -5326,23 +5396,23 @@ char *  sha256_digest (const char *type, int hexstr, const char *input, size_t i
 	unsigned char *	local_output;
 	unsigned int	local_output_len;
 	char *		s;
-	EVP_MD_CTX *	ctx;
+	EVP_MD_CTX *	ctx_;
 	unsigned int	i;
 
 	if (type != NULL)
 		return NULL;
-	if ((ctx = EVP_MD_CTX_new()) == NULL)
+	if ((ctx_ = EVP_MD_CTX_new()) == NULL)
 		return NULL;
-	if (!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL))
+	if (!EVP_DigestInit_ex(ctx_, EVP_sha256(), NULL))
 		return NULL;
-	if (!EVP_DigestUpdate(ctx, input, inputlen))
+	if (!EVP_DigestUpdate(ctx_, input, inputlen))
 		return NULL;
 
 	local_output = alloca(EVP_MAX_MD_SIZE);
 	local_output_len = 0;
-	if (!EVP_DigestFinal_ex(ctx, local_output, &local_output_len))
+	if (!EVP_DigestFinal_ex(ctx_, local_output, &local_output_len))
 		return NULL;
-	EVP_MD_CTX_free(ctx);
+	EVP_MD_CTX_free(ctx_);
 
 	for (s = output, i = 0; i < local_output_len; i++)
 	{

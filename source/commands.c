@@ -92,13 +92,13 @@ volatile sig_atomic_t	system_exception = 0;
 
 /* commands and whatnot */
 static  void    abortcmd 	(const char *, char *, const char *);
-static	void	away 		(const char *, char *, const char *);
+static	void	awaycmd		(const char *, char *, const char *);
 static	void	beepcmd 	(const char *, char *, const char *);
 static	void	blesscmd	(const char *, char *, const char *);
 static	void	breakcmd	(const char *, char *, const char *);
 static	void	commentcmd 	(const char *, char *, const char *);
 static	void	continuecmd	(const char *, char *, const char *);
-static	void	ctcp 		(const char *, char *, const char *);
+static	void	ctcpcmd 	(const char *, char *, const char *);
 	void	debuglogcmd	(const char *, char *, const char *);
 static	void	deop 		(const char *, char *, const char *);
 static	void	send_to_channel_first	(const char *, char *, const char *);
@@ -146,7 +146,7 @@ static  void	shift_cmd 	(const char *, char *, const char *);
 static	void	sleepcmd 	(const char *, char *, const char *);
 static	void	stackcmd	(const char *, char *, const char *);
 static  void	unshift_cmd 	(const char *, char *, const char *);
-static	void	version 	(const char *, char *, const char *);
+static	void	versioncmd 	(const char *, char *, const char *);
 static 	void	waitcmd 	(const char *, char *, const char *);
 static	void	whois 		(const char *, char *, const char *);
 static	void	xechocmd 	(const char *, char *, const char *);
@@ -185,7 +185,7 @@ static	IrcCommand irc_command[] =
 	{ "ADMIN",	send_comm	},
 	{ "ALIAS",	aliascmd	}, /* alias.c */
 	{ "ASSIGN",	assigncmd	}, /* alias.c */
-	{ "AWAY",	away		},
+	{ "AWAY",	awaycmd		},
 	{ "BEEP",	beepcmd		},
 	{ "BIND",	bindcmd		}, /* keys.c */
 	{ "BLESS",	blesscmd	},
@@ -197,7 +197,7 @@ static	IrcCommand irc_command[] =
 	{ "COMMENT",	commentcmd	},
 	{ "CONNECT",	send_comm	},
 	{ "CONTINUE",	continuecmd	},
-	{ "CTCP",	ctcp		},
+	{ "CTCP",	ctcpcmd		},
 	{ "DEBUGLOG",	debuglogcmd	}, /* debuglog.c */
 	{ "DEFER",	defercmd	},
 	{ "DEOP",	deop		},
@@ -303,7 +303,7 @@ static	IrcCommand irc_command[] =
 	{ "USERIP",	useripcmd	},
 	{ "USLEEP",	usleepcmd	},
 	{ "USRIP",	usripcmd	},
-	{ "VERSION",	version		},
+	{ "VERSION",	versioncmd	},
 	{ "VHOSTS",	vhostscmd	},
 	{ "WAIT",	waitcmd		},
 	{ "WALLCHOPS",	send_2comm	},
@@ -343,7 +343,7 @@ BUILT_IN_COMMAND(abortcmd)
  * away: the /AWAY command.  Keeps track of the away message locally, and
  * sends the command on to the server.
  */
-BUILT_IN_COMMAND(away)
+BUILT_IN_COMMAND(awaycmd)
 {
 	char	*arg = NULL;
 	int	flag = AWAY_ONE;
@@ -481,7 +481,8 @@ BUILT_IN_COMMAND(commentcmd)
 	/* nothing to do... */
 }
 
-BUILT_IN_COMMAND(ctcp)
+/* XXX Why is this not in ctcp.c? */
+BUILT_IN_COMMAND(ctcpcmd)
 {
 	const char	*to;
 	char *	stag;
@@ -1133,10 +1134,7 @@ BUILT_IN_COMMAND(xechocmd)
 	{
 		const char *b = banner();
 
-		if (b && *b)
-			malloc_sprintf(&stuff, "%s %s", b, args);
-		else
-			malloc_sprintf(&stuff, "%s", args);
+		malloc_sprintf(&stuff, "%s %s", b, args);
 		args = stuff;
 	}
 	else if (want_banner != 0)
@@ -2200,7 +2198,7 @@ BUILT_IN_COMMAND(pingcmd)
 	get_time(&t);
 	snprintf(buffer, 63, "%s PING %ld %ld", args, 
 				(long)t.tv_sec, (long)(t.tv_nsec / 1000));
-	ctcp(NULL, buffer, empty_string);
+	ctcpcmd(NULL, buffer, empty_string);
 }
 
 BUILT_IN_COMMAND(pop_cmd)
@@ -2670,7 +2668,7 @@ BUILT_IN_COMMAND(usleepcmd)
 
 
 /* version: does the /VERSION command with some IRCII version stuff */
-BUILT_IN_COMMAND(version)
+BUILT_IN_COMMAND(versioncmd)
 {
 	char	*host;
 

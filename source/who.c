@@ -538,7 +538,7 @@ void 	whobase (int refnum, char *args, void (*line) (int, const char *, const ch
 	}
 }
 
-void	whoreply (int refnum, const char *from, const char *comm, const char **ArgList)
+void	whoreply (int refnum, const char *from, const char *comm, const char **args)
 {
 static	char	format[50];
 static	int	last_width = -1;
@@ -588,7 +588,7 @@ do
 	 */
 	if (new_w->line)
 	{
-		new_w->line(refnum, from, comm, ArgList);
+		new_w->line(refnum, from, comm, args);
 		continue;
 	}
 
@@ -603,21 +603,21 @@ do
 		    strlcpy(format, "%s\t%-9s %-3s %s@%s (%s)", sizeof format);
 	}
 
-	if (!(channel = ArgList[0]))
-		{ rfc1459_odd(from, comm, ArgList); break; }
-	if (!(user    = ArgList[1]))
-		{ rfc1459_odd(from, comm, ArgList); break; }
-	if (!(host    = ArgList[2]))
-		{ rfc1459_odd(from, comm, ArgList); break; }
-	if (!(server  = ArgList[3]))
-		{ rfc1459_odd(from, comm, ArgList); break; }
-	if (!(nick    = ArgList[4]))
-		{ rfc1459_odd(from, comm, ArgList); break; }
-	if (!(status  = ArgList[5]))
-		{ rfc1459_odd(from, comm, ArgList); break; }
-	PasteArgs(ArgList, 6);
-	if (!(ircname  = ArgList[6]))
-		{ rfc1459_odd(from, comm, ArgList); break; }
+	if (!(channel = args[0]))
+		{ rfc1459_odd(from, comm, args); break; }
+	if (!(user    = args[1]))
+		{ rfc1459_odd(from, comm, args); break; }
+	if (!(host    = args[2]))
+		{ rfc1459_odd(from, comm, args); break; }
+	if (!(server  = args[3]))
+		{ rfc1459_odd(from, comm, args); break; }
+	if (!(nick    = args[4]))
+		{ rfc1459_odd(from, comm, args); break; }
+	if (!(status  = args[5]))
+		{ rfc1459_odd(from, comm, args); break; }
+	PasteArgs(args, 6);
+	if (!(ircname  = args[6]))
+		{ rfc1459_odd(from, comm, args); break; }
 	name = LOCAL_COPY(ircname);
 
 	if (*status == 'S')	/* this only true for the header WHOREPLY */
@@ -701,13 +701,13 @@ while (new_w->piggyback && (new_w = new_w->next));
 }
 
 /* Undernet's 354 numeric reply. */
-void	xwhoreply (int refnum, const char *from, const char *comm, const char **ArgList)
+void	xwhoreply (int refnum, const char *from, const char *comm, const char **args)
 {
 	WhoEntry *new_w = who_queue_top(refnum);
 	int	l;
 
-	if (!ArgList[0])
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	if (!args[0])
+		{ rfc1459_odd(from, comm, args); return; }
 
 	if (!new_w)
 	{
@@ -725,16 +725,16 @@ void	xwhoreply (int refnum, const char *from, const char *comm, const char **Arg
 
 	/* Who replies always go to the current window */
 	l = set_context(from_server, -1, from, new_w->who_target, LEVEL_OTHER);
-	PasteArgs(ArgList, 0);
+	PasteArgs(args, 0);
 	if (new_w->who_stuff)
-		call_lambda_command("WHO", new_w->who_stuff, ArgList[0]);
-	else if (do_hook(current_numeric(), "%s", ArgList[0]))
-		put_it("%s %s", banner(), ArgList[0]);
+		call_lambda_command("WHO", new_w->who_stuff, args[0]);
+	else if (do_hook(current_numeric(), "%s", args[0]))
+		put_it("%s %s", banner(), args[0]);
 	pop_context(l);
 }
 
 
-void	who_end (int refnum, const char *from, const char *comm, const char **ArgList)
+void	who_end (int refnum, const char *from, const char *comm, const char **args)
 {
 	WhoEntry 	*new_w,
 			*saved_new_w;
@@ -743,16 +743,16 @@ void	who_end (int refnum, const char *from, const char *comm, const char **ArgLi
 	int		l;
 	int		do_a_pop;
 
-	if (!ArgList[0])
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	if (!args[0])
+		{ rfc1459_odd(from, comm, args); return; }
 
 	new_w = who_queue_top(refnum);
 	if (!new_w || !new_w->who_target)
 		return;
 	saved_new_w = new_w;
 
-	target = malloc_strdup(ArgList[0]);
-	PasteArgs(ArgList, 0);
+	target = malloc_strdup(args[0]);
+	PasteArgs(args, 0);
 
 	do_a_pop = 0;
 	l = set_context(from_server, -1, from, new_w->who_target, LEVEL_OTHER);
@@ -773,10 +773,10 @@ void	who_end (int refnum, const char *from, const char *comm, const char **ArgLi
 
 		/* Defer to another function, if neccesary.  */
 		if (new_w->end)
-			new_w->end(refnum, from, comm, ArgList);
+			new_w->end(refnum, from, comm, args);
 		else
 		{
-			malloc_sprintf(&buffer, "%s %s", from, ArgList[0]);
+			malloc_sprintf(&buffer, "%s %s", from, args[0]);
 			if (new_w->who_end)
 			    call_lambda_command("WHO_END", new_w->who_end, buffer);
 			else
@@ -846,13 +846,13 @@ int	fake_who_end (int refnum, const char *from, const char *comm, const char *wh
 		/* Defer to another function, if neccesary.  */
 		if (new_w->end)
 		{
-			const char *fake_ArgList[3];
+			const char *fake_args[3];
 
 			/* Fabricate a fake argument list */
-			fake_ArgList[0] = new_w->who_target;
-			fake_ArgList[1] = "fake_who_end";
-			fake_ArgList[2] = NULL;
-			new_w->end(refnum, from, comm, fake_ArgList);
+			fake_args[0] = new_w->who_target;
+			fake_args[1] = "fake_who_end";
+			fake_args[2] = NULL;
+			new_w->end(refnum, from, comm, fake_args);
 		}
 		else if (new_w->who_end)
 		{
@@ -1247,47 +1247,47 @@ void	isonbase (int refnum, char *args, void (*line) (int, char *, char *))
  * Although we will check first that the top element expected is
  * actually an ISON.
  */
-void	ison_returned (int refnum, const char *from, const char *comm, const char **ArgList)
+void	ison_returned (int refnum, const char *from, const char *comm, const char **args)
 {
 	IsonEntry *new_i = ison_queue_top(refnum);
 	char	*do_off = NULL, *this1, *all1, *this2, *all2;
 
-	if (!ArgList[0])
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	if (!args[0])
+		{ rfc1459_odd(from, comm, args); return; }
 
 	if (!new_i)
 	{
 		/* XXX Hack to work around rogue /quote ison's */
-		if (do_hook(current_numeric(), "%s", ArgList[0]))
-			put_it("%s Currently online: %s", banner(), ArgList[0]);
+		if (do_hook(current_numeric(), "%s", args[0]))
+			put_it("%s Currently online: %s", banner(), args[0]);
 		return;
 	}
 
 	all1 = LOCAL_COPY(new_i->ison_asked);
-	all2 = LOCAL_COPY(ArgList[0]);
+	all2 = LOCAL_COPY(args[0]);
 	if (new_i->offcmd)
 		while ((this2 = next_arg(all2, &all2)))
 			while ((this1 = next_arg(all1, &all1)) && my_stricmp(this1, this2))
 				malloc_strcat_wordlist(&do_off, space, this1);
 	malloc_strcat_wordlist(&do_off, space, all1);
 
-	PasteArgs(ArgList, 0);
+	PasteArgs(args, 0);
 	if (new_i->line) 
 	{
-		char *ison_ret = LOCAL_COPY(ArgList[0]);
+		char *ison_ret = LOCAL_COPY(args[0]);
 		new_i->line(refnum, new_i->ison_asked, ison_ret);
 	}
 	else
 	{
-		if (new_i->oncmd && ArgList[0] && ArgList[0][0])
-			call_lambda_command("ISON", new_i->oncmd, ArgList[0]);
+		if (new_i->oncmd && args[0] && args[0][0])
+			call_lambda_command("ISON", new_i->oncmd, args[0]);
 		if (new_i->offcmd && do_off && *do_off)
 			call_lambda_command("ISON", new_i->offcmd, do_off);
 		if (new_i->endcmd)
 			call_lambda_command("ISON", new_i->endcmd, NULL);
 		if (!new_i->oncmd && !new_i->offcmd &&
-				do_hook(current_numeric(), "%s", ArgList[0]))
-			put_it("%s Currently online: %s", banner(), ArgList[0]);
+				do_hook(current_numeric(), "%s", args[0]))
+			put_it("%s Currently online: %s", banner(), args[0]);
 	}
 
 	new_free(&do_off);
@@ -1610,24 +1610,24 @@ void	userhostbase (int refnum, char *args, const char *__U(subargs), void (*line
  * through this queue will cause it to be corrupted and the client will
  * go higgledy-piggledy.
  */
-void	userhost_returned (int refnum, const char *from, const char *comm, const char **ArgList)
+void	userhost_returned (int refnum, const char *from, const char *comm, const char **args)
 {
-	UserhostEntry *top = userhost_queue_top(refnum);
+	UserhostEntry *top_ = userhost_queue_top(refnum);
 	char *ptr;
 	char *results;
 
-	if (!ArgList[0])
-		{ rfc1459_odd(from, comm, ArgList); return; }
+	if (!args[0])
+		{ rfc1459_odd(from, comm, args); return; }
 
-	if (!top)
+	if (!top_)
 	{
 		yell("### Please don't /quote a server command that returns the 302 numeric.");
 		return;
 	}
 
-	PasteArgs(ArgList, 0);
-	results = LOCAL_COPY(ArgList[0]);
-	ptr = top->userhost_asked;
+	PasteArgs(args, 0);
+	results = LOCAL_COPY(args[0]);
+	ptr = top_->userhost_asked;
 
 	/*
 	 * Go through the nicknames that were requested...
@@ -1646,7 +1646,7 @@ void	userhost_returned (int refnum, const char *from, const char *comm, const ch
 		/*
 		 * Now either it is present at the next argument
 		 * or its not.  If it is, it will match the first
-		 * part of ArgList, and the following char will
+		 * part of args, and the following char will
 		 * either be a * or an = (eg, nick*= or nick=)
 		 */
 		if (results && (!my_strnicmp(cnick, results, len)
@@ -1662,7 +1662,7 @@ void	userhost_returned (int refnum, const char *from, const char *comm, const ch
 			if (!user)
 			{
 				yell("Can't parse useless USERHOST reply [%s]", 
-						ArgList[0]);
+						args[0]);
 				userhost_queue_pop(refnum);
 				return;
 			}
@@ -1687,7 +1687,7 @@ void	userhost_returned (int refnum, const char *from, const char *comm, const ch
 			if (!host)
 			{
 				yell("Can't parse useless USERHOST reply [%s]", 
-						ArgList[0]);
+						args[0]);
 				userhost_queue_pop(refnum);
 				return;
 			}
@@ -1696,14 +1696,14 @@ void	userhost_returned (int refnum, const char *from, const char *comm, const ch
 			item.nick = nick;
 			item.user = user;
 			item.host = host;
-			item.extra = SAFE(top->extra);
+			item.extra = SAFE(top_->extra);
 
 			/*
 			 * If the user wanted a callback, then
 			 * feed the callback with the info.
 			 */
-			if (top->func)
-				top->func(refnum, &item, cnick, top->text);
+			if (top_->func)
+				top_->func(refnum, &item, cnick, top_->text);
 
 			/*
 			 * Otherwise, the user just did /userhost,
@@ -1724,7 +1724,7 @@ void	userhost_returned (int refnum, const char *from, const char *comm, const ch
 		}
 
 		/*
-		 * If ArgList isnt the current nick, then the current nick
+		 * If args isnt the current nick, then the current nick
 		 * must not be on irc.  So we whip up a dummy UserhostItem
 		 * and send it on its way.  We DO NOT HOOK the 302 numeric
 		 * with this bogus entry, because thats the historical
@@ -1740,7 +1740,7 @@ void	userhost_returned (int refnum, const char *from, const char *comm, const ch
 			 * If the user just did /userhost, and the nicks arent
 			 * on, then we just dont display anything.
 			 */
-			if (top->func)
+			if (top_->func)
 			{
 				UserhostItem item;
 
@@ -1748,9 +1748,9 @@ void	userhost_returned (int refnum, const char *from, const char *comm, const ch
 				item.user = item.host = "<UNKNOWN>";
 				item.oper = item.away = 0;
 				item.connected = 1;
-				item.extra = top->extra;
+				item.extra = top_->extra;
 
-				top->func(refnum, &item, cnick, top->text);
+				top_->func(refnum, &item, cnick, top_->text);
 			}
 		}
 	}
