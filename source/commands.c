@@ -2179,7 +2179,10 @@ BUILT_IN_COMMAND(oper)
 	char	*nick;
 
 	if (!(nick = next_arg(args, &args)))
-		nick = nickname;
+	{
+		say("Usage: OPER nickname password");
+		return;
+	}
 	if (!(password = next_arg(args, &args)))
 	{
 		say("Usage: OPER nickname password");

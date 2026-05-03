@@ -26,11 +26,10 @@ dnl  * Libsodium
 dnl  * SQLite 3
 dnl
 dnl It will use these things if they're available
-dnl  * Python 3.8 or higher
+dnl  * Python 3.8 or higher (please use only supported python versions)
 dnl  * PCRE2
 dnl  * Valgrind
 dnl ------------------------------------------------------------
-
 
 AC_INIT([epic6],[0])
 AC_CONFIG_SRCDIR([source/irc.c])
@@ -365,7 +364,7 @@ if test "x$with_clang_sanitizing" != "xno"; then
 	AC_MSG_RESULT(yes)
 	AC_MSG_CHECKING(whether your compiler supports -fsanitize)
 	old_cflags="$CFLAGS"
-	CFLAGS="$CFLAGS -fsanitize=undefined,implicit-integer-truncation,implicit-integer-arithmetic-value-change,implicit-conversion,integer,nullability,object-size,local-bounds"
+	CFLAGS="$CFLAGS -fsanitize=address,undefined,implicit-integer-truncation,implicit-integer-arithmetic-value-change,implicit-conversion,integer,nullability,object-size,local-bounds"
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]],[[ return 0; ]])],
 		[AC_MSG_RESULT(yes)],
 		[AC_MSG_RESULT(no)

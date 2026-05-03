@@ -4346,7 +4346,7 @@ printf "%s\n" "yes" >&6; }
 	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether your compiler supports -fsanitize" >&5
 printf %s "checking whether your compiler supports -fsanitize... " >&6; }
 	old_cflags="$CFLAGS"
-	CFLAGS="$CFLAGS -fsanitize=undefined,implicit-integer-truncation,implicit-integer-arithmetic-value-change,implicit-conversion,integer,nullability,object-size,local-bounds"
+	CFLAGS="$CFLAGS -fsanitize=address,undefined,implicit-integer-truncation,implicit-integer-arithmetic-value-change,implicit-conversion,integer,nullability,object-size,local-bounds"
 	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 

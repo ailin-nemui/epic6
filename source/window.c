@@ -773,6 +773,7 @@ static void	delete_window_contents (int window_)
 			window->top_of_scrollback = next;
 		}
 		window->display_ip = NULL;
+		window->clear_point = NULL;
 		if (window->display_buffer_size != 0)
 			panic(1, "delete_window_contents: display_buffer_size is %d, should be 0", window->display_buffer_size);
 	}
@@ -2018,6 +2019,7 @@ void 	redraw_all_windows (void)
 	if (!fullscreen_mode)
 		return;
 
+	debuglog("Redrawing all windows");
 	while (traverse_all_windows2(&refnum)) {
 		window_body_needs_redraw(refnum);
 		window_statusbar_needs_redraw(refnum);
@@ -3648,7 +3650,7 @@ int	renormalize_window_levels (int refnum, Mask mask)
 		return -1;
 
 	/* Test each level in the reclaimable bitmask */
-	for (i = 1; BIT_VALID(i); i++)
+	for (i = 0; BIT_VALID(i); i++)
 	{
 	    /* If this level isn't reclaimable, skip it */
 	    if (!mask_isset(&mask, i))
@@ -3693,7 +3695,7 @@ static void 	revamp_window_masks (int refnum)
 
 	window = get_window_by_refnum_direct(refnum);
 
-	for (i = 1; BIT_VALID(i); i++)
+	for (i = 0; BIT_VALID(i); i++)
 	{
 	    if (!mask_isset(&window->window_mask, i))
 		continue;
@@ -3706,8 +3708,9 @@ static void 	revamp_window_masks (int refnum)
 		    continue;
 		if (tmp == window)
 		    continue;
+		if (tmp->server != window->server)
+		    continue;
 		if (mask_isset(&tmp->window_mask, i))
-		    if (tmp->server == window->server)
 			mask_unset(&tmp->window_mask, i);
 	    }
 	}
@@ -6385,7 +6388,7 @@ WINDOWCMD(level)
 			add = 1;
 		    }
 
-		    for (i = 1; BIT_VALID(i); i++)
+		    for (i = 0; BIT_VALID(i); i++)
 		    {
 			if (add == 1 && mask_isset(&mask, i))
 				mask_set(&window->window_mask, i);
@@ -9093,6 +9096,9 @@ int	trim_scrollback (int window_)
 		 */
 		if (window->top_of_scrollback == window->display_ip)
 			break;
+
+		if (window->top_of_scrollback == window->clear_point)
+			window->clear_point = NULL;
 
 		delete_display_line(window->top_of_scrollback);
 		window->top_of_scrollback = next;

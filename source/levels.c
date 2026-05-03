@@ -50,12 +50,12 @@ int	LEVEL_USER7,	LEVEL_USER8,	LEVEL_USER9,	LEVEL_USER10;
 int	LEVEL_ALL;
 
 static	Bucket *level_bucket = NULL;
-static	int	next_level = 1;
+static	int	next_level = 0;
 
 void	init_levels (void)
 {
 	level_bucket = new_bucket();
-	LEVEL_NONE      = 0;
+	LEVEL_NONE      = -1;
 	LEVEL_OTHER     = add_new_level("OTHER");
 	add_new_level_alias(LEVEL_OTHER, "CRAP");
 	LEVEL_PUBLIC    = add_new_level("PUBLICS");
@@ -386,5 +386,73 @@ char *levelctl	(char *input)
 	}
 
         RETURN_EMPTY;
+}
+
+int	mask_setall (Mask *set)
+{
+	set->__bits = ~((uint64_t)0);
+	return 0;
+}
+
+int	mask_unsetall (Mask *set)
+{
+	set->__bits = (uint64_t)0;
+	return 0;
+}
+
+int	mask_set (Mask *set, int bit)
+{
+	if (bit == LEVEL_NONE)
+		return mask_unsetall(set);
+	if (bit == LEVEL_ALL)
+		return mask_setall(set);
+
+	if (bit < 0 || bit > 63)
+		return -1;
+
+	set->__bits |= ((uint64_t)1 << bit);
+	return 0;
+}
+
+int	mask_unset (Mask *set, int bit)
+{
+	if (bit == LEVEL_NONE)
+		return mask_setall(set);
+	if (bit == LEVEL_ALL)
+		return mask_unsetall(set);
+
+	if (bit < 0 || bit > 63)
+		return -1;
+	set->__bits &= ~((uint64_t)1 << bit);
+	return 0;
+}
+
+int	mask_isall (const Mask *set)
+{
+	if (set->__bits == ~((uint64_t)0))
+		return 1;
+	return 0;
+}
+
+int	mask_isnone (const Mask *set)
+{
+	if (set->__bits == (uint64_t)0)
+		return 1;
+	return 0;
+}
+
+int	mask_isset (const Mask *set, int bit)
+{
+	if (bit == LEVEL_NONE)
+		return mask_isnone(set);
+	if (bit == LEVEL_ALL)
+		return mask_isall(set);
+
+	if (bit < 0 || bit > 63)
+		return 0;
+
+	if (set->__bits & ((uint64_t)1 << bit))
+		return 1;
+	return 0;
 }
 

@@ -169,6 +169,7 @@ struct 	metric_time 	timespec_to_metric	(const Timespec *);
 	Timespec 	time_subtract		(const Timespec, const Timespec);
 	Timespec 	double_to_timespec 	(double);
 	double  	time_to_next_interval	(int interval);
+	int     	is_valid_time_t 	(intmax_t seconds);
 
 	/* - - - - - - */
 	int     rgb_to_256 		(uint8_t r, uint8_t g, uint8_t b);

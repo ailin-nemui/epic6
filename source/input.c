@@ -408,7 +408,7 @@ static	int	recursive = 0;
 			output_screen = s;
 			last_input_screen = s;
 /*yell("moving cursor to %d %d", PHYSICAL_CURSOR, INPUT_LINE_ROW); */
-			term_move_cursor(PHYSICAL_CURSOR, INPUT_LINE_ROW);
+			term_move_cursor(INPUT_LINE_ROW, PHYSICAL_CURSOR);
 			term_flush();
 		}
 	}
@@ -885,7 +885,7 @@ const char *	prompt;
 		/*
 		 * Move the cursor to the start of the input line
 		 */
-		term_move_cursor(0, INPUT_LINE_ROW);
+		term_move_cursor(INPUT_LINE_ROW, 0);
 
 		/*
 		 * Figure out how many cols we will give to the
@@ -930,9 +930,7 @@ const char *	prompt;
 		 * to the current input position.
 		 */
 		term_clear_to_eol();
-		term_flush();
-		term_move_cursor(PHYSICAL_CURSOR, INPUT_LINE_ROW);
-		term_flush();
+		term_move_cursor(INPUT_LINE_ROW, PHYSICAL_CURSOR);
 	}
 
 	/*
@@ -946,7 +944,7 @@ const char *	prompt;
 		 * Figure out how much we can output from here,
 		 * and then output it.
 		 */
-		term_move_cursor(PHYSICAL_CURSOR, INPUT_LINE_ROW);
+		term_move_cursor(INPUT_LINE_ROW, PHYSICAL_CURSOR);
 		term_flush();
 		/* XXX 1 Col per byte assumption */
 
@@ -966,14 +964,10 @@ const char *	prompt;
 		}
 
 		term_clear_to_eol();
-		term_flush();
 	}
 
 	if (update == UPDATE_JUST_CURSOR)
-	{
-		term_move_cursor(PHYSICAL_CURSOR, INPUT_LINE_ROW);
-		term_flush();
-	}
+		term_move_cursor(INPUT_LINE_ROW, PHYSICAL_CURSOR);
 
 	/*
 	 * Turn the terminal echo back on, and flush all of the output

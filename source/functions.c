@@ -1172,37 +1172,75 @@ static	char	*alias_server_version  (void)
  *	Integers (GET_INT_ARG()) are always (intmax_t)
  */
 
-/*
- * Usage: $left(number text)
- * Returns: the <number> leftmost code points in <text>.
- * Example: $left(5 the quick brown frog) returns "the q"
+/* 
+ * $left(number:integer text:string) -> string
  *
- * Note: the difference between $[10]foo and $left(10 foo) is that the former
- * is padded and the latter is not.
+ * Happy path:
+ *	It returns the left (initial) <number>th  code points in <text>
  *
- * Note: This function counts code points, not columns!  So non-printable
- * codepoints (like ^B/^V/^C) still count!
+ * Specified errors (return the empty string)
+ *	- If <number> or <text> is omitted
+ *	- If <number> is not a positive number
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	If <text> is not a well formed utf8 string, how things get counted is unspecified.
+ *
+ * Sharp edges/quirks/implementation details:
+ *	- The difference bewteen $[10]foo and $left(10 foo) is the former is padded
+ *	  and the latter is not.
+ *	- The difference between $leftpc(10 $foo) and $left(10 $foo) is $left() counts
+ *	  all characters, even the ones that aren't printable.  $leftpc() is VERY
+ *	  expensive, so most people use $left() unless they think there will be 
+ *	  unprintable characters.
+ *
+ * Example:
+ * 	$left(5 the quick brown frog) returns "the q"
  */
-BUILT_IN_FUNCTION(function_left, word)
+BUILT_IN_FUNCTION(function_left, input)
 {
-	int		keepers,	/* The number of CPs to retain */
-			count,		/* How many we've copied so far */
+	/* * */
+	intmax_t	number;		/* The number of CPs to retain */
+	char *		text;		/* The string to work on */
+
+	if (*input == '{')
+	{
+		struct kwargs kwargs[] = {
+			{ "number", KWARG_TYPE_INTEGER, &number, 1 },
+			{ "text", KWARG_TYPE_STRING, &text, 1 },
+			{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+		};
+
+		number = -1;
+		text = NULL;
+		parse_kwargs(kwargs, input);
+	}
+	else
+	{
+		GET_INT_ARG(number, input);
+		text = input;
+	}
+
+	if (number <= 0)
+		RETURN_EMPTY;
+	/* gcc14 -fanalyzer made me do it. how bogus */
+	if (text == NULL)
+		RETURN_EMPTY;
+	RETURN_IF_EMPTY(text);
+
+
+	/* * */
+	int		count,		/* How many we've copied so far */
 			code_point;	/* The current CP we're working on */
 	char *		s;		/* Pointer at next CP */
 	ptrdiff_t	offset;
 
-	GET_INT_ARG(keepers, word);
-	RETURN_IF_EMPTY(word);
-
-	if (keepers <= 0)
-		RETURN_EMPTY;
 
 	/* Return the whole string if it's "short" */
-	if (keepers >= quick_code_point_count(word))
-		RETURN_STR(word);
+	if (number >= quick_code_point_count(text))
+		RETURN_STR(text);
 
 	count = 0;
-	s = word;
+	s = text;
 	while ((code_point = next_code_point2(s, &offset, 0)))
 	{
 		/* Invalid CPs count as 1, + we skip them. */
@@ -1211,43 +1249,79 @@ BUILT_IN_FUNCTION(function_left, word)
 		else
 			s += offset;
 
-		if (++count >= keepers)
+		if (++count >= number)
 			break;
 	}
 
 	/* Chop the string off here */
 	*s = 0;
-	RETURN_STR(word);
+	RETURN_STR(text);
 }
 
-/*
- * Usage: $right(number text)
- * Returns: the <number> rightmost characters in <text>.
- * Example: $right(5 the quick brown frog) returns " frog"
- * XXX This function should use previous_code_point() like $rest() does.
+/* 
+ * $right(number:integer text:string) -> string
+ *
+ * Happy path:
+ *	It returns the right (final) <number>th  code points in <text>
+ *
+ * Specified errors (return the empty string)
+ *	- If <number> or <text> is omitted
+ *	- If <number> is not a positive number
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	If <text> is not a well formed utf8 string, how things get counted is unspecified.
+ *
+ * Sharp edges/quirks/implementation details:
+ *	- This function should use previous_code_point() like $rest() does.
+ *
+ * Example:
+ * 	$right(5 the quick brown frog) returns " frog"
  */
-BUILT_IN_FUNCTION(function_right, word)
+BUILT_IN_FUNCTION(function_right, input)
 {
-	int	keepers,	/* The number of CPs to retain */
-		code_point,	/* The current CP we're working on */
-		total,		/* How many CPs are in word */
-		ignores;	/* Leading CPs to ignore */
-	char 	*s;		/* Pointer at next CP */
+	/* * */
+	intmax_t	number;		/* The number of CPs to retain */
+	char *		text;		/* The string to work on */
+
+	if (*input == '{')
+	{
+		struct kwargs kwargs[] = {
+			{ "number", KWARG_TYPE_INTEGER, &number, 1 },
+			{ "text", KWARG_TYPE_STRING, &text, 1 },
+			{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+		};
+
+		number = -1;
+		text = NULL;
+		parse_kwargs(kwargs, input);
+	}
+	else
+	{
+		GET_INT_ARG(number, input);
+		text = input;
+	}
+
+	if (number <= 0)
+		RETURN_EMPTY;
+	RETURN_IF_EMPTY(text);
+
+
+	/* * */
+	int		code_point,	/* The current CP we're working on */
+			total,		/* How many CPs are in input */
+			ignores;	/* Leading CPs to ignore */
+	char *		s;		/* Pointer at next CP */
 	ptrdiff_t	offset;
 
-	GET_INT_ARG(keepers, word);
-	RETURN_IF_EMPTY(word);
-
-	if (keepers <= 0)
-		RETURN_EMPTY;
+	total = quick_code_point_count(input);
 
 	/* Return the whole string if it's "short" */
-	if (keepers >= ((total = quick_code_point_count(word))))
-		RETURN_STR(word);
+	if (number >= total)
+		RETURN_STR(input);
 
 	/* Skip the first 'ignores' CPs */
-	ignores = total - keepers;
-	s = word;
+	ignores = total - number;
+	s = input;
 	while ((code_point = next_code_point2(s, &offset, 0)))
 	{
 		/* Invalid CPs count as 1, + we skip them. */
@@ -1271,30 +1345,56 @@ BUILT_IN_FUNCTION(function_right, word)
  * Note: the first character is numbered zero.
  * XXX It's a shame this isn't generalized and shared with other funcs.
  */
-BUILT_IN_FUNCTION(function_mid, word)
+BUILT_IN_FUNCTION(function_mid, input)
 {
-	int	keepers,	/* The number of CPs to retain */
-		count,		/* How many we've copied so far */
-		code_point;	/* The current CP we're working on */
-	int	start;
-	char 	*s;		/* Pointer at next CP */
-	char	*retval;
-	ptrdiff_t	offset;
+	/* * */
+	intmax_t	start,		/* Which CP to start at */
+			number;		/* The number of CPs to retain */
+	char *		text = NULL;	/* The string to work on */
 
-	GET_INT_ARG(start, word);
-	GET_INT_ARG(keepers, word);
-	RETURN_IF_EMPTY(word);
+	if (*input == '{')
+	{
+		struct kwargs kwargs[] = {
+			{ "start", KWARG_TYPE_INTEGER, &start, 1 },
+			{ "number", KWARG_TYPE_INTEGER, &number, 1 },
+			{ "text", KWARG_TYPE_STRING, &text, 1 },
+			{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+		};
 
-	if (keepers <= 0)
-		RETURN_EMPTY;
+		start = -1;
+		number = -1;
+		text = NULL;
+		parse_kwargs(kwargs, input);
+	}
+	else
+	{
+		GET_INT_ARG(start, input);
+		GET_INT_ARG(number, input);
+		text = input;
+	}
 
 	if (start < 0)
 		RETURN_EMPTY;
-	if (start > quick_code_point_count(word))
+	if (number <= 0)
+		RETURN_EMPTY;
+	if (text == NULL)
+		RETURN_EMPTY;
+	RETURN_IF_EMPTY(text);
+
+
+	/* * */
+	int		count;
+	int		code_point;	/* The current CP we're working on */
+	char 		*s;		/* Pointer at next CP */
+	char		*retval;
+	ptrdiff_t	offset;
+
+	/* Optimization - fail if the string is too short */
+	if (start > quick_code_point_count(text))
 		RETURN_EMPTY;
 
-	/* Skip the initial CPs */
-	for (s = word, count = 0; count < start; count++)
+	/* Count off the initial 'start' CPs */
+	for (s = text, count = 0; count < start; count++)
 	{
 		/* Invalid CPs count as 1, and we skip them. */
 		code_point = next_code_point2(s, &offset, 0);
@@ -1304,14 +1404,14 @@ BUILT_IN_FUNCTION(function_mid, word)
 			s += offset;
 	}
 
-	/* This is our anchor */
+	/* This is where the return value begins */
 	retval = (char *)s;
 
-	/* Return the whole string if it's "short" */
-	if (keepers >= quick_code_point_count(retval))
+	/* Optimization - return what we have if it's shorter than what was requested */
+	if (number >= quick_code_point_count(retval))
 		RETURN_STR(retval);
 
-	/* Otherwise count off 'keepers' CPs */
+	/* Otherwise, find the end of the return value by counting off 'number' CPs */
 	count = 0;
 	s = retval;
 	while ((code_point = next_code_point2(s, &offset, 0)))
@@ -1322,11 +1422,11 @@ BUILT_IN_FUNCTION(function_mid, word)
 		else
 			s += offset;
 
-		if (++count >= keepers)
+		if (++count >= number)
 			break;
 	}
 
-	/* Chop the string off here */
+	/* Terminate the return value here */
 	*s = 0;
 	RETURN_STR(retval);
 }
@@ -1375,7 +1475,7 @@ BUILT_IN_FUNCTION(function_time, input)
 
 /*
  * Usage: $stime(time)
- * Returns: The human-readable form of the date based on the <time> argument.
+ * Returns: The human-readable form of the datetime based on the <time> argument.
  * Example: $stime(1000) returns what time it was 1000 seconds from the epoch.
  * 
  * Note: $stime() is really useful when you give it the argument $time(), ala
@@ -1384,11 +1484,11 @@ BUILT_IN_FUNCTION(function_time, input)
 BUILT_IN_FUNCTION(function_stime, input)
 {
 	intmax_t	ltime_;
-	const char	*ret;
+	const char *	retval;
 
 	GET_INT_ARG(ltime_, input);
-	ret = my_ctime(ltime_);
-	RETURN_STR(ret);		/* Dont put function call in macro! */
+	retval = my_ctime(ltime_);
+	RETURN_STR(retval);		/* Dont put function call in macro! */
 }
 
 /*
@@ -1399,14 +1499,14 @@ BUILT_IN_FUNCTION(function_stime, input)
  */
 BUILT_IN_FUNCTION(function_tdiff, input)
 {
-	time_t	ltime;
-	time_t	days,
-		hours,
-		minutes,
-		seconds;
-	size_t	size;
-	char	*tmp;
-	char	*after;
+	time_t		ltime,
+			days,
+			hours,
+			minutes,
+			seconds;
+	size_t		size;
+	char		*tmp,
+			*after;
 
 	size = strlen(input) + 64;
 	tmp = alloca(size);
@@ -1483,8 +1583,8 @@ BUILT_IN_FUNCTION(function_tdiff, input)
  */
 BUILT_IN_FUNCTION(function_index, input)
 {
-	char *schars;
-	size_t	cpoffset;
+	char *		schars;
+	size_t		cpoffset;
 
 	GET_DWORD_ARG(schars, input);
 	cpoffset = SIZE_MAX;
@@ -1505,8 +1605,8 @@ BUILT_IN_FUNCTION(function_index, input)
  */
 BUILT_IN_FUNCTION(function_rindex, word)
 {
-	char	*chars;
-	size_t	cpoffset;
+	char *		chars;
+	size_t		cpoffset;
 
 	/* need to find out why ^x doesnt work */
 	GET_DWORD_ARG(chars, word);
@@ -1534,8 +1634,12 @@ BUILT_IN_FUNCTION(function_rindex, word)
  */
 BUILT_IN_FUNCTION(function_match, input)
 {
-	char	*pattern, 	*word;
-	long	current_match,	best_match = 0,	match = 0, match_index = 0;
+	char		*pattern, 	
+			*word;
+	long		current_match,	
+			best_match = 0,	
+			match = 0, 
+			match_index = 0;
 
 	GET_FUNC_ARG(pattern, input);
 
@@ -1565,12 +1669,12 @@ BUILT_IN_FUNCTION(function_match, input)
  */
 BUILT_IN_FUNCTION(function_rmatch, input)
 {
-	char	*pattern,	
-		*word;
-	int	current_match,	
-		best_match = 0,	
-		match = 0, 
-		rmatch_index = 0;
+	char		*pattern,	
+			*word;
+	int		current_match,	
+			best_match = 0,	
+			match = 0, 
+			rmatch_index = 0;
 
 	GET_FUNC_ARG(word, input);
 
@@ -1606,44 +1710,56 @@ BUILT_IN_FUNCTION(function_userhost, input)
 {
 static const char unknown_userhost[] = "<UNKNOWN>@<UNKNOWN>";
 
-	if (input && *input)
+	if (!*input)
+		RETURN_STR(FromUserHost);
+
+	char *		nick;
+	const char *	uh;
+	char *		retval = NULL;
+
+	do
 	{
-		char *		nick;
-		const char *	uh;
-		char *		retval = NULL;
+		GET_FUNC_ARG(nick, input);
 
-		while (input && *input)
-		{
-			GET_FUNC_ARG(nick, input);
-
-			if (!(uh = fetch_userhost(from_server, NULL, nick)))
-				uh = unknown_userhost;
-			malloc_strcat_word(&retval, space, uh, DWORD_NO);
-		}
-		RETURN_MSTR(retval);
+		if (!(uh = fetch_userhost(from_server, NULL, nick)))
+			uh = unknown_userhost;
+		malloc_strcat_word(&retval, space, uh, DWORD_NO);
 	}
+	while (input && *input);
 
-	RETURN_STR(FromUserHost);
+	RETURN_MSTR(retval);
 }
 
 /* 
- * Usage: $strip(characters text)
- * Returns: <text> with all instances of any characters in the <characters>
- *	    argument removed.
- * Example: $strip(f free fine frogs) returns "ree ine rogs"
+ * $strip(characters:dword text:string) -> string
  *
- * To remove spaces, use $strip(" " text)
+ * Happy path:
+ *	This returns <text> removing every character that is present in <characters>
+ *	<Characters> is always unconditionally a dword -- use " " to remove spaces
+ *
+ * Specified errors (return the empty string)
+ *	- If <characters> or <text> is missing.
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	If <characters> or <text> are not utf8 strings the behavior is unspecified
+ *
+ * Sharp edges/quirks/implementation details:
+ *	None at this time.
+ *
+ * Example:
+ * 	$strip(f free fine frogs) returns "ree ine rogs"
+ * 	$strip(" " free fine frogs) returns "freefinefrogs"
  */
 BUILT_IN_FUNCTION(function_strip, input)
 {
-	char *		search;
-	char 		*s, 
-			*p;
-	int		c, 
-			d;
-	int		found;
-	char 		*result, 
+	char 		*search,
+			*s, 
+			*p,
+			*result, 
 			*r;
+	int		c, 
+			d,
+			found;
 	ptrdiff_t	offset;
 
 	GET_DWORD_ARG(search, input);
@@ -1683,54 +1799,100 @@ BUILT_IN_FUNCTION(function_strip, input)
 	return result;		/* DONT USE RETURN_STR HERE! */
 }
 
-/*
- * Usage: $ischannel(text)
- * Returns: If <text> could be a valid channel name, 1 is returned.
- *          If <text> is an invalid channel name, 0 is returned.
+/* 
+ * $ischanel(channel:string) -> integer
  *
- * Note: Contrary to popular belief, this function does NOT determine
- * whether a given channel name is in use!
+ * Happy path:
+ *	Returns 1 if <channel> is a valid channel name on the current server
+ *
+ * Specified errors (returns 0):
+ *	<channel> is omitted
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	No unspecified behavior
+ *
+ * Sharp edges/quirks/implementation details:
+ *	When you are connected to a server, 005 CHANTYPES controls
+ *	When you are not connected to a server, +, #, &, and ! are usd.
+ *	This function does not tell you whether a channel is in use.
+ *
+ * Example:
+ *	$ischannel(#epic) returns 1
+ *	$ischannel(hop) returns 0
  */
 BUILT_IN_FUNCTION(function_ischannel, input)
 {
 	char *	channel;
 	int	ret;
 
-	channel = next_func_arg(input, &input);
+	GET_FUNC_ARG(channel, input);
 	ret = is_channel(channel);
 	RETURN_INT(ret);
 }
 
-/*
- * Usage: $ischanop(nick channel)
- * Returns: 1 if <nick> is a channel operator on <channel>
- *          0 if <nick> is not a channel operator on <channel>
- *			* O R *
- *	      if you are not on <channel>
+/* 
+ * $ischanop(nickname:string channel:string) -> integer
  *
- * Note: Contrary to popular belief, this function can only tell you
- *       who the channel operators are for channels you are already on!
+ * Happy path:
+ *	Returns 1 if <nickname> is a chanop on <channel>
  *
- * If you would like to query multiple nicks, I recommend the
- * $channel() function which will return all nicks with @ and +
- * prefixes.
+ * Specified errors 
+ *	- Returns empty string - <nickname> or <channel> are missing
+ *	- Returns 0 - You are not on <channel> on the current server
+ *	- Returns 0 - <nickname> is not on <channel> on the current server
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	No unspecified behavior
+ *
+ * Sharp edges/quirks/implementation details:
+ *	- You can only tell if if someone is a chanop on channels you're on!
+ *	- It only works with the current server, so if you need to check
+ *	  a different server, use   /xeval -s <server> {....}
+ *	- The user not being a chanop returns 0 even though this is not an error
+ *
+ * Example:
+ * 	$ischanop(hop #epic) might return 1 ;-) 
  */
 BUILT_IN_FUNCTION(function_ischanop, input)
 {
-	char 	*nick, *chan;
-	int	ret;
+	char 	*nickname_,
+		*channel;
+	int	retval;
 
-	nick = next_func_arg(input, &input);
-	chan = next_func_arg(input, &input);
-	ret = is_chanop(chan, nick);
-	RETURN_INT(ret);
+	GET_FUNC_ARG(nickname_, input);
+	GET_FUNC_ARG(channel, input);
+	retval = is_chanop(channel, nickname_);
+	RETURN_INT(retval);
 }
 
 
-/*
- * Usage: $word(number text)
- * Returns: the <number>th word in <text>.  The first word is numbered zero.
- * Example: $word(3 one two three four five) returns "four" (think about it)
+/* 
+ * $word(word_number:integer word_list:string) -> string
+ *
+ * Happy path:
+ *	Return the <word_number>th word in <word_list>.
+ *	Words count from 0 (ie, the first word is word 0)
+ *	If /xdebug dword is on, then <word_list> will honor dwords.
+ *	If /xdebug dword is off, then it won't.
+ *	The word will be "flattened" (that is, the surrounding double quotes
+ *	   will be removed and any escaped double quotes will be de-escaped
+ *
+ * Specified errors (return the empty string)
+ *	- If <number> or <text> is missing.
+ *	- If <number> is a negative number
+ *	- If there are not <number> words in <word_list>
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	If <number> is not a number the result is unspecified
+ *
+ * Sharp edges/quirks/implementation details:
+ *	- Even if you turn on /xdebug dword, the output will be a text string.
+ *	  Some scripts do this to create a word list within a word list.
+ *	- If the word you extract is zero length (""), then the return value
+ *	  will be the empty string even though this is not an error.
+ *
+ * Example:
+ * 	$word(3 one two three four five) returns "four" (think about it)
  */
 BUILT_IN_FUNCTION(function_word, word)
 {
@@ -1748,13 +1910,37 @@ BUILT_IN_FUNCTION(function_word, word)
 	RETURN_STR(w_word);
 }
 
-/*
- * Usage: $qword(number text)
- * Returns: the <number>th word in <text>, but as a qword, suitable for 
- *          passing back into a function call as a dword.  
- *          The first word is numbered zero.
- * Example: $qword(3 one two three four five) returns "four" (think about it)
- * Remember, double quoted words require /xdebug dword to be turned on!
+/* 
+ * $qword(word_number:integer word_list:string) -> dword
+ *
+ * Happy path:
+ *	A version of $word() that will return the word surrounded by double
+ *	quotes and with internal double quotes escaped if it needs to be.
+ *	If /xdebug dword is on, then <word_list> will honor dwords.
+ *	If /xdebug dword is off, then it won't.
+ *
+ * Specified errors (return the empty string)
+ *	- If <number> or <text> is missing.
+ *	- If <number> is a negative number
+ *	- If there are not <number> words in <word_list>
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	If <number> is not a number the result is unspecified
+ *
+ * Sharp edges/quirks/implementation details:
+ *	- That you have to turn on /xdebug dword to honor dwords is inexplicable.
+ *	- If the word you extract is zero length (""), then the return value
+ *	  will be the empty string even though this is not an error.
+ *
+ * Apologies:
+ *	See, $word() will "flatten" the word (by removing double quotes and 
+ *	unescaping internal double quotes) even if /xdebug dword is on. 
+ *	So how do you extract a dword so you can use it as a dword?  
+ *	That's what this function is for.   
+ *	Why we didn't call it $dword() is beyond me.
+ *
+ * Example:
+ *	XXX TODO XXX
  */
 BUILT_IN_FUNCTION(function_qword, word)
 {
@@ -1773,6 +1959,25 @@ BUILT_IN_FUNCTION(function_qword, word)
 	malloc_strcat_word(&retval, space, w_word, DWORD_DWORDS);
 	RETURN_MSTR(retval);
 }
+
+/* 
+ * $connect(anything:string) -> empty string
+ *
+ * Happy path:
+ *	There is no happy path
+ *
+ * Specified errors  (returns the empty string)
+ *	Use of this function is an error
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	There is no unspecified behavior
+ *
+ * Sharp edges/quirks/implementation details:
+ *	- This is a placeholder for forwards and backwards compatability.
+ *
+ * Example:
+ *	$connect() currently returns the empty string no matter what you do
+ */
 
 BUILT_IN_FUNCTION(function_connect, input)
 {
@@ -1805,6 +2010,24 @@ BUILT_IN_FUNCTION(function_connect, input)
 #endif
 }
 
+/* 
+ * $listen(anything:string) -> empty string
+ *
+ * Happy path:
+ *	There is no happy path
+ *
+ * Specified errors  (returns the empty string)
+ *	Use of this function is an error
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	There is no unspecified behavior
+ *
+ * Sharp edges/quirks/implementation details:
+ *	- This is a placeholder for forwards and backwards compatability.
+ *
+ * Example:
+ *	$listen() currently returns the empty string no matter what you do
+ */
 BUILT_IN_FUNCTION(function_listen, input)
 {
 #if 0
@@ -1845,57 +2068,170 @@ BUILT_IN_FUNCTION(function_listen, input)
 #endif
 }
 
+/* 
+ * $toupper(anything:string) -> string
+ *
+ * Happy path:
+ *	It returns <anything> in uppercase
+ *
+ * Specified errors 
+ *	There are no specified errors
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	There is no unspecified behavior
+ *
+ * Sharp edges/quirks/implementation details:
+ *	- This function is UTF8 aware and may malfunction if given binary data.
+ *	- The folding is done with your system's UTF8 towupper_l()
+ *
+ * Example:
+ *	$toupper(MaRY Had A LITTe lAMB) would return "MARY HAD A LITTLE LAMB"
+ */
 BUILT_IN_FUNCTION(function_toupper, input)
 {
 	return (upper(malloc_strdup(input)));
 }
 
+/* 
+ * $tolower(anything:string) -> string
+ *
+ * Happy path:
+ *	It returns <anything> in lowercase
+ *
+ * Specified errors 
+ *	There are no specified errors
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	There is no unspecified behavior
+ *
+ * Sharp edges/quirks/implementation details:
+ *	- This function is UTF8 aware and may malfunction if given binary data.
+ *	- The folding is done with your system's UT8 towlower_l()
+ *
+ * Example:
+ *	$tolower(MaRY Had A LITTe lAMB) would return "mary had a little lamb"
+ */
 BUILT_IN_FUNCTION(function_tolower, input)
 {
 	return (lower(malloc_strdup(input)));
 }
 
+/* 
+ * $curpos() -> integer
+ *
+ * Happy path:
+ *	It returns the position of the cursor in the input line ($L)
+ *	- The value is suitable for passing to string manip functions.
+ *	- Yes, the function is utf-8 aware.
+ *
+ * Specified errors 
+ *	- Returns -1 if the current window is not on a screen
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	There is no unspecified behavior
+ *
+ * Sharp edges/quirks/implementation details:
+ *	- There is no way to specify the target window, so you would need to
+ *	  change the current window with an /xeval -w <windesc> {....}
+ *
+ * Example:
+ *	$mid($curpos() 1 $L)  would return the character under the cursor,
+ *		assuming there were no error conditions
+ */
 BUILT_IN_FUNCTION(function_curpos, input)
 {
 	RETURN_INT(cursor_position(get_window_screennum(0)));
 }
 
+/* 
+ * $mychannels() -> string
+ * $mychannels(<server_refnum:integer>) -> string
+ * $mychannels(<window_description:string>) -> string
+ * $mychannels(#<window_refnum:integer>) -> string
+ *
+ * Happy path:
+ *	It returns all of the channels that you have on a server
+ *	- With no argument it defaults to the current server
+ *	- When the argument is an integer it is taken as a server refnum
+ *	- When the argument is not an integer it is taken as a window description
+ *	- The window description may be prefixed with a # so you can specify a window refnum
+ *
+ * Specified errors (return the empty string)
+ *	- If the provided/effective server refnum is invalid
+ *	- If the provided/effective server refnum is not registered
+ *	- If the window description is invalid
+ *	- If the window is not connected to a server
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	There is no unspecified behavior
+ *
+ * Sharp edges/quirks/implementation details:
+ *	- If the server is not open or does not have any channels, it will return 
+ *	  the empty string even though this is not an error
+ *
+ * Example:
+ *	$mychannels() will return all channels on the current server
+ *	$mychannels(#0) will return all channels on the current window
+ */
 BUILT_IN_FUNCTION(function_channels, input)
 {
-	int	server = from_server;
+	int	server_refnum;
 	char *	retval;
 
-	if (isdigit(*input)) 
-		GET_INT_ARG(server, input)
-	else if (*input)
+	/*
+	 * Parse server_refnum, possibly through a window refnum
+	 */
+	if (!*input)
+		server_refnum = from_server;
+	else if (isdigit(*input)) 
+		GET_INT_ARG(server_refnum, input)
+	else
 	{
-		int	window;
+		int	window_refnum;
 
-		server = -1;
+		if (*input == '#')
+			input++;
 
-		/* 
-		 * You may be wondering what I'm doing here.  It used to 
-		 * be a historical idiom that you could do $mychannels(serv)
-		 * or $mychannels(#window).  The "#" thing was handled else-
-		 * where, but I took it out becuase it had evil side effects.
-		 * But people need to be able to use "#" here, so specifically
-		 * support "#" here if needed.
-		 */
- 		if ((window = lookup_window(input)) > 0)
-			server = get_window_server(window);
-		else if (*input == '#')
-			if ((window = lookup_window(input + 1)) > 0)
-				server = get_window_server(window);
+ 		if ((window_refnum = lookup_window(input)) <= 0)
+			RETURN_EMPTY;
+
+		server_refnum = get_window_server(window_refnum);
 	}
 
-	retval = create_channel_list(server);
+	/* An unregistered server cannot have channels; we don't need to ask */
+	if (!is_server_registered(server_refnum))
+		RETURN_EMPTY;
+
+	retval = create_channel_list(server_refnum);
 	RETURN_MSTR(retval);
 }
 
+/* 
+ * $myservers() -> string
+ * $myservers(any:string) -> string
+ *
+ * Happy path: 
+ *	Without argument: Returns a list of all server hostnames (in order from server 0)
+ *	With any argument: Returns all server refnums that are currently registered
+ *
+ * Specified errors (return the empty string)
+ *	There are no specified errors
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	There is no unspecified behavior
+ *
+ * Sharp edges/quirks/implementation details:
+ *   - The argument you specify does not matter and is ignored,
+ *   - It is odd that without arguments it returns hostnames (which are not useful on
+ *	their own) and with any argument it returns refnums.
+ *
+ * Example:
+ *	$myservers(x) will return all registered servers
+ */
 BUILT_IN_FUNCTION(function_servers, input)
 {
-	int count;
-	char *retval = NULL;
+	int	count;
+	char *	retval;
 
 	if (!input || !*input)
 	{
@@ -1903,60 +2239,146 @@ BUILT_IN_FUNCTION(function_servers, input)
 		RETURN_MSTR(retval);
 	}
 
+	retval = NULL;
 	for (count = 0; count < server_list_size(); count++)
 	{
 		if (is_server_registered(count))
 			malloc_strcat_word(&retval, space, ltoa(count), DWORD_NO);
 	}
-	if (!retval)
-		RETURN_EMPTY;
 
-	return retval;
+	RETURN_MSTR(retval);
 }
 
+/* 
+ * $pid() -> integer
+ *
+ * Happy path: Returns our process id from getpid(2)
+ *
+ * Specified errors (return the empty string)
+ *	There are no specified errors
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	There is no unspecified behavior
+ *
+ * Sharp edges:
+ *	There are no sharp edges
+ *
+ * Example:
+ *	$pid() will return an integer
+ */
 BUILT_IN_FUNCTION(function_pid, input)
 {
 	RETURN_INT(getpid());
 }
 
+/* 
+ * $ppid() -> integer
+ *
+ * Happy path: Returns the parent process id from getppid(2)
+ *
+ * Specified errors (return the empty string)
+ *	There are no specified errors
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	There is no unspecified behavior
+ *
+ * Sharp edges:
+ *	There are no sharp edges
+ *
+ * Example:
+ *	$ppid() will return an integer
+ */
 BUILT_IN_FUNCTION(function_ppid, input)
 {
 	RETURN_INT(getppid());
 }
 
 
-/*
- * strftime() patch from hari (markc@arbld.unimelb.edu.au)
+/* 
+ * $strftime(seconds:unsigned strftime_format:string) -> string
+ * $strftime(strftime_format:string) -> string
+ *
+ * Happy path: Converts a timestamp into a human-readable form using strftime().
+ *	- If <seconds> is omitted, then the current time is used.
+ *
+ * Specified errors (return the empty string)
+ *	- <seconds> is not a valid (time_t) on your system
+ *	- <seconds> cannot be represented by a (struct tm) on your system
+ *	- <strftime format> is missing
+ *	- Your <strftime_format) rendered to more than 128 bytes
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	There is no unspecified behavior
+ *
+ * Sharp edges:
+ *   - The return value is limited to 128 bytes.  If your format
+ *	  results in longer than that, it will be truncated.
+ *   - This is the same as $E but you might have assigned something else to $E.
+ *   - You know, there should be a built in function to get inline expandos...
+ *
+ * Original contribution by:	hari (markc@arbld.unimelb.edu.au)
+ *
+ * Example:
+ *	$strftime(%c) returns the "default timestamp"
  */
 BUILT_IN_FUNCTION(function_strftime, input)
 {
-	char *		result;
-	time_t		ltime;
+	intmax_t	seconds_;
+	time_t		seconds;
+	char *		strftime_format;
+	char *		retval;
 	struct tm	tm;
 
-	result = alloca(128);
-
-	if (isdigit(*input))
-		ltime = strtoul(input, &input, 0);
+	/* Parse "seconds" */
+	if (!isdigit(*input))
+		seconds_ = time(NULL);
 	else
-		ltime = time(NULL);
+		GET_INT_ARG(seconds_, input);
 
-	while (*input && my_isspace(*input))
-		++input; 
+	/* Before casting an (intmax_t) to (time_t) we must validate it */
+	if (!is_valid_time_t(seconds_))
+		RETURN_EMPTY;
+	seconds = (time_t)seconds_;
 
+	/* Parse "strftime_format" */
 	if (!*input)
-		return malloc_strdup(empty_string);
+		RETURN_EMPTY;
+	strftime_format = input;
 
-
+	/* Prepare for work */
 	memset(&tm, 0, sizeof(tm));
-	localtime_r(&ltime, &tm);
+	retval = new_malloc(128);
+	memset(retval, 0, 128);
 
-	if (!strftime(result, 128, input, &tm))
-		return malloc_strdup(empty_string);
+	/* localtime_r() will return NULL on error */
+	if (!localtime_r(&seconds, &tm))
+		RETURN_EMPTY;
 
-	return malloc_strdup(result);
+	/* strftime() returns 0 on error */
+	if (!strftime(retval, 128, strftime_format, &tm))
+		RETURN_EMPTY;
+
+	return retval;
 }
 
+/* 
+ * $idle()
+ *
+ * Happy path: Returns the number of seconds since you last pressed a key
+ *
+ * Specified errors (return the empty string)
+ *   This funciton never fails
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	There is no unspecified behavior
+ *
+ * Sharp edges:
+ *   - This is the same as $E but you might have assigned something else to $E.
+ *   - You know, there should be a built in function to get inline expandos...
+ *
+ * Example:
+ *   $idle()   
+ */
 BUILT_IN_FUNCTION(function_idle, input)
 {
 	return alias_idle();
@@ -1966,19 +2388,39 @@ BUILT_IN_FUNCTION(function_idle, input)
 
 /* The new "added" functions */
 
-/* $before(chars string of text)
- * returns the part of "string of text" that occurs before the
- * first instance of any character in "chars"
- * EX:  $before(! nick!user@host.com) returns "nick"
+/* 
+ * $before(<number> "<chars>" string of text)
+ * $before("<chars>" string of text)
+ *
+ * Happy path: Return the portion of "string of text" before the <number>th
+ *   instance of any character in <chars>.  
+ * - If not provided, the default <number> is 1.
+ * - <chars> may be double quoted, useful if it contains spaces
+ * - If <number> is positive, it counts from the start of string
+ * - If <number> is negative, it counts from the end of string
+ *
+ * Specified errors (return the empty string)
+ *   - <chars> or "string of text" are missing
+ *   - None of the <chars> was found in "string of text"
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *   - If <number> is zero, return value is unspecified
+ *
+ * Sharp edges:
+ *   - If the first character in "string of text" is in <chars>
+ *     it will return an empty string, but this is not an error.
+ *
+ * Example:
+ *   $before(! nick!user@host.com) returns "nick"
  */
 BUILT_IN_FUNCTION(function_before, word)
 {
-	char	*pointer = (char *) 0;
-	char	*chars;
-	char	*tmp;
-	long	numint;
+	char *		pointer;
+	char *		chars;
+	char *		tmp;
+	long		numint;
 	ptrdiff_t	offset;
-	int	found = 0;
+	int		found;
 
 	GET_DWORD_ARG(tmp, word);			/* DONT DELETE TMP! */
 	numint = my_atol(tmp);
@@ -1998,27 +2440,48 @@ BUILT_IN_FUNCTION(function_before, word)
 	else
 		pointer = word;
 
+	found = 0;
 	offset = search_for(word, pointer, chars, numint, &found);
-	if (!found)
+	if (found == 0)
 		RETURN_EMPTY;
 
 	pointer[offset] = 0;
 	RETURN_STR(word);
 }
 
-/* $after(chars string of text)
- * returns the part of "string of text" that occurs after the 
- * first instance of any character in "chars"
- * EX: $after(! nick!user@host.com)  returns "user@host.com"
+/*
+ * $after(<number> "<chars>" string of text)
+ * $after("<chars>" string of text)
+ *
+ * Happy path: Return the portion of "string of text" after the <number>th
+ *   instance of any character in <chars>.  
+ * - If not provided, the default <number> is 1.
+ * - <chars> may be double quoted, useful if it contains spaces
+ * - If <number> is positive, it counts from the start of string
+ * - If <number> is negative, it counts from the end of string
+ *
+ * Specified errors (return the empty string)
+ *   - <chars> or "string of text" are missing
+ *   - None of the <chars> was found in "string of text"
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *   - If <number> is zero, return value is unspecified
+ *
+ * Sharp edges:
+ *   - If there is no text in "string of text" after <chars>,
+ *     it will return an empty string, but this is not an error.
+ *
+ * Example:
+ *   $after(! nick!user@host.com)  returns "user@host.com"
  */
 BUILT_IN_FUNCTION(function_after, word)
 {
-	char	*chars;
-	char	*pointer = (char *) 0;
-	char 	*tmp;
-	long	numint;
+	char *		chars;
+	char *		pointer;
+	char *		tmp;
+	long		numint;
 	ptrdiff_t	offset;
-	int	found = 0;
+	int		found;
 
 	GET_DWORD_ARG(tmp, word);
 	numint = my_atol(tmp);
@@ -2038,16 +2501,28 @@ BUILT_IN_FUNCTION(function_after, word)
 	else
 		pointer = word;
 
+	found = 0;
 	offset = search_for(word, pointer, chars, numint, &found);
-	if (!found)
+	if (found == 0)
 		RETURN_EMPTY;
 
 	RETURN_STR(pointer + offset + 1);
 }
 
-/* $leftw(num string of text)
- * returns the left "num" words in "string of text"
- * EX: $leftw(3 now is the time for) returns "now is the"
+/*
+ * $leftw(<number> string of text)
+ *
+ * Happy path: Return the left (first) <number>th words in "string of text"
+ *
+ * Specified errors (return the empty string)
+ *   - <number> or "string of text" are missing
+ *   - <number> is negative or zero
+ *
+ * Sharp edges:
+ *   - Leading and trailing whitespace in wordlists is always subject to trimming
+ *
+ * Example:
+ *   $leftw(3 now is the time for) returns "now is the"
  */
 BUILT_IN_FUNCTION(function_leftw, word)
 {
@@ -2060,9 +2535,20 @@ BUILT_IN_FUNCTION(function_leftw, word)
 	return (extractfw(word, 0, value-1));	/* DONT USE RETURN_STR HERE! */
 }
 
-/* $rightw(num string of text)
- * returns the right num words in "string of text"
- * EX: $rightw(3 now is the time for) returns "the time for"
+/*
+ * $rightw(<number> string of text)
+ *
+ * Happy path: Return the right (final) <number>th words in "string of text"
+ *
+ * Specified errors (return the empty string)
+ *   - <number> or "string of text" are missing
+ *   - <number> is negative or zero
+ *
+ * Sharp edges:
+ *   - Leading and trailing whitespace in wordlists is always subject to trimming
+ *
+ * Example:
+ *   $rightw(3 now is the time for) returns "the time for"
  */
 BUILT_IN_FUNCTION(function_rightw, word)
 {
@@ -2076,10 +2562,25 @@ BUILT_IN_FUNCTION(function_rightw, word)
 }
 
 
-/* $midw(start num string of text)
- * returns "num" words starting at word "start" in the string "string of text"
- * NOTE: The first word is word #0.
- * EX: $midw(2 2 now is the time for) returns "the time"
+/*
+ * $midw(<start> <number> string of text)
+ *
+ * Happy path: Return <number> words starting at word <start> in "string of text"
+ * <start> counts from 0 (the first word is word 0)
+ *
+ * Specified errors (return the empty string)
+ *   - <start> or <number> or "string of text" are missing
+ *   - <start> or <number> are not integers
+ *   - <number> is negative or zero
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *   - If <start> is negative, return value is unspecified
+ *
+ * Sharp edges:
+ *   - Leading and trailing whitespace in wordlists is always subject to trimming
+ *
+ * Example:
+ *   $midw(2 2 now is the time for) returns "the time"
  */
 BUILT_IN_FUNCTION(function_midw, word)
 {
@@ -2094,15 +2595,30 @@ BUILT_IN_FUNCTION(function_midw, word)
 	return extractfw(word, start, (start + num - 1));
 }
 
-/* $notw(num string of text)
- * returns "string of text" with word number "num" removed.
- * NOTE: The first word is numbered 0.
- * EX: $notw(3 now is the time for) returns "now is the for"
+/*
+ * $notw(<number> string of text)
+ *
+ * Happy path:  Return "string of text" with the <number>th word removed.
+ *  <number> counts from 0 (the first word is word 0)
+ *  If <number> is negative, it returns "string of text" unmodified
+ *
+ * Specified errors (return the empty string)
+ *  - <number> or "string of text" is missing
+ *  - <number> is not an integer
+ *
+ * Unspecified behavior
+ *	There is no unspecified behavior
+ * 
+ * Sharp edges:
+ *   - Leading and trailing whitespace in wordlists is always subject to trimming
+ *
+ * Example:
+ *   $notw(3 now is the time for) returns "now is the for"
  */
 BUILT_IN_FUNCTION(function_notw, word)
 {
-	char    *booya = (char *)0;
 	int     where;
+	char *	retval;
 	
 	GET_INT_ARG(where, word);
 
@@ -2112,27 +2628,42 @@ BUILT_IN_FUNCTION(function_notw, word)
 
 	if (where > 0)
 	{
-		char *part1, *part2;
+		char 	*part1, 
+			*part2;
+
 		part1 = extractfw(word, 0, (where - 1));
 		part2 = extractfw(word, (where + 1), EOS);
-		booya = malloc_strdup(part1);
+		retval = malloc_strdup(part1);
 		/* if part2 is there, append it. */
-		malloc_strcat_wordlist(&booya, space, part2);
+		malloc_strcat_wordlist(&retval, space, part2);
 		new_free(&part1);
 		new_free(&part2);
 	}
 	else /* where == 0 */
-		booya = extractfw(word, 1, EOS);
+		retval = extractfw(word, 1, EOS);
 
-	return booya;				/* DONT USE RETURN_STR HERE! */
+	return retval;				/* DONT USE RETURN_STR HERE! */
 }
 
-/* 
- * $restw(num string of text)
- * returns "string of text" that occurs starting with and including
- * word number "num"
- * NOTE: the first word is numbered 0.
- * EX: $restw(3 now is the time for) returns "time for"
+/*
+ * $restw(<number> string of text)
+ *
+ * Happy path:  Return "string of text" starting with and including the <number>th word
+ *  <number> counts from 0 (the first word is word 0)
+ *
+ * Specified errors (return the empty string)
+ *  - <number> or "string of text" is missing
+ *  - <number> is not an integer
+ *  - <number> is negative
+ *
+ * Unspecified behavior
+ *	None at this time
+ * 
+ * Sharp edges:
+ *   - Leading and trailing whitespace in wordlists is always subject to trimming
+ *
+ * Example:
+ *   $restw(3 now is the time for) returns "time for"
  */
 BUILT_IN_FUNCTION(function_restw, word)
 {
@@ -2144,18 +2675,33 @@ BUILT_IN_FUNCTION(function_restw, word)
 	return extractfw(word, where, EOS);
 }
 
-/* 
- * $remw(word string of text)
- * returns "string of text" with the word "word" removed
- * EX: $remw(the now is the time for) returns "now is time for"
- * XXX Should use standard word manip functions 
+/*
+ * $remw(<word> string of text)
+ *
+ * Happy path:  Return "string of text" with the word "word" removed
+ *  <word> is converted to a number with $findw(<word> string of text)
+ *  Then $notw(<number> string of text)
+ *  <word> does not have to be present in "string of text"
+ *
+ * Specified errors (return the empty string)
+ *	None at this time, which seems odd
+ *
+ * Unspecified behavior
+ *	None at this time
+ * 
+ * Sharp edges:
+ *   - Only the first (left-most) instance of <word> is removed.
+ *   - Leading and trailing whitespace in wordlists is always subject to trimming
+ *
+ * Example:
+ *    $remw(the now is the time for) returns "now is time for"
  */
 BUILT_IN_FUNCTION(function_remw, word)
 {
 	int	where;
-	char *	word_ = NULL;
+	char *	word_;
 	char *	placeholder;
-	char *	booya;
+	char *	retval;
 
 	word_ = LOCAL_COPY(word);
 	where = my_atol((placeholder = function_findw(word_)));
@@ -2175,53 +2721,68 @@ BUILT_IN_FUNCTION(function_remw, word)
                 char *part1, *part2;
                 part1 = extractfw(word, 0, (where - 1));
                 part2 = extractfw(word, (where + 1), EOS);
-                booya = malloc_strdup(part1);
+                retval = malloc_strdup(part1);
                 /* if part2 is there, append it. */
-                malloc_strcat_wordlist(&booya, space, part2);
+                malloc_strcat_wordlist(&retval, space, part2);
                 new_free(&part1);
                 new_free(&part2);
         }
         else /* where == 0 */
-                booya = extractfw(word, 1, EOS);
+                retval = extractfw(word, 1, EOS);
 
-	return booya;			/* DON'T USE RETURN_STR HERE */
+	return retval;			/* DON'T USE RETURN_STR HERE */
 }
 
-/* 
- * $insertw(num word string of text)
- * returns "string of text" such that "word" is the "num"th word
- * in the string.
- * NOTE: the first word is numbered 0.
- * EX: $insertw(3 foo now is the time for) returns "now is the foo time for"
+/*
+ * $insertw(<number> <word> string of text)
+ *
+ * Happy path:  Return "string of text" such that <word> is the <number>th word
+ *  <number> is counted from 0.  
+ *  If <number> is negative, then it will be treated as if it were 0.
+ *
+ * Specified errors (return the empty string)
+ *	<number>, <word> or "string of text" is missing
+ *
+ * Unspecified behavior
+ *	None at this time
+ * 
+ * Sharp edges:
+ *   - Leading and trailing whitespace in wordlists is always unspecified
+ *
+ * Example:
+ *    $insertw(3 foo now is the time for) returns "now is the foo time for"
  */
 BUILT_IN_FUNCTION(function_insertw, word)
 {
 	int     where;
-	char    *what;
-	char    *booya=(char *)0;
-	char 	*str1, *str2;
+	char *	what;
+	char 	*str1, 
+		*str2;
+	char *	retval;
 
 	GET_INT_ARG(where, word);
 	
+	retval = NULL;
+
 	/* If the word goes at the front of the string, then it
 	   already is: return it. ;-) */
 	if (where < 1)
-		booya = malloc_strdup(word);
+		retval = malloc_strdup(word);
 	else
 	{
 		GET_FUNC_ARG(what, word);
 		str1 = extractfw(word, 0, (where - 1));
 		str2 = extractfw(word, where, EOS);
 
-		malloc_strcat_wordlist(&booya, space, str1);
-		malloc_strcat_word(&booya, space, what, DWORD_DWORDS);
-		malloc_strcat_wordlist(&booya, space, str2);
+		malloc_strcat_wordlist(&retval, space, str1);
+		malloc_strcat_word(&retval, space, what, DWORD_DWORDS);
+		malloc_strcat_wordlist(&retval, space, str2);
 
 		new_free(&str1);
 		new_free(&str2);
 	}
 
-	return booya;				/* DONT USE RETURN_STR HERE! */
+	return retval;				/* DONT USE RETURN_STR HERE! */
 }
 
 /* $chngw(num word string of text)
@@ -2234,7 +2795,8 @@ BUILT_IN_FUNCTION(function_chngw, word)
 {
 	int     which;
 	char    *what;
-	char	*str1, *str2;
+	char	*str1, 
+		*str2;
 	
 	GET_INT_ARG(which, word);
 	GET_FUNC_ARG(what, word);
@@ -2264,13 +2826,15 @@ BUILT_IN_FUNCTION(function_chngw, word)
  */
 BUILT_IN_FUNCTION(function_common, word)
 {
-	char    *left = (char *) 0;
-	char	*right = (char *) 0;
-	char 	*booya = NULL;
-	char **leftw = NULL;
-	char **rightw = NULL;
-	int	leftc, lefti,
-		rightc, righti;
+	char *	left = (char *) 0;
+	char *	right = (char *) 0;
+	char **	leftw = NULL;
+	char **	rightw = NULL;
+	int	leftc, 
+		lefti,
+		rightc, 
+		righti;
+	char *	retval = NULL;
 
 	left = word;
 	if (!(right = strchr(word,'/')))
@@ -2286,7 +2850,7 @@ BUILT_IN_FUNCTION(function_common, word)
 		{
 			if (rightw[righti] && !my_stricmp(leftw[lefti], rightw[righti]))
 			{
-				malloc_strcat_word(&booya, space, leftw[lefti], DWORD_DWORDS);
+				malloc_strcat_word(&retval, space, leftw[lefti], DWORD_DWORDS);
 				rightw[righti] = NULL;
 			}
 		}
@@ -2295,7 +2859,7 @@ BUILT_IN_FUNCTION(function_common, word)
 	new_free((char **)&leftw);
 	new_free((char **)&rightw);
 
-	RETURN_MSTR(booya);
+	RETURN_MSTR(retval);
 }
 
 /* 
@@ -2309,11 +2873,13 @@ BUILT_IN_FUNCTION(function_diff, word)
 {
 	char 	*left = NULL,
 	     	*right = NULL, 
-		*booya = NULL;
-	char **rightw = NULL,
-		   **leftw = NULL;
-	int 	lefti, leftc,
-	    	righti, rightc;
+		*retval = NULL;
+	char 	**rightw = NULL,
+		 **leftw = NULL;
+	int 	lefti, 
+		leftc,
+	    	righti, 
+		rightc;
 	int 	found;
 
 	left = word;
@@ -2336,34 +2902,34 @@ BUILT_IN_FUNCTION(function_diff, word)
 			}
 		}
 		if (!found)
-			malloc_strcat_word(&booya, space, leftw[lefti], DWORD_DWORDS);
+			malloc_strcat_word(&retval, space, leftw[lefti], DWORD_DWORDS);
 	}
 
 	for (righti = 0; righti < rightc; righti++)
 	{
 		if (rightw[righti])
-			malloc_strcat_word(&booya, space, rightw[righti], DWORD_DWORDS);
+			malloc_strcat_word(&retval, space, rightw[righti], DWORD_DWORDS);
 	}
 
 	new_free((char **)&leftw);
 	new_free((char **)&rightw);
 
-	RETURN_MSTR(booya);
+	RETURN_MSTR(retval);
 }
 
 char *wrapper_pattern(char *word, int mode)
 {
 	char    *blah;
-	char    *booya = NULL;
+	char    *retval = NULL;
 	char    *pattern;
 
 	GET_FUNC_ARG(pattern, word)
 	while (((blah = next_func_arg(word, &word)) != NULL))
 	{
 		if (!!wild_match(pattern, blah) == !!mode)
-			malloc_strcat_word(&booya, space, blah, DWORD_DWORDS);
+			malloc_strcat_word(&retval, space, blah, DWORD_DWORDS);
 	}
-	RETURN_MSTR(booya);
+	RETURN_MSTR(retval);
 }
 
 /* $pattern(pattern string of words)
@@ -2386,10 +2952,10 @@ BUILT_IN_FUNCTION(function_filter, word) {
 	return(wrapper_pattern(word, 0));
 }
 
-char *wrapper_rpattern (char *word, int mode)
+char *	wrapper_rpattern (char *word, int mode)
 {
 	char    *blah;
-	char    *booya = NULL;
+	char    *retval = NULL;
 	char    *pattern;
 
 	GET_FUNC_ARG(blah, word)
@@ -2397,9 +2963,9 @@ char *wrapper_rpattern (char *word, int mode)
 	while ((pattern = next_func_arg(word, &word)) != NULL)
 	{
 		if (!!wild_match(pattern, blah) == !!mode)
-			malloc_strcat_word(&booya, space, pattern, DWORD_DWORDS);
+			malloc_strcat_word(&retval, space, pattern, DWORD_DWORDS);
 	}
-	RETURN_MSTR(booya);
+	RETURN_MSTR(retval);
 }
 
 /* $rpattern(word list of patterns)
@@ -2436,7 +3002,7 @@ BUILT_IN_FUNCTION(function_rfilter, word) {
 #define COPATFUNC(fn, pat, arg, sense)                                 \
 BUILT_IN_FUNCTION((fn), word)                                          \
 {                                                                      \
-       char    *booya = (char *) 0,                                    \
+       char    *retval = (char *) 0,                                    \
 	       *pattern = (char *) 0,                                  \
                *firstl = (char *) 0, *firstlist = (char *) 0, *firstel = (char *) 0,       \
                *secondl = (char *) 0, *secondlist = (char *) 0, *secondel = (char *) 0;    \
@@ -2457,11 +3023,11 @@ BUILT_IN_FUNCTION((fn), word)                                          \
                        break;                                                \
                                                                              \
                if ((sense) == !wild_match((pat), (arg)))                     \
-                       malloc_strcat_word(&booya, space, secondel, DWORD_DWORDS); \
+                       malloc_strcat_word(&retval, space, secondel, DWORD_DWORDS); \
        }                                                                     \
        new_free(&sfirstl);                                                   \
        new_free(&ssecondl);                                                  \
-       RETURN_MSTR(booya);                                                   \
+       RETURN_MSTR(retval);                                                   \
 }
 COPATFUNC(function_copattern, pattern, firstel, 0)
 COPATFUNC(function_corpattern, firstel, pattern, 0)
@@ -2675,21 +3241,21 @@ BUILT_IN_FUNCTION(function_nochops, word)
 BUILT_IN_FUNCTION(function_key, word)
 {
 	char		*channel;
-	char    	*booya = (char *) 0;
+	char    	*retval = (char *) 0;
 	const char 	*key;
 
 	do
 	{
 		channel = next_func_arg(word, &word);
-		if ((!channel || !*channel) && booya)
+		if ((!channel || !*channel) && retval)
 			break;
 
 		key = get_channel_key(channel, from_server);
-		malloc_strcat_word(&booya, space, (key && *key) ? key : "*", DWORD_DWORDS);
+		malloc_strcat_word(&retval, space, (key && *key) ? key : "*", DWORD_DWORDS);
 	}
 	while (word && *word);
 
-	RETURN_MSTR(booya);
+	RETURN_MSTR(retval);
 }
 
 /*
@@ -2699,33 +3265,33 @@ BUILT_IN_FUNCTION(function_key, word)
 BUILT_IN_FUNCTION(function_channelmode, word)
 {
 	char	*channel;
-	char    *booya = (char *) 0;
+	char    *retval = (char *) 0;
 	const char	*mode;
 
 	do
 	{
 		channel = next_func_arg(word, &word);
-		if ((!channel || !*channel) && booya)
+		if ((!channel || !*channel) && retval)
 			break;
 
 		mode = get_channel_mode(channel, from_server);
-		malloc_strcat_word(&booya, space, (mode && *mode) ? mode : "*", DWORD_DWORDS);
+		malloc_strcat_word(&retval, space, (mode && *mode) ? mode : "*", DWORD_DWORDS);
 	}
 	while (word && *word);
 
-	RETURN_MSTR(booya);
+	RETURN_MSTR(retval);
 }
 
 
 
 BUILT_IN_FUNCTION(function_revw, words)
 {
-	char *booya = NULL;
+	char *retval = NULL;
 
 	while (words && *words)
-		malloc_strcat_word(&booya, space, last_arg(&words, DWORD_DWORDS), DWORD_DWORDS);
+		malloc_strcat_word(&retval, space, last_arg(&words, DWORD_DWORDS), DWORD_DWORDS);
 
-	RETURN_MSTR(booya);
+	RETURN_MSTR(retval);
 }
 
 BUILT_IN_FUNCTION(function_reverse, words)
@@ -2772,7 +3338,7 @@ BUILT_IN_FUNCTION(function_jot, input)
 	double  stop 	= 0;
 	double  interval = 1;
 	double  counter;
-	char	*booya 	= NULL;
+	char	*retval 	= NULL;
 	char *	ugh;
 
 	ugh = alloca(100);
@@ -2797,7 +3363,7 @@ BUILT_IN_FUNCTION(function_jot, input)
 		{
 			snprintf(ugh, 99, "%f", counter);
 			canon_number(ugh);
-			malloc_strcat_word(&booya, space, ugh, DWORD_NO);
+			malloc_strcat_word(&retval, space, ugh, DWORD_NO);
 		}
 	}
         else
@@ -2808,18 +3374,18 @@ BUILT_IN_FUNCTION(function_jot, input)
 		{
 			snprintf(ugh, 99, "%f", counter);
 			canon_number(ugh);
-			malloc_strcat_word(&booya, space, ugh, DWORD_NO);
+			malloc_strcat_word(&retval, space, ugh, DWORD_NO);
 		}
 	}
 
-	RETURN_MSTR(booya);
+	RETURN_MSTR(retval);
 }
 
 char *function_shiftbrace (char *word)
 {
 	char    *value = (char *) 0;
 	char    *var    = (char *) 0;
-	char	*booya 	= (char *) 0;
+	char	*retval 	= (char *) 0;
 	char    *placeholder;
 	char 	*oof;
 
@@ -2833,29 +3399,29 @@ char *function_shiftbrace (char *word)
 		new_free(&placeholder);
 		RETURN_EMPTY;
 	}
-	booya = malloc_strdup(oof);
+	retval = malloc_strdup(oof);
 	add_var_alias(var, value, 0);
 
 	new_free(&placeholder);
-	RETURN_MSTR(booya);
+	RETURN_MSTR(retval);
 }
 
 char *function_shift (char *word)
 {
 	char    *value = (char *) 0;
 	char    *var    = (char *) 0;
-	char	*booya 	= (char *) 0;
+	char	*retval 	= (char *) 0;
 	char *	free_it = NULL;
 
 	GET_FUNC_ARG(var, word);
 	upper(var);
 	free_it = value = get_variable(var);
 
-	booya = malloc_strdup(next_func_arg(value, &value));
+	retval = malloc_strdup(next_func_arg(value, &value));
 	if (var)
 		add_var_alias(var, value, 0);
 	new_free(&free_it);
-	RETURN_MSTR(booya);
+	RETURN_MSTR(retval);
 }
 
 /*
@@ -2868,7 +3434,7 @@ char *function_unshift (char *word)
 {
 	char    *value = (char *) 0;
 	char    *var    = (char *) 0;
-	char	*booya  = (char *) 0;
+	char	*retval  = (char *) 0;
 
 	/* XXX Is this right? */
 	RETURN_IF_EMPTY(word);
@@ -2887,12 +3453,12 @@ char *function_unshift (char *word)
 	if (!*word)
 		return value;
 
-	malloc_strcat_word(&booya, space, word, DWORD_DWORDS);
-	malloc_strcat_wordlist(&booya, space, value);
+	malloc_strcat_word(&retval, space, word, DWORD_DWORDS);
+	malloc_strcat_wordlist(&retval, space, value);
 
-	add_var_alias(var, booya, 0);
+	add_var_alias(var, retval, 0);
 	new_free(&value);
-	RETURN_MSTR(booya);
+	RETURN_MSTR(retval);
 }
 
 /*
@@ -4497,7 +5063,7 @@ static int unsort_it (const void *v1, const void *v2)
 BUILT_IN_FUNCTION(function_uniq, word)
 {
         char    **list = NULL;
-	char *booya = NULL;
+	char *retval = NULL;
         int     listc, listi, listo;
 
 	RETURN_IF_EMPTY(word);
@@ -4539,11 +5105,11 @@ BUILT_IN_FUNCTION(function_uniq, word)
 
 	/* We want the remaining words to appear in their original order */
 	qsort(list, listc, sizeof(char *), unsort_it);
-	booya = unsplitw(&list, listc, DWORD_DWORDS);
+	retval = unsplitw(&list, listc, DWORD_DWORDS);
 #endif
 
         new_free((char **)&list);
-	RETURN_MSTR(booya);
+	RETURN_MSTR(retval);
 }
 
 BUILT_IN_FUNCTION(function_status, word)
@@ -5865,7 +6431,7 @@ BUILT_IN_FUNCTION(function_remws, word)
 {
 	char    *left = NULL,
 		*right = NULL,
-		*booya = NULL;
+		*retval = NULL;
 	char	**lhs = NULL,
 		**rhs = NULL;
 	int	leftc,
@@ -5885,13 +6451,13 @@ BUILT_IN_FUNCTION(function_remws, word)
 	for (righti = 0; righti < rightc; righti++)
 	{
 		if (leftc <= 0 || !bsearch(&rhs[righti], lhs, leftc, sizeof(char *), sort_it))
-			malloc_strcat_word(&booya, space, rhs[righti], DWORD_DWORDS);
+			malloc_strcat_word(&retval, space, rhs[righti], DWORD_DWORDS);
 	}
 
 	new_free((char **)&lhs);
 	new_free((char **)&rhs);
 
-	RETURN_MSTR(booya);
+	RETURN_MSTR(retval);
 }
 
 BUILT_IN_FUNCTION(function_printlen, input)
@@ -6616,7 +7182,7 @@ BUILT_IN_FUNCTION(function_ttyname, input)
  * returns "string of text" such that "word" begins in the "num"th position
  * in the string ($index()-wise)
  * NOTE: Positions are numbered from 0
- * EX: $insert(3 baz foobarbooya) returns "foobazbarbooya"
+ * EX: $insert(3 baz foobar booya) returns "foobazbarbooya"
  */
 BUILT_IN_FUNCTION(function_insert, input)
 {
@@ -7133,7 +7699,8 @@ BUILT_IN_FUNCTION(function_outputinfo, input)
 
 BUILT_IN_FUNCTION(function_levelwindow, input)
 {
-	Mask	mask, window_mask;
+	Mask	mask, 
+		window_mask;
 	int	window = 0;
 	int	server;
 	int	i;
@@ -7143,11 +7710,12 @@ BUILT_IN_FUNCTION(function_levelwindow, input)
 	str_to_mask(&mask, input, &rejects);	/* Errors are just ignored */
 	while (traverse_all_windows2(&window))
 	{
+	    memset(&window_mask, 0, sizeof(window_mask));
 	    get_window_mask(window, &window_mask);
 	    if (get_window_server(window) != server)
 		continue;
 
-	    for (i = 1; BIT_VALID(i); i++)
+	    for (i = 0; BIT_VALID(i); i++)
 		if (mask_isset(&mask, i) && mask_isset(&window_mask, i))
 			RETURN_INT(get_window_user_refnum(window));
 	}
@@ -7627,21 +8195,21 @@ BUILT_IN_FUNCTION(function_check_code, input)
 BUILT_IN_FUNCTION(function_channellimit, word)
 {
 	char	*channel;
-	char    *booya = (char *) 0;
+	char    *retval = (char *) 0;
 	int	limit;
 
 	do
 	{
 		channel = next_func_arg(word, &word);
-		if ((!channel || !*channel) && booya)
+		if ((!channel || !*channel) && retval)
 			break;
 
 		limit = get_channel_limit(channel, from_server);
-		malloc_strcat_word(&booya, space, ltoa(limit), DWORD_DWORDS);
+		malloc_strcat_word(&retval, space, ltoa(limit), DWORD_DWORDS);
 	}
 	while (word && *word);
 
-	RETURN_MSTR(booya);
+	RETURN_MSTR(retval);
 }
 
 

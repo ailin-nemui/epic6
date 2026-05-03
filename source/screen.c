@@ -3201,6 +3201,8 @@ void 	add_to_screen (const char *buffer)
 	while (traverse_all_windows2(&w))
 	{
 		Mask	window_mask;
+
+		memset(&window_mask, 0, sizeof(window_mask));
 		get_window_mask(w, &window_mask);
 
 		/*
@@ -3325,7 +3327,9 @@ static void 	add_to_window (int window_, const char *str)
 	/* Check the status of the window and scrollback */
 	trim_scrollback(window_);
 
+#if 0
 	cursor_to_input();
+#endif
 
 	/*
 	 * Handle special cases for output to invisible windows -- A beep to
@@ -3502,8 +3506,8 @@ static void 	scroll_window (int window_)
 	 */
 	if (get_window_screennum(window_) >= 0 && get_window_display_lines(window_))
 	{
-		term_move_cursor(0, get_window_top(window_) + get_window_cursor(window_));
-		term_clear_to_eol();
+		term_move_cursor(get_window_top(window_) + get_window_cursor(window_), 0);
+		/* term_clear_to_eol(); */
 	}
 }
 
@@ -3551,13 +3555,13 @@ void 	repaint_window_body (int window_)
 		if (!(str = get_window_topline(window_, count)))
 			str = empty_string;
 
-		term_move_cursor(0, get_window_top(window_) - get_window_toplines_showing(window_) + count);
-		term_clear_to_eol();
+		term_move_cursor(get_window_top(window_) - get_window_toplines_showing(window_) + count, 0);
 
 		/* Don't -1 get_window_by_columns()! */
 		widthstr = prepare_display_fixed_size(str, get_window_my_columns(window_), 1, ' ', 0);
 		if (foreground)
 			output_with_count(widthstr, 1, 1);
+		term_clear_to_eol();
 		new_free(&widthstr);
 	   }
 	}
@@ -3579,9 +3583,9 @@ void 	repaint_window_body (int window_)
 			set_window_cursor_decr(window_);		/* Bumped by rite */
 			for (; count < get_window_display_lines(window_); count++)
 			{
-				term_clear_to_eol();
 				if (x)
 					term_output_char(x[0]);
+				term_clear_to_eol();
 				term_newline();
 			}
 			break;

@@ -883,7 +883,7 @@ int	redraw_status (int window_, Status *status)
 		 * Output the status line to the screen
 		 */
 		output_screen = get_window_screennum(window_);
-		term_move_cursor(0, get_window_bottom(window_) + status_line);
+		term_move_cursor(get_window_bottom(window_) + status_line, 0);
 		output_with_count(status_str, 1, 1);
 		debuglog("redraw_status(%d/%d/%d): status redrawn",
 			user_refnum, status_line, line);

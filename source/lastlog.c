@@ -250,6 +250,7 @@ intmax_t	add_to_lastlog (int window, const char *line)
 	if (!lastlog_oldest)
 		lastlog_oldest = lastlog_newest;
 
+	memset(&mask, 0, sizeof(mask));
 	get_window_lastlog_mask(window, &mask);
 	if (mask_isset(&mask, new_l->level))
 	{

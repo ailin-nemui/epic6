@@ -1109,7 +1109,7 @@ static	int	serverinfo_insert (ServerInfo *si)
 	if (!empty(nick_))
 		malloc_strcpy(&s->d_nickname, nick_);
 	else
-		malloc_strcpy(&s->d_nickname, nickname);
+		malloc_strcpy(&s->d_nickname, default_nickname);
 
 	make_options(i);
 
@@ -1935,7 +1935,7 @@ return_from_ssl_detour:
 		/* Everything else is a normal read. */
 		else
 		{
-			size_t	junk;
+			ssize_t	junk;
 
 			last_server = i;
 			junk = dgets(des, bufptr, get_server_line_length(i), 1);
@@ -2583,7 +2583,7 @@ int 	server_connect_next_addr (int new_server)
 
 	/* So we set the default nickname for a server only when we use it */
 	if (!s->d_nickname)			/* XXX Protocol level - should be somewhere else */
-		malloc_strcpy(&s->d_nickname, nickname);
+		malloc_strcpy(&s->d_nickname, default_nickname);
 
 	/*
 	 * Reset everything and go on our way.
@@ -3507,7 +3507,7 @@ void	accept_server_nickname (int refnum, const char *nick)
 
 	/* Change the global nickname for primary server (die, die!) */
 	if (refnum == primary_server)
-		strlcpy(nickname, nick, sizeof nickname);
+		strlcpy(default_nickname, nick, sizeof default_nickname);
 
 	update_all_status();
 }

@@ -58,7 +58,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3092;
+const unsigned long	commit_id = 3093;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -261,7 +261,7 @@ static	char	*epicrc_file 	  = NULL;	/* full path .epicrc file */
 		*my_homedir 	  = NULL,	/* path to users home dir */
 		*irc_lib 	  = NULL,	/* path to the ircII library */
 		*default_channel  = NULL,	/* Channel to join on connect */
-		nickname[NICKNAME_LEN + 1],	/* users nickname */
+		default_nickname[NICKNAME_LEN + 1],	/* users nickname */
 		*send_umode 	  = NULL;	/* sent umode */
 static	char 	*default_hostname = NULL;	/* Vhost the user wants to use */
 
@@ -377,7 +377,9 @@ void	irc_exit (int really_quit, const char *format, ...)
 	{
 		cursor_to_input();
 		term_cr();
+		term_flush();
 		term_clear_to_eol();
+		term_flush();
 		term_reset();
 	}
 	
@@ -588,7 +590,7 @@ static	void	parse_args (int argc, char **argv)
 	/*
 	 * Default Nickname
 	 */
-	*nickname = 0;
+	*default_nickname = 0;
 	cptr = getenv("IRCNICK");
 	if (empty(cptr))
 		cptr = getenv("NICK");
@@ -596,7 +598,7 @@ static	void	parse_args (int argc, char **argv)
 		cptr = get_string_var(DEFAULT_USERNAME_VAR);
 	if (!cptr || !*cptr)
 		cptr = "EPICUser";		/* The most bogus of all fallbacks! */
-	strlcpy(nickname, cptr, sizeof nickname);
+	strlcpy(default_nickname, cptr, sizeof default_nickname);
 
 	/*
 	 * Default Realname 
@@ -756,7 +758,7 @@ static	void	parse_args (int argc, char **argv)
 				break;
 
 			case 'n':	/* Overrules IRCNICK */
-				strlcpy(nickname, optarg, sizeof nickname);
+				strlcpy(default_nickname, optarg, sizeof default_nickname);
 				break;
 
 			case 'x': 	/* x_debug flag - danger! */
@@ -794,15 +796,15 @@ static	void	parse_args (int argc, char **argv)
 	 * then it is the default nickname, overruling IRCNICK and -n
 	 */
 	if (argc && **argv && !strchr(*argv, '.'))
-		strlcpy(nickname, *argv++, sizeof nickname), argc--;
+		strlcpy(default_nickname, *argv++, sizeof default_nickname), argc--;
 
 	/*
- 	 * "nickname" needs to be valid before we call build_server_list,
-	 * so do a final check on whatever nickname we're going to use.
+ 	 * "default_nickname" needs to be valid before we call build_server_list,
+	 * so do a final check on whatever default_nickname we're going to use.
 	 */
-	if (!*nickname)
-		strlcpy(nickname, get_string_var(DEFAULT_USERNAME_VAR), 
-				sizeof nickname);
+	if (!*default_nickname)
+		strlcpy(default_nickname, get_string_var(DEFAULT_USERNAME_VAR), 
+				sizeof default_nickname);
 
 	/*
 	 * All further naked arguments are taken as server descriptions.
@@ -913,6 +915,10 @@ static	int		level = 0,
 	Timespec	timer;
 
 	sequence_point++;
+
+	/* If someone requested a complete screen redraw, do it first */
+	if (need_redraw)
+		redraw_all_screens();
 
 	/* Phase 1 - Housekeeping */
 	/*

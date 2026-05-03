@@ -1051,6 +1051,11 @@ static char *	strmap (char *str, int (*func)(int))
 			d;	/* Uppercase version of 'c' */
 	char *		y;	/* The utf8 version of 'd' */
 
+	char *	c_utf8str;
+	char *	d_utf8str;
+	c_utf8str = alloca(16);
+	d_utf8str = alloca(16);
+
 	/*
 	 * For each code point 'c' in 'str'...
 	 */
@@ -1068,12 +1073,7 @@ static char *	strmap (char *str, int (*func)(int))
 		 */
 		if (c != d)
 		{
-			char *	c_utf8str;
-			char *	d_utf8str;
-
-			c_utf8str = alloca(16);
 			ucs_to_utf8(c, c_utf8str, 16);
-			d_utf8str = alloca(16);
 			ucs_to_utf8(d, d_utf8str, 16);
 
 			if ((ssize_t)strlen(d_utf8str) != (s - x))
@@ -3749,26 +3749,45 @@ int     is_string_empty (const char *str)
  *		zero-length string.
  *	If "str" does not contain more words than requested, The return
  *		value shall be as normal, but '*new_ptr' shall be set to
- *		a zero-length string.
+ *		the nul at the end of 'str'
  *
  * Notes:
  *  "Contain more words than requested" means if you request 1 word
  *	and there is only one word in 'str', then the return value 
- *	will point to that word, but '*new_ptr' will be set to a zero
- *	length string.
+ *	will point to that word, but '*new_ptr' will be set to the nul
+ *	following that word
  *  You can loop over a string, pulling each word off doing something
  *	like the following:
- *		while ((ptr = universal_next_arg_count(str, &str, 1, 1, 0))) {
+ *		while ((ptr = universal_next_arg_count(str, &str, 1, 1, NULL))) {
  *			... operate on ptr ...
  *		}
  *  'str' will be modified, so if you need to remove words from a
  *	(const char *), make a LOCAL_COPY() of it first.
  *
  * There are some shorthand macros available:
+ * 1. Only honor standard words, never honor double quoted words (dwords) under any circumstance
+ * 	GET_UWORD_ARG(dest, src)
  *	next_arg(char *str, char **new_ptr);
+ *		pull off the first standard word.  Dwords are never honored, no matter what.
  *	next_arg_count(char *str, char **new_ptr, int count);
+ *		pull off the first <count> standard words.  Dwords are never honored, no matter what.
+ *
+ * 2. Double quoted words are honored under every circumstance
+ * 	GET_DWORD_ARG(dest, src)
  *	new_next_arg(char *str, char **new_ptr);
+ *		pull off the first dword or word.  Dwords are always honored, no matter what.
  *	new_next_arg_count(char *str, char **new_ptr, int count);
+ *		pull off the first <count> dwords or words.  Dwords are always honored no matter what.
+ *
+ * 3. Double quoted words are honored only if /xdebug extratw is on
+ * 	next_earg(char *str, char **new_ptr);
+ *		pull off the first dword[*] or word.  [*]Dwords are honored only if /xdebug extractw is on
+ *
+ * 4. Double quoted words are honored only if /xdebug dword is on
+ * 	GET_FUNC_ARG(dest, src)
+ *	next_func_arg(char *str, char **new_ptr);
+ *		pull off the first dword[*] or word.  [*]Dwords are honored only if /xdebug dword is on
+ *
  */
 char *	universal_next_arg_count (char *str, char **new_ptr, int count, int extended, int dequote, const char *delims)
 {
@@ -4053,7 +4072,7 @@ void	add_mode_to_str (char *modes, size_t len, int mode)
 	p = new_modes;
 
 	/* Copy the modes in 'o' that are alphabetically less than 'c' */
-	for (i = 0; o && o[i]; i++)
+	for (i = 0; o[i]; i++)
 	{
 		if (o[i] >= c)
 			break;
@@ -4061,13 +4080,13 @@ void	add_mode_to_str (char *modes, size_t len, int mode)
 	}
 
 	/* If 'c' is already set, copy it, otherwise add it. */
-	if (o && o[i] == c)
+	if (o[i] == c)
 		*p++ = o[i++];
 	else
 		*p++ = c;
 
 	/* Copy all the rest of the modes */
-	for (; o && o[i]; i++)
+	for (; o[i]; i++)
 		*p++ = o[i];
 
 	/* Nul terminate the new string and reset the server's info */
@@ -4097,7 +4116,7 @@ void	remove_mode_from_str (char *modes, size_t len, int mode)
 	/*
 	 * Copy the whole of 'o' to 'p', except for any instances of 'c'.
 	 */
-	for (i = 0; o && o[i]; i++)
+	for (i = 0; o[i]; i++)
 	{
 		if (o[i] != c)
 			*p++ = o[i];
@@ -7285,4 +7304,28 @@ struct passwd * my_getpwuid (uid_t uid)
 		return NULL;
 
 	return &pwd;
+}
+
+/*
+ * This was suggested to me by gemini as a safe and well-defined way to check for 
+ * an integer being within the range of a (time_t)
+ */
+int	is_valid_time_t (intmax_t seconds)
+{
+	time_t	converted;
+
+	/* On systems where (time_t) is an (intmax_t) then all values are valid */
+	if (sizeof(intmax_t) == sizeof(time_t))
+		return 1;
+
+	/*
+	 * if "seconds" is out of range for (time_t),
+	 * these two casts will cause violence to the
+	 * value, which we can detect.
+	 */
+	converted = (time_t) seconds;
+   	if ((intmax_t) converted != seconds)
+		return 0;
+	else
+		return 1; 
 }

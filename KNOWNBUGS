@@ -460,4 +460,16 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Fix various issues found by cppcheck-atonce, scan-build atonce
 * Fix namespace shadow issues uncovered by atonce (global-vs-local conflicts)
 * Migrate more stack strings.  These are surprisingly tricky to regex!
-
+* Fix a use-after-free with a window's clear point
+* Change "nickname" to "default_nickname" to avoid shadow declarations
+* Change /oper to provide usage info if you don't provide arguments.
+* Add is_valid_time_t() to ensure an (intmax_t) won't overflow a (time_t)
+* Migrate mask handling from bsd bitmasks to level masks (rb fusion)
+* Begin a large refactoring project for built in functions
+  - Make sure every function is commented, using a standard pattern
+  - Make sure every function accepts json arguments
+  - Make every implementation follow a consistent pattern
+  - Reduce cleverness and increase clarity and correctness
+  - Some of these passes may be done at different time
+* Add -fsanitize=address to ./configure --with-clang-sanitizer
+  - Note - this makes address failures terminate with a debug log!

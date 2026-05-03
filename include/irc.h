@@ -157,7 +157,7 @@ extern const 	char 	irc_version[];
 extern		char *	last_notify_nick;
 extern		char *	LocalHostName;
 extern		char *	my_homedir;
-extern		char	nickname[NICKNAME_LEN + 1];
+extern		char	default_nickname[NICKNAME_LEN + 1];
 /* extern	const	char	my_off[]; */
 extern	const	char	on[];
 extern	const	char	one[];

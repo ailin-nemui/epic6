@@ -42,130 +42,22 @@ extern int	LEVEL_USER9;
 extern int	LEVEL_USER10;
 extern int	LEVEL_ALL;
 
-/*-
- * Copyright (c) 1982, 1986, 1989, 1991, 1993
- *	The Regents of the University of California.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- */
 
-#define BIT_WORDS      2
-#define BIT_MAXBIT     64
-#define BIT_IDX(bit)   ((bit) - 1)
-#define BIT_WORD(bit)  (BIT_IDX(bit) >> 5)
-#define BIT_BIT(bit)   (1U << (BIT_IDX(bit) & 31))
-#define BIT_VALID(bit) ((bit) < BIT_MAXBIT && (bit) > 0)
+/* XXX Revisit this */
+#define BIT_MAXBIT	(63)
+#define BIT_VALID(i)	((i) >= 0 && (i) <= (BIT_MAXBIT))
 
 typedef struct Mask {
-	unsigned int	__bits[BIT_WORDS];
+	uint64_t	__bits;
 } Mask;
 
-__inline__ static int	mask_setall (Mask *set)
-{
-	int i;
-
-	for (i = 0; i < BIT_WORDS; i++)
-		set->__bits[i] = ~0U;
-	return 0;
-}
-
-__inline__ static int	mask_unsetall (Mask *set)
-{
-	int i;
-
-	for (i = 0; i < BIT_WORDS; i++)
-		set->__bits[i] = 0;
-	return 0;
-}
-
-__inline__ static int	mask_set (Mask *set, int bit)
-{
-	if (bit == LEVEL_NONE)
-		return mask_unsetall(set);
-	if (bit == LEVEL_ALL)
-		return mask_setall(set);
-
-	if (!BIT_VALID(bit))
-		return -1;
-	set->__bits[BIT_WORD(bit)] |= BIT_BIT(bit);
-	return 0;
-}
-
-__inline__ static int	mask_unset (Mask *set, int bit)
-{
-	if (bit == LEVEL_NONE)
-		return mask_setall(set);
-	if (bit == LEVEL_ALL)
-		return mask_unsetall(set);
-
-	if (!BIT_VALID(bit))
-		return -1;
-	set->__bits[BIT_WORD(bit)] &= ~BIT_BIT(bit);
-	return 0;
-}
-
-__inline__ static int	mask_isall (const Mask *set)
-{
-	int	i;
-
-	for (i = 0; i < BIT_WORDS; i++)
-		if (set->__bits[i] != ~0U)
-			return 0;
-	return 1;
-}
-
-__inline__ static int	mask_isnone (const Mask *set)
-{
-	int	i;
-
-	for (i = 0; i < BIT_WORDS; i++)
-		if (set->__bits[i] != 0U)
-			return 0;
-	return 1;
-}
-
-__inline__ static int	mask_isset (const Mask *set, int bit)
-{
-	unsigned ubit;
-
-	if (bit == LEVEL_NONE)
-		return mask_isnone(set);
-	if (bit == LEVEL_ALL)
-		return mask_isall(set);
-
-	if (bit < 0)
-		return 0;
-	else
-		ubit = (unsigned) bit;
-
-	if (!BIT_VALID(ubit))
-		return -1;
-	return ((set->__bits[BIT_WORD(ubit)] & BIT_BIT(ubit)) ? 1 : 0);
-}
-
-/*---------------- end of bsd stuff ------------------*/
+	int		mask_setall 		(Mask *set);
+	int		mask_unsetall 		(Mask *set);
+	int		mask_set 		(Mask *set, int bit);
+	int		mask_unset 		(Mask *set, int bit);
+	int		mask_isall 		(const Mask *set);
+	int		mask_isnone 		(const Mask *set);
+	int		mask_isset 		(const Mask *set, int bit);
 
 	void		init_levels		(void);
 	int		add_new_level		(const char *);

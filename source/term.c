@@ -63,7 +63,7 @@
  * pretend it is, and maybe it will out for you (or maybe it'll just be garbage)
  */
 
-volatile 	sig_atomic_t	need_redraw;
+volatile 	sig_atomic_t	need_redraw = 0;
 	 static	struct termios	oldb, 
 				newb;
 
@@ -650,7 +650,7 @@ void	term_reset (void)
 	tcsetattr(STDIN_FILENO, TCSADRAIN, &oldb);
 
 	tputs_x(tiparm(term_get_capstr("csr"), 0, get_screen_lines(main_screen) - 1));
-	term_move_cursor(0, get_screen_lines(main_screen) - 1);
+	term_move_cursor(get_screen_lines(main_screen) - 1, 0);
 	term_disable_last_column();
 	term_flush();
 }
@@ -770,10 +770,20 @@ int 	term_init (void)
 	 * PHASE 2: ESTABLISH THE TERMINAL DISCIPLINE
 	 *
 	 */
+
+	/* 
+	 * Save the current settings -- 
+	 * we will need to restore them when we exit the program.
+	 */
 	tcgetattr(STDIN_FILENO, &oldb);
 
 	/*
-	 * So by default, the kernel intercepts a great deal of keypresses
+	 * We will make our changes from a copy of the current settings
+	 */
+	newb = oldb;
+
+	/*
+	 * By default, the kernel intercepts a great deal of keypresses
 	 * and does in-kernel input editing.  These keypresses are handled
 	 * by the kernel, and the result is a line of input which is then 
 	 * passed to the application.  Those special keypresses are never
@@ -792,7 +802,6 @@ int 	term_init (void)
 	 * Turning off ECHO tells the kernel not to output characters as
 	 * they are typed; we take responsibility for that.
 	 */
-	newb = oldb;
 	newb.c_lflag &= ~(unsigned int)(ICANON | ECHO); /* set equ. of CBREAK, no ECHO */
 
 	/*
@@ -991,15 +1000,17 @@ void	term_beep (void)
 	if (get_int_var(BEEP_VAR) && global_beep_ok)
 	{
 		term_emit("bel");
-		/* XXX It seems bogus to force a flush here */
-		term_flush();
 	}
 }
 
 /* Set the cursor position */
-void	term_move_cursor (int col, int row)
+void	term_move_cursor (int row, int col)
 {
-	tputs_x(tiparm(term_get_capstr("cup"), row, col));
+static	char *	cupstr = NULL;
+
+	malloc_strcpy(&cupstr, tiparm(term_get_capstr("cup"), row, col));
+	debuglog("term move cursor (%d, %d): %s", row, col, cupstr);
+	tputs_x(cupstr);
 }
 
 /* A no-brainer. Clear the screen. */
@@ -1032,7 +1043,6 @@ void	term_clear_screen (void)
  */
 void	term_scroll (int top, int bot, int n)
 {
-	int	i;
 static	char 	*start = NULL,
 		*final = NULL;
 	int	lines_;
@@ -1055,14 +1065,21 @@ static	char 	*start = NULL,
 	malloc_strcpy(&final, tiparm(term_get_capstr("csr"), 0, lines_ - 1));
 
 	/* Do the actual work here */
+	debuglog("term scroll/Start: (%d, %d) %s", top, bot, start);
 	tputs_x(start);			/* Set the scroll region */
-	term_move_cursor(0, bot);	/* Go to the bottom line */
+	debuglog("term scroll/move cursor: %d, 0", bot);
+	term_move_cursor(bot, 0);	/* Go to the bottom line */
 
 	/* Then do "cursor down" N times, which does the scrolling */
-	for (i = 0; i < n; i++)
+	for (int i = 0; i < n; i++)
+	{
+		debuglog("term scroll/ind", bot);
 		term_emit("ind");
+	}
 
-	term_move_cursor(0, top);	/* Got to the top line */
+	debuglog("term scroll/move cursor: %d, 0", top);
+	term_move_cursor(top, 0);	/* Got to the top line */
+	debuglog("term scroll/final: (%d, %d) %s", 0, lines_ - 1, final);
 	tputs_x(final);			/* And reset the scroll region */
 }
 
@@ -1352,8 +1369,5 @@ static 	size_t 	pos = 0;
 		// Reset buffer position after successful flush
 		pos = 0;
 	}
-
 	return 0;
 }
-
-
