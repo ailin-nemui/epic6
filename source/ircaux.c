@@ -7310,6 +7310,27 @@ struct passwd * my_getpwuid (uid_t uid)
  * This was suggested to me by gemini as a safe and well-defined way to check for 
  * an integer being within the range of a (time_t)
  */
+bool	ld_to_intmax (long double number, intmax_t *result)
+{
+	long double	truncated;
+
+	if (isnan(number) || isinf(number)) 
+		return false;
+
+	truncated = truncl(number);
+
+	if (truncated > (long double) INTMAX_MAX || truncated < (long double) INTMAX_MIN) 
+		return false;
+
+	*result = (intmax_t) truncated;
+	return true;
+}
+
+
+/*
+ * This was suggested to me by gemini as a safe and well-defined way to check for 
+ * an integer being within the range of a (time_t)
+ */
 int	is_valid_time_t (intmax_t seconds)
 {
 	time_t	converted;
@@ -7329,3 +7350,10 @@ int	is_valid_time_t (intmax_t seconds)
 	else
 		return 1; 
 }
+
+long double	atolf (const char *x)
+{
+	/* This is just a hack for now */
+	return strtold(x, NULL);
+}
+

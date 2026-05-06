@@ -137,12 +137,12 @@ typedef struct
 static cJSON_bool	cJSON_ParseValue (cJSON * item, cJSON_Parser *);
 
 /* * * * */
-static	cJSON_bool	cJSON_IsInt (double value)
+static	cJSON_bool	cJSON_IsInt (long double value)
 {
 	double	a;
 
-        a = round(value);
-        if (fabs(a - value) < DBL_EPSILON)
+        a = roundl(value);
+        if (fabsl(a - value) < DBL_EPSILON)
 		if (a < 1e52 && a > -1e52)
 			return true_;
         return false_;
@@ -151,13 +151,13 @@ static	cJSON_bool	cJSON_IsInt (double value)
 /* Parse the input text to generate a number, and populate the result into item. */
 static cJSON_bool	cJSON_ParseNumber (cJSON *item, cJSON_Parser *input_buffer)
 {
-	double		number = 0;
+	long double	number = 0;
 	char *		after_end = NULL;
 
 	if (!input_buffer || !input_buffer->content)
 		return false_;
 
-	number = strtod(buffer_at_offset(input_buffer), &after_end);
+	number = strtold(buffer_at_offset(input_buffer), &after_end);
 	if (buffer_at_offset(input_buffer) == after_end)
 		return false_; /* parse_error */
 
@@ -1054,19 +1054,19 @@ static cJSON_bool	cJSON_GenerateValue (const cJSON *item, cJSON_Generator *outpu
 
 
 /* securely comparison of floating-point variables */
-static cJSON_bool	compare_double (double a, double b)
+static cJSON_bool	compare_double (long double a, long double b)
 {
-	double	maxVal = fabs(a) > fabs(b) ? fabs(a) : fabs(b);
-	return (fabs(a - b) <= maxVal * DBL_EPSILON);
+	double	maxVal = fabsl(a) > fabsl(b) ? fabsl(a) : fabsl(b);
+	return (fabsl(a - b) <= maxVal * DBL_EPSILON);
 }
 
 /* I do not currently have a use case for this */
 #if 0
-static	cJSON_bool	is_double_an_int (double a1)
+static	cJSON_bool	is_double_an_int (long double a1)
 {
 	double	a2;
 
-	a2 = round(a1);
+	a2 = roundl(a1);
 	if (fabs(a2 - a1) < DBL_EPSILON)
 		return true_;
 	return false_;
@@ -1078,12 +1078,12 @@ static	cJSON_bool	is_double_an_int (double a1)
 static cJSON_bool	cJSON_GenerateNumber (const cJSON *item, cJSON_Generator *output_buffer)
 {
 	char *		output_pointer 	= NULL;
-	double 		d;
+	long double 	d;
 	int 		length 		= 0;
 	size_t 		i 		= 0;
 	char *		number_buffer;
 	char 		decimal_point 	= '.';
-	double 		test 		= 0.0;
+	long double 	test 		= 0.0;
 
 	if (!output_buffer || !item)
 		return false_;
@@ -1098,12 +1098,12 @@ static cJSON_bool	cJSON_GenerateNumber (const cJSON *item, cJSON_Generator *outp
 	else
 	{
 		/* Try 15 decimal places of precision to avoid nonsignificant nonzero digits */
-		length = snprintf(number_buffer, 26, "%1.15g", d);
+		length = snprintf(number_buffer, 26, "%1.15Lg", d);
 
 		/* Check whether the original double can be recovered */
 		/* If not, print with 17 decimal places of precision */
-		if ((sscanf(number_buffer, "%lg", &test) != 1) || !compare_double((double)test, d))
-			length = snprintf(number_buffer, 26, "%1.17g", d);
+		if ((sscanf(number_buffer, "%Lg", &test) != 1) || !compare_double((double)test, d))
+			length = snprintf(number_buffer, 26, "%1.17Lg", d);
 	}
 
 	/* snprintf failed or buffer overrun occurred */
@@ -1351,10 +1351,10 @@ char *	cJSON_GetStringValue (const cJSON *item)
 	return item->valuestring;
 }
 
-double	cJSON_GetNumberValue (const cJSON *item)
+long double	cJSON_GetNumberValue (const cJSON *item)
 {
 	if (!cJSON_IsNumber(item))
-		return (double) NAN;
+		return (long double) NAN;
 
 	return item->valuedouble;
 }
@@ -1374,7 +1374,7 @@ static void	cJSON_ensure_valuestring (cJSON *item)
 		if (cJSON_IsInt(item->valuedouble))
 			malloc_sprintf(&item->valuestring, "%jd", (intmax_t)item->valuedouble);
 		else
-			malloc_sprintf(&item->valuestring, "%lf", item->valuedouble);
+			malloc_sprintf(&item->valuestring, "%Lf", item->valuedouble);
 	}
 }
 
@@ -1383,7 +1383,7 @@ static void	cJSON_ensure_valuedouble (cJSON *item)
 	if (cJSON_IsNumber(item))
 		return;
 	else if (cJSON_IsString(item))
-		item->valuedouble = strtod(item->valuestring, NULL);
+		item->valuedouble = strtold(item->valuestring, NULL);
 	else if (cJSON_IsTrue(item))
 		item->valuedouble = 1;
 	else if (cJSON_IsFalse(item))
@@ -1426,7 +1426,7 @@ const char *	cJSON_GetValueAsString (cJSON *item)
 	return item->valuestring;
 }
 
-double		cJSON_GetValueAsNumber (cJSON *item)
+long double	cJSON_GetValueAsNumber (cJSON *item)
 {
 	cJSON_ensure_valuedouble(item);
 	return item->valuedouble;
@@ -1435,7 +1435,7 @@ double		cJSON_GetValueAsNumber (cJSON *item)
 intmax_t	cJSON_GetValueAsInt (cJSON *item)
 {
 	cJSON_ensure_valuedouble(item);
-	return (intmax_t)round(item->valuedouble);
+	return (intmax_t)roundl(item->valuedouble);
 }
 
 cJSON_bool	cJSON_GetValueAsBool (cJSON *item)
@@ -1452,7 +1452,7 @@ static cJSON_bool	cJSON_reset_item (cJSON *item)
 
 	if (item->valuestring)
 		new_free(&(item->valuestring));
-	item->valuedouble = 0;
+	item->valuedouble = 0.0;
 	item->valuebool = 0;
 
 	item->type = cJSON_NULL;
@@ -1471,7 +1471,7 @@ cJSON_bool	cJSON_ResetValueAsString (cJSON *item, const char *value)
 	return true;
 }
 
-cJSON_bool	cJSON_ResetValueAsNumber (cJSON *item, double value)
+cJSON_bool	cJSON_ResetValueAsNumber (cJSON *item, long double value)
 {
 	if (cJSON_IsArray(item) || cJSON_IsObject(item))
 		return false_;
@@ -1488,7 +1488,7 @@ cJSON_bool	cJSON_ResetValueAsInt (cJSON *item, intmax_t value)
 		return false_;
 	if (cJSON_reset_item(item) == false_)
 		return false;
-	item->valuedouble = (double)value;
+	item->valuedouble = (long double)value;
 	return true;
 }
 
@@ -1711,7 +1711,7 @@ cJSON *	cJSON_Add ## jsontype ## ToObject (cJSON *object, const char *name, cons
 	}											\
 }
 cJSON_AddTypeToObjectWithInitialValue(cJSON_bool, Bool)
-cJSON_AddTypeToObjectWithInitialValue(double, Number)
+cJSON_AddTypeToObjectWithInitialValue(long double, Number)
 cJSON_AddTypeToObjectWithInitialValue(char *, String)
 
 #if 0
@@ -1756,7 +1756,7 @@ cJSON *	cJSON_Upsert ## jsontype ## ToObject (cJSON *object, const char *name, c
 }
 
 cJSON_UpsertTypeToObjectWithInitialValue(cJSON_bool, Bool)
-cJSON_UpsertTypeToObjectWithInitialValue(double, Number)
+cJSON_UpsertTypeToObjectWithInitialValue(long double, Number)
 cJSON_UpsertTypeToObjectWithInitialValue(char *, String)
 
 
@@ -2067,7 +2067,7 @@ cJSON * cJSON_CreateBool (cJSON_bool boolean)
 	return item;
 }
 
-cJSON * cJSON_CreateNumber (double num)
+cJSON * cJSON_CreateNumber (long double num)
 {
 	cJSON *	item;
 
@@ -2152,7 +2152,7 @@ cJSON * cJSON_Create ## NameType ## Array (const ctype *values, int count)	\
 
 cJSON_CreateArrayOfType(int, Int, Number)
 cJSON_CreateArrayOfType(float, Float, Number)
-cJSON_CreateArrayOfType(double, Double, Number)
+cJSON_CreateArrayOfType(long double, Double, Number)
 cJSON_CreateArrayOfType(char *, String, String)
 
 

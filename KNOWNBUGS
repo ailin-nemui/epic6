@@ -473,3 +473,7 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
   - Some of these passes may be done at different time
 * Add -fsanitize=address to ./configure --with-clang-sanitizer
   - Note - this makes address failures terminate with a debug log!
+* Switch cJSON to use (long double) for floating point everywhere
+* Add atolf() as a utility function for now
+* Add ld_to_intmax() to convert a (long double) to (intmax) with overflow
+* Revamp $mid(), $rand(), $srand(), $time(), $stime(), and $tdiff()

@@ -314,7 +314,9 @@ const 	char *	inbound_recode 		(const char *, int, const char *, const char *, c
 #ifndef HAVE_STRLCAT
 	size_t  strlcat 		(char *dst, const char *src, size_t dsize);
 #endif
-struct passwd *	my_getpwuid 		(uid_t uid);
+struct	passwd *	my_getpwuid 		(uid_t uid);
+	long double     atolf 			(const char *);
+	bool    	ld_to_intmax 		(long double, intmax_t *);
 
 
 #endif /* _IRCAUX_H_ */

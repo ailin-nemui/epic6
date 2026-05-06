@@ -905,7 +905,7 @@ int	parse_kwargs (struct kwargs *kwargs, const char *input)
 			}
 			else if (cJSON_IsNumber(value))
 			{
-				malloc_sprintf((char **)kwargs->data, "%f", value->valuedouble);
+				malloc_sprintf((char **)kwargs->data, "%Lf", value->valuedouble);
 			}
 			else if (cJSON_IsString(value) && (value->valuestring != NULL))
 			{
@@ -1337,13 +1337,32 @@ BUILT_IN_FUNCTION(function_right, input)
 	RETURN_STR((char *)s);
 }
 
-/*
- * Usage: $mid(start number text)
- * Returns: the <start>th through <start>+<number>th characters in <text>.
- * Example: $mid(3 4 the quick brown frog) returns " qui"
+/* 
+ * $mid(start:integer number:integer text:string) -> string
  *
- * Note: the first character is numbered zero.
- * XXX It's a shame this isn't generalized and shared with other funcs.
+ * Happy path:
+ *	Return the <start> through <start>+<number>th characters in <text>.
+ *	 - <Start> is numbered from 0.
+ *	 - It may be useful to think of <start> as "characters to skip"
+ *	If the string is too "short" it will return what it can
+ *
+ * Specified errors (return the empty string)
+ *	- If <start>, <number> or <text> is omitted
+ *	- If <start> is negative
+ *	- If <number> is negative or zero.
+ *	- If <text> is an empty string
+ *	- If there are not <start> characters in <text>
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	- If <start> is not a number the result is unspecified
+ *	- If <number> Is not a number the result is unspecified
+ *	- If <text> is not a well formed utf8 string, how things get counted is unspecified.
+ *
+ * Sharp edges/quirks/implementation details:
+ *	None at this time
+ *
+ * Example:
+ * 	$mid(2 6 the quick brown frog) returns "e quic"
  */
 BUILT_IN_FUNCTION(function_mid, input)
 {
@@ -1432,64 +1451,201 @@ BUILT_IN_FUNCTION(function_mid, input)
 }
 
 
-/*
- * Usage: $rand(max)
- * Returns: A random number from 1 to max-1.
- *	    It returns 0 if there was an error
- * Example: $rand(10) might return any number from 0 to 9.
- *	"max = 0" returns a random number without a ceiling
+/* 
+ * $rand(max:integer) -> integer
+ *
+ * Happy path:
+ *	Returns a random number between 0 (inclusive) and <max> (exclusive)
+ *	If <max> is 0, there is no ceiling on the number
+ *
+ * Specified errors (return the empty string)
+ *	- If <max> is omitted or is negative
+ *
+ * Sharp edges/quirks/implementation details:
+ *	If <max> is not a number the result is unspecified
+ *
+ * Example:
+ *	$rand(10) will return a number >= 0 and < 10
  */
-BUILT_IN_FUNCTION(function_rand, word)
+BUILT_IN_FUNCTION(function_rand, input)
 {
-	intmax_t	maxval,
-			randomval;
+	intmax_t	max_;
 
-	GET_INT_ARG(maxval, word);
+	if (*input == '{')
+	{
+		struct kwargs kwargs[] = {
+			{ "max", KWARG_TYPE_INTEGER, &max_, 1 },
+			{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+		};
+
+		max_ = -1;
+		parse_kwargs(kwargs, input);
+	}
+	else
+	{
+		GET_INT_ARG(max_, input);
+	}
+
+	if (max_ < 0)
+		RETURN_EMPTY;
+
+	/* * */
+	intmax_t	randomval;
+
 	randomval = random_number(0);
-	if (maxval != 0)
-		randomval %= maxval;
+	if (max_ != 0)
+		randomval %= max_;
 	RETURN_INT(randomval);
 }
 
-/*
- * Usage: $srand(seed)
- * Returns: Nothing.
- * Side effect: Nothing
- * This used to be used to seed the RNG.  But now it's a NOP.
+/* 
+ * $srand() -> string
+ *
+ * Happy path:
+ *	- There is no happy path
+ *
+ * Specified errors (return the empty string)
+ *	Using this function is an error.
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	If you call this function the result is unspecified
+ *
+ * Sharp edges/quirks/implementation details:
+ *	- This used to seed the random number generator, back when such 
+ *	  things needed to be done.  I wonder if some day we may have 
+ *	  to start doing that again...
+ *
+ * Example:
+ *	$srand() will return the empty string
  */
 BUILT_IN_FUNCTION(function_srand, word)
 {
 	RETURN_EMPTY;
 }
 
-/*
- * Usage: $time()
- * Returns: The number of seconds that has elapsed since Jan 1, 1970, GMT.
- * Example: $time() returned something around 802835348 at the time I
- * 	    wrote this comment.
+/* 
+ * $time() -> integer
+ *
+ * Happy path:
+ *	- This returns the number of seconds since the epoch
+ *	  The epoch was 1970-01-01 00:00:00 UTC
+ *
+ * Specified errors (return the empty string)
+ *	None at this time
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	Passing any argument results in unspecified behavior
+ *
+ * Sharp edges/quirks/implementation details:
+ *	- Watch out for the Y2038 problem on old systems!
+ *	  https://en.wikipedia.org/wiki/Year_2038_problem
+ *	  64 bit time_t was ubiquitous in Issue 7 implementations,
+ *	  but Issue 8 requires 64 bit time_t.
+ *
+ * Example:
+ *	$time() returned 1777826552 when i wrote this.
  */
 BUILT_IN_FUNCTION(function_time, input)
 {
 	RETURN_INT(time(NULL));
 }
 
-/*
- * Usage: $stime(time)
- * Returns: The human-readable form of the datetime based on the <time> argument.
- * Example: $stime(1000) returns what time it was 1000 seconds from the epoch.
- * 
- * Note: $stime() is really useful when you give it the argument $time(), ala
- *       $stime($time()) is the human readable form for now.
+/* 
+ * $ctime(time:integer) -> string
+ *
+ * Happy path:
+ *	- Convert <time>, to human readable format
+ *	- Normally you do $stime($time())
+ *
+ * Specified errors (returns the empty string)
+ *	- <time> is omitted
+ *	- <time> is the literal value -1
+ *
+ * Specified errors (returns "<time> <invalid>"
+ *	- If <time> overflows your system's (time_t)
+ *	- If <time> overflows your system's (struct tm)
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	None at this time
+ *
+ * Sharp edges/quirks/implementation details:
+ *	When (time_t) was 32 bits, you could convert every value
+ *	into a (struct tm) with ctime() which was never defined
+ *	to return a NULL since there were no failure conditions.
+ *
+ *	When (time_t) switched to 64 bits, they didn't change
+ *	(struct tm) so it was possible for ctime() to fail, and
+ *	it wasn't specified how it should fail.  Some systems
+ *	returned an error string, others returned NULL.  
+ *
+ * 	Because the default behavior of CTCP UTC was to pass the
+ *	attacker-provided argument to ctime() which led to NULL
+ *	derefs on systems where ctime() returned NULL.
+ *	https://security-tracker.debian.org/tracker/CVE-2021-29376
+ *	Siimlarly, passing attacker-provided information to this 
+ *	function could have led to a NULL deref.
+ *
+ *	As it happened, Issue 5 introduced localtime_r() which
+ *	has defined behavior for every (time_t)  [it returns NULL
+ *	on (struct tm) overflow.
+ *
+ *	We no longer use ctime(), instead there is the my_ctime()
+ *	function which wraps localtime_r() and handles NULL.
+ *
+ * Example:
+ *       $stime($time()) is the human readable form for "now"
  */
 BUILT_IN_FUNCTION(function_stime, input)
 {
-	intmax_t	ltime_;
+	intmax_t	time_;
+
+	if (*input == '{')
+	{
+		struct kwargs kwargs[] = {
+			{ "time", KWARG_TYPE_INTEGER, &time_, 1 },
+			{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+		};
+
+		time_ = -1;
+		parse_kwargs(kwargs, input);
+	}
+	else
+	{
+		GET_INT_ARG(time_, input);
+	}
+
+	if (time_ == -1)
+		RETURN_EMPTY;
+
+	/* * */
 	const char *	retval;
 
-	GET_INT_ARG(ltime_, input);
-	retval = my_ctime(ltime_);
+	retval = my_ctime(time_);
 	RETURN_STR(retval);		/* Dont put function call in macro! */
 }
+
+/* 
+ * $tdiff(seconds:number) -> string
+ *
+ * Happy path:
+ *	- Converts <seconds>, the difference between two timestamps, 
+ *	  into a human readable format ("1 day 6 hours 12 minutes 42 seconds")
+ *	- <seconds> may be a floating point number
+ *
+ * Specified errors (returns the empty string)
+ *	- <seconds> is omitted
+ *	- <seconds> is not a number
+ *	- <seconds> is not a number that fits in a (time_t)
+ *
+ * Unspecified behavior (doctor, it hurts when i do this)
+ *	If <seconds> is negative the result is unspecified
+ *
+ * Sharp edges/quirks/implementation details:
+ *	This uses the english rules for plurals, which is probably bogus.
+ *
+ * Example:
+ *	$tdiff(3663) would return "1 hour 1 minute 3 seconds"
+ */
 
 /*
  * Usage: $tdiff(seconds)
@@ -1499,79 +1655,147 @@ BUILT_IN_FUNCTION(function_stime, input)
  */
 BUILT_IN_FUNCTION(function_tdiff, input)
 {
-	time_t		ltime,
-			days,
-			hours,
-			minutes,
-			seconds;
-	size_t		size;
-	char		*tmp,
-			*after;
+	long double	seconds_;
 
-	size = strlen(input) + 64;
-	tmp = alloca(size);
-	*tmp = 0;
-
-	/* XXX Why doesn't this use GET_INT_ARG? */
-	ltime = (time_t)strtol(input, &after, 10);
-	if (after == input)
-		RETURN_EMPTY;
-
-	seconds = ltime % 60;
-	ltime /= 60;
-	minutes = ltime % 60;
-	ltime /= 60;
-	hours = ltime % 24;
-	days = (ltime - hours) / 24;
-
-	if (days)
+	/* * */
+	/* Parse the argument into 'seconds_' */
+	if (*input == '{')
 	{
-		if (days == 1)
-			strlcat(tmp, "1 day ", size);
-		else
-			strlpcat(tmp, size, "%ld days ", (long)days);
-	}
-	if (hours)
-	{
-		if (hours == 1)
-			strlcat(tmp, "1 hour ", size);
-		else
-			strlpcat(tmp, size, "%ld hours ", (long)hours);
-	}
-	if (minutes)
-	{
-		if (minutes == 1)
-			strlcat(tmp, "1 minute ", size);
-		else
-			strlpcat(tmp, size, "%ld minutes ", (long)minutes);
-	}
+		struct kwargs kwargs[] = {
+			{ "seconds", KWARG_TYPE_NUMBER, &seconds_, 1 },
+			{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+		};
 
-	if (seconds || (!days && !hours && !minutes) || 
-			(*after == '.' && is_number(after + 1)))
-	{
-		unsigned long number = 0;
-
-		/*
-		 * If we have a decmial point, and is_number() returns 1,
-		 * then we know that we have a real, authentic number AFTER
-		 * the decmial point.  As long as it isnt zero, we want it.
-		 */
-		strlcat(tmp, NUMSTR(seconds), size);
-		if (*after == '.')
-		{
-			if ((number = atol(after + 1)))
-				strlcat(tmp, after, size);
-		}
-
-		if (seconds == 1 && number == 0)
-			strlcat(tmp, " second", size);
-		else
-			strlcat(tmp, " seconds", size);
+		seconds_ = NAN;
+		parse_kwargs(kwargs, input);
 	}
 	else
-		chop(tmp, 1);	/* Chop off that space! */
+	{
+		GET_FLOAT_ARG(seconds_, input);
+	}
 
-	RETURN_STR(tmp);
+	/* * */
+	/* Convert 'seconds_' into 't' */
+	long double	subsecond,
+			wholesecond;
+	intmax_t	i = 0;
+	time_t		t;
+	char *		retval = NULL;
+
+	subsecond = modfl(seconds_, &wholesecond);
+	if (!ld_to_intmax(wholesecond, &i))
+		RETURN_EMPTY;
+
+	if (!is_valid_time_t(i))
+		RETURN_EMPTY;
+
+	t = (time_t) i;
+
+	/* * */
+	/* Convert 't' into days, hours, minutes, and seconds */
+	int	days, hours, mins, secs;
+
+	secs = t % 60;
+	t /= 60;
+	mins = t % 60;
+	t /= 60;
+	hours = t % 24;
+	days = (t - hours) / 24;
+
+	/* * * */
+	/* Convert days, hours, minutes, and seconds into a string */
+	/*
+	 * The return value of this function is:
+	 *	<daypart>
+	 *	<day-hour-comma-space>
+	 *	<hourpart>
+	 *	<hour-minute-comma-space>
+	 *	<minutepart>
+	 *	<minute-second comma-space>
+	 *	<secondpart>
+	 *
+	 * <daypart> is "1 day " | "%d days " | ""
+	 * <hourpart> is "1 hour " | "%d hours " | ""
+	 * <minutepart> is "1 minute " | "%d minute " | ""
+	 * <secondpart> is "1 second" | "%d seconds" | "%d.%Lf seconds" | ""
+	 *
+	 * If the final character is a space, then it will be truncated
+	 */
+
+	char 	*daypart,
+		*hourpart,
+		*minutepart,
+		*secondpart;
+
+	daypart = NULL;
+	if (days == 0)
+		malloc_strcpy(&daypart, empty_string);
+	else if (days == 1)
+		malloc_sprintf(&daypart, "%d day ", days);
+	else
+		malloc_sprintf(&daypart, "%d days ", days);
+
+	hourpart = NULL;
+	if (hours == 0)
+		malloc_strcpy(&hourpart, empty_string);
+	else if (hours == 1)
+		malloc_sprintf(&hourpart, "%d hour ", hours);
+	else
+		malloc_sprintf(&hourpart, "%d hours ", hours);
+
+	minutepart = NULL;
+	if (mins == 0)
+		malloc_strcpy(&minutepart, empty_string);
+	else if (mins == 1)
+		malloc_sprintf(&minutepart, "%d minute ", mins);
+	else
+		malloc_sprintf(&minutepart, "%d minutes ", mins);
+
+	secondpart = NULL;
+	if (secs == 0)
+	{
+		if (subsecond == 0.0)
+			malloc_strcpy(&secondpart, empty_string);
+		else
+		{
+			subsecond += secs;
+			malloc_sprintf(&secondpart, "%Lg seconds", subsecond);
+		}
+	}
+	else if (secs == 1)
+	{
+		if (subsecond == 0.0)
+			malloc_sprintf(&secondpart, "%d second", secs);
+		else
+		{
+			subsecond += secs;
+			malloc_sprintf(&secondpart, "%Lg seconds", subsecond);
+		}
+	}
+	else
+	{
+		if (subsecond == 0.0)
+			malloc_sprintf(&secondpart, "%d seconds", secs);
+		else
+		{
+			subsecond += secs;
+			malloc_sprintf(&secondpart, "%Lg seconds", subsecond);
+		}
+	}
+
+	malloc_sprintf(&retval, "%s%s%s%s",
+			daypart,
+			hourpart,
+			minutepart,
+			secondpart);
+
+	if (retval && strlen(retval) > 0)
+	{
+		if (retval[strlen(retval) - 1] == ' ')
+			retval[strlen(retval) - 1] = 0;
+	}
+
+	RETURN_MSTR(retval);
 }
 
 /*

@@ -91,7 +91,7 @@ typedef struct cJSON
 	 * When type not in (Number)
 	 *   This value is undefined / must not be used.
 	 */
-	double		valuedouble;
+	long double	valuedouble;
 
 	cJSON_bool	valuebool;
 } cJSON;
@@ -133,7 +133,7 @@ typedef struct cJSON
 	cJSON *		cJSON_CreateTrue		(void);
 	cJSON *		cJSON_CreateFalse		(void);
 	cJSON *		cJSON_CreateBool		(cJSON_bool);
-	cJSON *		cJSON_CreateNumber		(double num);
+	cJSON *		cJSON_CreateNumber		(long double num);
 	cJSON *		cJSON_CreateString		(const char *string);
 	cJSON *		cJSON_CreateArray		(void);
 	cJSON *		cJSON_CreateObject		(void);
@@ -142,7 +142,7 @@ typedef struct cJSON
 	/* Create a JSON item with an array with N items of a certain type (but no values) */
 	cJSON *		cJSON_CreateIntArray		(const int *, int);
 	cJSON *		cJSON_CreateFloatArray		(const float *, int);
-	cJSON *		cJSON_CreateDoubleArray		(const double *, int);
+	cJSON *		cJSON_CreateDoubleArray		(const long double *, int);
 	cJSON *		cJSON_CreateStringArray		(const char **, int);
 
 	/* Given a JSON Array, add an item to the end of it. */
@@ -171,14 +171,14 @@ typedef struct cJSON
 	cJSON *		cJSON_AddTrueToObject 		(cJSON *, const char *);
 	cJSON *		cJSON_AddFalseToObject 		(cJSON *, const char *);
 	cJSON *		cJSON_AddBoolToObject 		(cJSON *, const char *, const cJSON_bool);
-	cJSON *		cJSON_AddNumberToObject	 	(cJSON *, const char *, const double);
+	cJSON *		cJSON_AddNumberToObject	 	(cJSON *, const char *, const long double);
 	cJSON *		cJSON_AddStringToObject	 	(cJSON *, const char *, const char *);
 	cJSON *		cJSON_AddObjectToDict 		(cJSON *, const char *);
 	cJSON *		cJSON_AddArrayToObject 		(cJSON *, const char *);
 
 	/* Given a JSON Object and a key, insert a new value into the object */
 	cJSON *		cJSON_UpsertBoolToObject 	(cJSON *, const char *, const cJSON_bool);
-	cJSON *		cJSON_UpsertNumberToObject	(cJSON *, const char *, const double);
+	cJSON *		cJSON_UpsertNumberToObject	(cJSON *, const char *, const long double);
 	cJSON *		cJSON_UpsertStringToObject	(cJSON *, const char *, const char *);
 
 
@@ -205,21 +205,21 @@ typedef struct cJSON
 	/* * * */
 	/* If this JSON item is a string or a number, get me its C value */
 	char *		cJSON_GetStringValue		(const cJSON *);
-	double		cJSON_GetNumberValue		(const cJSON *);
+	long double	cJSON_GetNumberValue		(const cJSON *);
 
 #if 0
 	/* Given a JSON item, replace its _value_ */
-	double		cJSON_SetNumberHelper		(cJSON *object, double);
+	long double	cJSON_SetNumberHelper		(cJSON *object, long double);
 	char *		cJSON_SetValuestring		(cJSON *object, const char *);
 #endif
 
 	const char *    cJSON_GetValueAsString (cJSON *item);
-	double          cJSON_GetValueAsNumber (cJSON *item);
+	long double	cJSON_GetValueAsNumber (cJSON *item);
 	intmax_t        cJSON_GetValueAsInt (cJSON *item);
 	cJSON_bool      cJSON_GetValueAsBool (cJSON *item);
 
 	cJSON_bool      cJSON_ResetValueAsString (cJSON *item, const char *value);
-	cJSON_bool      cJSON_ResetValueAsNumber (cJSON *item, double value);
+	cJSON_bool      cJSON_ResetValueAsNumber (cJSON *item, long double value);
 	cJSON_bool      cJSON_ResetValueAsInt (cJSON *item, intmax_t value);
 	cJSON_bool      cJSON_ResetValueAsBool (cJSON *item, cJSON_bool value);
 	cJSON_bool      cJSON_ResetValueAsNull (cJSON *item);
