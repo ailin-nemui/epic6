@@ -410,18 +410,18 @@ void *	really_new_realloc (void **ptr, size_t size, const char *fn, int line)
 	if (size == 0)
 	{
 		if (*ptr)
-			memset_s(*ptr, alloc_size(*ptr), 0, alloc_size(*ptr));
+			memset(*ptr, 0, alloc_size(*ptr));
 	}
 
 	/*
 	 * If *ptr is NULL, then this is an initial allocation (which is fine).
 	 * We just defer to really_new_malloc().
-	 * We do a gratuitous memset_s() just for fun.
+	 * We do a gratuitous memset() just for fun.
 	 */
 	else if (*ptr == NULL)
 	{
 		*ptr = really_new_malloc(size, fn, line);
-		memset_s(*ptr, alloc_size(*ptr), 0, alloc_size(*ptr));
+		memset(*ptr, 0, alloc_size(*ptr));
 	}
 
 	/*
@@ -450,8 +450,7 @@ void *	really_new_realloc (void **ptr, size_t size, const char *fn, int line)
 
 #if 0
 			/* Zero out the extra new space */
-			memset_s((char *)newptr + alloc_size(*ptr), 
-				 size - alloc_size(*ptr), 
+			memset((char *)newptr + alloc_size(*ptr), 
 				 0, 
 				 size - alloc_size(*ptr));
 #endif

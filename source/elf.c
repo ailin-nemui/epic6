@@ -46,7 +46,9 @@ static int find_in_archive(struct archive *a, struct archive_entry **entry, cons
 struct epic_loadfile * epic_fopen(char *filename, const char *mode, int do_error)
 {
     FILE * doh;
+#ifdef HAVE_LIBARCHIVE
     int    ret;
+#endif
 
     struct epic_loadfile *elf;
 

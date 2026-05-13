@@ -484,3 +484,5 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Typos, mistakes, memory leaks, buffer overflows, buffer underflows,
 * #ifdef mistakes, unreachable code, return value errors, 
 * Sometimes it was more pedantic than i would care for, but oh well!
+* Did you know ubuntu doesn't have memcpy_s(), required by c11?
+* Fix a bogon if you don't have libarchive
