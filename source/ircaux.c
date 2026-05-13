@@ -237,7 +237,8 @@ static	int	recursion = 0;
 			privileged_yell("Because of: [%s]", special);
 		if (detail)
 			privileged_yell("%s", detail);
-		privileged_yell("Dump: [%s]", prntdump(ptr, alloc_size(ptr)));
+		if (ptr)
+			privileged_yell("Dump: [%s]", prntdump(ptr, alloc_size(ptr)));
 
 		new_free(&detail);
 

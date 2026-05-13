@@ -129,6 +129,7 @@ static char *	tool_keygen (int __U(argc), char *argv[])
 	if (!(pubout = fopen(argv[1], "w")))
 	{
 		say("ecdsatool keygen: Could not create file %s -- check permissions?", argv[1]);
+		ecdsa_key__free(&key);
 		RETURN_EMPTY;
 	}
 

@@ -391,6 +391,7 @@ char *	file_read (int fd)
 		for (;;)
 		{
 		    retbufsiz += 4096;
+		    /* Coverity insists that retbufsiz can be 0 here, but I disagree */
 		    RESIZE(ret, char, retbufsiz);
 		    ret[retlen] = 0;	/* Keep this -- C requires it! */
 		    if (!epic_fgets(ret + retlen, retbufsiz - retlen, ptr->elf))

@@ -5892,13 +5892,13 @@ BUILT_IN_FUNCTION(function_randread, input)
 			 */
 			if (fseek(fp, (long)0, SEEK_SET))
 			{
-				strlcpy(buffer, "randread: something went really wrong (1a)", sizeof(buffer));
+				strlcpy(buffer, "randread: something went really wrong (1a)", BIG_BUFFER_SIZE);
 				goto randread_cleanup;
 			}
 		}
 		else
 		{
-			strlcpy(buffer, "randread: something went really wrong (1b)", sizeof(buffer));
+			strlcpy(buffer, "randread: something went really wrong (1b)", BIG_BUFFER_SIZE);
 			goto randread_cleanup;
 		}
 	}
@@ -6509,7 +6509,7 @@ BUILT_IN_FUNCTION(function_mask, args)
 	new_free(&my_dot);
 	new_free(&colon);
 
-	RETURN_STR(buff);
+	RETURN_MSTR(buff);
 }
 
 BUILT_IN_FUNCTION(function_ischanvoice, input)

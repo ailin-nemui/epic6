@@ -1426,7 +1426,7 @@ void	reconstitute_scrollback (int window)
 	    }
 	    else
 	    {
-		debuglog("reconstitute_scrollback: NO   window %d (%d) refnum %d msg %s", li->window, window, li->refnum, li->msg);
+		debuglog("reconstitute_scrollback: NO   window %d (%d) refnum %ld msg %s", li->window, window, li->refnum, li->msg);
 	    }
 	}
 }

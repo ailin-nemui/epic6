@@ -486,3 +486,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Sometimes it was more pedantic than i would care for, but oh well!
 * Did you know ubuntu doesn't have memcpy_s(), required by c11?
 * Fix a bogon if you don't have libarchive
+* More coverity fixes from round two.

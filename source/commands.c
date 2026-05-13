@@ -2972,6 +2972,7 @@ void	send_text (int server, const char *nick_list, const char *text, const char 
 static	int	recursion = 0;
 	char *	extra = NULL;
 	const char	*recode_text;
+	char *	x;		/* For coverity */
 
 	/*
 	 * XXXX - Heaven help us.
@@ -3088,14 +3089,14 @@ struct target_type target[4] =
 		parse_statement(line, 0, empty_string);
 		new_free(&line);
 	    }
-	    else if (*current_nick == '-' && strchr(current_nick + 1, '/'))
+	    else if (*current_nick == '-' && (x = strchr(current_nick + 1, '/')))
 	    {
 		int	servref;
 		char *	servername;
 		char *	msgtarget;
 
 		servername = current_nick + 1;
-		msgtarget = strchr(current_nick + 1, '/');
+		msgtarget = x;		/* Are you happy, coverity? */
 		*msgtarget++ = 0;
 
 		if ((servref = serverdesc_lookup(servername)) == NOSERV)
