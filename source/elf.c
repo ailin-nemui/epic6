@@ -55,28 +55,20 @@ struct epic_loadfile * epic_fopen(char *filename, const char *mode, int do_error
     elf = (struct epic_loadfile *) new_malloc(sizeof(struct epic_loadfile));
 
     elf->fp = NULL;
+    elf->eof = 0;
 #ifdef HAVE_LIBARCHIVE
     elf->a = NULL;
     elf->entry = NULL;
-#endif
-    elf->eof = 0;
 
-#ifdef HAVE_LIBARCHIVE
     if (stristr(filename, ".zip")!=-1) {
         ret = archive_fopen(elf, filename, ".zip", do_error);
     } else if (stristr(filename, ".tar")!=-1) {
         ret = archive_fopen(elf, filename, ".tar", do_error);
     }
-    else
-#endif
-	ret = 0;
 
-#ifdef HAVE_LIBARCHIVE
     if (ret == 1)
         return elf;
-#endif
 
-#ifdef HAVE_LIBARCHIVE
     /* archive didnt have loadable data */
     if (ret != -1) 
     {
