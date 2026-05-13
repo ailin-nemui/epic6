@@ -637,7 +637,7 @@ do
 		return;
 	}
 
-	if (new_w && new_w->who_mask)
+	if (new_w->who_mask)
 	{
 		if (new_w->who_mask & WHO_HERE)
 			ok = ok && (*status == 'H');

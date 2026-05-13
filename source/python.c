@@ -888,7 +888,14 @@ void	do_python_fd_failure (int fd, int __U(error))
 	}
 
 	if (callback->except_callback)
-		call_python_function_1arg(callback->except_callback, fd);
+	{
+		if ((call_python_function_1arg(callback->except_callback, fd)))
+		{
+			yell("do_python_fd: FD %d failed: both ordinary and error callback failed.", fd);
+			new_close(fd);
+			return;
+		}
+	}
 }
 
 

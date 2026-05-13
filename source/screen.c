@@ -2213,7 +2213,7 @@ char *	denormalize_string (const char *str_)
 		    case '\006':
 		    {
 			size_t	numbytes = 0;
-			if (read_internal_attribute(str, &a, &numbytes))
+			if (read_internal_attribute(str, &a, &numbytes) < 0)
 				continue;		/* Mangled */
 			str += numbytes;
 
@@ -2279,7 +2279,7 @@ char *	normalized_string_to_plain_text (const char *str_)
 		    case '\006':
 		    {
 			size_t	numbytes = 0;
-			if (read_internal_attribute(str, &a, &numbytes))
+			if (read_internal_attribute(str, &a, &numbytes) < 0)
 				continue;		/* Mangled */
 			str += numbytes;
 			break;
@@ -2427,7 +2427,8 @@ const 	char 	*words;
 			size_t	numbytes = 0;
 
 			/* We need to both READ and COPY the attribute here. */
-			read_internal_attribute(ptr, &a, &numbytes);
+			if ((read_internal_attribute(ptr, &a, &numbytes)) < 0)
+				(void) 0;	/* Oh well */
 
 			buffer[pos++] = '\006';
 			copy_internal_attribute(ptr, buffer + pos, bufsiz - pos, &numbytes);
@@ -2553,6 +2554,7 @@ const 	char 	*words;
 			 * wrapped (such as for counting output length.
 			 */
 			if (word_break == 0 || (flags & PREPARE_NOWRAP))
+			    if (pos > 0)
 				word_break = pos - 1;
 
 
@@ -2578,6 +2580,7 @@ const 	char 	*words;
 			 * it all comes down to it.  Good thing its cheap. ;-)
 			 */
 			if (!cont && (firstwb == word_break) && do_indent) 
+			    if (pos > 0)
 				word_break = pos - 1;
 
 			/*
@@ -2851,7 +2854,7 @@ const 	char	*ptr;
 			col += cols;
 
 			utf8str = alloca(16);
-			ucs_to_utf8(codepoint, utf8str, sizeof(utf8str));
+			ucs_to_utf8(codepoint, utf8str, 16);
 			for (x = utf8str; *x; x++)
 				buffer[pos++] = *x;
 
@@ -3058,7 +3061,7 @@ size_t 	output_with_count (const char *str1, int clreol, int output)
 				char *	utf8str;
 
 				utf8str = alloca(16);
-				ucs_to_console(codepoint, utf8str, sizeof(utf8str));
+				ucs_to_console(codepoint, utf8str, 16);
 				for (x = utf8str; *x; x++)
 					term_output_char(*x);
 			}
@@ -4398,7 +4401,7 @@ void	fire_wait_prompt (uint32_t key)
 	redraw_input(last_input_screen, UPDATE_ALL);
 
 	utf8str = alloca(8);
-	ucs_to_utf8(key, utf8str, sizeof(utf8str));
+	ucs_to_utf8(key, utf8str, 8);
 	(*oldprompt->func)(oldprompt->data, utf8str);
 	oldprompt->data = NULL;			/* XXX Testing */
 	destroy_prompt(last_input_screen, &oldprompt);
@@ -5228,6 +5231,9 @@ int	screen_add_window_after (int screen_, int existing_window_, int new_window_)
 
 	if ((ewp = screen_window_find(screen_, existing_window_)) >= 0)
 	{
+		if (ewp > MAX_WINDOWS_ON_SCREEN)
+			return 0;
+
 		if (screen_windows_make_room_at(screen_, ewp + 1))
 		{
 			s->_windows[ewp + 1].window = new_window_;
@@ -5309,19 +5315,20 @@ int	screen_windows_squeeze (int screen_)
 
 int	screen_windows_make_room_at (int screen_, int location)
 {
-	Screen *s = get_screen_by_refnum(screen_);
-	int	end = location;
+	Screen *s;
+	int	end;
 
-	if (!s)
+	if (!(s = get_screen_by_refnum(screen_)))
 		return 0;
 
 	if (location < 0 || location > MAX_WINDOWS_ON_SCREEN )
 		return 0;		/* No. */
 
+	end = location;
 	while (end <= MAX_WINDOWS_ON_SCREEN && s->_windows[end].window != -1)
 		end++;
 
-	if (end > MAX_WINDOWS_ON_SCREEN)
+	if (end >= MAX_WINDOWS_ON_SCREEN)
 		return 0;		/* No more room */
 
 	while (end >= location)

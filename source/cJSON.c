@@ -1102,7 +1102,7 @@ static cJSON_bool	cJSON_GenerateNumber (const cJSON *item, cJSON_Generator *outp
 
 		/* Check whether the original double can be recovered */
 		/* If not, print with 17 decimal places of precision */
-		if ((sscanf(number_buffer, "%Lg", &test) != 1) || !compare_double((double)test, d))
+		if ((sscanf(number_buffer, "%Lg", &test) != 1) || !compare_double(test, d))
 			length = snprintf(number_buffer, 26, "%1.17Lg", d);
 	}
 

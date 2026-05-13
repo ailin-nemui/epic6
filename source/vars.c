@@ -1174,7 +1174,7 @@ char *	make_string_var_bydata_internal (int type, const VARIABLE *data)
 			char *	utf8str;
 
 			utf8str = alloca(16);
-			ucs_to_utf8(data->integer, utf8str, sizeof(utf8str));
+			ucs_to_utf8(data->integer, utf8str, 16);
 			ret = malloc_strdup((const char *)utf8str);
 			break;
 		}

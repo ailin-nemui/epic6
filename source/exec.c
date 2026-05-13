@@ -1146,6 +1146,7 @@ static int	start_process (Process *proc)
 
 			printf("*** Error running program \"%s\": %s\n",
 					proc->commands, strerror(errno));
+			new_free((void **)&my_args);
 		}
 
 		/*
@@ -1495,13 +1496,15 @@ static const char **	execcmd_tokenize_arguments (const char *args, Process **pro
 			if (!(proc = get_process_by_refnum(refnum)))
 			{
 				say("EXEC: Error: The process %s is not a valid process", proc_desc);
+				new_free((void **)&free_ptr);
+				new_free((void **)&arg_list);
 				return NULL;
 			}
 		}
 		else if (*args_copy == '(')
 		{
 			const char *cmds = next_expr(&args_copy, '(');
-			/* yell("STarting up new process from parethensis"); */
+			/* yell("Starting up new process from parethensis"); */
 			proc = new_process(cmds);
 		}
 		else
@@ -1515,6 +1518,8 @@ static const char **	execcmd_tokenize_arguments (const char *args, Process **pro
 	if (proc == NULL)
 	{
 		say("EXEC: Error: After all flags, there should be either a %%proc or commands to run");
+		new_free((void **)&free_ptr);
+		new_free((void **)&arg_list);
 		return NULL;
 	}
 

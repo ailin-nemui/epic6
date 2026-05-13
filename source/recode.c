@@ -732,10 +732,12 @@ static const char *	decide_encoding (const char *from, const char *target, int s
 			continue;
 		}
 
+#if 0
 		debug(DEBUG_RECODE, "<< Other - Not acceptable");
 
 		/* Not acceptable */
 		continue;
+#endif
 
 target_ok:
 		/**********************************************************/

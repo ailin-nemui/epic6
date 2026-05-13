@@ -1205,8 +1205,8 @@ static void	reduce (expr_info *cx, int what)
 	{ 								\
 		GET_LVAL_RVAL						\
 		CHECK_NOEVAL						\
-		i = get_token_float(cx, v);				\
-		j = get_token_float(cx, w);				\
+		i = get_token_integer(cx, v);				\
+		j = get_token_integer(cx, w);				\
 									\
 		if (j == 0) 						\
 		{ 							\

@@ -136,6 +136,7 @@ static char *	tool_keygen (int __U(argc), char *argv[])
 	{
 		say("ecdsatool keygen: fileno() failed on %s: %s", argv[1], strerror(errno));
 		fclose(pubout);
+		ecdsa_key__free(&key);
 		RETURN_EMPTY;
 	}
 
@@ -143,6 +144,7 @@ static char *	tool_keygen (int __U(argc), char *argv[])
 	{
 		say("ecdsatool keygen: fchmod() failed on %s: %s", argv[1], strerror(errno));
 		fclose(pubout);
+		ecdsa_key__free(&key);
 		RETURN_EMPTY;
 	}
 

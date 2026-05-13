@@ -685,8 +685,11 @@ static	char	*alias_special_char (char **buffer, char *ptr, const char *args, cha
 			}
 		}
 	}
+	/* I used to have defensive guard code but c99 objects to that */
+#if 0
 	panic(1, "Returning NULL from alias_special_char");
 	return NULL;
+#endif
 }
 
 /*

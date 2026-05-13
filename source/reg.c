@@ -402,9 +402,11 @@ static int	new_match (const char *pattern, const char *string)
 		}
 	}
 
+#if 0
 	/* NOTREACHED */
 	debug(DEBUG_REGEX_DEBUG, "ABAONDON SHIP!  Returning [0]");
 	return 0;
+#endif
 }
 
 /*

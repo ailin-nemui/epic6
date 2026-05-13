@@ -639,12 +639,13 @@ static void	p_join (const char *from, const char *comm, const char **arglist)
 
 	set_server_joined_nick(from_server, from);
 
-	extra = alloca(20);
+#define EXTRA_SIZE	20
+	extra = alloca(EXTRA_SIZE);
 	*extra = 0;
 	if (op)
-		strlcat(extra, " (+o)", sizeof extra);
+		strlcat(extra, " (+o)", EXTRA_SIZE);
 	if (vo)
-		strlcat(extra, " (+v)", sizeof extra);
+		strlcat(extra, " (+v)", EXTRA_SIZE);
 
 	l = set_context(from_server, -1, from, channel, LEVEL_JOIN);
 	if (do_hook(JOIN_LIST, "%s %s %s %s", 

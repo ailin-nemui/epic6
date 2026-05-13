@@ -588,7 +588,7 @@ int	make_status (int window_, Status *status)
 		{
 			if (status->line[line].func[i] == NULL)
 			{
-				debuglog("make_status(%d/%d/%d): Not set up", line, i);
+				debuglog("make_status(%d/%d/%d): Not set up", user_refnum, line, i);
 				return -1;	/* Not set up yet */
 /* 				panic(1, "status callback null.  window [%d], line [%d], function [%d]", user_refnum, line, i); */
 			}
@@ -1274,9 +1274,9 @@ STATUS_FUNCTION(status_notify_windows)
 				s = get_window_name(w);
 
 			if (doneone++)
-				strlcat(buf2, ",", sizeof buf2);
+				strlcat(buf2, ",", BIG_BUFFER_SIZE);
 			strlcat(buf2, (map == 1 && s) ? s :
-					ltoa(get_window_user_refnum(w)), sizeof buf2);
+					ltoa(get_window_user_refnum(w)), BIG_BUFFER_SIZE);
 		}
 	}
 

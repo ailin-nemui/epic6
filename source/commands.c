@@ -3095,7 +3095,7 @@ struct target_type target[4] =
 		char *	msgtarget;
 
 		servername = current_nick + 1;
-		msgtarget = strchr(servername, '/');
+		msgtarget = strchr(current_nick + 1, '/');
 		*msgtarget++ = 0;
 
 		if ((servref = serverdesc_lookup(servername)) == NOSERV)

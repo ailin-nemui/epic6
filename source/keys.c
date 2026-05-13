@@ -1614,7 +1614,10 @@ void	do_stack_bind (int type, char *arg)
 		while (slen) 
 		{
 			if ((unsigned char)*s >= 128)
+			{
+				new_free(&compstr);
 				return;
+			}
 
 			key = &map[(unsigned char)*s++];
 			slen--;

@@ -15,7 +15,7 @@
 	int	target_file_write	(const char *, const char *);
 	int	file_writeb 		(int, int, char *);
 	char *	file_read 		(int);
-	char *	file_readb 		(int, int);
+	char *	file_readb 		(int, size_t);
 	int	file_eof 		(int);
 	int	file_close 		(int);
 	int	file_valid		(int);

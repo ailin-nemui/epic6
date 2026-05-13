@@ -644,11 +644,17 @@ void 	numbered_command (const char *from, const char *comm, char const **args)
 
 		if (do_hook(current_numeric(), "%s %d %s", from, number_of_bans, channel))
 		{
+			const char *	extra;
+
+			if (numeric == 347)
+				extra = "invites";
+			else if (numeric == 349)
+				extra = "exceptions";
+			else /* if (numeric == 368) */
+				extra = "bans";
+
 			put_it("%s Total number of %s on %s - %d",
-				banner(), 
-                                numeric == 347 ? "invites" :
-                               (numeric == 349 ? "exceptions" :
-                               (numeric == 368 ? "bans" : "wounds")),
+				banner(), extra,
                                 channel, number_of_bans);
 		}
 		goto END;
@@ -1337,7 +1343,8 @@ DISPLAY:
 			break;
 
 		/* This all is for when the user has not just joined channel */
-		format = alloca(41);
+#define FORMAT_SIZE	41
+		format = alloca(FORMAT_SIZE);
 		if (last_width != get_int_var(CHANNEL_NAME_WIDTH_VAR))
 		{
 			if ((last_width = get_int_var(CHANNEL_NAME_WIDTH_VAR)))
@@ -1345,10 +1352,10 @@ DISPLAY:
 					(unsigned char) last_width,
 					(unsigned char) last_width);
 			else
-				strlcpy(format, "%s: %s\t%s", sizeof format);
+				strlcpy(format, "%s: %s\t%s", FORMAT_SIZE);
 		}
 		else
-			strlcpy(format, "%s: %s\t%s", sizeof format);
+			strlcpy(format, "%s: %s\t%s", FORMAT_SIZE);
 
 		pop_context(l);
 		l = set_context(from_server, -1, from, channel, LEVEL_OTHER);
@@ -1382,11 +1389,7 @@ DISPLAY:
 			{ rfc1459_odd(from, comm, args); goto END; }
 		if (!(stuff = args[2])) { stuff = empty_string; }
 
-		if (stuff)
-			put_it("%s %-20s %-20s %s", banner(),
-					itsname, uplink, stuff);
-		else
-			put_it("%s %-20s %s", banner(), itsname, uplink);
+		put_it("%s %-20s %-20s %s", banner(), itsname, uplink, stuff);
 
 		break;
 	}

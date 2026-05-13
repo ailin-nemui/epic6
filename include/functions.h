@@ -76,7 +76,7 @@ struct kwargs {
         void *          data;
 	int		required;
 };
-#define KWARG_TYPE_SENTINAL 0
+#define KWARG_TYPE_SENTINEL 0
 #define KWARG_TYPE_STRING 1
 #define KWARG_TYPE_INTEGER 2
 #define KWARG_TYPE_NUMBER 3
@@ -90,7 +90,7 @@ int     parse_kwargs (struct kwargs *kwargs, const char *input);
  *       struct kwargs kwargs[] = {
  *               { "name1", KWARG_TYPE_STRING, &name1, 1 },
  *               { "flag", KWARG_TYPE_STRING, &flag, 1 },
- *               { NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+ *               { NULL, KWARG_TYPE_SENTINEL, NULL, 0 }
  *       };
  *
  *       if (input && *input == '{')

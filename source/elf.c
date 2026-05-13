@@ -61,27 +61,35 @@ struct epic_loadfile * epic_fopen(char *filename, const char *mode, int do_error
 
 #ifdef HAVE_LIBARCHIVE
     if (stristr(filename, ".zip")!=-1) {
-        ret=archive_fopen(elf, filename, ".zip", do_error);
+        ret = archive_fopen(elf, filename, ".zip", do_error);
     } else if (stristr(filename, ".tar")!=-1) {
-        ret=archive_fopen(elf, filename, ".tar", do_error);
+        ret = archive_fopen(elf, filename, ".tar", do_error);
     }
     else
 #endif
 	ret = 0;
 
-    if (ret==1)
+#ifdef HAVE_LIBARCHIVE
+    if (ret == 1)
         return elf;
+#endif
 
-    if (ret!=-1) { /* archive didnt have loadable data */
-
+#ifdef HAVE_LIBARCHIVE
+    /* archive didnt have loadable data */
+    if (ret != -1) 
+    {
+#endif
         /* Its not a compressed file... Try to open it regular-like. */
         if ((doh = fopen(filename, mode))) {
             elf->fp = doh;
             return elf;
         }
+
         if (do_error)
             yell("Cannot open file %s: %s", filename, strerror(errno));
+#ifdef HAVE_LIBARCHIVE
     }
+#endif
     new_free(&elf);
 
     return NULL;
@@ -392,7 +400,8 @@ size_t	slurp_elf_file (struct epic_loadfile *elf, char **file_contents, off_t *f
 	}
 
 	/* The previous epic_fgetc() resulted in EOF so we got to back up */
-	next_byte--;
+	if (next_byte > 0)
+		next_byte--;
 
 	/* Just for laughs, zero terminate it so it's a C string */
 	(*file_contents)[next_byte] = 0;

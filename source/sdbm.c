@@ -359,7 +359,7 @@ Datum	sdbm_firstkey (SDBM *db)
  * start at page 0
  */
 	if (lseek(db->pagf, OFF_PAG(0), SEEK_SET) < 0
-	    || read(db->pagf, db->pagbuf, PBLKSIZ) < 0)
+	    || read(db->pagf, db->pagbuf, PBLKSIZ) < PBLKSIZ)
 		return ioerr(db), nullitem;
 	db->pagbno = 0;
 	db->blkptr = 0;
@@ -410,7 +410,7 @@ static int	sdbm__getpage (SDBM *db, long hash)
  * if not, must zero pagbuf first.
  */
 		if (lseek(db->pagf, OFF_PAG(pagb), SEEK_SET) < 0
-		    || read(db->pagf, db->pagbuf, PBLKSIZ) < 0)
+		    || read(db->pagf, db->pagbuf, PBLKSIZ) < PBLKSIZ)
 			return 0;
 		if (!sdbm__chkpage(db->pagbuf))
 			return 0;
@@ -429,7 +429,7 @@ static int	sdbm__getdbit (SDBM *db, long dbit)
 
 	if (dirb != db->dirbno) {
 		if (lseek(db->dirf, OFF_DIR(dirb), SEEK_SET) < 0
-		    || read(db->dirf, db->dirbuf, DBLKSIZ) < 0)
+		    || read(db->dirf, db->dirbuf, DBLKSIZ) < DBLKSIZ)
 			return 0;
 		db->dirbno = dirb;
 	}
@@ -447,7 +447,7 @@ static int	sdbm__setdbit (SDBM *db, long dbit)
 
 	if (dirb != db->dirbno) {
 		if (lseek(db->dirf, OFF_DIR(dirb), SEEK_SET) < 0
-		    || read(db->dirf, db->dirbuf, DBLKSIZ) < 0)
+		    || read(db->dirf, db->dirbuf, DBLKSIZ) < DBLKSIZ)
 			return 0;
 		db->dirbno = dirb;
 	}
@@ -487,7 +487,7 @@ static Datum	sdbm__getnext (SDBM *db)
 			if (lseek(db->pagf, OFF_PAG(db->blkptr), SEEK_SET) < 0)
 				break;
 		db->pagbno = db->blkptr;
-		if (read(db->pagf, db->pagbuf, PBLKSIZ) <= 0)
+		if (read(db->pagf, db->pagbuf, PBLKSIZ) <= PBLKSIZ)
 			break;
 		if (!sdbm__chkpage(db->pagbuf))
 			break;

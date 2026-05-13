@@ -237,8 +237,8 @@ Hookables hook_function_templates[] =
 static Hookables *hook_functions = NULL;
 static int	 hook_functions_initialized = 0;
 
-static Hook **hooklist = NULL;
-static int hooklist_size = 0;
+static Hook **	hooklist = NULL;
+static int 	hooklist_size = 0;
 static int	last_created_hook = -2;
 static struct Current_hook *current_hook = NULL;
 /*
@@ -317,14 +317,16 @@ static void	initialize_hook_functions (void)
  */
 static int	inc_hooklist (int size)
 {
-	int newsize, n;
+	int 	newsize, 
+		n;
+
 	if (size < 1)
 		return -1;
 	newsize = hooklist_size + size;
 	if (hooklist_size == 0)
-		hooklist = new_malloc(sizeof(Hook) * newsize);
+		hooklist = new_malloc(sizeof(Hook *) * newsize);
 	else
-		RESIZE(hooklist, Hook, newsize);
+		RESIZE(hooklist, Hook *, newsize);
 	for (n = hooklist_size; n < newsize; n++)
 		hooklist[n] = NULL;
 	hooklist_size = newsize;
@@ -720,6 +722,9 @@ static int 	do_hook_internal (int which, char **result, const char *format, va_l
 	struct Current_hook *hook;
 	Hookables *	h;
 
+	if (!result)
+		panic(1, "do_hook_internal cannot be passed a result == NULL");
+
 	*result = NULL;
 
 	if (!hook_functions_initialized)
@@ -993,7 +998,7 @@ implied_hook:
     }
     while (0);
 
-	if (!result || !*result)
+	if (!*result)
 		panic(1, "do_hook: Didn't set result anywhere.");
 	return retval;
 }

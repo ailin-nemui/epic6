@@ -1073,7 +1073,7 @@ static	char 	*start = NULL,
 	/* Then do "cursor down" N times, which does the scrolling */
 	for (int i = 0; i < n; i++)
 	{
-		debuglog("term scroll/ind", bot);
+		debuglog("term scroll/ind");
 		term_emit("ind");
 	}
 
@@ -1349,7 +1349,11 @@ static 	size_t 	pos = 0;
 
 		bytes_to_write = pos;
 		total_written = 0;
-		fd = get_screen_fdout(output_screen);
+		if ((fd = get_screen_fdout(output_screen)) < 0)
+		{
+			pos = 0;
+			return 0;	/* <sad trombone> */
+		}
 
 		// Standard write loop to handle partial writes
 		while (total_written < bytes_to_write) 

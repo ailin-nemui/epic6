@@ -4,7 +4,7 @@
  * Copyright (c) 1990 Michael Sandroff.
  * Copyright (c) 1991, 1992 Troy Rollo.
  * Copyright (c) 1992-1996 Matthew Green.
- * Copyright 1993, 2010 EPIC Software Labs
+ * Copyright 1993, 2026 EPIC Software Labs
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1207,7 +1207,7 @@ BUILT_IN_FUNCTION(function_left, input)
 		struct kwargs kwargs[] = {
 			{ "number", KWARG_TYPE_INTEGER, &number, 1 },
 			{ "text", KWARG_TYPE_STRING, &text, 1 },
-			{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+			{ NULL, KWARG_TYPE_SENTINEL, NULL, 0 }
 		};
 
 		number = -1;
@@ -1288,7 +1288,7 @@ BUILT_IN_FUNCTION(function_right, input)
 		struct kwargs kwargs[] = {
 			{ "number", KWARG_TYPE_INTEGER, &number, 1 },
 			{ "text", KWARG_TYPE_STRING, &text, 1 },
-			{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+			{ NULL, KWARG_TYPE_SENTINEL, NULL, 0 }
 		};
 
 		number = -1;
@@ -1377,7 +1377,7 @@ BUILT_IN_FUNCTION(function_mid, input)
 			{ "start", KWARG_TYPE_INTEGER, &start, 1 },
 			{ "number", KWARG_TYPE_INTEGER, &number, 1 },
 			{ "text", KWARG_TYPE_STRING, &text, 1 },
-			{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+			{ NULL, KWARG_TYPE_SENTINEL, NULL, 0 }
 		};
 
 		start = -1;
@@ -1469,13 +1469,14 @@ BUILT_IN_FUNCTION(function_mid, input)
  */
 BUILT_IN_FUNCTION(function_rand, input)
 {
+	/* * */
 	intmax_t	max_;
 
 	if (*input == '{')
 	{
 		struct kwargs kwargs[] = {
 			{ "max", KWARG_TYPE_INTEGER, &max_, 1 },
-			{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+			{ NULL, KWARG_TYPE_SENTINEL, NULL, 0 }
 		};
 
 		max_ = -1;
@@ -1551,7 +1552,7 @@ BUILT_IN_FUNCTION(function_time, input)
 }
 
 /* 
- * $ctime(time:integer) -> string
+ * $stime(time:integer) -> string
  *
  * Happy path:
  *	- Convert <time>, to human readable format
@@ -1603,7 +1604,7 @@ BUILT_IN_FUNCTION(function_stime, input)
 	{
 		struct kwargs kwargs[] = {
 			{ "time", KWARG_TYPE_INTEGER, &time_, 1 },
-			{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+			{ NULL, KWARG_TYPE_SENTINEL, NULL, 0 }
 		};
 
 		time_ = -1;
@@ -1635,7 +1636,7 @@ BUILT_IN_FUNCTION(function_stime, input)
  * Specified errors (returns the empty string)
  *	- <seconds> is omitted
  *	- <seconds> is not a number
- *	- <seconds> is not a number that fits in a (time_t)
+ *	- The integer part of <seconds> does not fit in (time_t)
  *
  * Unspecified behavior (doctor, it hurts when i do this)
  *	If <seconds> is negative the result is unspecified
@@ -1645,13 +1646,6 @@ BUILT_IN_FUNCTION(function_stime, input)
  *
  * Example:
  *	$tdiff(3663) would return "1 hour 1 minute 3 seconds"
- */
-
-/*
- * Usage: $tdiff(seconds)
- * Returns: The time that has elapsed represented in days/hours/minutes/seconds
- *          corresponding to the number of seconds passed as the argument.
- * Example: $tdiff(3663) returns "1 hour 1 minute 3 seconds"
  */
 BUILT_IN_FUNCTION(function_tdiff, input)
 {
@@ -1663,7 +1657,7 @@ BUILT_IN_FUNCTION(function_tdiff, input)
 	{
 		struct kwargs kwargs[] = {
 			{ "seconds", KWARG_TYPE_NUMBER, &seconds_, 1 },
-			{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+			{ NULL, KWARG_TYPE_SENTINEL, NULL, 0 }
 		};
 
 		seconds_ = NAN;
@@ -1680,8 +1674,11 @@ BUILT_IN_FUNCTION(function_tdiff, input)
 			wholesecond;
 	intmax_t	i = 0;
 	time_t		t;
-	char *		retval = NULL;
 
+	/*
+	 * If seconds_ is NAN, then both wholesecond and subsecond should be NAN 
+	 * which will result in ld_to_intmax() returning false (error)
+	 */
 	subsecond = modfl(seconds_, &wholesecond);
 	if (!ld_to_intmax(wholesecond, &i))
 		RETURN_EMPTY;
@@ -1693,7 +1690,10 @@ BUILT_IN_FUNCTION(function_tdiff, input)
 
 	/* * */
 	/* Convert 't' into days, hours, minutes, and seconds */
-	int	days, hours, mins, secs;
+	int		days, 
+			hours, 
+			mins, 
+			secs;
 
 	secs = t % 60;
 	t /= 60;
@@ -1703,25 +1703,14 @@ BUILT_IN_FUNCTION(function_tdiff, input)
 	days = (t - hours) / 24;
 
 	/* * * */
-	/* Convert days, hours, minutes, and seconds into a string */
 	/*
-	 * The return value of this function is:
-	 *	<daypart>
-	 *	<day-hour-comma-space>
-	 *	<hourpart>
-	 *	<hour-minute-comma-space>
-	 *	<minutepart>
-	 *	<minute-second comma-space>
-	 *	<secondpart>
-	 *
-	 * <daypart> is "1 day " | "%d days " | ""
-	 * <hourpart> is "1 hour " | "%d hours " | ""
-	 * <minutepart> is "1 minute " | "%d minute " | ""
-	 * <secondpart> is "1 second" | "%d seconds" | "%d.%Lf seconds" | ""
-	 *
+	 * The return value of this function is the catenation of:
+	 * 	<daypart> is "1 day " | "%d days " | ""
+	 * 	<hourpart> is "1 hour " | "%d hours " | ""
+	 * 	<minutepart> is "1 minute " | "%d minute " | ""
+	 * 	<secondpart> is "1 second" | "%d seconds" | "%d.%Lf seconds" | ""
 	 * If the final character is a space, then it will be truncated
 	 */
-
 	char 	*daypart,
 		*hourpart,
 		*minutepart,
@@ -1783,6 +1772,9 @@ BUILT_IN_FUNCTION(function_tdiff, input)
 		}
 	}
 
+	/* * * */
+	char *		retval = NULL;
+
 	malloc_sprintf(&retval, "%s%s%s%s",
 			daypart,
 			hourpart,
@@ -1794,6 +1786,11 @@ BUILT_IN_FUNCTION(function_tdiff, input)
 		if (retval[strlen(retval) - 1] == ' ')
 			retval[strlen(retval) - 1] = 0;
 	}
+
+	new_free(&daypart);
+	new_free(&hourpart);
+	new_free(&minutepart);
+	new_free(&secondpart);
 
 	RETURN_MSTR(retval);
 }
@@ -2576,11 +2573,11 @@ BUILT_IN_FUNCTION(function_strftime, input)
 
 	/* localtime_r() will return NULL on error */
 	if (!localtime_r(&seconds, &tm))
-		RETURN_EMPTY;
+		*retval = 0;	/* Returning empty */
 
 	/* strftime() returns 0 on error */
-	if (!strftime(retval, 128, strftime_format, &tm))
-		RETURN_EMPTY;
+	else if (!strftime(retval, 128, strftime_format, &tm))
+		*retval = 0;	/* Returning empty */
 
 	return retval;
 }
@@ -5911,18 +5908,18 @@ BUILT_IN_FUNCTION(function_randread, input)
 		{
 			if (fseek(fp, (long)0, SEEK_SET))
 			{
-				strlcpy(buffer, "randread: something went really wrong (2)", sizeof(buffer));
+				strlcpy(buffer, "randread: something went really wrong (2)", BIG_BUFFER_SIZE);
 				goto randread_cleanup;
 			}
 			if (!fgets(buffer, BIG_BUFFER_SIZE, fp))
 			{
-				strlcpy(buffer, "randread: something went really wrong (3)", sizeof(buffer));
+				strlcpy(buffer, "randread: something went really wrong (3)", BIG_BUFFER_SIZE);
 				goto randread_cleanup;
 			}
 		}
 		else
 		{
-			strlcpy(buffer, "randread: something went really wrong (4)", sizeof(buffer));
+			strlcpy(buffer, "randread: something went really wrong (4)", BIG_BUFFER_SIZE);
 			goto randread_cleanup;
 		}
 	}
@@ -6500,6 +6497,7 @@ BUILT_IN_FUNCTION(function_mask, args)
 			snprintf(buff, BIG_BUFFER_SIZE + 1, "*!*%s@*", my_username);
 			break;
 		default:
+			new_free(&buff);
 			new_free(&dbuff);
 			new_free(&my_dot);
 			new_free(&colon);
@@ -7816,7 +7814,7 @@ BUILT_IN_FUNCTION(function_joinstr, input)
 		freeit[numvars] = vals[numvars] = get_variable(var);
 	}
 
-	for (;;) 
+	/* I'm a little confused by this */
 	{
 		char *	sub = NULL;
 
@@ -7838,7 +7836,6 @@ BUILT_IN_FUNCTION(function_joinstr, input)
 
 		/* So now 'sub' contains the separated values from the variables */
 		malloc_strcat_word(&retval, space, sub, DWORD_DWORDS);
-
 		new_free(&sub);
 	}
 
@@ -8104,7 +8101,9 @@ BUILT_IN_FUNCTION(function_startupfile, input)
  */
 BUILT_IN_FUNCTION(function_mktime, input)
 {
-	int ar[7], pos, retval;
+	int	ar[7], 
+		pos;
+	time_t	retval;
 	struct tm tmtime;
 	
 	for (pos = 0; pos < 7 && input && *input; pos++) 
@@ -8134,6 +8133,7 @@ BUILT_IN_FUNCTION(function_fix_arglist, input)
 {
 	ArgList *l;
 	char *r;
+
 	l = parse_arglist(input);
 	r = print_arglist(l);
 	if (r)
@@ -8141,6 +8141,7 @@ BUILT_IN_FUNCTION(function_fix_arglist, input)
 		destroy_arglist(&l);
 		return r;
 	}
+	destroy_arglist(&l);
 	RETURN_EMPTY;
 }
 
@@ -8339,7 +8340,7 @@ BUILT_IN_FUNCTION(function_splitw, input)
 {
 	char *	delim_str;
 	int	delim;
-	char **wordl;
+	char **	wordl;
 	int 	wordc;
 	char *	retval;
 	ptrdiff_t	offset;
@@ -8896,7 +8897,7 @@ BUILT_IN_FUNCTION(function_json_implode, input)
 	struct kwargs kwargs[] = {
 		{ "root", KWARG_TYPE_STRING, &var, 1 },
 		{ "compact", KWARG_TYPE_BOOL, &compact, 1 },
-		{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+		{ NULL, KWARG_TYPE_SENTINEL, NULL, 0 }
 	};
 
 	if (input && *input == '{')
@@ -8983,7 +8984,7 @@ BUILT_IN_FUNCTION(function_jsontest, input)
 	struct kwargs kwargs[] = {
 		{ "name1", KWARG_TYPE_STRING, &name1, 1 },
 		{ "flag", KWARG_TYPE_STRING, &flag, 1 },
-		{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+		{ NULL, KWARG_TYPE_SENTINEL, NULL, 0 }
 	};
 
 	if (input && *input == '{')
@@ -9088,7 +9089,7 @@ BUILT_IN_FUNCTION(function_rgb, input)
 			{ "b",    KWARG_TYPE_INTEGER, &fg_b, 1 },
 			{ "bg_b", KWARG_TYPE_INTEGER, &bg_b, 1 },
 			{ "attr", KWARG_TYPE_BOOL, &attr, 0 },
-			{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+			{ NULL, KWARG_TYPE_SENTINEL, NULL, 0 }
 		};
 
 		parse_kwargs(kwargs, input);
@@ -9273,7 +9274,7 @@ BUILT_IN_FUNCTION(function_pledge, input)
 			{ "promises", KWARG_TYPE_STRING, &promises, 0 },
 			{ "execpromises", KWARG_TYPE_STRING, &execpromises, 0 },
 			{ "test", KWARG_TYPE_BOOL, &test, 0 },
-			{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+			{ NULL, KWARG_TYPE_SENTINEL, NULL, 0 }
 		};
 
 		parse_kwargs(kwargs, input);
@@ -9348,7 +9349,7 @@ BUILT_IN_FUNCTION(function_unveil, input)
 			{ "permissions", KWARG_TYPE_STRING, &permissions, 0 },
 			{ "test", KWARG_TYPE_INTEGER, &test, 0 },
 			{ "close", KWARG_TYPE_BOOL, &close, 0 },
-			{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+			{ NULL, KWARG_TYPE_SENTINEL, NULL, 0 }
 		};
 
 		parse_kwargs(kwargs, input);
@@ -9402,7 +9403,7 @@ BUILT_IN_FUNCTION(function_hex, input)
 		struct kwargs kwargs[] = {
 			{ "digits", KWARG_TYPE_INTEGER, &digits, 1 },
 			{ "value", KWARG_TYPE_INTEGER, &value, 1 },
-			{ NULL, KWARG_TYPE_SENTINAL, NULL, 0 }
+			{ NULL, KWARG_TYPE_SENTINEL, NULL, 0 }
 		};
 
 		parse_kwargs(kwargs, input);

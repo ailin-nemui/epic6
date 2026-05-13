@@ -389,7 +389,8 @@ static int	unix_connect (int fd, int __U(quiet), int __U(revents))
 	/* * */
 	len = sizeof(sockerr);
 	errno = 0;
-	getsockopt(fd, SOL_SOCKET, SO_ERROR, &sockerr, &len);
+	if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &sockerr, &len))
+		(void) 0;	/* oh well */
 	gso_result = errno;
 
 	dgets_buffer(fd, &gso_result, sizeof(gso_result));
@@ -398,7 +399,8 @@ static int	unix_connect (int fd, int __U(quiet), int __U(revents))
 	/* * */
 	len = sizeof(localaddr.ss);
 	errno = 0;
-	getsockname(fd, &localaddr.sa, &len);
+	if ((getsockname(fd, &localaddr.sa, &len)))
+		(void) 0;	/* oh well */
 	gsn_result = errno;
 
 	dgets_buffer(fd, &gsn_result, sizeof(gsn_result));
@@ -407,7 +409,8 @@ static int	unix_connect (int fd, int __U(quiet), int __U(revents))
 	/* * */
 	len = sizeof(remoteaddr.ss);
 	errno = 0;
-	getpeername(fd, &remoteaddr.sa, &len);
+	if (getpeername(fd, &remoteaddr.sa, &len))
+		(void) 0;	/* Oh well */
 	gpn_result = errno;
 
 	dgets_buffer(fd, &gpn_result, sizeof(gpn_result));

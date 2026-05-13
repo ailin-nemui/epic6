@@ -178,8 +178,11 @@ int	main (int argc, char **argv)
 				my_exit(4);
 		}
 	}
-
-	my_exit(8);
+	/* 
+	 * I used to have a my_exit() here to guard against
+	 * someone putting a break; in there, but static analyzers
+	 * frown upon unreachable defensive programming.
+	 */
 }
 
 static void 	ignore (int __U(value))

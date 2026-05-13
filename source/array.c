@@ -243,7 +243,7 @@ static int compare_indices (const void *a1, const void *a2)
 static void sort_indices (an_array *array)
 {
 	qsort_array = array;
-	qsort(array->index, array->size, sizeof(long *), compare_indices);
+	qsort(array->index, array->size, sizeof(long), compare_indices);
 	array->unsorted = 0;
 }
 

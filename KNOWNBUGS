@@ -477,3 +477,10 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Add atolf() as a utility function for now
 * Add ld_to_intmax() to convert a (long double) to (intmax) with overflow
 * Revamp $mid(), $rand(), $srand(), $time(), $stime(), and $tdiff()
+* Did you know I can't spell Sentinel correctly?
+* If we're going to use (long double) then MO has to be 16 bytes.
+* Many many many many fixes suggested by coverity.  Thanks, coverity!
+* These include type problems, sizeof problems, printf format problems,
+* Typos, mistakes, memory leaks, buffer overflows, buffer underflows,
+* #ifdef mistakes, unreachable code, return value errors, 
+* Sometimes it was more pedantic than i would care for, but oh well!

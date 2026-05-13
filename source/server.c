@@ -1133,6 +1133,7 @@ int	serverdesc_insert (const char *desc)
 	serverinfo_load(&si, ptr);
 
 	retval = serverinfo_insert(&si);
+	serverinfo_free(&si);
 	return retval;
 }
 
@@ -1936,9 +1937,16 @@ return_from_ssl_detour:
 		else
 		{
 			ssize_t	junk;
+			ssize_t	line_length;
 
 			last_server = i;
-			junk = dgets(des, bufptr, get_server_line_length(i), 1);
+			if ((line_length = get_server_line_length(i)) <= 0)
+			{
+				syserr(i, "Server_io: Server %d is invalid, but that doesn't make any sense here", i);
+				goto something_else_broke;
+			}
+
+			junk = dgets(des, bufptr, line_length, 1);
 
 			/* 
 			 * If we were to support encapsulating protocols, 
@@ -1958,7 +1966,10 @@ return_from_ssl_detour:
 
 				case -1:	/* EOF or other error */
 				{
-					int	server_was_registered = is_server_registered(i);
+					int	server_was_registered;
+
+something_else_broke:
+					server_was_registered = is_server_registered(i);
 
 					/* XXX Ugh. i'm going to regret this */
 					if (s->any_data == 0)
@@ -4563,7 +4574,7 @@ void	set_server_005 (int refnum, char *setting, const char *value)
 	if (!(new_option = (OPTION_item *)alist_lookup((&s->options), setting, 0)))
 		if (!(new_option = new_005_item(refnum, setting)))
 			return;		/* Give up! */
-	malloc_strcpy(&(*new_option).value, malloc_strdup(value));
+	malloc_strcpy(&(*new_option).value, value);
 	new_option->type = 0;
 
 	/* XXX This is a hack XXX */

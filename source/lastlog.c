@@ -821,7 +821,7 @@ BUILT_IN_COMMAND(lastlog)
 			char *	errmsg;
 
 			errmsg = alloca(1024);
-			regerror(errcode, &realreg, errmsg, 1024);
+			regerror(errcode, &realnoreg, errmsg, 1024);
 			yell("%s", errmsg);
 			goto bail;
 		}
@@ -1421,7 +1421,7 @@ void	reconstitute_scrollback (int window)
 	{
 	    if (li->window == window && li->needed)
 	    {
-		debuglog("reconstitute_scrollback: YES window %d (%d) refnum %d msg %s", li->window, window, li->refnum, li->msg);
+		debuglog("reconstitute_scrollback: YES window %d (%d) refnum %ld msg %s", li->window, window, li->refnum, li->msg);
 		add_to_window_scrollback(window, li->msg, li->refnum);
 	    }
 	    else

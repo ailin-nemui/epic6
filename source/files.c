@@ -419,34 +419,54 @@ char *	file_read (int fd)
 	}
 }
 
-char *	file_readb (int fd, int numb)
+char *	file_readb (int fd, size_t bytes_requested)
 {
-	File *ptr = lookup_file(fd);
-	if (!ptr)
+	File *	ptr;
+	char *	buffer;
+	size_t	bytes_read;
+	char *	retval;
+#ifdef HAVE_LIBARCHIVE
+	la_ssize_t	lb;
+#endif
+
+	if (!(ptr = lookup_file(fd)))
 		return malloc_strdup(empty_string);
+
+	buffer = new_malloc(bytes_requested + 1);
+	memset(&buffer, 0, bytes_requested + 1);
+
+	if (ptr->elf->fp) {
+		clearerr(ptr->elf->fp);
+		bytes_read = fread(buffer, 1, bytes_requested, ptr->elf->fp);
+#ifdef HAVE_LIBARCHIVE
+	} else if (ptr->elf->a) {
+		lb = archive_read_data(ptr->elf->a, buffer, bytes_requested);
+		if (lb > 0)
+			bytes_read = lb;
+		else
+			bytes_read = 0;
+#endif
+	} else {
+		bytes_read = 0;
+	}
+
+	if (bytes_read == 0)
+	{
+		*buffer = 0;
+		retval = buffer;
+	}
+	else if ((retval = transform_string_dyn("+CTCP", buffer, bytes_read, NULL)))
+		new_free(&buffer);
 	else
 	{
-                char *	ret;
-		char *	blah;
-
-		blah = (char *)new_malloc(numb+1);
-                if (ptr->elf->fp) {
-                    clearerr(ptr->elf->fp);
-                    numb = fread(blah, 1, numb, ptr->elf->fp);
-#ifdef HAVE_LIBARCHIVE
-                } else if (ptr->elf->a) {
-                    numb = archive_read_data(ptr->elf->a, blah, numb);
-#endif
-                } else {
-                    /* others */
-                }
-
-		if ((ret = transform_string_dyn("+CTCP", blah, numb, NULL)))
-			new_free(&blah);
+		if (bytes_read <= bytes_requested)
+			buffer[bytes_read] = 0;
 		else
-			ret = blah;
-		return ret;
+			buffer[bytes_requested] = 0;
+
+		retval = buffer;
 	}
+	return retval;
 }
 
 int	file_eof (int fd)

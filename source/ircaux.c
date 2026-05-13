@@ -50,33 +50,49 @@
 #include "cJSON.h"
 
 /*
- * This is the basic overhead for every malloc allocation (8 bytes).
- * The size of the allocation and a "magic" sequence are retained here.
- * This is in addition to any overhead the underlying malloc package
- * may impose -- this may mean that malloc()s may be actually up to
- * 20 to 30 bytes larger than you request.
+ * This is the basic overhead for every malloc allocation (16 bytes).
+ * Previously this canary was 8 bytes, because we used only used types
+ * that required 8 byte alignment (that is, (double)).  When I introduced
+ * (long double), that type requires an alignment of 16 bytes.
+ *
+ * But when a malloc() of a struct containing a (long double) gets offset
+ * by 8 bytes (by this canary) that causes the (long double)s to no longer
+ * be 16-byte aligned, result in undefined behavior (oops)
+ *
+ * So the canary is now offically 16 bytes to avoid that.
  */
-typedef struct _mo_money
+typedef union _mo_money 
 {
-	unsigned magic;
-	int size;
+	struct {
+		uint32_t	canary1;
+		uint32_t	magic;
+		int32_t		size;
+		uint32_t	canary2;
+	};
+	char padding[16];
 } MO;
 
-#define mo_ptr(ptr) ((MO *)( (char *)(ptr) - sizeof(MO) ))
+#define mo_ptr(ptr) 	((MO *)( (char *)(ptr) - sizeof(MO) ))
+#define canary1(ptr)	((mo_ptr(ptr))->canary1)
+#define magic(ptr) 	((mo_ptr(ptr))->magic)
 #define alloc_size(ptr) ((mo_ptr(ptr))->size)
-#define magic(ptr) ((mo_ptr(ptr))->magic)
-#define end_ptr(ptr) ((char *)(ptr) + alloc_size(ptr))
+#define canary2(ptr)	((mo_ptr(ptr))->canary2)
+#define end_ptr(ptr) 	((char *)(ptr) + alloc_size(ptr))
 
-#define FREED_VAL -3
-#define ALLOC_MAGIC (unsigned long)0x7fbdce70
+#define FREED_VAL 	-3
+#define ALLOC_CANARY1	(uint32_t)0x6f7a818d
+#define ALLOC_MAGIC	(uint32_t)0x7fbdce70
+#define ALLOC_CANARY2	(uint32_t)0x4261e780
 
 /* 
  * This was all imported by pre3 for no reason other than to track down
  * that blasted bug that splitfire is tickling.
  */
-#define NO_ERROR 0
-#define ALLOC_MAGIC_FAILED 1
-#define ALREADY_FREED 2
+#define NO_ERROR 		0
+#define ALLOC_MAGIC_FAILED 	1
+#define ALREADY_FREED 		2
+#define ALLOC_CANARY1_FAILED	3
+#define ALLOC_CANARY2_FAILED	4
 
 static int	malloc_check (void *ptr)
 {
@@ -84,6 +100,10 @@ static int	malloc_check (void *ptr)
 		return ALLOC_MAGIC_FAILED;
 	if (magic(ptr) != ALLOC_MAGIC)
 		return ALLOC_MAGIC_FAILED;
+	if (canary1(ptr) != ALLOC_CANARY1)
+		return ALLOC_CANARY1_FAILED;
+	if (canary2(ptr) != ALLOC_CANARY2)
+		return ALLOC_CANARY2_FAILED;
 	if (alloc_size(ptr) == FREED_VAL)
 		return ALREADY_FREED;
 	return NO_ERROR;
@@ -155,7 +175,9 @@ static 	char 	dump[640];
  * Notes:
  * This function verifies the integrity of the value of 'ptr':
  *	1. Must have previously be returned by new_malloc()
- *	2. The buffer underrun sentinal ("magic") must be intact
+ *	2. The buffer overrun-by-someone-else sentinel ("canary1") must be intact
+ *	2. The buffer underrun-by-us sentinel ("canary2") must be intact
+ *	2. The buffer sanity check sentinel ("magic") must be intact
  *	3. The value must not have been passed to new_free()
  * If any of these conditions fail, a diagnostic will be displayed to
  * the user, telling them something has gone horribly wrong; and panic() 
@@ -163,36 +185,66 @@ static 	char 	dump[640];
  */
 void	fatal_malloc_check (void *ptr, const char *special, const char *fn, int line)
 {
-	static	int	recursion = 0;
+static	int	recursion = 0;
+	int	failure;
 
-	switch (malloc_check(ptr))
+	failure = malloc_check(ptr);
+	switch (failure)
 	{
 	    case ALLOC_MAGIC_FAILED:
+	    case ALLOC_CANARY1_FAILED:
+	    case ALLOC_CANARY2_FAILED:
 	    {
+		const char *	complaint = NULL;
+		const char *	detail = NULL;
+
 		if (recursion)
 			abort();
 
 		recursion++;
-		privileged_yell("IMPORTANT! MAKE SURE TO INCLUDE ALL OF THIS INFORMATION" 
-			" IN YOUR BUG REPORT!");
-		privileged_yell("MAGIC CHECK OF MALLOCED MEMORY FAILED!");
-		if (special)
-			privileged_yell("Because of: [%s]", special);
+
+
+		if (failure == ALLOC_MAGIC_FAILED)
+			complaint = "MAGIC CHECK OF MALLOCED MEMORY FAILED!";
+		else if (failure == ALLOC_CANARY1_FAILED)
+			complaint = "CANARY1 CHECK (buffer overrun by someone else) OF MALLOCED MEMORY FAILED!";
+		else if (failure == ALLOC_CANARY2_FAILED)
+			complaint = "CANARY2 CHECK (buffer underrun by us) OF MALLOCED MEMORY FAILED!";
 
 		if (ptr)
 		{
-			privileged_yell("Address: [%p]  Size: [%d]  Magic: [%x] "
-				"(should be [%lx])",
-				ptr, alloc_size(ptr), magic(ptr), ALLOC_MAGIC);
-			privileged_yell("Dump: [%s]", prntdump(ptr, alloc_size(ptr)));
+			if (failure == ALLOC_MAGIC_FAILED)
+				detail = malloc_sprintf(NULL, 
+						"Address: [%p] Size: [%d] Magic: [%x] should be [%x])",
+						ptr, alloc_size(ptr), magic(ptr), ALLOC_MAGIC);
+			else if (failure == ALLOC_CANARY1_FAILED)
+				detail = malloc_sprintf(NULL, 
+						"Address: [%p] Size: [%d] Canary1: [%x] should be [%x])",
+						ptr, alloc_size(ptr), canary1(ptr), ALLOC_CANARY1);
+			else if (failure == ALLOC_CANARY2_FAILED)
+				detail = malloc_sprintf(NULL, 
+						"Address: [%p] Size: [%d] Canary2: [%x] should be [%x])",
+						ptr, alloc_size(ptr), canary2(ptr), ALLOC_CANARY2);
 		}
 		else
-			privileged_yell("Address: [NULL]");
+			detail = malloc_strdup("Address: [NULL]");
+
+		privileged_yell("IMPORTANT! MAKE SURE TO INCLUDE ALL OF THIS INFORMATION" 
+			" IN YOUR BUG REPORT!");
+		if (complaint)
+			privileged_yell("%s", complaint);
+		if (special)
+			privileged_yell("Because of: [%s]", special);
+		if (detail)
+			privileged_yell("%s", detail);
+		privileged_yell("Dump: [%s]", prntdump(ptr, alloc_size(ptr)));
+
+		new_free(&detail);
 
 		privileged_yell("IMPORTANT! MAKE SURE TO INCLUDE ALL OF THIS INFORMATION" 
 			" IN YOUR BUG REPORT!");
 		panic(1, "BE SURE TO INCLUDE THE ABOVE IMPORTANT INFORMATION! "
-			"-- new_free()'s magic check failed from [%s/%d].", 
+			"-- new_free()'s validity check failed from [%s/%d].", 
 			fn, line);
 	    }
 
@@ -249,9 +301,13 @@ void *	really_new_malloc (size_t size, const char *fn, int line)
 		panic(1, "Malloc(%jd) failed from [%s/%d], giving up!", 
 				(intmax_t)size, fn, line);
 
+	memset(ptr, 0, size + sizeof(MO));
+
 	/* Store the size of the allocation in the buffer. */
 	ptr += sizeof(MO);
 	magic(ptr) = ALLOC_MAGIC;
+	canary1(ptr) = ALLOC_CANARY1;
+	canary2(ptr) = ALLOC_CANARY2;
 	alloc_size(ptr) = size;
 	VALGRIND_CREATE_MEMPOOL(mo_ptr(ptr), 0, 1);
 	VALGRIND_MEMPOOL_ALLOC(mo_ptr(ptr), ptr, size);
@@ -338,40 +394,74 @@ void *	really_new_free (void **ptr, const char *fn, int line)
  */
 void *	really_new_realloc (void **ptr, size_t size, const char *fn, int line)
 {
-	void *newptr = NULL;
+	void *	newptr = NULL;
 
 	if (ptr == NULL)
 		return NULL;
+	if (size > INT_MAX)
+		return NULL;	/* I smell a negative number cast to unsigned */
 
-	if (!size) 
-		return *ptr;	/* Don't change anything */
-		/* *ptr = really_new_free(ptr, fn, line); */
+	/* 
+	 * If size is zero, we zero out *ptr so it looks like a zero byte
+	 * buffer.  But of course it stays the same size.
+	 * If size is zero and *ptr is NULL, then nothing in, nothing out,
+	 * and we return the NULL we were handed.
+	 */
+	if (size == 0)
+	{
+		if (*ptr)
+			memset_s(*ptr, alloc_size(*ptr), 0, alloc_size(*ptr));
+	}
+
+	/*
+	 * If *ptr is NULL, then this is an initial allocation (which is fine).
+	 * We just defer to really_new_malloc().
+	 * We do a gratuitous memset_s() just for fun.
+	 */
 	else if (*ptr == NULL)
+	{
 		*ptr = really_new_malloc(size, fn, line);
+		memset_s(*ptr, alloc_size(*ptr), 0, alloc_size(*ptr));
+	}
+
+	/*
+	 * So *ptr is not NULL and size is not 0, 
+	 * So the size of *ptr is changing to be at least 'size'.
+	 * If necessary, *ptr is moved; but only if necessary.
+	 */
 	else 
 	{
-		/* Make sure this is safe for realloc. */
+		/* Whether we are moving it or not, just make sure everything is ok */
 		fatal_malloc_check(*ptr, NULL, fn, line);
 
-		/* If it's already big enough, keep it. */
-		if ((ssize_t)alloc_size(*ptr) >= (ssize_t)size)
+		/* Move it to a new buffer but only if we need more space */
+		if ((ssize_t) size > (ssize_t)alloc_size(*ptr))
 		{
-			VALGRIND_MEMPOOL_FREE(mo_ptr(*ptr), *ptr);
-			VALGRIND_MEMPOOL_ALLOC(mo_ptr(*ptr), *ptr, size);
-			return (*ptr);
+			/*
+			 * If we get here, then 'size' is bigger than 'ptr'
+			 * is prepared to handle, so we must create a new
+			 * space, copy everything over, and reset 'ptr'.
+			 */
+			/* Create a new space */
+			newptr = really_new_malloc((size) + sizeof(MO), fn, line);
+
+			/* Copy over the old stuff */
+			memmove(newptr, *ptr, alloc_size(*ptr));
+
+#if 0
+			/* Zero out the extra new space */
+			memset_s((char *)newptr + alloc_size(*ptr), 
+				 size - alloc_size(*ptr), 
+				 0, 
+				 size - alloc_size(*ptr));
+#endif
+
+			/* Free the old stuff (new_free() zeroes it for us) */
+			really_new_free(ptr, fn, line);
+
+			*ptr = newptr;
 		}
-
-		/* Copy everything, including the MO buffer */
-		VALGRIND_MEMPOOL_FREE(mo_ptr(*ptr), *ptr);
-		VALGRIND_DESTROY_MEMPOOL(mo_ptr(*ptr));
-		if (!(newptr = realloc(mo_ptr(*ptr), size + sizeof(MO))))
-			panic(1, "realloc() failed from [%s/%d], giving up!", fn, line);
-
-		/* Re-initalize the MO buffer; magic(*ptr) is already set. */
-		*ptr = (void *)((char *)newptr + sizeof(MO));
-		alloc_size(*ptr) = size;
-		VALGRIND_CREATE_MEMPOOL(mo_ptr(*ptr), 0, 1);
-		VALGRIND_MEMPOOL_ALLOC(mo_ptr(*ptr), *ptr, size);
+		/* Otherwise, we just leave it alone; although we could memset it */
 	}
 	return *ptr;
 }
@@ -477,12 +567,17 @@ char *	malloc_vsprintf (char **ptr, const char *format, va_list args)
 
 	}
 
+	/* XXX I don't know about this... */
+	va_end(args);
+
 	if (ptr)
 	{
 		new_free(ptr);
 		*ptr = buffer;
+		return *ptr;
 	}
-	return buffer;
+	else
+		return buffer;
 }
 
 /*
@@ -3194,6 +3289,7 @@ int	new_split_string (char *str, char ***to, int delimiter)
 			if (i >= segments)
 			{
 				privileged_yell("Warning: new_split_string() thought that string had %d parts, but there appear to be more.", segments);
+				new_free((void **)&(*to));
 				return 0;
 			}
 
@@ -3294,8 +3390,7 @@ char *	remove_brackets (const char *name, const char *args)
 
 		if (args)
 			new_free(&result1);
-		if (rptr)
-			new_free(&rptr);
+		new_free(&rptr);
 		rptr = retval;
 	}
 	return upper(rptr);
@@ -3514,20 +3609,18 @@ static 	char 	*mystuff = NULL;
 			*user = bang + 1;
 			*host = at + 1;
 		}
-		else
+		else if (adot)	
 		{
-			if (adot)		/* nick!host.domain */
-			{
-				*nick = mystuff;
-				*user = endstr(mystuff);
-				*host = bang + 1;
-			}
-			else			/* nick!user */
-			{
-				*nick = mystuff;
-				*user = endstr(mystuff);
-				*host = *user;
-			}
+			/* nick!host.domain */
+			*nick = mystuff;
+			*user = endstr(mystuff);
+			*host = bang + 1;
+		}
+		else			/* nick!user */
+		{
+			*nick = mystuff;
+			*user = endstr(mystuff);
+			*host = *user;
 		}
 	}
 	else
@@ -3800,7 +3893,7 @@ char *	universal_next_arg_count (char *str, char **new_ptr, int count, int exten
 	debug(DEBUG_EXTRACTW_DEBUG, ">>>> universal_next_arg_count: Start: [%s], count [%d], extended [%d], dequote [%d], delims [%s]", str, count, extended, dequote, delims);
 
 	real_move_to_abs_word(str, (const char **)new_ptr, count, extended, delims);
-	debuglog(">>>> universal_next_arg_count: real_move_to_abs_word: str [%s] *new_ptr [%s]", str, new_ptr);
+	debuglog(">>>> universal_next_arg_count: real_move_to_abs_word: str [%s] *new_ptr [%s]", str, *new_ptr);
 
 	if (**new_ptr && *new_ptr > str)
 	{
@@ -6090,6 +6183,7 @@ int	recode_with_iconv (const char *from, const char *to, char **data, size_t *nu
 			if (dest_left < 8)
 			{
 				size_t	offset;
+				/* Clang static says retstr is NULL but i don't agree */
 				offset = dest_ptr - retstr;
 
 				dest_size += 64;
@@ -6138,7 +6232,7 @@ int	recode_with_iconv_t (iconv_t iref, char **data, size_t *numbytes)
 	size_t	dest_left = 0;
 	size_t	dest_size = 0;
 	char *	work_data;
-	char *	retstr = NULL;
+	char *	retstr;
 
 	/*
 	 * Some sanity checks!
@@ -6168,6 +6262,7 @@ int	recode_with_iconv_t (iconv_t iref, char **data, size_t *numbytes)
 		if (dest_left < 8)
 		{
 			size_t	offset;
+			/* clang-scan says 'retstr' is NULL here but i don't see how */
 			offset = dest_ptr - retstr;
 
 			dest_size += 64;
@@ -6605,8 +6700,9 @@ static const char *chars = "0123456789abcdef";
 	int 		i, n;
 	char		*dst, *retval;
 
-	s = alloca(16);
-	RAND_bytes(s, sizeof(s));
+#define UUID4_BUFFER_SIZE	16
+	s = alloca(UUID4_BUFFER_SIZE);
+	RAND_bytes(s, UUID4_BUFFER_SIZE);
 
 	dst = retval = new_malloc(64);
 	memset(retval, 0, 64);

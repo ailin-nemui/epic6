@@ -185,14 +185,17 @@ static int	Socket (int domain, int type, int protocol)
 
 		/* Turning of "lingering" ordinarily makes close(2) non-blocking if the socket is jammed */
 		lin.l_onoff = lin.l_linger = 0;
-		setsockopt(s, SOL_SOCKET, SO_LINGER, (char *)&lin, sizeof(lin));
+		if ((setsockopt(s, SOL_SOCKET, SO_LINGER, (char *)&lin, sizeof(lin))))
+			syserr(-1, "Socket: setsockopt(%d,SO_LINGER, 0) failed. Oh well!", s);
 	}
 
 	optlen = sizeof(opt);
 	opt = 1;
-        setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, optlen);
+        if ((setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, optlen)))
+		syserr(-1, "Socket: setsockopt(%d,SO_REUSEADDR, 1) failed. Oh well!", s);
         opt = 1;
-        setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (char *)&opt, optlen);
+        if ((setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (char *)&opt, optlen)))
+		syserr(-1, "Socket: setsockopt(%d,SO_KEEPALIVE, 1) failed. Oh well!", s);
 	return s;
 }
 
@@ -1071,8 +1074,9 @@ static cJSON *	convert_ares_addrinfo_to_json (const struct ares_addrinfo *result
 
 static void	my_addrinfo_json_callback (void *arg, int status, int __U(timeouts), struct ares_addrinfo *result) 
 {
-    char *json_string = NULL;
-    int   fd;
+    char *	json_string = NULL;
+    int   	fd;
+    size_t 	bytes_written;
 
     fd = *(int *)arg;
     new_free(&arg);
@@ -1117,7 +1121,10 @@ static void	my_addrinfo_json_callback (void *arg, int status, int __U(timeouts),
     }
 
     debug(DEBUG_SERVER_CONNECT, "my_addrinfo_json_callback: Writing JSON results to fd %d", fd);
-    write(fd, json_string, strlen(json_string));
+    bytes_written = write(fd, json_string, strlen(json_string));
+    if (bytes_written <= strlen(json_string))
+	debug(DEBUG_SERVER_CONNECT, "my_addrinfo_json_callback: failed to write bytes.");
+
     new_free(&json_string);
 
     // If this callback signals the end of a specific request/task,
@@ -1160,6 +1167,7 @@ int	json_to_sockaddr_array (const char *json_string, int *failure_code_, SSu **a
     cJSON *failure_code = cJSON_GetObjectItemCaseSensitive(root, "failure");
     if (cJSON_IsNumber(failure_code)) {
         *failure_code_ = cJSON_GetNumberValue(failure_code);
+	cJSON_DeleteItem(&root);
         return 0;	/* Treat as empty */
     } else {
  	*failure_code_ = 0;
@@ -1458,7 +1466,8 @@ int	lookup_vhost (int family_, const char *something, SSu *ssu_, socklen_t *sl)
 		/* Cache the result */
 		if (next_vhost >= max_vhost)
 		{
-			say("I'm plum full up on vhosts -- sorry!");
+			say("I'm plumb full up on vhosts -- sorry!");
+			freeaddrinfo(res_save);
 			return -1;
 		}
 
@@ -1658,7 +1667,7 @@ char *	set_default_hostnames (const char *hostname)
 		{
 			accept6 = 1;
 			malloc_strcpy(&LocalIPv6HostName, v6);
-			make_vhost_default(AF_INET6, LocalIPv4HostName);
+			make_vhost_default(AF_INET6, LocalIPv6HostName);
 		}
 	}
 	else

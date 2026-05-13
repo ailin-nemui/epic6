@@ -107,7 +107,9 @@ static FILE *	open_log (const char *logfile, FILE **fp)
 		localtime_r(&t, &ltime);		/* Do not use gmtime! */
 		strftime(timestr, 255, "%a %b %d %H:%M:%S %Y", &ltime);
 
-		chmod(fullname, S_IRUSR | S_IWUSR);
+		if (chmod(fullname, S_IRUSR | S_IWUSR))
+			say("Could not chmod permissions on %s.  You should check that.", fullname);
+
 		say("Starting logfile %s", fullname);
 		fprintf(*fp, "IRC log started %s\n", timestr);
 		fflush(*fp);

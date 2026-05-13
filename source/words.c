@@ -625,12 +625,20 @@ int	count_words (const char *str, int extended, const char *quotes)
  */
 ssize_t	move_word_rel (const char *start, const char **mark, int word, int extended, const char *quotes)
 {
-	int 		counter = word;
-	const char *	pointer = *mark;
-	const char *	end = start + strlen(start);
+	int		counter;
+	const char *	pointer;
+	const char *	end;
 
+	if (!start)
+		return 0;
+	if (!mark)
+		return 0;
 	if (!quotes)
 		return 0;
+
+	counter = word;
+	pointer = *mark;
+	end = start + strlen(start);
 
 	if (end == start) 	/* null string, return it */
 		return 0;
@@ -641,15 +649,14 @@ ssize_t	move_word_rel (const char *start, const char **mark, int word, int exten
 		move_to_next_word(&pointer, start, extended, quotes);
 	}
 	else if (counter == 0)
-		pointer = *mark;
+		(void) 0;	/* Nothing to do */
 	else /* counter < 0 */
 	{
 	    for (; counter < 0 && pointer > start; counter++)
 		move_to_prev_word(&pointer, start, extended, quotes);
 	}
 
-	if (mark)
-		*mark = pointer;
+	*mark = pointer;
 
 	return pointer - start;
 }

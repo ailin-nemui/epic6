@@ -8,30 +8,48 @@
 #include "irc.h"
 #include "ircaux.h"
 
+/*
+ * Gemini suggested replacements for these two, but they didn't work.  Oh well!
+ */
+
 #ifdef __need_cs_alist_hash__
-/* 
+/*
  * This hash routine is for case sensitive keys.  Specifically keys that
  * have been prefolded to an apppropriate case.
  */
-static uint32_t  cs_alist_hash (const char *s, uint32_t *mask)
+static uint32_t cs_alist_hash (const char *s, uint32_t *mask)
 {
-	uint32_t	x = 0;
+	uint32_t 	m;
+	uint32_t 	uint;
 
-	if (s[0] != 0)
+	m = 0;
+	uint = 0;
+
+	// 1. Build the mask and fill the buffer
+	// This handles strings from length 0 to 4+ safely.
+	if (s[0]) 
 	{
-		if (s[1] == 0)
-			x = (s[0] << 24), 
-				*mask = 0xff000000;
-		else if (s[2] == 0)
-			x = (s[0] << 24) | (s[1] << 16), 
-				*mask = 0xffff0000;
-		else
-			x = (s[0] << 24) | (s[1] << 16) | (s[2] << 8) | s[3], 
-				(*mask = 0xffffff00 | (s[3] ? 0xff : 0x00));
+		uint |= ((unsigned char) s[0] << 24);
+		m |= 0xFF000000;
+		if (s[1])
+		{
+			uint |= ((unsigned char) s[1] << 16);
+			m |= 0x00FF0000;
+			if (s[2])
+			{
+				uint |= ((unsigned char) s[2] << 8);
+				m |= 0x0000FF00;
+				if (s[3])
+				{
+					uint |= ((unsigned char) s[2]);
+					m |= 0x000000FF;
+				}
+			}
+		}
 	}
-	else
-		*mask = 0;
-	return x;
+
+	*mask = m;
+	return uint;
 }
 #endif
 
@@ -41,30 +59,39 @@ extern unsigned char *stricmp_tables[3];
  * This hash routine is for case insensitive keys.  Specifically keys that
  * cannot be prefolded to an appropriate case but are still insensitive
  */
-static uint32_t  ci_alist_hash (const char *s, uint32_t *mask)
+static uint32_t ci_alist_hash (const char *s, uint32_t *mask)
 {
-	uint32_t	x = 0;
+	uint32_t 	m;
+	uint32_t 	uint;
 
-	if (s[0] != 0)
+	m = 0;
+	uint = 0;
+
+	// 1. Determine the length-based mask first
+	// This is clean, branchless-adjacent logic
+	if (s[0])
 	{
-	    if (s[1] == 0)
-		x = (stricmp_tables[0][(int)s[0]] << 24), 
-				*mask = 0xff000000;
-	    else if (s[2] == 0)
-		x = ((stricmp_tables[0][(int)(unsigned char)s[0]] << 24) | 
-		     (stricmp_tables[0][(int)(unsigned char)s[1]] << 16)), 
-				*mask = 0xffff0000;
-	    else
-		x = ((stricmp_tables[0][(int)(unsigned char)s[0]] << 24) | 
-		     (stricmp_tables[0][(int)(unsigned char)s[1]] << 16) | 
-		     (stricmp_tables[0][(int)(unsigned char)s[2]] << 8) | 
-		     (stricmp_tables[0][(int)(unsigned char)s[3]])),
-				(*mask = 0xffffff00 | (s[3] ? 0xff : 0x00));
+		uint |= ((unsigned char)stricmp_tables[0][(unsigned char)s[0]]) << 24;
+		m = 0xFF000000;
+		if (s[1])
+		{
+			uint |= ((unsigned char)stricmp_tables[0][(unsigned char)s[1]]) << 16;
+			m |= 0x00FF0000;
+			if (s[2])
+			{
+				uint |= ((unsigned char)stricmp_tables[0][(unsigned char)s[2]]) << 8;
+				m |= 0x0000FF00;
+				if (s[3])
+				{
+					uint |= ((unsigned char)stricmp_tables[0][(unsigned char)s[3]]);
+					m |= 0x000000FF;
+				}
+			}
+		}
 	}
-	else
-	    *mask = 0;
 
-	return x;
+	*mask = m;
+	return uint;
 }
 #endif
 
