@@ -1156,6 +1156,10 @@ static int 	serverdesc_import_file (const char *file_path)
 	buffer = alloca(BIG_BUFFER_SIZE + 1);
 	while (fgets(buffer, BIG_BUFFER_SIZE, fp))
 	{
+		/* We decline to process non-text */
+		if (invalid_utf8str(buffer))
+			continue;
+
 		chop(buffer, 1);
 		if (*buffer == '#')
 			continue;

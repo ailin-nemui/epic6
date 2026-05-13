@@ -5212,9 +5212,12 @@ int	screen_add_window_before (int screen_, int existing_window_, int new_window_
 
 	if ((ewp = screen_window_find(screen_, existing_window_)) >= 0)
 	{
-		if (screen_windows_make_room_at(screen_, ewp))
+		size_t	ewp_;
+
+		ewp_ = (size_t) ewp;
+		if (screen_windows_make_room_at(screen_, ewp_))
 		{
-			s->_windows[ewp].window = new_window_;
+			s->_windows[ewp_].window = new_window_;
 			return 1;
 		}
 	}
@@ -5231,12 +5234,15 @@ int	screen_add_window_after (int screen_, int existing_window_, int new_window_)
 
 	if ((ewp = screen_window_find(screen_, existing_window_)) >= 0)
 	{
-		if (ewp > MAX_WINDOWS_ON_SCREEN)
+		size_t	ewp_;
+
+		ewp_ = (size_t) ewp;
+		if (ewp_ >= MAX_WINDOWS_ON_SCREEN)
 			return 0;
 
-		if (screen_windows_make_room_at(screen_, ewp + 1))
+		if (screen_windows_make_room_at(screen_, ewp_ + 1))
 		{
-			s->_windows[ewp + 1].window = new_window_;
+			s->_windows[ewp_ + 1].window = new_window_;
 			return 1;
 		}
 	}
