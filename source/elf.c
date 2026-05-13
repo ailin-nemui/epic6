@@ -64,7 +64,8 @@ struct epic_loadfile * epic_fopen(char *filename, const char *mode, int do_error
         ret = archive_fopen(elf, filename, ".zip", do_error);
     } else if (stristr(filename, ".tar")!=-1) {
         ret = archive_fopen(elf, filename, ".tar", do_error);
-    }
+    } else
+	ret = 0;
 
     if (ret == 1)
         return elf;
