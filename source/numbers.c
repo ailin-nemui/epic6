@@ -95,9 +95,8 @@ const char *	banner (void)
  */
 static void 	display_msg (const char *from, const char *comm, const char **args)
 {
-	char	*ptr = NULL;
-	const char	*rest;
-	int	drem;
+	const char *	rest;
+	char *		extra = NULL;
 
 	/* XXX - 
 	 * args[0] was passed to who_from() which means we need to 
@@ -107,17 +106,18 @@ static void 	display_msg (const char *from, const char *comm, const char **args)
 	if (!(rest = PasteArgs(args, 0)))
 		{ rfc1459_odd(from, comm, args); return; }
 
+	/*
+ 	 * Numerics may be sent to us by a remote server (although this
+	 * is irregular).  We note "local" numerics by setting from to
+	 * NULL.
+	 */
 	if (from && (my_strnicmp(get_server_itsname(from_server), from,
 			strlen(get_server_itsname(from_server))) == 0))
 		from = NULL;
 
-	/* This fix by SrfRog, again by |Rain| */
-	if (ptr && ptr > rest && ptr[-1] == ' ')	/* per RFC 1459 */
-		*ptr++ = 0;
-	else
-		ptr = NULL;
-
-        drem = (from) && (!get_int_var(SUPPRESS_FROM_REMOTE_SERVER_VAR));
+	/* I don't mind doing this because it's so unusual */
+	if (from)
+		malloc_sprintf(&extra, "(from %s)", from);
 
         /*
          * This handles all the different cases of server messages.
@@ -127,16 +127,9 @@ static void 	display_msg (const char *from, const char *comm, const char **args)
          * independant variables.  In practice only about 6 to 8 of 
 	 * the possibilities are used.
          */
-        put_it("%s %s%s%s%s%s%s%s",
-                banner(),
-                strlen(rest)        ? rest     : empty_string,
-                strlen(rest) && ptr ? ":"      : empty_string,
-                strlen(rest)        ? space    : empty_string,
-                ptr                 ? ptr      : empty_string,
-                drem                ? "(from " : empty_string,
-                drem                ? from     : empty_string,
-                drem                ? ")"      : empty_string
-              );
+        put_it("%s %s %s", banner(), rest, (extra ? extra : empty_string));
+
+	new_free(&extra);
 }
 
 /*

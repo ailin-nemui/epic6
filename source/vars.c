@@ -541,7 +541,6 @@ void 	init_variables_stage1 (void)
 	VAR(STATUS_USER9,               STR,  build_status);
 	VAR(STATUS_VOICE,               STR,  build_status);
 	VAR(STATUS_WINDOW,              STR,  build_status);
-	VAR(SUPPRESS_FROM_REMOTE_SERVER, BOOL, (SetFunc)0);
 	VAR(SWITCH_CHANNELS_BETWEEN_WINDOWS,  BOOL, (SetFunc)0);
 	VAR(TERM_DOES_BRIGHT_BLINK,     BOOL, (SetFunc)0);
 	VAR(TMUX_OPTIONS,               STR,  (SetFunc)0);

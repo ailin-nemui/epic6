@@ -488,3 +488,6 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Fix a bogon if you don't have libarchive
 * More coverity fixes from round two.
 * More (probably vain) attempts to appease the coverity monster
+* Sunset $uhc()  -- the code was smelly and people should use $mask()
+* Sunset /set suppress_from_remote_server
+* Fix the remaining coverity issues -- famous last words!

@@ -396,7 +396,6 @@ static	char
 	*function_truncate 	(char *),
 	*function_ttyname	(char *),
 	*function_twiddle	(char *),
-	*function_uhc		(char *),
 	*function_umask		(char *),
 	*function_umode		(char *),
 	*function_uname		(char *),
@@ -728,7 +727,6 @@ static BuiltInFunctions	built_in_functions[] =
 	{ "TRUNC",		function_truncate 	},
 	{ "TTYNAME",		function_ttyname	},
 	{ "TWIDDLE",		function_twiddle	},
-	{ "UHC",		function_uhc		}, 
 	{ "UMASK",		function_umask		},
 	{ "UNAME",		function_uname		},
 	{ "UNICODE",		function_unicode 	},
@@ -5440,23 +5438,6 @@ BUILT_IN_FUNCTION(function_findws, input)
 	}
 
 	RETURN_MSTR(ret);
-}
-
-
-BUILT_IN_FUNCTION(function_uhc, input)
-{
-	char 	*nick, *user, *host;
-
-	if (!input || !*input)
-		RETURN_EMPTY;
-
-	if (figure_out_address(input, &nick, &user, &host))
-		RETURN_STR(input);
-	else
-		return malloc_sprintf(NULL, "%s!%s@%s", 
-				*nick ? nick : star,
-				*user ? user : star,
-				*host ? host : star);
 }
 
 /*
