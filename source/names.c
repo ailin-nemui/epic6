@@ -257,17 +257,16 @@ static void 	destroy_channel (Channel *chan)
 void 	add_channel (const char *name, int server)
 {
 volatile /* BAH~! */ Channel *new_c;
-	int	was_window = -1;
+	Channel *	old_c;
+	int		was_window = -1;
 
-	if ((new_c = find_channel(name, server)))
+	if ((old_c = find_channel(name, server)))
 	{
-		was_window = new_c->window;
-		destroy_channel((Channel *)new_c);
-		malloc_strcpy(&(((Channel *)new_c)->channel), name);
-		new_c->server = server;
+		was_window = old_c->window;
+		destroy_channel((Channel *)old_c);
+		new_free((char **)&old_c);
 	}
-	else
-		new_c = create_channel(name, server);
+	new_c = create_channel(name, server);
 
 	new_c->waiting = 1;		/* This channel is "syncing" */
 	get_time(&((Channel *)new_c)->join_time);

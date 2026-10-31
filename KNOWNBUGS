@@ -57,10 +57,6 @@ Actual bugs
 * Add /ON GEOMETRY to show columns and rows
 * Local variable pointers that hold pointers to malloc()ed memory that might be changed
   by a do_hook() need to be (volatile) -- sigh!
-* [ 5:42PM] <wcarson> but basically when the znc loses connection to the server, then reconnects (but my epic 
-  +client never lost connection to the znc), it fails to channel_claim the channels or whatever, and then they
-  +all show up in one window and don't trigger /ons or something (they're all unstyled text), and i have to 
-  +/disconnect and /reconnect to fix it
 
 THE CHANGELOG SINCE THE LAST RELEASE:
 -------------------------------------
@@ -562,3 +558,4 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Refactor /disconnect/reconnect (sb skered)
 * <<< End of LLM review suggestions
 * Add support for refusing to do SASL PLAIN on imperfect TLS certs
+* Unconditionally replace a channel if we get a new JOIN (rb wcarson)
