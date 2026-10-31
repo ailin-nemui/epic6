@@ -189,7 +189,7 @@ typedef	struct	WindowStru
 	/* TOPLINES stuff */
 	short		toplines_wanted;
 	short		toplines_showing;
-	char *		topline[10];
+	char *		topline[100];
 
 	/* ACTIVITY stuff */
 	short		current_activity;
@@ -503,7 +503,7 @@ int	new_window (int screen_)
 	/* TOPLINE stuff */
 	new_w->toplines_wanted = 0;		/* Filled in later? */
 	new_w->toplines_showing = 0;		/* Filled in later? */
-	for (i = 0; i < 10; i++)
+	for (i = 0; i < 100; i++)
 		new_w->topline[i] = NULL;
 
 	/* ACTIVITY stuff */
@@ -3454,7 +3454,7 @@ static	int	add_waiting_channel (int refnum, const char *chan)
 
 	tmp = (List *)new_malloc(sizeof(List));
 	tmp->name = malloc_strdup(chan);
-	tmp->d = (WNickList *)new_malloc(sizeof(WNickList *));
+	tmp->d = (WNickList *)new_malloc(sizeof(WNickList));
 	((WNickList *)(tmp->d))->counter = 0;
 	add_item_to_list(&win->waiting_chans, tmp);
 	return 0;			/* Added */
@@ -8476,7 +8476,9 @@ WINDOWCMD(swappable)
  *		/WINDOW -TOPLINE			Does nothing
  *
  * The <number> is required; omitting it is a syntax error and does nothing
- * The <number> must be between 1 and 9.
+ * The <number> must be between 1 and 99.
+ * You can write to all toplines, but you can only display 1-9.
+ * This is a temporary limit awaiting future compatibility.
  *
  * "Toplines" are lines reserved at the top of the window that do not scroll.
  * You can put any static information in there you want in the toplines.
@@ -8502,9 +8504,9 @@ WINDOWCMD(topline)
 	}
 
 	line = my_atol(linestr);
-	if (line <= 0 || line >= 10)
+	if (line <= 0 || line >= 100)
 	{
-		say("/WINDOW TOPLINE number must be 1 to 9.");
+		say("/WINDOW TOPLINE number must be 1 to 99.");
 		return refnum;
 	}
 
@@ -8547,7 +8549,7 @@ WINDOWCMD(toplines)
 	}
 	if (number < 0 || number >= 10)
 	{
-		say("Window saved lines must be < 10 for now.");
+		say("Window saved lines must be < 10 (for now).");
 		return refnum;
 	}
 

@@ -125,6 +125,8 @@ static int	in_ctcp = 0;
  *	-1	- 'name' does not map to an internal CTCP
  *	>= 0	- 'name' refers to an internal CTCP, an integer 'r' 
  *		  such that CTCP(r) and CTCP_NAME(r) refer to that CTCP
+ *
+ * CAREFUL!  Check the return value before passing it to CTCP(x)
  */
 static int	lookup_ctcp (const char *name)
 {
@@ -265,15 +267,18 @@ static int split_CTCP (char *raw_message, char *ctcp_dest, char *after_ctcp)
  *		   0 = This is a NOTICE or a response
  *	from	- Who sent the CTCP
  *	to	- Who received the CTCP (nick, channel, wall)
- *	str	- The message we received. (may be modified)
+ *	str_	- The message we received
  *		  This must be at least BIG_BUFFER_SIZE+1 or bigger.
  *
  * Return value:
- *	'str' is returned.  
- *	'str' may be modified.
- *	It is guaranteed that 'str' shall contain no CTCPs upon return.
+ *	NULL 		The message did not contain a CTCP message.
+ *			Continue using 'str_'
+ *	<otherwise>	Whatever is left of 'str_' after CTCP
+ *			message(s) are handled, as a 
+ *			new_malloc()ed string.
+ *	YOU MUST NEW_FREE() THE RETURN VALUE IF IT IS NOT NULL.
  */
-char *	do_ctcp (int request, const char *from, const char *to, char *str)
+char *	do_ctcp (int request, const char *from, const char *to, const char *str_)
 {
 	char	*local_ctcp_buffer, *the_ctcp, *after;
 	char	*ctcp_command,
@@ -285,28 +290,35 @@ char *	do_ctcp (int request, const char *from, const char *to, char *str)
 	int	l;
 	char *	extra = NULL;
 	int 	delim_char;
-
-	local_ctcp_buffer = alloca(BIG_BUFFER_SIZE + 1);
-	the_ctcp = alloca(IRCD_BUFFER_SIZE + 1);
-	after = alloca(IRCD_BUFFER_SIZE + 1);
+	char *	str = NULL;
 
 	/*
+	 * First, let's see if we need to do anything at all.
 	 * Messages with less than 2 CTCP delims don't have a CTCP in them.
 	 * Messages with > 8 delims are probably rogue/attack messages.
 	 * We can save a lot of cycles by heading those off at the pass.
 	 */
-	delim_char = charcount(str, CTCP_DELIM_CHAR);
+	delim_char = charcount(str_, CTCP_DELIM_CHAR);
 	if (delim_char < 2)
-		return str;		/* No CTCPs. */
+		return NULL;		/* No CTCPs. */
 	if (delim_char > 8)
 		dont_process_more = 1;	/* Historical limit of 4 CTCPs */
-
 
 	/* Messages sent to global targets are removed but not processed */
 	if (*to == '$' || (*to == '#' && !im_on_channel(to, from_server)))
 		dont_process_more = 1;
 
+	/*
+	 * At this point, we are committed to processing this message.
+	 */
 
+	local_ctcp_buffer = alloca(BIG_BUFFER_SIZE + 1);
+	the_ctcp = alloca(IRCD_BUFFER_SIZE + 1);
+	after = alloca(IRCD_BUFFER_SIZE + 1);
+
+	/* This is what we're going to return, no matter what */
+	str = new_malloc(BIG_BUFFER_SIZE + 1);
+	strlcpy(str, str_, BIG_BUFFER_SIZE);
 
 	/* Set up the window level/logging */
 	if (im_on_channel(to, from_server))
@@ -330,7 +342,6 @@ char *	do_ctcp (int request, const char *from, const char *to, char *str)
 		/* If we're removing-but-not-processing CTCPs, ignore it */
 		if (dont_process_more)
 			continue;
-
 
 		/* * * */
 		/* Seperate the "command" from the "argument" */
@@ -528,8 +539,6 @@ char *	do_ctcp (int request, const char *from, const char *to, char *str)
 	/*
 	 * When we are all done, 'local_ctcp_buffer' contains a message without
 	 * any CTCPs in it!
-	 *
-	 * 'str' is required to be BIG_BUFFER_SIZE + 1 or bigger per the API.
 	 */
 	pop_context(l);
 	strlcpy(str, local_ctcp_buffer, BIG_BUFFER_SIZE);
@@ -824,7 +833,10 @@ BUILT_IN_FUNCTION(function_ctcpctl, input)
 
 		RETURN_INT(1);
 	} else if (!my_strnicmp(op, "GET", op_len)) {
-		if (!my_stricmp(field, "REQUEST")) {
+		/* Trying to GET at a non-existant CTCP is an error. */
+		if (i == -1) {
+			RETURN_EMPTY;
+		} else if (!my_stricmp(field, "REQUEST")) {
 			RETURN_STR(CTCP(i)->user_func);
 		} else if (!my_stricmp(field, "RESPONSE")) {
 			RETURN_STR(CTCP(i)->user_repl);
@@ -832,6 +844,8 @@ BUILT_IN_FUNCTION(function_ctcpctl, input)
 			RETURN_STR(CTCP(i)->desc);
 		} else if (!my_stricmp(field, "SPECIAL")) {
 			RETURN_INT((CTCP(i)->flag & CTCP_SPECIAL) != 0);
+		} else if (!my_stricmp(field, "REPLACE_ARGS")) {
+			RETURN_INT((CTCP(i)->flag & CTCP_REPLACE_ARGS) != 0);
 		} else if (!my_stricmp(field, "RAW")) {
 			RETURN_INT((CTCP(i)->flag & CTCP_RAW) != 0);
 		} else if (!my_stricmp(field, "ACTIVE")) {

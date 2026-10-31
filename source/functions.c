@@ -5775,25 +5775,40 @@ BUILT_IN_FUNCTION(function_regcomp, input)
 	RETURN_MSTR(dest);
 }
 
+/*
+ * unsave_regex - Turn a $regcomp() return value back into a (regex_t)
+ *
+ * Returns 0 if 'unsaved' decoded into exactly one (regex_t), -1 otherwise.
+ *
+ * XXX - This is only a sanity check.  A (regex_t) contains pointers that
+ * belong to libc, and anyone can forge a string of the right size.  The
+ * real fix is to keep the (regex_t)s in a table and hand out refnums.
+ */
+static int     unsave_regex (const char *unsaved, regex_t *preg, const char *who)
+{
+	size_t  len;
+
+	memset(preg, 0, sizeof(*preg));
+	len = transform_string(B85_xform, XFORM_DECODE, NULL,
+				unsaved, strlen(unsaved),
+				(char *)preg, sizeof(*preg));
+	if ((ssize_t)len < 0 || len != sizeof(*preg))
+	{
+		yell("First argument to $%s() is not a value from $regcomp()", who);
+		memset(preg, 0, sizeof(*preg));
+		return -1;
+	}
+	return 0;
+}
+
 BUILT_IN_FUNCTION(function_regexec, input)
 {
 	char *	unsaved;
 	regex_t preg;
 
 	GET_FUNC_ARG(unsaved, input);
-#if 0
-	if (strlen(unsaved) != sizeof(regex_t) * 2)
-	{
-		yell("First argument to $regexec() isn't proper length");
+	if (unsave_regex(unsaved, &preg, "regexec"))
 		RETURN_EMPTY;
-	}
-#endif
-
-	memset(&preg, 0, sizeof(preg));
-	/* XXX - What if this fails? */
-	transform_string(B85_xform, XFORM_DECODE, NULL,
-			 unsaved, strlen(unsaved),
-			 (char *)&preg, sizeof(preg));
 	last_regex_error = regexec(&preg, input, 0, NULL, 0);
 	RETURN_INT(last_regex_error);	/* DONT PASS FUNC CALL TO RETURN_INT */
 }
@@ -5809,16 +5824,8 @@ BUILT_IN_FUNCTION(function_regmatches, input)
 	GET_FUNC_ARG(unsaved, input);
 	GET_INT_ARG(nmatch, input);
 
-	if (strlen(unsaved) != sizeof(regex_t) * 2)
-	{
-		yell("First argument to $regmatches() isn't proper length");
+	if (unsave_regex(unsaved, &preg, "regmatches"))
 		RETURN_EMPTY;
-	}
-
-	/* XXX - What if this fails? */
-	transform_string(B85_xform, XFORM_DECODE, NULL,
-			 unsaved, strlen(unsaved),
-			 (char *)&preg, sizeof(preg));
 
 	RESIZE(pmatch, regmatch_t, nmatch);
 	if (!(last_regex_error = regexec(&preg, input, nmatch, pmatch, 0)))
@@ -5856,10 +5863,8 @@ BUILT_IN_FUNCTION(function_regerror, input)
 
 	GET_FUNC_ARG(unsaved, input);
 
-	/* XXX - What if this fails? */
-	transform_string(B85_xform, XFORM_DECODE, NULL,
-			 unsaved, strlen(unsaved),
-			 (char *)&preg, sizeof(preg));
+	if (unsave_regex(unsaved, &preg, "regerror"))
+		RETURN_EMPTY;
 
 	error_buf = alloca(1024);
 	*error_buf = 0;
@@ -5874,16 +5879,8 @@ BUILT_IN_FUNCTION(function_regfree, input)
 	regex_t	preg;
 
 	GET_FUNC_ARG(unsaved, input);
-	if (strlen(unsaved) != sizeof(regex_t) * 2)
-	{
-		yell("First argument to $regmatches() isn't proper length");
+	if (unsave_regex(unsaved, &preg, "regfree"))
 		RETURN_EMPTY;
-	}
-
-	/* XXX - What if this fails? */
-	transform_string(B85_xform, XFORM_DECODE, NULL,
-			 unsaved, strlen(unsaved),
-			 (char *)&preg, sizeof(preg));
 
 	regfree(&preg);
 	RETURN_EMPTY;
@@ -8358,6 +8355,17 @@ BUILT_IN_FUNCTION(function_xform, input)
 	{
 		ptrbuflen = transform_string(types[x], encodings[x], args[x],
 				srcbuf, srcbuflen, destbuf, destbuflen);
+
+		/*
+		 * Encoders return (ssize_t)-1 on failure, which arrives here
+		 * as a huge size_t.  Treat a failure (or any nonsense length)
+		 * as an empty result rather than indexing off the buffer.
+		*/
+		if ((ssize_t)ptrbuflen < 0 || ptrbuflen >= destbuflen)
+		{
+			ptrbuflen = 0;
+			*destbuf = 0;
+		}
 		ptr = srcbuf;
 		srcbuf = destbuf;
 		srcbuflen = ptrbuflen;

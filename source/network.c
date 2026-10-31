@@ -408,7 +408,7 @@ static	void	do_ares_callback (int fd)
 	char *	datastr;
 	int	revents, readable = 0, writable = 0;;
 
-	datastr = alloca(128);
+	datastr = alloca(129);
 	if ((dgets(fd, datastr, 128, 1)) <= 0)
 	{
 		debug(DEBUG_SERVER_CONNECT, "I closed ares_callback fd %d.", fd);

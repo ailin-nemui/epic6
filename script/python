@@ -6,10 +6,10 @@ if (word(2 $loadinfo()) != [pf]) { load -pf $word(1 $loadinfo()); return; };
 if (python(1) == 1) 
 {
 	# Make sure we can import local modules
-	python {import sys};
-	python {if '.' not in sys.path: sys.path.append('.')};
+	python import sys;
+	python if '.' not in sys.path: sys.path.append('.');
 	@ dir = before(-1 / $word(1 $loadinfo()));
-	python {if '$dir' not in sys.path: sys.path.append\('$dir'\)};
+	python if '$dir' not in sys.path: sys.path.append\('$dir'\);
 
 	# Setup some helpful aliases
 	alias pyecho {echo $python($*)};

@@ -1893,11 +1893,36 @@ return_from_ssl_detour:
 				 */
 				if (verify_error)
 				{
-
+					/*
+					 * Note for the reader:
+					 *
+					 * SSL on IRC buys you little to no security.
+					 * Nevertheless, people insist on using it.
+					 *
+					 * Invalid SSL certificates are fairly common on IRC.  
+					 * 1. Independent IRC servers use self-signed certs
+					 *    because setting up wildcard certs or hostname
+					 *    based certs on a decentralized domain is hard.
+					 * 2. Even some networks (like EFNet) use DNS round 
+					 *    robin hostnames but don't use that hostname on 
+					 *    the server's itsname (M-Line)  This results in 
+					 *    a "wrong hostname" ssl error.
+					 * 
+					 * If I just said "well, you can't connect to a server
+					 * with invalid SSL cert" that would eliminate most 
+					 * of the SSL servers you would want to connect to.
+					 * So /SET ACCEPT_INVALID_SSL_CERT ON (the default) 
+					 * accepts these sorts of routine invalid certs.
+					 * If you are really uptight, you can /SET it to OFF.
+					 * But most epic users don't have a use case for that.
+					 */
 					/*
 					 * If "other_error" is 0, then all of the errors
-					 * were either self-signed or checkhost errors.
-					 * We forgive those if the user said to
+					 * were routine errors (self-signed or checkhost)
+					 * We forgive those unless the user says not to.
+					 *
+					 * We _never_ accept ssl certs with serious errors
+					 * (anything but self-signed and wrong-host)
 					 */
 					if (!other_error && get_int_var(ACCEPT_INVALID_SSL_CERT_VAR))
 					{
@@ -2017,13 +2042,20 @@ something_else_broke:
 
 				default:	/* New inbound data */
 				{
-					char *end;
+					char *	end;
 
+					/* 
+					 * We don't care how many bytes we read;
+					 * we only care about how long the C string is.
+					 * A rogue server might send us a zero-length
+					 * string in a larger buffer (\0\r\n) and we
+					 * don't want to buffer underrun that.
+					 */
 					end = strlen(buffer) + buffer;
-					if (*--end == '\n')
-						*end-- = '\0';
-					if (*end == '\r')
-						*end-- = '\0';
+					if (end > buffer && end[-1] == '\n')
+						*--end = 0;
+					if (end > buffer && end[-1] == '\r')
+						*--end = 0;
 
 					rfc1459_any_to_utf8(bufptr, IO_BUFFER_SIZE, &extra);
 					if (extra)
@@ -2154,6 +2186,7 @@ static void 	vsend_to_aserver_with_payload (int refnum, const char *payload, con
 		des;
 	int	ofs;
 	char *	extra = NULL;
+	va_list	working_args;
 
 	if (!(s = get_server(refnum)))
 		return;
@@ -2178,7 +2211,9 @@ static void 	vsend_to_aserver_with_payload (int refnum, const char *payload, con
 	 * 1. Press and translate the server part
 	 */
 	/* Keep the results short, and within reason. */
-	server_part_len = vsnprintf(buffer, BIG_BUFFER_SIZE, format, args);
+	va_copy(working_args, args);
+	server_part_len = vsnprintf(buffer, BIG_BUFFER_SIZE, format, working_args);
+	va_end(working_args);
 
 	/* XXX To be honest, this is so unlikely i'm not sure what to do here */
 	if (server_part_len == -1)
@@ -3212,24 +3247,38 @@ int	is_server_valid (int refnum)
 
 
 /*
- * DISCONNECT/RECONNECT - Change a server's state
+ * user_reset_connection - /DISCONNECT and /RECONNECT
  *
- * Arguments:
- *    By default, the current server will be used.
- *	<server refnum>		Disconnect or reconnect from a specific server
- *	-FORCE			Don't argue with me, just do it.
- *	-SAFE			For services: "Don't do anything that makes no sense"
+ * /DISCONNECT is the user's interface to server_close().
+ * /RECONNECT does a /DISCONNECT (if you're connected - but see below),
+ *   then immediately resets the server to the RECONNECT state.  
+ *    - If you are in the middle of connecting to a server, 
+ *      it tries the next address.  
+ *    - If you are not in the middle of connecting to a server,
+ *      it does a DNS lookup and starts at the first addr.
  *
- * First, the server will be put into the CLOSED state
- * Then, if you did /RECONNECT the server will be put into the RECONNECT state
+ * Unless you use the -s command line option, the client does
+ * an implicit /RECONNECT 0 to kick things off.
+ *
+ * Special note about /RECONNECT safety
+ *	To protect you from accidentally doing a /reconnect
+ *	when you don't need to, the /reconnect script expects
+ *	you to do /DISCONNECT first.  You can work around
+ *	this by doing /RECONNECT -FORCE
+ *
+ * Both /RECONNECT and /DISCONNECT take two arguments:
+ *	(1) A server description (refnum, name, or descr)
+ *	(2) A quit message
  */
-BUILT_IN_COMMAND(disconnectcmd)
+static void	user_reset_connection (int reconnect_, const char *command, char *args)
 {
-	char *	arg;
-	const char *message;
-	int	i = get_window_server(0);
-	int	reconnect_ = strcmp(command, "DISCONNECT");
-	int	force = 1;
+	char *		arg;
+	const char *	message;
+	int		i;
+	int		force;
+
+	i = get_window_server(0);
+	force = 1;
 
 	while (args && *args) 
 	{
@@ -3240,9 +3289,9 @@ BUILT_IN_COMMAND(disconnectcmd)
 				i = get_window_server(0);
 			break;
 		}
-		else if (my_strnicmp(arg, "-FORCE", 1))
+		else if (!my_strnicmp(arg, "-FORCE", 2))
 			force = 1;
-		else if (my_strnicmp(arg, "-SAFE", 1))
+		else if (!my_strnicmp(arg, "-SAFE", 2))
 			force = 0;
 		else
 		{
@@ -3265,7 +3314,7 @@ BUILT_IN_COMMAND(disconnectcmd)
 		return;
 	}
 
-	if (force == 0 && reconnect_ && is_server_registered(i))
+	if (!force && reconnect_ && is_server_registered(i))
 	{
 		say("You cannot /RECONNECT -SAFE to a server you are actively on (%s)", get_server_itsname(i));
 		say("Use /DISCONNECT first.  This is a safety valve");
@@ -3309,9 +3358,14 @@ throw_on_disconnect:
 	}
 } 
 
+BUILT_IN_COMMAND(disconnectcmd)
+{
+	user_reset_connection(0, command, args);
+}
+
 BUILT_IN_COMMAND(reconnectcmd)
 {
-	disconnectcmd(command, args, subargs);
+	user_reset_connection(1, command, args);
 }
 
 /**************************************************************************/

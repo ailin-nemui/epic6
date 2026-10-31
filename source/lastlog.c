@@ -1474,8 +1474,12 @@ BUILT_IN_FUNCTION(function_line, word)
 	if (line < 1 || line > get_window_lastlog_size(win))
 		RETURN_EMPTY;
 
-	/* Get the line from the lastlog */
-	for (start_pos = lastlog_newest; line > 0; start_pos = start_pos->older)
+	/*
+	 * Get the line from the lastlog.  The range check above relies on
+	 * lastlog_size exactly matching the number of visible entries; if
+	 * that accounting is ever off, don't walk off the end of the list.
+	 */
+	for (start_pos = lastlog_newest; start_pos && line > 0; start_pos = start_pos->older)
 	{
 		if (start_pos->window != win)
 			continue;
@@ -1487,6 +1491,9 @@ BUILT_IN_FUNCTION(function_line, word)
 		start_pos = lastlog_oldest;
 	else
 		start_pos = start_pos->newer;
+
+	if (!start_pos)
+		RETURN_EMPTY;
 
 	while ((start_pos->visible == 0 || start_pos->window != win) && 
 				start_pos->newer)

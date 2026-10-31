@@ -1661,10 +1661,10 @@ static	int	expr_dummy = 1;
 
 static int	lexerr (expr_info *c, const char *format, ...)
 {
-	char *	buffer = NULL;
+	char *	buffer;
 	va_list	a;
 
-	buffer = alloca(BIG_BUFFER_SIZE + 1);
+	buffer = NULL;
 	va_start(a, format);
 	malloc_vsprintf(&buffer, format, a);
 	va_end(a);

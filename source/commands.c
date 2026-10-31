@@ -345,31 +345,34 @@ BUILT_IN_COMMAND(abortcmd)
  */
 BUILT_IN_COMMAND(awaycmd)
 {
-	char	*arg = NULL;
-	int	flag = AWAY_ONE;
+	int	flag;
 	int	i;
+
+	flag = AWAY_ONE;
 
 	if (*args)
 	{
 		if ((*args == '-') || (*args == '/'))
 		{
+			char *	arg;
+
 			arg = args;
 			while (*arg && !isspace(*arg))
 				arg++;
 			if (*arg)
 				*arg++ = 0;
 
-			if (0 == my_strnicmp(args+1, "ALL", 1))	/* all */
+			if (!my_strnicmp(args+1, "ALL", 1))	/* all */
 			{
 				flag = AWAY_ALL;
 				args = arg;
 			}
-			else if (0 == my_strnicmp(args+1, "ONE", 1)) /* one */
+			else if (!my_strnicmp(args+1, "ONE", 1)) /* one */
 			{
 				flag = AWAY_ONE;
 				args = arg;
 			}
-			else if (0 == my_strnicmp(args+1, "-", 1)) /* stop */
+			else if (!my_strnicmp(args+1, "-", 1)) /* stop */
 				args = arg;
 			else
 			{
@@ -403,8 +406,8 @@ BUILT_IN_COMMAND(beepcmd)
 
 BUILT_IN_COMMAND(cd)
 {
-	char	*arg;
-	Filename dir;
+	char *		arg;
+	Filename 	dir;
 
 	/* Hrm.  Is it worse to do new_next_arg than next_arg? */
 	if ((arg = new_next_arg(args, &args)) != NULL)
@@ -429,12 +432,18 @@ BUILT_IN_COMMAND(e_call)
 /* clear: the CLEAR command.  Figure it out */
 BUILT_IN_COMMAND(e_clear)
 {
-	char	*arg;
-	int	all = 0,
-		visible = 0,
-		invisible = 0;
-	int	clear = !strcmp(command, "CLEAR");
-	int	force = 1;
+	char *	arg;
+	int	all,
+		visible,
+		invisible;
+	int	clear;
+	int	force;
+
+	all = 0;
+	visible = 0;
+	invisible = 0;
+	clear = !strcmp(command, "CLEAR");
+	force = 1;
 
 	while ((arg = next_arg(args, &args)) != NULL)
 	{
@@ -484,9 +493,9 @@ BUILT_IN_COMMAND(commentcmd)
 /* XXX Why is this not in ctcp.c? */
 BUILT_IN_COMMAND(ctcpcmd)
 {
-	const char	*to;
-	char *	stag;
-	int	request;
+	const char *	to;
+	char *		stag;
+	int		request;
 
 	if ((to = next_arg(args, &args)) != NULL)
 	{
@@ -592,12 +601,12 @@ BUILT_IN_COMMAND(deop)
 
 BUILT_IN_COMMAND(describe)
 {
-	const char	*target;
+	const char *	target;
 
 	target = next_arg(args, &args);
 	if (target && args && *args)
 	{
-		char	*message;
+		char *	message;
 		int	l;
 
 		if (!strcmp(target, "*"))
@@ -618,7 +627,7 @@ BUILT_IN_COMMAND(describe)
 
 BUILT_IN_COMMAND(send_to_query_first)
 {
-	const char	*tmp;
+	const char *	tmp;
 
 	tmp = get_window_target(0);
 	send_text(from_server, tmp, args, NULL, 1, 0);
@@ -626,7 +635,7 @@ BUILT_IN_COMMAND(send_to_query_first)
 
 BUILT_IN_COMMAND(send_to_channel_first)
 {
-	const char	*tmp;
+	const char *	tmp;
 
 	if ((tmp = get_window_echannel(0)))
 	    send_text(from_server, tmp, args, NULL, 1, 0);
@@ -656,7 +665,7 @@ BUILT_IN_COMMAND(e_channel)
  */
 BUILT_IN_COMMAND(e_nick)
 {
-	char	*nick;
+	char *	nick;
 
 	if (from_server == NOSERV)
 	{
@@ -739,7 +748,7 @@ BUILT_IN_COMMAND(e_pause)
  */
 BUILT_IN_COMMAND(e_privmsg)
 {
-	const char	*nick;
+	const char *	nick;
 
 	if (!strcmp(command, "MSG"))
 		command = "PRIVMSG";		/* *cough* */
@@ -789,15 +798,19 @@ BUILT_IN_COMMAND(e_quit)
  */
 BUILT_IN_COMMAND(e_topic)
 {
-	int	clear_topic = 0;
-	const char *channel = get_window_echannel(0);
-	const char *arg;
-	char *	args_copy;
-	const char *recode_text;
-	char *	extra = NULL;
+	int		clear_topic;
+	const char *	channel;
+	const char *	arg;
+	char *		args_copy;
+	const char *	recode_text;
+	char *		extra;
 
 	if (!args)
 		return;
+
+	clear_topic = 0;
+	channel = get_window_echannel(0);
+	extra = NULL;
 
 	if (*args == '-')
 		clear_topic = 1, args++;
@@ -847,7 +860,7 @@ BUILT_IN_COMMAND(e_topic)
 /* e_wallop: used for WALLOPS (undernet only command) */
 BUILT_IN_COMMAND(e_wallop)
 {
-	int l;
+	int	l;
 
 	l = set_context(from_server, -1, NULL, NULL, LEVEL_WALLOP);
 	send_to_server("WALLOPS :%s", args);
@@ -870,29 +883,56 @@ BUILT_IN_COMMAND(echocmd)
  */
 BUILT_IN_COMMAND(xechocmd)
 {
-	unsigned display;
-	char	*flag_arg;
-	int	temp = 0;
-	int	all_windows = 0;
-	int	all_windows_for_server = 0;
-	int	want_banner = 0;
-	char	*stuff = NULL;
-	int	nolog = 0;
-	int	more = 1;
-	int	xtended = 0;
-	int	old_window_notify = do_window_notifies;
-	int	old_mangler = display_line_mangler;
-	int	to_window_refnum = get_to_window();
-	int	old_inhibit_logging = inhibit_logging;
-	int	old_output_expires_after = output_expires_after;
-	int	to_level = get_who_level();
-	const char *	to_from = get_who_from();
-	const char *	to_sender = get_who_sender();
+	/* flags */
+	int		all_windows;
+	int		all_windows_for_server;
+	int		with_banner;
+	int		nolog;
+	int		keep_processing_flags;
+	int		xtended;
+	/* Saved state */
+	int		old_window_notify;
+	int		old_mangler;
+	int		old_inhibit_logging;
+	int		old_output_expires_after;
+	int		to_window_refnum;
+	int		to_level;
+	const char *	to_from;
+	const char *	to_sender;
+	/* work vars */
+	char *		with_banner_stuff; /* Holds "<banner> <$*>" */
+	unsigned 	display;	/* holds swap_window_display(1) */
+	char *		flag_arg;	/* Holds the current flag being processed */
 
-	while (more && args && *args == '-')
+	/* Default flag values */
+	all_windows = 0;		/* /XECHO -A (all windows) */
+	all_windows_for_server = 0;	/* /XECHO -AS (all windows for from_server) */
+	with_banner = 0;		/* /XECHO -B (banner) */
+	nolog = 0;			/* /XECHO -N  (no logging) */
+	keep_processing_flags = 1;	/* /XECHO -- sets to 0 (stop processing flags) */
+	xtended = 0;			/* /XECHO -X (overrule /set display_mangler) */
+
+	/* Save state */
+	old_window_notify = do_window_notifies;
+	old_mangler = display_line_mangler;
+	old_inhibit_logging = inhibit_logging;
+	old_output_expires_after = output_expires_after;
+	to_window_refnum = get_to_window();
+	to_level = get_who_level();
+	to_from = get_who_from();
+	to_sender = get_who_sender();
+
+	with_banner_stuff = NULL;	/* Will contain "<banner> $*" */
+
+	while (keep_processing_flags && args && *args == '-')
 	{
 	    switch (args[1])
 	    {
+		/* 
+		 * /XECHO -CURRENT 	Output to the current window
+		 * Same as 
+		 * /XECHO -W 0
+		 */
 		case 'c':
 		case 'C':	/* CURRENT (output to user's current window) */
 		{
@@ -906,11 +946,16 @@ BUILT_IN_COMMAND(xechocmd)
 		{
 		    flag_arg = next_arg(args, &args);
 
-		    /* LINE (output to scratch window) */
+		    /*
+		     * /XECHO -LINE <number>	Output to a specific line number (scratch window)
+		     *
+		     * Must always be used with -CURRENT or -WINDOW:
+		     *	/XECHO -W 0 -LINE 5 .....
+		     */
 		    if (flag_arg[2] == 'i' || flag_arg[2] == 'I')
 		    {
-			int to_line = 0;
-			int display_lines;
+			int	to_line = 0;
+			int	display_lines;
 
 			if (to_window_refnum == -1)
 			{
@@ -937,13 +982,15 @@ BUILT_IN_COMMAND(xechocmd)
 		     /* LEVEL (use specified lastlog level) */
 		     else	
 		     {
+			int	temp_level;
+
 			if (!(flag_arg = next_arg(args, &args)))
 				break;
 
 			/* XECHO -L overrules /query and channels! */
-			if ((temp = str_to_level(flag_arg)) > -1)
+			if ((temp_level = str_to_level(flag_arg)) > -1)
 			{
-				to_level = temp;
+				to_level = temp_level;
 				to_from = NULL;
 			}
 		     }
@@ -1043,7 +1090,7 @@ BUILT_IN_COMMAND(xechocmd)
 		case 'B':	/* WITH BANNER */
 		{
 			next_arg(args, &args);
-			want_banner = 1;
+			with_banner = 1;
 			break;
 		}
 
@@ -1105,7 +1152,7 @@ BUILT_IN_COMMAND(xechocmd)
 		case '-': /* End of arg list */
 		{
 			next_arg(args, &args);
-			more = 0;
+			keep_processing_flags = 0;
 			break;
 		}
 
@@ -1117,7 +1164,7 @@ BUILT_IN_COMMAND(xechocmd)
 			 * people can do /xecho -> blah blah
 			 * and not get throttled on the '->'
 			 */
-			more = 0;
+			keep_processing_flags = 0;
 			break;
 		}
 	    }
@@ -1130,15 +1177,13 @@ BUILT_IN_COMMAND(xechocmd)
 	if (nolog)
 		inhibit_logging = 1;
 
-	if (want_banner == 1)
+	if (with_banner == 1)
 	{
-		const char *b = banner();
-
-		malloc_sprintf(&stuff, "%s %s", b, args);
-		args = stuff;
+		malloc_sprintf(&with_banner_stuff, "%s %s", banner(), args);
+		args = with_banner_stuff;
 	}
-	else if (want_banner != 0)
-		panic(1, "xecho: want_banner is %d", want_banner);
+	else if (with_banner != 0)
+		panic(1, "xecho: with_banner is %d", with_banner);
 
 	if (all_windows == 1 || all_windows_for_server == 1)
 	{
@@ -1168,8 +1213,8 @@ BUILT_IN_COMMAND(xechocmd)
 		pop_context(l);
 	}
 
-	if (stuff)
-		new_free(&stuff);
+	if (with_banner_stuff)
+		new_free(&with_banner_stuff);
 
 	if (xtended)
 		display_line_mangler = old_mangler;
@@ -1300,20 +1345,20 @@ BUILT_IN_COMMAND(info)
 		say("Versions 2.2pre8 through 2.8.2 by Matthew Green");
 		say("\tCopyright 1992-1995 Matthew Green");
 		say("All EPIC versions by EPIC Software Labs");
-		say("\tCopyright 1993-2025 EPIC Software Labs");
+		say("\tCopyright 1993-2026 EPIC Software Labs");
 		say(" ");
-		say("Others whose code is included");
-		say("\tCopyright 1993-2003 Aaron Gifford.");
-		say("\tCopyright 2009-2025 Dave Gamble and cJSON contributors");
-		say("\tCopyright 1998      J. Kean Johnston");
-		say("\tCopyright 1994      Jake Khuon");
-		say("\tCopyright 1995-2025 Jeremy Nelson");
-		say("\tCopyright 2000      Juraj Bednar");
-		say("\tCopyright 1995-2001 Kungliga Tekniska Ho\"gskolan");
-		say("\tCopyright 1992-1997 Paul Falstad");
-		say("\tCopyright 2018      rxi");
-		say("\tCopyright 1998-2015 Todd C. Miller");
-		say("\tCopyright 2013      William Pitcock");
+		say("Others whose code is included or derived in these files");
+		say("\tCopyright 1993-2003 Aaron Gifford (Karll Arrays, array.c)");
+		say("\tCopyright 2009-2025 Dave Gamble and cJSON contributors (cJSON.c)");
+		say("\tCopyright 1998      J. Kean Johnston (original color support, screen.c)");
+		say("\tCopyright 1994      Jake Khuon (mod clients)");
+		say("\tCopyright 1995-2025 Jeremy Nelson (plus clients)");
+		say("\tCopyright 2000      Juraj Bednar (original SSL support, ssl.c)");
+		say("\tCopyright 1995-2001 Kungliga Tekniska Ho\"gskolan (base64, ircaux.c)");
+		say("\tCopyright 1992-1997 Paul Falstad (original math parser, expr2.c)");
+		say("\tCopyright 2018      rxi (uuid4, ircaux.c)");
+		say("\tCopyright 1998-2015 Todd C. Miller (strlcpy/strlcat, ircaux.c)");
+		say("\tCopyright 2013      William Pitcock (ecdsatool.c)");
 		say(" ");
 		say("	    Contact the EPIC project (%s)", EMAIL_CONTACT);
 		say("	    for problems with this or any other EPIC client");
@@ -1410,7 +1455,7 @@ BUILT_IN_COMMAND(license)
 	yell("Copyright (c) 1991, 1992 Troy Rollo.");
  	yell("Copyright (c) 1992-1996 Matthew Green.");
 	yell("Copyright 1994 Jake Khuon.");
-	yell("Coypright 1993, 2013 EPIC Software Labs.");
+	yell("Coypright 1993, 2026 EPIC Software Labs.");
 	yell("All rights reserved");
 	yell(" ");
 	yell("Redistribution and use in source and binary forms, with or");
@@ -1444,22 +1489,22 @@ BUILT_IN_COMMAND(license)
 
 struct load_info
 {
-	char 	*filename;
-	char	*package;
-	const char	*loader;
-	int	package_set_here;
-	int	line;
-	int	start_line;
-	struct stat sb;
+	char *		filename;
+	char *		package;
+	const char *	loader;
+	int		package_set_here;
+	int		line;
+	int		start_line;
+	struct stat 	sb;
 } load_level[MAX_LOAD_DEPTH];
 
 int 	load_depth = -1;
 
 void	dump_load_stack (int onelevel)
 {
-	int i = load_depth;
+	int		i;
 
-	if (i == -1)
+	if ((i = load_depth) == -1)
 		return;
 
 	yell("Right before line [%d] of file [%s]", load_level[i].line,
@@ -1549,16 +1594,16 @@ static void	loader_pf  (const char *file_contents, off_t file_contents_size, con
  */
 BUILT_IN_COMMAND(load)
 {
-	char *	filename;
-	char *	sargs;
+	char *		filename;
+	char *		sargs;
 	const char *	use_path;
-	char *	expanded;
-        struct epic_loadfile * elf;
-	int	display;
-	int	do_one_more = 0;
-	void	(*loader) (const char *, off_t, const char *, const char *, struct load_info *);
-	char *	file_contents = NULL;
-	off_t	file_contents_size = 0;
+	char *		expanded;
+struct 	epic_loadfile * elf;
+	int		display;
+	int		do_one_more = 0;
+	void		(*loader) (const char *, off_t, const char *, const char *, struct load_info *);
+	char *		file_contents = NULL;
+	off_t		file_contents_size = 0;
 	const char *	declared_encoding = NULL;
 
 	if (++load_depth == MAX_LOAD_DEPTH)
@@ -1723,11 +1768,16 @@ static void	loader_which (const char *__U(file_contents), off_t __U(file_content
 /* The "Standard" (legacy) loader */
 static void	loader_std (const char *file_contents, off_t file_contents_size, const char *filename, const char *__U(subargs), struct load_info *loadinfo)
 {
-	int	in_comment, comment_line, no_semicolon;
-	int	paste_level, paste_line;
-	char 	*start, *real_start, *current_row;
+	int		in_comment, 
+			comment_line, 
+			no_semicolon;
+	int		paste_level, 
+			paste_line;
+	char *		start;
+	char *		real_start;
+	char *		current_row;
+	char *		buffer;
 #define MAX_LINE_SIZE BIG_BUFFER_SIZE * 5
-	char	*buffer;
 
         loadinfo->loader = "std";
 
@@ -2053,9 +2103,13 @@ static void	loader_std (const char *file_contents, off_t file_contents_size, con
  */
 static void	loader_pf (const char *file_contents, off_t file_contents_size, const char *__U(filename), const char *subargs, struct load_info *loadinfo)
 {
-	char *	buffer;
-	int	bufsize, pos;
-	int	this_char, my_newline, comment, shebang;
+	char *		buffer;
+	int		bufsize, 
+			pos;
+	int		this_char, 
+			my_newline, 
+			comment, 
+			shebang;
 
 	loadinfo->loader = "pf";
 
@@ -2153,8 +2207,8 @@ BUILT_IN_COMMAND(mecmd)
 {
 	if (args && *args)
 	{
-		const char	*target;
-		int	l;
+		const char *	target;
+		int		l;
 
 		if ((target = get_window_target(0)) != NULL)
 		{
@@ -2175,8 +2229,8 @@ BUILT_IN_COMMAND(mecmd)
 /* oper: the OPER command.  */
 BUILT_IN_COMMAND(oper)
 {
-	char	*password;
-	char	*nick;
+	char *		password;
+	char *		nick;
 
 	if (!(nick = next_arg(args, &args)))
 	{
@@ -2213,9 +2267,10 @@ BUILT_IN_COMMAND(pop_cmd)
 
 BUILT_IN_COMMAND(pretend_cmd)
 {
-	char *args_copy;
-	int	s = from_server;
+	char *		args_copy;
+	int		s;
 
+	s = from_server;
 	if (!is_server_open(s))
 	{
 		say("Server %d is not connected", s);
@@ -2232,8 +2287,10 @@ BUILT_IN_COMMAND(pretend_cmd)
 
 BUILT_IN_COMMAND(push_cmd)
 {
-	extern char *function_push(char *);
-        char *blah = function_push(args);
+extern 	char *		function_push (char *);
+        char *		blah;
+
+	blah = function_push(args);
         new_free(&blah);
 }
 
@@ -2252,19 +2309,24 @@ BUILT_IN_COMMAND(query)
  */
 BUILT_IN_COMMAND(quotecmd)
 {
-	int	refnum = from_server;
-	int	urlencoded = 0;
+	int		refnum;
+	int		urlencoded;
+
+	refnum = from_server;
+	urlencoded = 0;
 
 	if (*command == 'X')
 	{
 	    while (args && (*args == '-' || *args == '/'))
 	    {
-		char *flag = next_arg(args, &args);
+		char *		flag;
+
+		flag = next_arg(args, &args);
 
 		if (!my_strnicmp(flag + 1, "SERVER", 1)) /* SERVER */
 		{
-			char *s;
-			int sval;
+			char *		s;
+			int 		sval;
 
 			/* No argument means no commands means ignore it. */
 			if (!(s = next_arg(args, &args)))
@@ -2282,7 +2344,7 @@ BUILT_IN_COMMAND(quotecmd)
 			urlencoded++;
 		else if (!my_strnicmp(flag + 1, "ALL", 1)) /* ALL */
 		{
-			int	i;
+			int		i;
 
 			if (args && *args)
 			{
@@ -2301,8 +2363,8 @@ BUILT_IN_COMMAND(quotecmd)
 
 	if (urlencoded)
 	{
-		char *	dest;
-		size_t  destlen;
+		char *		dest;
+		size_t  	destlen;
 
 		if (!(dest = transform_string_dyn("-URL", args, 0, &destlen)))
 		{
@@ -2319,8 +2381,8 @@ BUILT_IN_COMMAND(quotecmd)
 
 BUILT_IN_COMMAND(squitcmd)
 {
-	char *server = NULL;
-	char *reason = NULL;
+	char *		server = NULL;
+	char *		reason = NULL;
 
 	if (!(server = new_next_arg(args, &reason)))
 	{
@@ -2335,8 +2397,8 @@ BUILT_IN_COMMAND(squitcmd)
 
 BUILT_IN_COMMAND(send_2comm)
 {
-	const char *target;
-	char *reason = NULL;
+	const char *	target;
+	char *		reason = NULL;
 
 	if (!(target = next_arg(args, &reason)))
 		target = empty_string;
@@ -2382,11 +2444,11 @@ BUILT_IN_COMMAND(send_comm)
  */
 BUILT_IN_COMMAND(send_invite)
 {
-	const char *arg;
-	const char *nick = NULL;
-	const char *channel = NULL;
-	const char *currchan;
-	int	invites = 0;
+	const char *	arg;
+	const char *	nick = NULL;
+	const char *	channel = NULL;
+	const char *	currchan;
+	int		invites = 0;
 
 	currchan = get_window_echannel(0);
 	if (!currchan || !*currchan)
@@ -2913,9 +2975,9 @@ static int	chonk_message (const char *text, size_t *chonk)
 
 
 	/* Now our chonks will be 480 bytes. */
-#define DEFAULT_CHONK	480
+#define DEFAULT_CHONK	440
 
-	/* If the message is < 480 bytes, then we're done! */
+	/* If the message is < 440 bytes, then we're done! */
 	if (text_len - *chonk < DEFAULT_CHONK)
 	{
 		*chonk = text_len;

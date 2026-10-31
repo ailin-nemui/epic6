@@ -2228,7 +2228,15 @@ static void	cleanup_mousemachine (void)
 
 static void	init_mousemachine (void)
 {
-	Key *mouse_keymap = construct_keymap(NULL);
+	Key *	mouse_keymap;
+
+	mouse_keymap = construct_keymap(NULL);
+
+	/* 
+	 * XXX - This might return a previous keymap,
+	 * which we should really destroy properly.
+	 * Or at least reuse it.
+	 */
 	add_to_alist(&keyspaces, "MOUSE", mouse_keymap);
 
 #define ADDBIND(x, y) add_binding(x, y, NULL);

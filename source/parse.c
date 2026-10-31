@@ -186,9 +186,14 @@ const char *	PasteArgs (const char **arg_list, int paste_point)
 	 	 * actual final nul on the end of the original string. 
 		 * We leave the nul on the end of the final arg exactly the
 		 * way that BreakArgs parsed it.
+		 *
+		 * We must stop at the start of the next token, though.  If
+		 * the next token is empty (ie, a trailing ":" with nothing
+		 * after it), its first byte is a nul, and so is the byte
+		 * after it -- and we'd walk right off the end of the buffer.
 		 */
 		len = strlen(ptr);
-		while (ptr[len] == '\0')
+		while (ptr[len] == '\0' && ptr + len < arg_list[i + 1])
 			ptr[len++] = ' ';
 	}
 
@@ -415,6 +420,7 @@ static void	p_wallops (const char *from, const char *comm, const char **arglist)
 static void	p_privmsg (const char *from, const char *comm, const char **arglist)
 {
 	const char	*real_target, *target, *message;
+	char *		extra = NULL;
 	int		hook_type,
 			level;
 	const char	*hook_format;
@@ -428,19 +434,29 @@ static void	p_privmsg (const char *from, const char *comm, const char **arglist)
 
 	set_server_doing_privmsg(from_server, 1);
 
+	/* CTCP Detour */
 	/*
-	 * Do ctcp's first, and if there's nothing left, then dont
-	 * go to all the work below.  Plus, we dont set set_context
-	 * until we know there's other stuff besides the ctcp in the
-	 * message, which keeps things going to the wrong window.
+	 * Normally messages do not contain any CTCPs, so 
+	 * do_ctcp() does nothing, and we go on using 'message'.
+	 * However, if do_ctcp() does anything, then that results
+	 * in a new message (with the CTCP removed), and we need
+	 * to use that and new_free() it later.
 	 */
-	message = do_ctcp(1, from, target, (char *)
-					(intptr_t)
-						message);
-	if (!*message) {
+	extra = do_ctcp(1, from, target, message);
+	/*
+	 * When there is a CTCP the normal case is there is nothing
+	 * left after processing it.  So we handle that quickly.
+	 */
+	if (extra && !*extra) {
+		new_free(&extra);
 		set_server_doing_privmsg(from_server, 0);
 		return;
 	}
+	/*
+	 * Otherwise, 'extra' is what remains of 'message'.
+	 */
+	if (extra)
+		message = extra;
 
 	/* If this is a @#chan or +#chan, ignore the @ or +. */
 	real_target = target;
@@ -519,6 +535,7 @@ static void	p_privmsg (const char *from, const char *comm, const char **arglist)
 	}
 
 	/* Clean up and go home. */
+	new_free(&extra);
 	pop_context(l);
 	set_server_doing_privmsg(from_server, 0);
 }
@@ -923,7 +940,7 @@ static void	p_mode (const char *from, const char *comm, const char **arglist)
 		update_server_umode(from_server, changes);
 }
 
-static void strip_modes (const char *from, const char *channel, const char *line)
+static void	strip_modes (const char *from, const char *channel, const char *line)
 {
 	char	*mode;
 	char 	*pointer;
@@ -934,7 +951,8 @@ static void strip_modes (const char *from, const char *channel, const char *line
 
 	free_copy = LOCAL_COPY(line);
 	copy = free_copy;
-	mode = next_arg(copy, &copy);
+	if (!(mode = next_arg(copy, &copy)))
+		return;		/* Nothing in, nothing out */
 
 	if (is_channel(channel))
 	{
@@ -1160,7 +1178,6 @@ static int 	p_killmsg (const char *from, const char *to, const char *cline)
 	char *line;
 	int   l, retval;
 
-	l = set_context(from_server, -1, from, to, LEVEL_OPNOTE);
 	line = LOCAL_COPY(cline);
 	if (!(poor_sap = next_arg(line, &line)))
 		return 0;		/* MALFORMED - IGNORED */
@@ -1168,6 +1185,8 @@ static int 	p_killmsg (const char *from, const char *to, const char *cline)
 	/* Dalnet kill BBC and doesnt append the period */
 	if (!end_strcmp(poor_sap, ".", 1))
 		chop(poor_sap, 1);
+
+	l = set_context(from_server, -1, from, to, LEVEL_OPNOTE);
 
 	/* dalnet kill BBC and doesnt use "From", but "from" */
 	if (my_strnicmp(line, "From ", 5))
@@ -1178,7 +1197,8 @@ static int 	p_killmsg (const char *from, const char *to, const char *cline)
 		return 0;
 	}
 	line += 5;
-	bastard = next_arg(line, &line);
+	if (!(bastard = next_arg(line, &line)))
+		bastard = LOCAL_COPY("*");	/* What the? */
 
 	/* Hybrid BBC and doesn't include the kill-path. */
 	/* Fend off future BBC kills */
@@ -1217,7 +1237,7 @@ static 	void 	p_snotice (const char *from, const char *to, const char *line)
 			f = get_server_name(from_server);
 
 	/* OPERator Notices */
-	if (!strncmp(line, "*** Notice -- ", 13))
+	if (!strncmp(line, "*** Notice -- ", 14))
 	{
 		if (!strncmp(line + 14, "Received KILL message for ", 26))
 		{
@@ -1258,6 +1278,7 @@ static void 	p_notice (const char *from, const char *comm, const char **arglist)
 {
 	const char 	*target, *message;
 	const char	*real_target;
+	char *		extra = NULL;
 	int		hook_type;
 	int		l;
 
@@ -1269,15 +1290,29 @@ static void 	p_notice (const char *from, const char *comm, const char **arglist)
 
 	set_server_doing_notice(from_server, 1);
 
-	/* Do normal /CTCP reply handling */
-	/* XXX -- Casting "message" to (char *) is cheating. */
-	message = do_ctcp(0, from, target, (char *)
-							(intptr_t)
-								message);
-	if (!*message) {
+	/* CTCP Detour */
+	/*
+	 * Normally messages do not contain any CTCPs, so 
+	 * do_ctcp() does nothing, and we go on using 'message'.
+	 * However, if do_ctcp() does anything, then that results
+	 * in a new message (with the CTCP removed), and we need
+	 * to use that and new_free() it later.
+	 */
+	extra = do_ctcp(0, from, target, message);
+	/*
+	 * When there is a CTCP the normal case is there is nothing
+	 * left after processing it.  So we handle that quickly.
+	 */
+	if (extra && !*extra) {
+		new_free(&extra);
 		set_server_doing_notice(from_server, 0);
 		return;
 	}
+	/*
+	 * Otherwise, 'extra' is what remains of 'message'.
+	 */
+	if (extra)
+		message = extra;
 
 	/* If this is a @#chan or +#chan, ignore the @ or +. */
 	real_target = target;
@@ -1291,6 +1326,7 @@ static void 	p_notice (const char *from, const char *comm, const char **arglist)
 	{
 		p_snotice(from, target, message);
 		set_server_doing_notice(from_server, 0);
+		new_free(&extra);
 		return;
 	}
 
@@ -1332,6 +1368,7 @@ static void 	p_notice (const char *from, const char *comm, const char **arglist)
 	}
 
 	/* Clean up and go home. */
+	new_free(&extra);
 	pop_context(l);
 	set_server_doing_notice(from_server, 0);
 }
@@ -1441,6 +1478,7 @@ void 	parse_server (const char *__U(orig_line), size_t __U(orig_line_size))
 	const char	**arglist;
 	const char **	TrueArgs;
 	const char 	*OldFromUserHost;
+	const char *	OldTags;
 	int	loc;
 	char	*line;
 
@@ -1469,6 +1507,7 @@ void 	parse_server (const char *__U(orig_line), size_t __U(orig_line_size))
 	    line = LOCAL_COPY(orig_line);
 
 	OldFromUserHost = FromUserHost;
+	OldTags = Tags;
 	FromUserHost = empty_string;
 
 	/* Include space for command */
@@ -1479,13 +1518,13 @@ void 	parse_server (const char *__U(orig_line), size_t __U(orig_line_size))
 	if ((!(comm = *arglist++)) || !from || !*arglist)
 	{ 
 		rfc1459_odd(from, comm, arglist);
-		return;		/* Serious protocol violation -- ByeBye */
+		goto done;		/* Serious protocol violation -- ByeBye */
 	}
 
 	if (*from && !isnicklegal(*from))
 	{ 
 		rfc1459_odd(from, comm, arglist);
-		return;		
+		goto done;
 	}
 
 	/* Some day all this needs to be replaced with an alist. */
@@ -1503,7 +1542,9 @@ void 	parse_server (const char *__U(orig_line), size_t __U(orig_line_size))
 			rfc1459_odd(from, comm, arglist);
 	}
 
+done:
 	FromUserHost = OldFromUserHost;
+	Tags = OldTags;
 	from_server = -1;
 }
 
@@ -1618,18 +1659,17 @@ void	rfc1459_any_to_utf8 (char *buffer, size_t buffsiz, char **extra)
 		if (*server_part_copy == ':')
 		{
 			from = server_part_copy + 1;
-			for (endp = from; *endp; endp++)
+
+			/* 
+			 * Remove the !user@host and stop at the space.
+			 */
+			for (endp = from; *endp && *endp != ' '; endp++)
 			{
 				if (*endp == '!')
-					*endp++ = 0;
-
-				/* Not connected, so don't "fix" it */
-				if (*endp == ' ')
-				{
-					*endp++ = 0;
-					break;
-				}
+					*endp = 0;
 			}
+			if (*endp == ' ')
+				*endp++ = 0;
 
 			/* 
 			 * So now 'from' points to the nick or server

@@ -316,9 +316,9 @@ set auto_rejoin_delay 0;
 ^on #-kick 1 '$$servernick() *' {
 	if (getset(auto_rejoin) == 'on') {
 		if (:delay = getset(auto_rejoin_delay)) {
-			timer -w $winnum() $delay join $2;
+			timer -w $winnum() $delay join $$2;
 		} else {
-			defer join $2;
+			defer join $$2;
 		};
 	};
 };

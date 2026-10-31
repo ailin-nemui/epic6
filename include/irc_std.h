@@ -118,6 +118,10 @@
  * under the curses specification.
  */
 #include <term.h>		/* Issue 2 - Curses/terminfo */
+/* Womp Womp */
+#ifdef lines
+#undef lines
+#endif
 
 /*
  * C99 requires 'isnan' and 'isinf' and the like 

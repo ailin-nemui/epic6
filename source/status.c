@@ -888,6 +888,7 @@ int	redraw_status (int window_, Status *status)
 		debuglog("redraw_status(%d/%d/%d): status redrawn",
 			user_refnum, status_line, line);
 	}
+	cursor_to_input();
 	return 0;
 }
 

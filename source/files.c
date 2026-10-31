@@ -412,6 +412,11 @@ char *	file_read (int fd)
 		{
 			const char *encodingx;
 
+			/*
+	 	 	 * It's smarter to recalculate retlen from the
+			 * string we're translating...
+			 */
+			retlen = strlen(ret) + 1;
 			encodingx = find_recoding("scripts", NULL, NULL);
 			recode_with_iconv(encodingx, NULL, &ret, &retlen);
 		}

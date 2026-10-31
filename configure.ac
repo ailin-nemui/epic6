@@ -28,6 +28,7 @@ dnl
 dnl It will use these things if they're available
 dnl  * Python 3.8 or higher (please use only supported python versions)
 dnl  * PCRE2
+dnl  * libarchive
 dnl  * Valgrind
 dnl ------------------------------------------------------------
 

@@ -204,7 +204,8 @@ void	put_it (const char *format, ...)
 	if (get_window_display() && format)
 	{
 		va_list args;
-		va_start (args, format);
+
+		va_start(args, format);
 		malloc_vsprintf(&putbuf, format, args);
 		va_end(args);
 		put_echo(putbuf);
@@ -226,8 +227,9 @@ void	file_put_it (FILE *fp, const char *format, ...)
 {
 	if (format)
 	{
-		va_list args;
-		va_start (args, format);
+		va_list	args;
+
+		va_start(args, format);
 		malloc_vsprintf(&putbuf, format, args);
 		va_end(args);
 		if (fp)
@@ -261,6 +263,7 @@ static void 	vsay (const char *format, va_list args)
 		const char *	str;
 		char *		extra = NULL;
 		char *		booya = NULL;
+		va_list		working_args;
 
 		if ((str = get_string_var(BANNER_VAR)))
 		{
@@ -270,7 +273,10 @@ static void 	vsay (const char *format, va_list args)
 		else
 			str = empty_string;
 
-		malloc_vsprintf(&booya, format, args);
+		va_copy(working_args, args);
+		malloc_vsprintf(&booya, format, working_args);
+		va_end(working_args);
+
 		malloc_sprintf(&putbuf, "%s %s", str, booya);
 		put_echo(putbuf);
 
@@ -322,7 +328,7 @@ void	yell (const char *format, ...)
 	if (format)
 	{
 		va_list args;
-		va_start (args, format);
+		va_start(args, format);
 		malloc_vsprintf(&putbuf, format, args);
 		va_end(args);
 		if (do_hook(YELL_LIST, "%s", putbuf))
@@ -349,7 +355,7 @@ void	privileged_yell (const char *format, ...)
 	if (format)
 	{
 		va_list args;
-		va_start (args, format);
+		va_start(args, format);
 		malloc_vsprintf(&putbuf, format, args);
 		va_end(args);
 
@@ -382,7 +388,8 @@ void 	my_error (const char *format, ...)
 	if (format)
 	{
 		va_list args;
-		va_start (args, format);
+
+		va_start(args, format);
 		malloc_vsprintf(&putbuf, format, args);
 		va_end(args);
 		do_hook(YELL_LIST, "%s", putbuf);
@@ -413,7 +420,8 @@ void	debug (unsigned long flag, const char *format, ...)
 		if (x_debug & flag)
 		{
 			va_list args;
-			va_start (args, format);
+
+			va_start(args, format);
 			malloc_vsprintf(&putbuf, format, args);
 			va_end(args);
 			if (do_hook(YELL_LIST, "%s", putbuf))
@@ -450,6 +458,7 @@ static void     vsyserr (int server, const char *format, va_list args)
 	int     	l, 
 			old_from_server,
 			i_set_from_server;
+	va_list		working_args;
 
         if (!get_window_display() || !format)
 		return;
@@ -465,7 +474,9 @@ static void     vsyserr (int server, const char *format, va_list args)
 	else
 		str = empty_string;
 
-	malloc_vsprintf(&booya, format, args);
+	va_copy(working_args, args);
+	malloc_vsprintf(&booya, format, working_args);
+	va_end(working_args);
 	malloc_sprintf(&putbuf, "%s INFO -- %s", str, booya);
 
 	if (is_server_valid(server))

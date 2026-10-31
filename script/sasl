@@ -28,7 +28,7 @@ package sasl;
 #	/sasl *.network.org EXTERNAL filename.pem
 #	/sasl *.network.org ECDSA-NIST256P-CHALLENGE username ec2key.pem
 #	/sasl *.network.org SCRAM-SHA-512 username password
-#	/sasl *.network.org PLAIN username password
+#	/sasl *.network.org PLAIN username password [optional cert hash]
 #	/sasl *.network.org -EXTERNAL
 #	/sasl *.network.org -ECDSA-NIST256P-CHALLENGE
 #	/sasl *.network.org -SCRAM-SHA-512
@@ -46,7 +46,17 @@ package sasl;
 # If you are using EXTERNAL or PLAIN, then if necessary your server 
 # will connect via TLS even if you didn't specify that.  If TLS does
 # not work, then SASL won't be used.
-# 
+#
+# For PLAIN, you can specify the cert of the TLS digest you wish to accept.
+# If you don't specify a TLS hash, then any valid TLS cert will be accepted.
+# (but forgivable invalid certs won't be)
+#
+#    You will see a server's cert digest when you connect to it, like:
+#	*** SSL certificate digest: 38:b1:3e:6a:8f:9b:5a:cd:36:23:e9:ba:b1:32:6e:8b:20:31:96:ad
+#    Alternate, you can
+#       /eval echo $serverctl(GET x SSL_CERT_HASH)
+#    where 'x' is the server's refnum
+#
 # If you are using ECDSA-NIST256P-CHALLENGE or SCRAM-SHA-512, then you can 
 # connect with TLS or not.  EPIC will not force TLS if you use 
 # ECDSA-NIST256P-CHALLENGE or SCRAM-SHA-512.
@@ -102,6 +112,41 @@ alias sasl_auth.which_rule {
 };
 
 #
+# Is it safe to send a PLAIN password to this server?
+# Returns 1 if the TLS cert verified cleanly (or matches the pinned hash
+# in the rule), 0 otherwise.  SSL_VERIFY_ERROR is blank if not using TLS,
+# -1 if the handshake isn't done, and >= 1 if there were any errors.
+#
+alias sasl_auth.plain_ok (refnum, rule, void) {
+	@ :err = serverctl(GET $refnum SSL_VERIFY_ERROR);
+	if (err == []) {
+		return 0;
+	};
+	if (err == 0) {
+		return 1;
+	};
+
+	@ :pin = word(2 $sasl_rules[$rule][data]);
+	if (pin != [] && pin == serverctl(GET $refnum SSL_CERT_HASH)) {
+		return 1;
+	};
+	return 0;
+};
+
+alias sasl_auth.plain_refused (refnum, void) {
+	@ :err = serverctl(GET $refnum SSL_VERIFY_ERROR);
+	if (err == []) {
+		xecho -b SASL - Server $refnum is not using TLS. I will not send your PLAIN password in the clear.;
+	} else {
+		xecho -b SASL - Server $refnum's TLS cert did not verify (most serious error: $serverctl(GET $refnum SSL_MOST_SERIOUS_ERROR)).  I will not send your PLAIN password to a server I can't authenticate.;
+		xecho -b SASL - Cert hash is $serverctl(GET $refnum SSL_CERT_HASH);
+		xecho -b SASL - If you trust this cert, add that hash as the third word of your /sasl PLAIN rule.;
+	};
+	xecho -b SASL - Continuing without SASL on server $refnum;
+};
+
+
+#
 # When the server switches to POLICY, we decide what we want to do (if possible)
 # Please remember at this point we don't have the server itsname yet.
 # 
@@ -135,7 +180,14 @@ on #-cap -100 "% LS sasl *" {
 	if ([$3-]) {
 		@ sasl_auth[$servernum()][supported] = split(, $3-);
 	};
-	if (sasl_auth[$servernum()][rule] != []) {
+	if ((:rule = sasl_auth[$servernum()][rule]) != []) {
+		# By now the TLS handshake is done, so we can judge the cert.
+		if (sasl_rules[$rule][type] == [PLAIN] &&
+		   !sasl_auth.plain_ok($servernum() $rule)) {
+			sasl_auth.plain_refused $servernum();
+			@ sasl_auth[$servernum()][rule] = [];
+			return;
+		};
 		@serverctl(SET $servernum() CAP_HOLD 1);
 		quote CAP REQ :sasl
 	}
@@ -190,6 +242,11 @@ on #-authenticate -100 "% +" {
 			quote AUTHENTICATE $xform("+B64" n,,$x);
 		}
 	} elsif (sasl_rules[$rule][type] == [PLAIN]) {
+		if (!sasl_auth.plain_ok($servernum() $rule)) {
+			sasl_auth.plain_refused $servernum();
+			sasl_auth.failed;
+			return;
+		};
 		@ :nick = word(0 $sasl_rules[$rule][data]);
 		@ :pass = word(1 $sasl_rules[$rule][data]);
 		@ :x = xform("-CTCP +B64" $^\nick\\0$^\nick\\0$^\pass);

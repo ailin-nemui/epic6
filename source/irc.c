@@ -58,7 +58,7 @@ const char internal_version[] = "20240826";
 /*
  * In theory, this number is incremented for every commit.
  */
-const unsigned long	commit_id = 3105;
+const unsigned long	commit_id = 3106;
 
 /*
  * As a way to poke fun at the current rage of naming releases after
@@ -300,7 +300,9 @@ static	char	switch_help[] =
 
 
 /* * */
+#if 0
 typedef void 	(*AtExitFunction) (void);
+#endif
 	AtExitFunction	at_exit_functions[128];
 	int		next_at_exit_function_refnum = 0;
 
@@ -984,6 +986,7 @@ static	int		level = 0,
 
 	/* GO AHEAD AND WAIT FOR SOME DATA TO COME IN */
 	make_window_current_by_refnum(0);
+	cursor_to_input();
 	switch (do_wait(&timer))
 	{
 		/* Timeout -- Need to do timers */

@@ -430,7 +430,12 @@ const	char	*prefix;
 	 */
 	for (;;)
 	{
-		if (!strchr(prefix, *nick))
+		/*
+		 * Watch out -- strchr(prefix, 0) is not NULL, so we have to
+		 * stop at the end of the string ourselves, or a nick that is
+		 * entirely prefix chars (ie "@") would walk off the end.
+		 */
+		if (!*nick || !strchr(prefix, *nick))
 		{
 			break;
 		}
@@ -486,6 +491,7 @@ const	char	*prefix;
 	{
 		new_free(&old->nick);
 		new_free(&old->userhost);
+		new_free((char **)&old);
 	}
 }
 
@@ -513,6 +519,14 @@ void 	add_userhost_to_channel (const char *channel, const char *nick, int server
 				"channel [%s] on server [%d] -- adding them",
 				nick, uh, channel, server);
 			add_to_channel(channel, nick, server, 0, 0, 0, 0);
+
+			/*
+			 * add_to_channel() strips status prefixes and refuses
+			 * bogus nicks, so it may not have added 'nick' under
+			 * this exact name.  If so, don't spin here forever.
+			 */
+			if (!find_nick_on_channel(chan, nick))
+				return;
 		}
 
 		/*
@@ -521,6 +535,7 @@ void 	add_userhost_to_channel (const char *channel, const char *nick, int server
 		 */
 		else
 		{
+		    /* XXX This does not smell right */
 		    remove_from_alist(&chan->nicks, new_n->nick);
 		    malloc_strcpy(&new_n->nick, nick);
 		    add_to_alist(&chan->nicks, nick, new_n);

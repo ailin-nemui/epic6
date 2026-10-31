@@ -186,8 +186,12 @@ static char *	archive_fgets(char *s, int n, struct archive *a)
     char *p = s;
     char c;
 
+    if (n <= 0)
+	return NULL;
+
     bytes_read=0;
-    while (bytes_read < n) {
+    /* fgets gets 'n-1' bytes to leave room for a trailing nul. */
+    while (bytes_read < n - 1) {
         ret=archive_read_data(a, &c, 1);
         if (ret>0) {
             bytes_read+=ret;
@@ -196,7 +200,10 @@ static char *	archive_fgets(char *s, int n, struct archive *a)
                 break;
             continue;
         }
-        return NULL;
+	/* If we didn't read anything, that's an error */
+	if (bytes_read == 0)
+	    return NULL;
+	break;
     }
     *p='\0';
     return s;
@@ -458,25 +465,39 @@ off_t	string_fgets(char *buffer, size_t buffer_size, const char **file_contents,
 	int	next_byte;
 	int	read_any_byte = 0;
 
+	/* Nothing in, nothing out */
+	if (!buffer || buffer_size == 0)
+		return 0;
+
+	/*
+	 * Like fgets(): store at most (buffer_size - 1) bytes and ALWAYS
+	 * nul terminate -- including for the final line of a file that
+	 * doesn't end in a newline, and for lines that are too long (the
+	 * rest of which is discarded).  Callers reuse 'buffer' from line
+	 * to line, so an unterminated result would pick up the tail of
+	 * the previous line.
+	 *
+	 * The return value is nonzero if anything was read.
+	 */
 	for (;;)
 	{
 		next_byte = string_fgetc(file_contents, file_contents_size);
 		if (next_byte == EOF)
 		{
+			buffer[offset] = 0;
 			if (!read_any_byte)
 				return 0;
 			else
-				return offset;
+				return offset ? (off_t)offset : 1;
 		}
 
 		read_any_byte = 1;
-		if (offset <= buffer_size)
+		if (offset < buffer_size - 1)
 			buffer[offset++] = next_byte;
 		if (next_byte == '\n')
 		{
-			if (offset <= buffer_size)
-				buffer[offset++] = 0;
-			return offset;
+			buffer[offset] = 0;
+			return offset ? (off_t)offset : 1;
 		}
 	}
 }

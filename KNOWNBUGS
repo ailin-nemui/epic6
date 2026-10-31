@@ -46,6 +46,7 @@ Emojis (incl ZWJ)
 Arena allocation
 *PCRE2 (utf8-aware regex)
 Use open_memstream() for malloc_sprintf()?
+Use ad-hoc TLS certs for wserv
 
 Actual bugs
 ================
@@ -56,6 +57,10 @@ Actual bugs
 * Add /ON GEOMETRY to show columns and rows
 * Local variable pointers that hold pointers to malloc()ed memory that might be changed
   by a do_hook() need to be (volatile) -- sigh!
+* [ 5:42PM] <wcarson> but basically when the znc loses connection to the server, then reconnects (but my epic 
+  +client never lost connection to the znc), it fails to channel_claim the channels or whatever, and then they
+  +all show up in one window and don't trigger /ons or something (they're all unstyled text), and i have to 
+  +/disconnect and /reconnect to fix it
 
 THE CHANGELOG SINCE THE LAST RELEASE:
 -------------------------------------
@@ -524,3 +529,36 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Add $stricmp() function
 * Add $sortby() function
 * Fix bug with privmsgs that need recoding
+* >>> These were all recommended by an LLM static code analysis
+* Review all uses of va_list and va_copy to be safe 
+* Do not use anonymous structs (MO and AtExitFunction) in c99.
+* Fix a sizeof bug 
+* When new_free() wipes, wipe the data, not the header.
+* <<< End of LLM review suggestions
+* Add support for CPPFLAGS in configure (rb skully, for openssl on mac)
+* Do not let <term.h> #define lines underneath us.
+* Refactor /away, /cd, /clear, /ctcp, /me, /send, /say in the ordinary way.
+* Refactor /nick, /msg, /topic, /wallop, /xecho in the ordinary way
+* Update the copyright year for /info and /license 
+* Refactor /load, /pretend, /quote, /squit, /invite  in the ordinary way.
+* Change the message chonk from 480 to 440, as 480 is just a little too big.
+* Temporarily let windows have 100 toplines even if we don't display them.
+* Valiently keep trying to work around gnu screen bogons with cursor pos
+* >>> These were all recommended by another LLM static code analysis
+* do_ctcp's 4th argument should be const, and it should return amloc.
+* Double $'s with /timer and /defer so they're not expanded twice
+* Don't try to be clever with /python {...}.  It doesn't like that
+* Make add_to_alist() smarter about when it swaps out items
+* Refactor do_ctcp() to make it clear the 4th argument is const.
+  - If any work is done to modify it, create a new object and return that.
+  - Callers to do_ctcp() must now handle return value sensibly.
+* Make $ctcpctl(GET x) be smarter about syntax errors
+* Reformat /xdebug in the ordinary way;  
+* Fix $ecdsatool() to be case insensitive about params (duh)
+* In lexerr() {math parser) 'buffer' must be init properly
+* Refactor the ctcp handling in p_privmsg and p_notice() per above.
+* Explain in the TLS validator why we must accept some invalid tls certs
+* Something something new inbound data changes?
+* Refactor /disconnect/reconnect (sb skered)
+* <<< End of LLM review suggestions
+* Add support for refusing to do SASL PLAIN on imperfect TLS certs

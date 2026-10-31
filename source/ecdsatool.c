@@ -83,7 +83,7 @@ static tool_applet_t *	tool_applet_find (const char *name)
 
         for (iter = tool_applets; iter->name != NULL; iter++)
         {
-                if (!strcmp(iter->name, name))
+                if (!my_stricmp(iter->name, name))
                         return iter;
         }
 

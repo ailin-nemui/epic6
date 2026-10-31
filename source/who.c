@@ -639,6 +639,23 @@ do
 
 	if (new_w->who_mask)
 	{
+		/*
+		 * Is there a '@' in status[1..3]?  The status string may be
+		 * as short as one char, so don't read past its nul.
+		 */
+		size_t  status_len;
+		int     status_chop;
+		size_t  si;
+
+		status_len = strlen(status);
+		status_chop = 0;
+
+		for (si = 1; si <= 3 && si < status_len; si++)
+		{
+			if (status[si] == '@')
+				status_chop = 1;
+		}
+
 		if (new_w->who_mask & WHO_HERE)
 			ok = ok && (*status == 'H');
 		if (new_w->who_mask & WHO_AWAY)
@@ -648,13 +665,9 @@ do
 		if (new_w->who_mask & WHO_LUSERS)
 			ok = ok && (*(status + 1) != '*');
 		if (new_w->who_mask & WHO_CHOPS)
-			ok = ok && ((*(status + 1) == '@') ||
-				    (*(status + 2) == '@') ||
-				    (*(status + 3) == '@'));
+			ok = ok && status_chop;
 		if (new_w->who_mask & WHO_NOCHOPS)
-			ok = ok && ((*(status + 1) != '@') &&
-				    (*(status + 2) != '@') &&
-				    (*(status + 3) != '@'));
+			ok = ok && !status_chop;
 		if (new_w->who_mask & WHO_NAME)
 			ok = ok && wild_match(new_w->who_name, user);
 		if (new_w->who_mask & WHO_NICK)

@@ -42,16 +42,66 @@ static	void	check_alist_size (alist *list);
 	void 	move_alist_items (alist *list, int start, int end, int dir);
 
 /*
- * Returns an entry that has been displaced, if any.
- * XXX 'item' shall be replaced with 'char *name' and 'void *data'
+ * add_to_alist - Upsert an item into an alist.
+ *
+ * Arguments:
+ *	a	- An alist.
+ *	name	- The name (key) of the item
+ *	data	- The data (value) of the item
+ *
+ * Return value:
+ *	NULL	 - The name (key) did not have a prior value
+ *	non-null - The name (key) had this prior value.
+ *		   What you do with it is up to you, but it is
+ *		   no longer the alist's responsibility.
+ *
+ * Note: 
+ *	XXX - Swapping out the value of an item doesn't update
+ *		the 'name' which can change if it's case-preserving!
+ *	      Maybe it was correct to remove+create+insert rather
+ *	      than to just swap the value.
  */
-void *	add_to_alist (alist *a, const char *name, void *item)
+void *	add_to_alist (alist *a, const char *name, void *data)
 {
 	int 		count;
 	int 		location = 0;
-	void *		ret = NULL;
 	uint32_t	mask; 	/* Dummy var */
 	alist_item_ *	item_;
+
+	check_alist_size(a);
+
+	/*
+	 * Previously, we always created a new item for "name",
+	 * even though there might already be one.  That seemed
+	 * wasteful, but 99% of the time "name" does not exist
+	 * in the alist because most callers remove it first.
+	 */
+
+	/*
+	 * This either returns the location of the item (count < 0)
+	 * or returns where the item would be if it did exist (count == 0)
+	 */
+	find_alist_item(a, name, &count, &location);
+
+	/*
+	 * If it does exist, then we can just swap out the data value.
+	 */
+	if (count < 0)
+	{
+		void *	ret;
+
+		item_ = ALIST_ITEM(a, location);
+		ret = item_->data;
+		item_->data = data;
+		return ret;
+	}
+
+	/*
+	 * If it doesn't exist, then we need to create an item and 
+	 * make room for it.
+	 */
+	/* Remember that 'location' tells us where it would go. */
+	move_alist_items(a, location, a->max, 1);
 
 	/* Initialize our internal item */
 	item_ = (alist_item_ *)new_malloc(sizeof(alist_item_));
@@ -61,24 +111,11 @@ void *	add_to_alist (alist *a, const char *name, void *item)
 		item_->hash = ci_alist_hash(item_->name, &mask);
 	else
 		item_->hash = cs_alist_hash(item_->name, &mask);
-	item_->data = item;
-
-	check_alist_size(a);
-	if (a->max)
-	{
-		find_alist_item(a, name, &count, &location);
-		if (count < 0)
-		{
-			ret = ALIST_ITEM(a, location)->data;
-			a->max--;
-		}
-		else
-			move_alist_items(a, location, a->max, 1);
-	}
+	item_->data = data;
 
 	a->list[location] = item_;
 	a->max++;
-	return ret;
+	return NULL;
 }
 
 /*
@@ -334,7 +371,8 @@ void *	find_alist_item (alist *set, const char *name, int *cnt, int *loc)
 
 void *	get_alist_item (alist *set, int location)
 {
-	if (location < 0 || location > set->max)
+	/* Remember that set->max is the first unused slot */
+	if (location < 0 || location >= set->max)
 		return NULL;
 
 	return ALIST_ITEM(set, location)->data;

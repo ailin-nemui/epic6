@@ -1094,6 +1094,7 @@ void	add_var_alias	(const char *orig_name, const char *stuff, int noisy)
 		 * If it does, and the ``stuff'' to assign to it is
 		 * empty, then we should remove the variable outright
 		 */
+		/* XXX Why am i doing this and not lookup_symbol()? */
 		tmp = find_alist_item(&globals, name, &cnt, &loc);
 		if (!tmp || cnt >= 0)
 		{

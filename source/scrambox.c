@@ -108,10 +108,24 @@ static size_t	base64_decode (const char *encoded_data, unsigned char *decoded_da
 	bio = BIO_push(b64, bio);
 	BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL); // No newlines
 
-	/* This might return -1, which is fine */
-	decoded_len = BIO_read(bio, decoded_data, len);
-	if (decoded_len > (int)max_len) {
-		decoded_len = -1; 
+	/*
+	 * Never ask BIO_read() for more than 'decoded_data' can hold -- the
+	 * input is supplied by the server, and its decoded length can be
+	 * up to 3/4 of 'len', which may be more than 'max_len'.
+	 *
+	 * This might return -1, which is fine
+	 */
+	if (max_len > (size_t)INT_MAX)
+		max_len = INT_MAX;
+	decoded_len = BIO_read(bio, decoded_data, (int)max_len);
+
+	/* If there is anything left over, the input was too big.  Reject it. */
+	if (decoded_len >= 0)
+	{
+		unsigned char   extra;
+
+		if (BIO_read(bio, &extra, 1) > 0)
+			decoded_len = -1;
 	}
 
 	BIO_free_all(bio);

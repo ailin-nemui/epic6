@@ -32,7 +32,7 @@ LIBS = @LIBS@
 # -Wall 	For GCC compilers, the -Wall flag turns on lots of additional
 #		warning checks.  You can safely ignore any warnings about 
 #		"NULL format", as those uses are intentional.
-CFLAGS = @CFLAGS@
+CFLAGS = @CFLAGS@ @CPPFLAGS@
 
 # Linker flags -- These flags are passed only to the linker.
 #		  Common flags include:

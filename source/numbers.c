@@ -294,7 +294,9 @@ void 	numbered_command (const char *from, const char *comm, char const **args)
 				value = malloc_strdup2(ov, value);
 				set_server_005(from_server, set, value);
 				new_free(&value);
+				continue;
 			}
+
 			if (*set == '-')	/* Parameter removal */
 				set_server_005(from_server, ++set, NULL);
 			else if (value && *value)

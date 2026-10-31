@@ -61,18 +61,24 @@
  *
  * So the canary is now offically 16 bytes to avoid that.
  */
-typedef union _mo_money 
-{
-	struct {
-		uint32_t	canary1;
-		uint32_t	magic;
-		int32_t		size;
-		uint32_t	canary2;
-	};
-	char padding[16];
+typedef struct __mo_money {
+	uint32_t	canary1;
+	uint32_t	magic;
+	int32_t		size;
+	uint32_t	canary2;
 } MO;
 
-#define mo_ptr(ptr) 	((MO *)( (char *)(ptr) - sizeof(MO) ))
+/*
+ * It's really important to make sure MO and MO_MONEY are the same size
+ */
+typedef union _mo_money 
+{
+	MO		mo;
+	char 		padding[16];
+} MO_MONEY;
+
+#define mo_ptr(ptr) 	(&(((MO_MONEY *)((char *)(ptr) - sizeof(MO_MONEY)))->mo))
+/* #define mo_ptr(ptr) 	(((MO *)( (char *)(ptr) - sizeof(MO_MONEY)))) */
 #define canary1(ptr)	((mo_ptr(ptr))->canary1)
 #define magic(ptr) 	((mo_ptr(ptr))->magic)
 #define alloc_size(ptr) ((mo_ptr(ptr))->size)
@@ -319,7 +325,7 @@ void *	really_new_malloc (size_t size, const char *fn, int line)
 
 /*
  * really_new_free - Our memory-defending wrapper for free(3)
- *			DONT' CALL DIRECTLY - use new_free()
+ *			DON'T CALL DIRECTLY - use new_free()
  *
  * Arguments:
  *	ptr	 - (INPUT | OUTPUT) A pointer to a pointer containing 
@@ -356,8 +362,12 @@ void *	really_new_free (void **ptr, const char *fn, int line)
 		 * Not clearing memory leaks it to the next allocator,
 		 * but clearing it means trusting the size has not been 
 		 * tampered with.
+		 *
+		 * Note that we explicitly do not overwrite the MO header.
+		 * In case of any use-after free, we'd want to have the
+		 * allocation size still there.
 		 */
-		memset((void *)(mo_ptr(*ptr)), 0, alloc_size(*ptr));
+		memset(*ptr, 0, alloc_size(*ptr));
 		alloc_size(*ptr) = FREED_VAL;
 		free((void *)(mo_ptr(*ptr)));
 		*ptr = NULL;
@@ -512,12 +522,12 @@ char *	malloc_sprintf (char **ptr, const char *format, ...)
 	return retval;
 }
 
-char *	malloc_vsprintf (char **ptr, const char *format, va_list args)
+char *	malloc_vsprintf (char **ptr, const char *format, va_list orig_args)
 {
 	char *		buffer = NULL;
 	size_t		buffer_size;
 	int		vsn_retval;
-	va_list		orig_args;
+	va_list		args;
 
 	if (format)
 	{
@@ -531,7 +541,6 @@ char *	malloc_vsprintf (char **ptr, const char *format, va_list args)
 		buffer_size = strlen(format) * 2;
 		buffer = new_malloc(buffer_size + 1);
 
-	        va_copy(orig_args, args);
 		for (;;)
 		{
 			/* 
@@ -548,7 +557,9 @@ char *	malloc_vsprintf (char **ptr, const char *format, va_list args)
 			 * This is optimized to only do the second call to vsnprintf()
 			 * if it's necessary.
 			 */
+			va_copy(args, orig_args);
 			vsn_retval = vsnprintf(buffer, buffer_size, format, args);
+			va_end(args);
 
 			/*
 			 * XXX TODO - This doesn't look like the right way 
@@ -561,16 +572,8 @@ char *	malloc_vsprintf (char **ptr, const char *format, va_list args)
 			else
 				buffer_size = vsn_retval + 1;
 			RESIZE(buffer, char, buffer_size);
-
-			va_end(args);
-			va_copy(args, orig_args);
 		} 
-		va_end(orig_args);
-
 	}
-
-	/* XXX I don't know about this... */
-	va_end(args);
 
 	if (ptr)
 	{
@@ -601,7 +604,8 @@ char *	malloc_vsprintf (char **ptr, const char *format, va_list args)
 char *	malloc_strcdup (int numargs, ...)
 {
 	char *		retval = NULL;
-	va_list		args, orig_args;
+	va_list		args, 
+			working_args;
 	size_t		retsize = 0;
 	int		i;
 	const char *	this_arg;
@@ -610,26 +614,25 @@ char *	malloc_strcdup (int numargs, ...)
 		return NULL;
 
 	va_start(args, numargs);
-	va_copy(orig_args, args);
+
+	va_copy(working_args, args);
 	for (i = 0; i < numargs; i++)
 	{
-		if ((this_arg = va_arg(args, const char *)) != NULL)
+		if ((this_arg = va_arg(working_args, const char *)) != NULL)
 			retsize += strlen(this_arg);
 	}
+	va_end(working_args);
 
 	retsize++;
 	retval = new_malloc(retsize);
 	*retval = 0;
 
-	va_end(args);
-	va_copy(args, orig_args);
 	for (i = 0; i < numargs; i++)
 	{
 		if ((this_arg = va_arg(args, const char *)) != NULL)
 			strlcat(retval, this_arg, retsize);
 	}
 	va_end(args);
-	va_end(orig_args);
 
 	return retval;
 }
@@ -2285,14 +2288,23 @@ size_t	escape_chars (const char *input, const char *stuff, char *output, size_t 
 			/* MatchingBracket() doesn't actually use the closing char for the above */
 			if ((span = MatchingBracket(input + input_offset + 1, input[input_offset], 0)) > 0)
 			{
-				int	i;
+				ssize_t	i;
 
-				for (i = 0; i <= span && input[input_offset + i]; i++)
+				/*
+				 * Copy the whole bracketed section through
+				 * unchanged: the opening bracket at [0], the
+				 * contents, and the matching closer, which is
+				 * at [span + 1] (MatchingBracket started at +1).
+				 */
+				for (i = 0; i <= span + 1 && input[input_offset + i]; i++)
 				{
-				    if (output_offset < output_size - 1)
-					output[output_offset++] = input[input_offset + span];
+					if (output_offset < output_size - 1)
+						output[output_offset++] = input[input_offset + i];
+					output_fullsize++;
 				}
-				input_offset += i;
+
+				/* Leave input_offset on the last byte copied; the for() steps past it */
+				input_offset += i - 1;
 				continue;
 			}
 			/* FALLTHROUGH */
@@ -4734,7 +4746,7 @@ DECODER(url)
 	dest_i = 0;
 	for (orig_i = 0; orig_i < orig_len; orig_i++)
 	{
-	    if (orig[orig_i] == '%' && orig_len - orig_i >= 2 &&
+	    if (orig[orig_i] == '%' && orig_len - orig_i >= 3 &&
 		(((val1 = XTOI(orig[orig_i+1])) != -1) &&
 		 ((val2 = XTOI(orig[orig_i+2])) != -1)))
 	    {
@@ -4959,16 +4971,16 @@ DECODER(b64)
  *	input_len	- (INPUT) How many bytes are in 'input'
  *	output		- (OUTPUT) Where to place the output
  *			  Encoded buffer should be 2x'input_len' + 7, just to be safe.
+ *	output_size	- (INPUT) How many bytes 'output' can hold
  *
  * Return value:
- *	-1		- Any error (should do better on this)
- *	 0		- All is well
+ *	   -1		- Any error (including 'output' being too small)
+ *	 >= 0		- Length of the string written to 'output'.
  *
  * Notes:
  *	The output (in encoded_buffer) is a nul-terminated C string
- *	XXX - This should take an 'output_len' param.
  */
-static ssize_t	base85_encode (const unsigned char *input, size_t input_len, char *output) 
+static ssize_t	base85_encode (const unsigned char *input, size_t input_len, char *output, size_t output_size) 
 {
 	char *	current_output;
 	size_t 	i, j;
@@ -4977,6 +4989,18 @@ static ssize_t	base85_encode (const unsigned char *input, size_t input_len, char
 
 	if (!input || !output) 
 		return -1; 
+
+	/*
+	 * Worst case: "<~" + 5 chars per (possibly partial) group of 4 + "~>" + nul
+	 * Refuse to write anything if it might not fit.
+	 */
+	if (input_len > (SIZE_MAX - 5) / 2 || 
+		output_size < 2 + ((input_len + 3) / 4) * 5 + 2 + 1)
+	{
+		if (output && output_size > 0)
+			*output = 0;
+		return -1;
+	}
 
 	encoded_chars = alloca(5);
 
@@ -5040,7 +5064,7 @@ static ssize_t	base85_encode (const unsigned char *input, size_t input_len, char
 
 ENCODER(b85)
 {
-	return base85_encode((const unsigned char *)orig, orig_len, dest);
+	return base85_encode((const unsigned char *)orig, orig_len, dest, dest_len);
 }
 
 /*
@@ -5073,7 +5097,7 @@ static ssize_t	base85_decode (const char *input, unsigned char *output, size_t o
 	unsigned char *	decoded_chars;
 	const unsigned char *	last_output_byte;
 
-	if (!input || !output)
+	if (!input || !output || output_size == 0)
 		return -1;
 
 	current_input = input;
@@ -5105,6 +5129,10 @@ static ssize_t	base85_decode (const char *input, unsigned char *output, size_t o
 			return -1;
 		else if (c == 'z' && char_count == 0)
 		{
+			/* Don't let a run of z's write past the end of 'output' */
+			if ((size_t)(current_output - output) + 4 > output_size)
+				return -1;
+
 			// Output 4 zero bytes
 			*current_output++ = 0x00;
 			*current_output++ = 0x00;
@@ -5169,7 +5197,16 @@ static ssize_t	base85_decode (const char *input, unsigned char *output, size_t o
 		}
 	}
 
-	/* Return the number of bytes we wrote */
+	/*
+	 * Return the number of bytes we wrote.  The per-byte checks above
+	 * kept us from writing off the end, but 'current_output' kept
+	 * advancing, so the input was too big for 'output'.  Call that an
+	 * error rather than returning a length bigger than the buffer.
+	 */
+	if (current_output < output ||
+			(size_t)(current_output - output) > output_size)
+		return -1;
+
 	return current_output - output;
 }
 
@@ -6036,6 +6073,8 @@ int	recode_with_iconv (const char *from, const char *to, char **data, size_t *nu
 		dest_size = *numbytes;
 		dest_left = *numbytes;
 		RESIZE(retstr, char, dest_size);
+		if (!retstr)
+			return 0;		/* Oh hush, clang */
 
 		work_data = *data;
 		dest_ptr = retstr;
@@ -6069,8 +6108,24 @@ int	recode_with_iconv (const char *from, const char *to, char **data, size_t *nu
 		/* Issue 6 requires this (see comment above) */
 		iconv(encodingx, NULL, &numbytes, &dest_ptr, &dest_left);
 #endif
-		iconv_close (iref);
+		iconv_close(iref);
 		*numbytes = (dest_size - dest_left);
+
+		/*
+		 * Always leave a nul after the converted bytes (not counted
+		 * in *numbytes), in case iconv() stopped early or the input
+		 * didn't include one.
+		 */
+		if (dest_left == 0)
+		{
+			size_t  offset;
+
+			offset = dest_ptr - retstr;
+			dest_size++;
+			RESIZE(retstr, char, dest_size);
+			dest_ptr = retstr + offset;
+		}
+		*dest_ptr = 0;
 	}
 
 	new_free(data);
@@ -6115,6 +6170,8 @@ int	recode_with_iconv_t (iconv_t iref, char **data, size_t *numbytes)
 	dest_size = *numbytes;
 	dest_left = *numbytes;
 	RESIZE(retstr, char, dest_size);
+	if (!retstr)
+		return 0;		/* Oh hush, clang */
 
 	work_data = *data;
 	dest_ptr = retstr;
@@ -6145,6 +6202,23 @@ int	recode_with_iconv_t (iconv_t iref, char **data, size_t *numbytes)
                 break;
         }
 
+	/*
+	 * Callers treat the result as a C string.  Normally the input's
+	 * trailing nul gets converted too, but if iconv() stopped early
+	 * it wouldn't have been.  So always terminate it (without counting
+	 * it in *numbytes).
+	 */
+	if (dest_left == 0)
+	{
+		size_t  offset;
+
+		offset = dest_ptr - retstr;
+		dest_size++;
+		dest_left++;
+		RESIZE(retstr, char, dest_size);
+		dest_ptr = retstr + offset;
+	}
+	*dest_ptr = 0;
 	new_free(data);
 	*data = retstr;
 	*numbytes = (dest_size - dest_left);

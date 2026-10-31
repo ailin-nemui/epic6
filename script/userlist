@@ -319,12 +319,12 @@ on #-join 100 * {
 		};
 		(*autoop*) {
 			if (userlist == [on]) {
-				timer 5 userlist.doop $1 $0;
+				timer 5 userlist.doop $$1 $$0;
 			};
 		};
 		(*autovoice*) {
 			if (userlist == [on]) {
-				timer 5 userlist.dovoice $1 $0;
+				timer 5 userlist.dovoice $$1 $$0;
 			};
 		};
 	};
@@ -340,10 +340,10 @@ on #-ctcp 100 '% $$servernick() \\\\[op voice invite unban\\\\] %' {
 	if ((findw($2 $uf) > -1 || findw(friend $uf) > -1) && ischanop($servernick() $3)) {
 		switch ($2) {
 			(*op) {
-				timer 5 userlist.doop $3 $0;
+				timer 5 userlist.doop $$3 $$0;
 			};
 			(*voice) {
-				timer 5 userlist.dovoice $3 $0;
+				timer 5 userlist.dovoice $$3 $$0;
 			};
 			(invite) {
 				invite $0 $3;

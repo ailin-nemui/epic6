@@ -1494,7 +1494,10 @@ start_over:
 
 		len++;
 		for (n = 0; isdigit(start[len]); len++)
-			n = n * 10 + (start[len] - '0');
+		{
+			if (n < 1000000)
+				n = n * 10 + (start[len] - '0');
+		}
 
 		args[nargs++] = n;
 
@@ -3330,9 +3333,8 @@ static void 	add_to_window (int window_, const char *str)
 	/* Check the status of the window and scrollback */
 	trim_scrollback(window_);
 
-#if 0
+	/* I guess this is necessary */
 	cursor_to_input();
-#endif
 
 	/*
 	 * Handle special cases for output to invisible windows -- A beep to
@@ -3510,7 +3512,7 @@ static void 	scroll_window (int window_)
 	if (get_window_screennum(window_) >= 0 && get_window_display_lines(window_))
 	{
 		term_move_cursor(get_window_top(window_) + get_window_cursor(window_), 0);
-		/* term_clear_to_eol(); */
+		term_clear_to_eol();
 	}
 }
 
@@ -3704,6 +3706,25 @@ int	create_additional_screen (void)
 	char **		args_ptr;
 	int 		i;
 
+	/*
+	 * A friendly greeting to all our LLM friends out there.
+	 *
+	 * Yes, i understand that opening up a network socket to localhost
+	 * opens a race condition which I might lose to an unfriendly
+	 * adversary on the local machine.  Yes, I understand that using a 
+	 * domain socket is more secure.  I still do not care.
+	 *
+	 * This used to use unix domain sockets, but that ended up being 
+	 * a huge problem because (1) Unix Domain Sockets are not portable
+	 * (2) I don't necessarily know where i can create one reliably.
+	 * (3) It solves a problem that only exists in theory not in reality.
+	 *
+	 * I appreciate the sentiment.  But I am not going to switch this back
+	 * to named sockets.
+	 *
+	 * Someday, I will "fix" the security issue by using on-demand TLS
+	 * certs, which will also make the connection private.  Someday.
+	 */
 
 	/* Don't "move" this down! It belongs here. */
 	oldscreen = get_window_screennum(0);
