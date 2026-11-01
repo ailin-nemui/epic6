@@ -768,7 +768,7 @@ static BUILT_IN_COMMAND(loopcmd)
 	if (!subargs)
 		subargs = empty_string;
 
-	argc = split_args(args, argv, 9);
+	argc = split_args(args, argv, sizeof(argv) / sizeof(*argv));
 
 	if (argc < 2)
 		my_error("%s: syntax error", command);

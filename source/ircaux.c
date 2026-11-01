@@ -3118,7 +3118,8 @@ char *	skip_spaces (char *str)
  *		  (OUTPUT) Elements of this array will contain pointers to each
  *			word inside 'str'.  The array will be NULL terminated.
  *		    YOU OWN THE ARRAY - IT WILL BE POINTING TO 'str'
- *	maxargs	- (INPUT) How big 'to' is.  If 'to' isn't big enough, too bad.
+ *	maxargs	- (INPUT) How many elements 'to' has (including the terminating
+ *		  NULL).  At most (maxargs - 1) args are stored.
  *
  * Return value:
  *	How many args were in 'str' that were stored to 'to'.
@@ -3136,8 +3137,11 @@ int	split_args (char *str, char **to, size_t maxargs)
 	size_t	counter;
 	char *	ptr;
 
+	if (maxargs == 0)
+		return 0;
+
 	ptr = str;
-	for (counter = 0; counter < maxargs; counter++)
+	for (counter = 0; counter < maxargs - 1; counter++)
 	{
 		if (!ptr || !*ptr)
 			break;
@@ -7107,6 +7111,7 @@ got_value:
 	extra[s++] = 0;
 	debug(DEBUG_KWARG_PARSE, "Got value: %s", extra);
 	malloc_strcpy(value, extra);
+	new_free(&extra);
 	/* Don't walk over the nul! */
 	if (str[p])
 		p++;

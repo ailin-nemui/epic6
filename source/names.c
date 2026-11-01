@@ -190,6 +190,7 @@ static void 	clear_channel (Channel *chan)
 		new_free(&x->userhost);
 		new_free(&(chan->nicks.list[i]->data));
 		new_free(&(chan->nicks.list[i]->name));
+		new_free((void **)&(chan->nicks.list[i]));
 	}
 	new_free((void **)&chan->nicks.list);
 	chan->nicks.max = chan->nicks.total_max = 0;

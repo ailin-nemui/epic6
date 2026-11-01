@@ -50,7 +50,8 @@
 	RETURN_IF_EMPTY((y)); 		\
 	x = next_arg((y), &(y));	\
 }
-#define RETURN_MSTR(x) return ((x) ? (x) : EMPTY_STRING)
+/* Evaluate 'x' only once -- it's often a function call returning malloc()ed memory */
+#define RETURN_MSTR(x) do { char *rmstr_ = (char *)(x); return rmstr_ ? rmstr_ : EMPTY_STRING; } while (0)
 #define RETURN_STR(x) return malloc_strdup((x) ? (x) : EMPTY)
 #define RETURN_FSTR(x) return malloc_strdup( x )	/* Only fixed char arrays! */
 #define RETURN_INT(x) return malloc_strdup(intmaxtoa((x)))

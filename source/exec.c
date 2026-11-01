@@ -735,6 +735,8 @@ static void 	cleanup_dead_processes (void)
 		new_free(&deadproc->stderrc);
 		new_free(&deadproc->stderrpc);
 		new_free(&deadproc->exitpc);
+		new_free(&deadproc->refnum_desc);
+		new_free(&deadproc->logical_desc);
 		new_free((char **)&deadproc);
 	}
 
@@ -1496,7 +1498,7 @@ static const char **	execcmd_tokenize_arguments (const char *args, Process **pro
 			if (!(proc = get_process_by_refnum(refnum)))
 			{
 				say("EXEC: Error: The process %s is not a valid process", proc_desc);
-				new_free((void **)&free_ptr);
+				new_free(free_ptr);
 				new_free((void **)&arg_list);
 				return NULL;
 			}
@@ -1518,7 +1520,7 @@ static const char **	execcmd_tokenize_arguments (const char *args, Process **pro
 	if (proc == NULL)
 	{
 		say("EXEC: Error: After all flags, there should be either a %%proc or commands to run");
-		new_free((void **)&free_ptr);
+		new_free(free_ptr);
 		new_free((void **)&arg_list);
 		return NULL;
 	}

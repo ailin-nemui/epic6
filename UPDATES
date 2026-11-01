@@ -1,5 +1,21 @@
 EPIC6-0.0.1
 
+*** News 10/31/2026 -- New /SET SSL_MIN_VERSION (default "1.2")
+	This is the oldest TLS version EPIC will use to talk to a server.
+	It can be "1.2" (the default) or "1.3".  Nothing older than TLS 1.2
+	is ever used -- TLS 1.0 and 1.1 are deprecated (RFC 8996).
+	TLS 1.2 is still secure, and some irc servers don't do 1.3 yet,
+	so that's the default.  If you /SET it to 1.3 and a server can't
+	do that, the handshake fails and EPIC tells you why.
+	It takes effect on the next connection.
+
+*** News 10/31/2026 -- New $serverctl(GET refnum SSL_CERT_SHA256)
+	The SHA-256 hash of the server's certificate.  The old SSL_CERT_HASH
+	is SHA-1, which you shouldn't use for pinning anymore.  The sasl
+	script accepts either one as a PLAIN pin.  There's also
+	SSL_MOST_SERIOUS_ERROR_STR, the most serious verification error
+	as a string instead of a number.
+
 *** News 08/30/2026 -- Wow, I haven't documented things for a long time
 	It's been a long time since i updated this file.  All of the things
 	below dated 8/30/2026 happened between 12/17/2025 and 8/30/2026

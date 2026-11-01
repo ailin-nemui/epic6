@@ -41,6 +41,8 @@
 #define SCRAM_MAX_USERNAME_LEN 256
 #define SCRAM_MAX_PASSWORD_LEN 256
 #define SCRAM_MAX_SALT_LEN 256
+#define SCRAM_MIN_ITERATIONS 4096U
+#define SCRAM_MAX_ITERATIONS 1000000U
 #define SCRAM_MAX_AUTH_MSG_LEN 500 // Adjust as needed  -- 512 for irc purposes
 #define SCRAM_KEY_LEN SHA512_DIGEST_LENGTH // SHA512 hash output size
 
@@ -466,10 +468,27 @@ static int	scram_process_server_first_message(scram_state_t *state, const char *
 		yell("Error: Could not parse 'i' from server-first-message");
 		return -1;
 	}
-	state->iteration_count = (unsigned int)atoi(i_val);
-	if (state->iteration_count >= INT_MAX) {
-		yell("Error: Invalid iteration count: %u", state->iteration_count);
-		return -1;
+	{
+		char *		endp = NULL;
+		unsigned long	count;
+
+		/*
+		 * The server picks this, so it must be bounded.  Too low and
+		 * a server (or MITM) gets a password hash that's cheap to
+		 * crack offline; too high and it can lock up the client for
+		 * hours in PBKDF2.  RFC 7677 recommends at least 4096.
+		 */
+		errno = 0;
+		count = strtoul(i_val, &endp, 10);
+		if (errno || !endp || endp == i_val || *endp || *i_val == '-' ||
+		    count < SCRAM_MIN_ITERATIONS || count > SCRAM_MAX_ITERATIONS)
+		{
+			yell("Error: Server sent an unacceptable SCRAM iteration count [%s] "
+			     "(must be %u to %u)", i_val, 
+			     SCRAM_MIN_ITERATIONS, SCRAM_MAX_ITERATIONS);
+			return -1;
+		}
+		state->iteration_count = (unsigned int)count;
 	}
 
 	// 4. Derive SaltedPassword using PBKDF2-HMAC-SHA512

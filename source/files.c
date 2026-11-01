@@ -439,7 +439,7 @@ char *	file_readb (int fd, size_t bytes_requested)
 		return malloc_strdup(empty_string);
 
 	buffer = new_malloc(bytes_requested + 1);
-	memset(&buffer, 0, bytes_requested + 1);
+	memset(buffer, 0, bytes_requested + 1);
 
 	if (ptr->elf->fp) {
 		clearerr(ptr->elf->fp);

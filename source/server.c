@@ -1288,6 +1288,8 @@ static 	void 	server_list_remove (int i)
 	new_free(&s->sent_body);
 	new_free(&s->default_realname);
 	new_free(&s->remote_paddr);
+	new_free(&s->addrs);
+	s->addrs_total = 0;
 	destroy_options(i);
 	reset_server_altnames(i, NULL);
 	free_bucket(&s->altnames);
@@ -1774,6 +1776,7 @@ something_broke:
 			}
 
 			memmove(&s->remote_sockname.ss, &name.ss, sizeof(name.ss));
+			new_free(&s->remote_paddr);
 			s->remote_paddr = ssu_to_paddr_quick((SSu *)&name);
 			say("Connected to IP address %s", s->remote_paddr);
 
@@ -1851,7 +1854,13 @@ return_from_ssl_detour:
 			c = DGETS(des, retval)
 			if (c < (ssize_t)sizeof(retval) || retval)
 			{
+				const char *vname;
+
 				syserr(i, "SSL_connect returned [%d]", retval);
+				if (ssl_min_version(&vname) != TLS1_2_VERSION)
+					say("TLS handshake with %s failed.  If it doesn't "
+					    "support TLS %s, try /SET SSL_MIN_VERSION 1.2",
+					    get_server_name(i), vname);
 				goto something_broke;
 			}
 
@@ -1975,7 +1984,8 @@ return_from_ssl_detour:
 				goto something_else_broke;
 			}
 
-			junk = dgets(des, bufptr, line_length, 1);
+			/* +1 for the nul -- line_length is the protocol limit incl CRLF */
+			junk = dgets(des, bufptr, (size_t)line_length + 1, 1);
 
 			/* 
 			 * If we were to support encapsulating protocols, 
@@ -2258,6 +2268,20 @@ static void 	vsend_to_aserver_with_payload (int refnum, const char *payload, con
 	/*
 	 * Send the resulting message out
 	 */
+	/*
+	 * An IRC message is one line.  A CR or LF from a script, or from
+	 * decoded data, would let the rest of the string be sent as extra
+	 * commands, so everything from the first CR or LF on is dropped.
+	 * (If you really need to send raw bytes, use /XQUOTE -U)
+	 */
+	{
+		size_t	eol = strcspn(buffer, "\r\n");
+
+		if (buffer[eol] && buffer[eol + strspn(buffer + eol, "\r\n")])
+			debug(DEBUG_OUTBOUND, "[%d] -> Dropped text after CR/LF in [%s]", des, buffer);
+		buffer[eol] = 0;
+	}
+
 	len = strlen(buffer);
 	s->sent = 1;
 	if (len > (IRCD_BUFFER_SIZE - 2))
@@ -4782,7 +4806,8 @@ sorry_wrong_number:
  *	SSL_VERIFY_RESULT	*		+ The server's TLS certificate was verified
  *	SSL_VERIFY_ERROR	*		+ "" "" failed verification
  *	SSL_PEM			*		+ "" "" PEM representation
- *	SSL_CERT_HASH		*		+ "" "" certificate hash 
+ *	SSL_CERT_HASH		*		+ "" "" certificate hash (SHA-1)
+ *	SSL_CERT_SHA256		*		+ "" "" certificate hash (SHA-256)
  *	SSL_PKEY_BITS		*		+ "" "" bit-size
  *	SSL_SUBJECT		*		+ "" "" "Subject Name"
  *	SSL_SUBJECT_URL		*		+ "" "" Subject Name, URL encoded
@@ -4795,6 +4820,7 @@ sorry_wrong_number:
  *	SSL_SELF_SIGNED_ERROR	*		+ An error string
  *	SSL_OTHER_ERROR		*		+ An error string (serious)
  *	SSL_MOST_SERIOUS_ERROR	*		+ Which TLS verification error was the most serious
+ *	SSL_MOST_SERIOUS_ERROR_STR *		+ "" "" as a human readable string
  *	SSL_SANS		*		+ "" "" Subject Alternate Names
  *	STATE			*		The operational state of the server, right now
  *	STATUS			*		Old name for "STATE"
@@ -4988,6 +5014,8 @@ char 	*serverctl 	(char *input)
 				RETURN_STR(get_ssl_pem(s->des));
 			} else if (!my_strnicmp(listc, "SSL_CERT_HASH", len)) {
 				RETURN_STR(get_ssl_cert_hash(s->des));
+			} else if (!my_strnicmp(listc, "SSL_CERT_SHA256", len)) {
+				RETURN_STR(get_ssl_cert_sha256(s->des));
 			} else if (!my_strnicmp(listc, "SSL_PKEY_BITS", len)) {
 				RETURN_INT(get_ssl_pkey_bits(s->des));
 			} else if (!my_strnicmp(listc, "SSL_SUBJECT", len)) {
@@ -5012,6 +5040,8 @@ char 	*serverctl 	(char *input)
 				RETURN_INT(get_ssl_other_error(s->des));
 			} else if (!my_strnicmp(listc, "SSL_MOST_SERIOUS_ERROR", len)) {
 				RETURN_INT(get_ssl_most_serious_error(s->des));
+			} else if (!my_strnicmp(listc, "SSL_MOST_SERIOUS_ERROR_STR", len)) {
+				RETURN_STR(get_ssl_most_serious_error_str(s->des));
 			} else if (!my_strnicmp(listc, "SSL_SANS", len)) {
 				RETURN_STR(get_ssl_sans(s->des));
 			} else if (!my_strnicmp(listc, "SSL_ACCEPT_CERT", len)) {

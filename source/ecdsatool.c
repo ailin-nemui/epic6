@@ -101,6 +101,8 @@ BUILT_IN_FUNCTION(function_ecdsatool, args)
 
 	argv = alloca(sizeof(char *) * 10);
 	argc = split_args(args, argv, 10);
+	if (argc < 1 || !argv[0])
+		RETURN_EMPTY;
         if (!(tool = tool_applet_find(argv[0])))
 	{
 		say("ecdsatool: no such tool: %s", argv[0]);

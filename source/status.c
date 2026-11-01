@@ -530,6 +530,7 @@ int	make_status (int window_, Status *status)
 		char	*lhp,
 			*rhp,
 			*cp,
+			*cp_end,
 			*str;
 	const char *	start_rhs;
 		int	pr_lhs,
@@ -659,10 +660,34 @@ int	make_status (int window_, Status *status)
 		 */
 		s = (char *)str;
 		cp = lhp;
+		/*
+		 * Formatting codes and zero-width chars take up no columns,
+		 * so the column check below does not bound how many bytes
+		 * we write.  Always leave STATUS_SLOP bytes of room so that
+		 * any one item (an attribute is 12 bytes, a TAB is up to 8,
+		 * a code point is up to 6) can't run off the end.
+		 */
+#define STATUS_SLOP 32
+		cp_end = lhp + BIG_BUFFER_SIZE - STATUS_SLOP;
 		lhs_buffer[0] = rhs_buffer[0] = 0;
 
 		while ((code_point = next_code_point2(s, &offset, 1)))
 		{
+			/* Out of byte-room on this side?  Stop here. */
+			if (cp >= cp_end)
+			{
+				if (start_rhs)
+					break;		/* No more room for anything */
+
+				/* Skip ahead to the %> (if any) and do the rhs */
+				*cp = 0;
+				while (*s && *s != '\f')
+					s++;
+				if (!*s)
+					break;
+				continue;	/* Next iteration picks up the \f */
+			}
+
 			if (code_point < 0)
 				s++;
 			else
@@ -678,6 +703,7 @@ int	make_status (int window_, Status *status)
 				*cp = 0;
 
 				cp = rhp;
+				cp_end = rhp + BIG_BUFFER_SIZE - STATUS_SLOP;
 				prc = &pr_rhs;
 			}
 
@@ -690,8 +716,8 @@ int	make_status (int window_, Status *status)
 
 				*cp++ = 6;
 
-				/* XXX BIG_BUFFER_SIZE here is wrong. */
-				copy_internal_attribute(s, cp, BIG_BUFFER_SIZE, &numbytes);
+				copy_internal_attribute(s, cp, 
+					(size_t)(cp_end + STATUS_SLOP - cp), &numbytes);
 				s += numbytes;
 				cp += numbytes;
                         }

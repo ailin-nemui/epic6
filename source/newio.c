@@ -588,6 +588,7 @@ ssize_t	dgets (int fd, char *buf, size_t buflen, int buffer)
 {
 	size_t	cnt = 0;
 	size_t	consumed = 0;
+	size_t	limit;
 	char	h = 0;
 	MyIO *	ioe;
 
@@ -638,6 +639,12 @@ ssize_t	dgets (int fd, char *buf, size_t buflen, int buffer)
 	 * AT THIS POINT WE'VE COMMITED TO RETURNING WHATEVER WE HAVE.
 	 */
 
+	/*
+	 * For buffered (null terminated) results, 'buf' is 'buflen' bytes
+	 * *including* the nul, so we copy at most buflen - 1 bytes.
+	 */
+	limit = (buffer >= 0) ? buflen - 1 : buflen;
+
 	consumed = 0;
 	while (ioe->read_pos < ioe->write_pos)
 	{
@@ -645,7 +652,7 @@ ssize_t	dgets (int fd, char *buf, size_t buflen, int buffer)
 	    consumed++;
 
 	    /* Only copy the data if there is some place to put it. */
-	    if (cnt <= buflen - 1)
+	    if (cnt < limit)
 		buf[cnt++] = h;
 
 	    /* 
@@ -686,7 +693,7 @@ ssize_t	dgets (int fd, char *buf, size_t buflen, int buffer)
 					fd, (long)consumed, (long)cnt);
 
 		/* If the line had a newline, then put the newline in. */
-		if (buffer >= 0 && h == '\n')
+		if (buffer >= 0 && h == '\n' && buflen >= 2)
 		{
 			cnt = buflen - 2;
 			buf[cnt++] = '\n';
@@ -868,7 +875,11 @@ int	new_close_with_option (int fd, int virtual)
 	{
 		debug(DEBUG_NEWIO, "new_close: fd = %d", fd);
 
-		if (ioe->io_callback == ssl_read)	/* XXX */
+		/*
+		 * Includes connections that failed during the handshake
+		 * or certificate evaluation (callback is still ssl_connect)
+		 */
+		if (is_fd_ssl_enabled(ioe->fd))
 			ssl_shutdown(ioe->fd);
 
 		ioe->poll.events = 0;

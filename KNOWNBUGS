@@ -559,3 +559,26 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * <<< End of LLM review suggestions
 * Add support for refusing to do SASL PLAIN on imperfect TLS certs
 * Unconditionally replace a channel if we get a new JOIN (rb wcarson)
+* >>> These were all recommended by another LLM static code analysis
+* Fix status bar when nick or channel had formatting codes.
+* Make split_args() properly handle maxargs
+* Fix $ecdsatool() with many arguments
+* Limit scram iterations to 4096 < x < 1 million to prevent attacks
+* Don't let /xquote send multiple lines at a time (use /xquote -u for that)
+* Fix $read() zeroing the buffer we intended
+* Make $read(fd <x>) require <x> be a positive number < 16MB
+* Fix bogons in /exec %bogus and /exec -out
+* Ensure dgets() handles full buffers correctly
+* Handle rogue wserv "geom" line.
+* Fix various memory leaks when TLS connections failed.
+* Support TLS SNI
+* Add /set SSL_MIN_VERSION to be 1.2 or 1.3 (1.2 is default)
+* If you require 1.3 and only 1.2 is available, you'll be told to change it.
+* Fix bogon when cert digest fails.
+* Add $serverctl(GET x SSL_CERT_SHA256), see UPDATES
+* Add $serverctl(GET x SSL_MOST_SERIOUS_ERROR), see UPDATES.
+* Update /load sasl to support SHA256 digests as well as SHA-1
+* Fix $serverctl() call in /load sasl
+* FIx many memory leaks all over the place.
+* <<< End of LLM review suggestions
+

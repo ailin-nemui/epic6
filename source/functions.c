@@ -4341,6 +4341,7 @@ BUILT_IN_FUNCTION(function_writeb, words)
 	RETURN_INT(retval);
 }
 
+#define MAX_READB_BYTES (16L * 1024 * 1024)
 BUILT_IN_FUNCTION(function_read, words)
 {
 	char *fdc = NULL, *numb = NULL;
@@ -4350,7 +4351,16 @@ BUILT_IN_FUNCTION(function_read, words)
 		GET_FUNC_ARG(numb, words);
 
 	if (numb)
-		return file_readb(my_atol(fdc), my_atol(numb));
+	{
+		long	n = my_atol(numb);
+
+		/* A negative count would become a huge size_t */
+		if (n <= 0)
+			RETURN_EMPTY;
+		if (n > MAX_READB_BYTES)
+			n = MAX_READB_BYTES;
+		return file_readb(my_atol(fdc), (size_t)n);
+	}
 	else
 		return file_read(my_atol(fdc));
 }

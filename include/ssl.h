@@ -43,6 +43,7 @@ typedef struct ssl_metadata {
 	int	ssl_write (int nfd, const void *, size_t);
 	int	ssl_read (int nfd, int quiet, int revents);
 	int	ssl_shutdown (int nfd);
+	int	ssl_min_version (const char **name);
 
 	int	is_fd_ssl_enabled (int nfd);
 	int	client_ssl_enabled (void);
@@ -50,6 +51,7 @@ typedef struct ssl_metadata {
 	const char *	get_ssl_cipher (int nfd);
 	const char *	get_ssl_pem (int fd);
 	const char *	get_ssl_cert_hash (int fd);
+	const char *	get_ssl_cert_sha256 (int fd);
 	int		get_ssl_pkey_bits (int fd);
 	const char *	get_ssl_subject (int fd);
 	const char *	get_ssl_u_cert_subject (int fd);
@@ -63,5 +65,6 @@ typedef struct ssl_metadata {
 	int		get_ssl_self_signed_error (int fd);
 	int		get_ssl_other_error (int fd);
 	int		get_ssl_most_serious_error (int fd);
+	const char *	get_ssl_most_serious_error_str (int fd);
 
 #endif

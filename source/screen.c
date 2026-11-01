@@ -3701,6 +3701,7 @@ int	create_additional_screen (void)
 	const char *	wserv_path;
 
 	char *		create_opts;
+	char *		create_opts_free = NULL;
 	const char *	xterm;
 	char **		args;
 	char **		args_ptr;
@@ -3813,9 +3814,9 @@ int	create_additional_screen (void)
 	/* Create the command line arguments... */
 	if (screen_type == ST_SCREEN)
 	{
-	    create_opts = malloc_strdup(get_string_var(SCREEN_OPTIONS_VAR));
+	    create_opts = create_opts_free = malloc_strdup(get_string_var(SCREEN_OPTIONS_VAR));
 	    *args_ptr++ = malloc_strdup("screen");
-	    while (create_opts && *create_opts)
+	    while (create_opts && *create_opts && args_ptr - args < 56)
 		*args_ptr++ = malloc_strdup(new_next_arg(create_opts, &create_opts));
 	    *args_ptr++ = malloc_strdup(wserv_path);
 	    *args_ptr++ = malloc_strdup("localhost");
@@ -3830,7 +3831,7 @@ int	create_additional_screen (void)
 		get_screen_columns(oldscreen) + 1, 
 		get_screen_lines(oldscreen));
 
-	    create_opts = malloc_strdup(get_string_var(XTERM_OPTIONS_VAR));
+	    create_opts = create_opts_free = malloc_strdup(get_string_var(XTERM_OPTIONS_VAR));
 	    if (!(xterm = getenv("XTERM")))
 		if (!(xterm = get_string_var(XTERM_VAR)))
 		    xterm = "xterm";
@@ -3838,7 +3839,7 @@ int	create_additional_screen (void)
 	    *args_ptr++ = malloc_strdup(xterm);
 	    *args_ptr++ = malloc_strdup("-geometry");
 	    *args_ptr++ = geom;
-	    while (create_opts && *create_opts)
+	    while (create_opts && *create_opts && args_ptr - args < 56)
 		*args_ptr++ = malloc_strdup(new_next_arg(create_opts, &create_opts));
 	    *args_ptr++ = malloc_strdup("-e");
 	    *args_ptr++ = malloc_strdup(wserv_path);
@@ -3855,8 +3856,8 @@ int	create_additional_screen (void)
 
 	    *args_ptr++ = malloc_strdup("tmux");
 
-	    create_opts = malloc_strdup(get_string_var(TMUX_OPTIONS_VAR));
-	    while (create_opts && *create_opts)
+	    create_opts = create_opts_free = malloc_strdup(get_string_var(TMUX_OPTIONS_VAR));
+	    while (create_opts && *create_opts && args_ptr - args < 56)
 		*args_ptr++ = malloc_strdup(new_next_arg(create_opts, &create_opts));
 
 	    *args_ptr++ = malloc_strdup("new-window");
@@ -3918,8 +3919,10 @@ int	create_additional_screen (void)
 		}
 	}
 
-	/* XXX TODO XXX - what about args? */
-	/* We need to clean up 'args' here. its an array of malloc()ed stuff */
+	/* The child has its own copy; the parent doesn't need these anymore */
+	for (args_ptr = args; *args_ptr; args_ptr++)
+		new_free(args_ptr);
+	new_free(&create_opts_free);
 
 	/* All the rest of this is the parent.... */
 	new_sock_size = sizeof(new_socket.ss);
@@ -4124,10 +4127,17 @@ static void 	do_screens (int fd)
 		    else if (!strncmp(buffer, "geom=", 5))
 		    {
 			char *ptr;
-			if ((ptr = strchr(buffer, ' ')))
-				*ptr++ = 0;
-			screen->li = atoi(buffer + 5);
-			screen->co = atoi(ptr);
+			int   li, co;
+
+			if (!(ptr = strchr(buffer, ' ')))
+				continue;	/* Malformed -- ignore it */
+			*ptr++ = 0;
+			li = atoi(buffer + 5);
+			co = atoi(ptr);
+			if (li < 1 || co < 1)
+				continue;	/* Nonsense -- ignore it */
+			screen->li = li;
+			screen->co = co;
 			recalculate_windows(screen->screennum);
 		    }
 		    else if (!strncmp(buffer, "version=", 8))

@@ -54,7 +54,8 @@ typedef struct ssl_metadata {
 	int	fd;
 	int	verify_error;
 	char *	pem;
-	char *	cert_hash;
+	char *	cert_hash;		/* SHA-1 (legacy -- keep for old pins) */
+	char *	cert_sha256;		/* SHA-256 */
 	int	pkey_bits;
 	char *	subject;
 	char *	u_cert_subject;
@@ -97,6 +98,7 @@ static int 		get_x509_pkey_bits	(X509 *);
 static char *		get_bio_mem_string	(BIO *);
 static char *		get_x509_pem		(X509 *);
 static char *		get_x509_name		(X509_NAME *);
+static char *		get_x509_digest		(X509 *, const EVP_MD *);
 static char *		internal_get_x509_sans 	(X509 * const);
 static ssl_cert_error *	new_ssl_cert_error 	(int, int, const char *, ssl_cert_error *);
 static void		destroy_ssl_cert_errors (ssl_cert_error *);
@@ -361,12 +363,13 @@ static ssl_info *	new_ssl_info (int fd)
 {
 	ssl_info *x;
 
-	if (!(x = get_ssl_info(fd)))
-	{
-		x = new_malloc(sizeof(*x));
-		x->next = ssl_list;
-		ssl_list = x;
-	}
+	/* Throw away any old connection on this fd, so we don't leak it */
+	if (get_ssl_info(fd))
+		ssl_shutdown(fd);
+
+	x = new_malloc(sizeof(*x));
+	x->next = ssl_list;
+	ssl_list = x;
 
 	x->active = 0;
 	x->fd = fd;
@@ -378,6 +381,7 @@ static ssl_info *	new_ssl_info (int fd)
 	x->md.fd = fd;
 	x->md.pem = NULL;
 	x->md.cert_hash = NULL;
+	x->md.cert_sha256 = NULL;
 	x->md.pkey_bits = 0;
 	x->md.subject = NULL;
 	x->md.u_cert_subject = NULL;
@@ -410,6 +414,9 @@ static ssl_info *	unlink_ssl_info (int fd)
 {
 	ssl_info *x = NULL;
 
+	if (!ssl_list)
+		return NULL;
+
 	if (ssl_list->fd == fd)
 	{
 		x = ssl_list;
@@ -432,6 +439,44 @@ static ssl_info *	unlink_ssl_info (int fd)
 	return NULL;
 }
 
+
+/*
+ * ssl_min_version - Which TLS version /SET SSL_MIN_VERSION asks for.
+ * Only "1.2" (the default) and "1.3" are accepted -- TLS 1.0 and 1.1
+ * are deprecated (RFC 8996) and are never allowed.
+ * Returns an OpenSSL protocol version, and the name in *name.
+ */
+int	ssl_min_version (const char **name)
+{
+	const char *v = get_string_var(SSL_MIN_VERSION_VAR);
+
+	if (v && (!my_stricmp(v, "1.3") || !my_stricmp(v, "TLSv1.3")))
+	{
+#ifdef TLS1_3_VERSION
+		*name = "1.3";
+		return TLS1_3_VERSION;
+#else
+		yell("/SET SSL_MIN_VERSION 1.3 isn't supported by your "
+		     "OpenSSL -- using 1.2");
+#endif
+	}
+	else if (v && *v && my_stricmp(v, "1.2") && my_stricmp(v, "TLSv1.2"))
+		yell("/SET SSL_MIN_VERSION must be 1.2 or 1.3 (not %s) -- using 1.2", v);
+
+	*name = "1.2";
+	return TLS1_2_VERSION;
+}
+
+static int	is_ip_literal (const char *host)
+{
+	unsigned char	buf[sizeof(struct in6_addr)];
+
+	if (inet_pton(AF_INET, host, buf) == 1)
+		return 1;
+	if (inet_pton(AF_INET6, host, buf) == 1)
+		return 1;
+	return 0;
+}
 
 /*
  * ssl_startup -- Create an ssl connection on a fd using a certain channel.
@@ -482,12 +527,14 @@ int	ssl_startup (int fd, int channel, const char *hostname, const char *cert)
 		if (SSL_use_certificate_file(x->ssl, cert, SSL_FILETYPE_PEM) <= 0)
 		{
 			syserr(SRV(fd), "SSL_use_certificate_file(%s) for fd %d failed", cert, fd);
+			ssl_shutdown(fd);
 			errno = EINVAL;
 			return -1;
 		}
 		if (SSL_use_PrivateKey_file(x->ssl, cert, SSL_FILETYPE_PEM) <= 0)
 		{
 			syserr(SRV(fd), "SSL_use_PrivateKey_file(%s) for fd %d failed", cert, fd);
+			ssl_shutdown(fd);
 			errno = EINVAL;
 			return -1;
 		}
@@ -497,20 +544,50 @@ int	ssl_startup (int fd, int channel, const char *hostname, const char *cert)
 	if (SSL_set_fd(x->ssl, channel) <= 0)
 	{
 		syserr(SRV(fd), "SSL_set_fd(%d) for fd %d failed", channel, fd);
+		ssl_shutdown(fd);
 		errno = EINVAL;
 		return -1;
 	}
 	if (SSL_set_ex_data(x->ssl, mydata_index, x) <= 0)
 	{
 		syserr(SRV(fd), "SSL_set_ex_data(%d) for fd %d failed", mydata_index, fd);
+		ssl_shutdown(fd);
 		errno = EINVAL;
 		return -1;
 	}
 	if (SSL_set1_host(x->ssl, hostname) <= 0) 
 	{
 		syserr(SRV(fd), "SSL_set1_host(%s) for fd %d failed", hostname, fd);
+		ssl_shutdown(fd);
 		errno = EINVAL;
 		return -1;
+	}
+
+	/*
+	 * Never negotiate anything older than /SET SSL_MIN_VERSION
+	 * (and never older than TLS 1.2, whatever OpenSSL's build allows)
+	 */
+	{
+		const char *	vname;
+		int		version = ssl_min_version(&vname);
+
+		if (SSL_set_min_proto_version(x->ssl, version) != 1)
+		{
+			syserr(SRV(fd), "SSL_set_min_proto_version(TLS %s) for fd %d failed", vname, fd);
+			ssl_shutdown(fd);
+			errno = EINVAL;
+			return -1;
+		}
+	}
+
+	/*
+	 * Send SNI, so servers that host more than one name present the
+	 * right certificate.  RFC 6066 forbids sending an IP address here.
+	 */
+	if (hostname && *hostname && !is_ip_literal(hostname))
+	{
+		if (SSL_set_tlsext_host_name(x->ssl, hostname) <= 0)
+			debug(DEBUG_SSL, "SSL_set_tlsext_host_name(%s) for fd %d failed", hostname, fd);
 	}
 
 	set_non_blocking(channel);
@@ -551,6 +628,7 @@ int	ssl_shutdown (int fd)
 	x->md.other_error = -1;
 	new_free(&x->md.pem);
 	new_free(&x->md.cert_hash);
+	new_free(&x->md.cert_sha256);
 	x->md.pkey_bits = 0;
 	new_free(&x->md.subject);
 	new_free(&x->md.u_cert_subject);
@@ -736,6 +814,27 @@ static char *get_x509_pem(X509 *cert)
 	return result;
 }
 
+/* Returns a malloc()ed string like ab:cd:ef:01:02... (empty on failure) */
+static char *get_x509_digest (X509 *cert, const EVP_MD *md)
+{
+	unsigned char	h[EVP_MAX_MD_SIZE];
+	unsigned	hlen = 0;
+	char		htext[EVP_MAX_MD_SIZE * 3 + 1];
+	unsigned	i;
+
+	htext[0] = 0;
+	if (X509_digest(cert, md, h, &hlen) != 1 || hlen > EVP_MAX_MD_SIZE)
+		return malloc_strdup(empty_string);
+
+	for (i = 0; i < hlen; i++)
+	{
+		if (i > 0)
+			htext[i * 3 - 1] = ':';
+		snprintf(htext + (i * 3), sizeof(htext) - (i * 3), "%02x", h[i]);
+	}
+	return malloc_strdup(htext);
+}
+
 static char *get_x509_name(X509_NAME *nm)
 {
 	BIO *mem = BIO_new(BIO_s_mem());
@@ -788,10 +887,6 @@ int	ssl_connected (int fd)
 {
 	X509 *	 	server_cert;	/* X509 in SSL internal fmt */
 	ssl_info *	x;		/* EPIC info about the conn */
-	unsigned char *	h;		/* A place for X509_digest() to write */
-	unsigned	hlen;		/* How big digest in 'h' is */
-	char *		htext;		/* A human readable version of 'h' */
-	unsigned	i;		/* How many bytes in 'h' we converted */
 
 	/*
 	 * First off -- do I think this is even an SSL enabled connection?
@@ -874,22 +969,8 @@ int	ssl_connected (int fd)
 	/*
 	 * STEP 4b: 	The server's certificate hash
 	 */
-	h = alloca(256);
-	memset(h, 0, 256);
-	hlen = 256;
-	X509_digest(server_cert, EVP_sha1(), h, &hlen);
-
-	/* This converts 'h' into a string like AB:CD:EF:01:02.. */
-	htext = alloca(1024);
-	for (i = 0; i < hlen; i++)
-	{
-		if (i > 0)
-			htext[i * 3 - 1] = ':';
-
-		snprintf(htext + (i * 3), 
-			1024 - (i * 3), "%02x", h[i]);
-	}
-	x->md.cert_hash = malloc_strdup(htext);
+	x->md.cert_hash = get_x509_digest(server_cert, EVP_sha1());
+	x->md.cert_sha256 = get_x509_digest(server_cert, EVP_sha256());
 
 	/*
 	 * STEP 4d: 	The server's certificate's "subject" [hostname]
@@ -969,6 +1050,8 @@ int	ssl_connected (int fd)
 			x->md.pkey_bits);
 		say("SSL certificate digest: %s", 
 			x->md.cert_hash);
+		say("SSL certificate SHA-256: %s", 
+			x->md.cert_sha256);
 		say("SSL certificate SANs: %s", 
 			x->md.sans);
 		say("SSL certificate verification -- Any error: %s",
@@ -1038,6 +1121,12 @@ const char *	get_ssl_cert_hash (int fd)
 	return x->md.cert_hash;
 }
 
+const char *	get_ssl_cert_sha256 (int fd)
+{
+	LOOKUP_SSL(fd, empty_string)
+	return x->md.cert_sha256 ? x->md.cert_sha256 : empty_string;
+}
+
 int	get_ssl_pkey_bits (int fd)
 {
 	LOOKUP_SSL(fd, 0)
@@ -1102,6 +1191,12 @@ int	get_ssl_most_serious_error (int fd)
 {
 	LOOKUP_SSL(fd, -1);
 	return x->md.most_serious_error;
+}
+
+const char *	get_ssl_most_serious_error_str (int fd)
+{
+	LOOKUP_SSL(fd, empty_string);
+	return X509_verify_cert_error_string(x->md.most_serious_error);
 }
 
 /* 
