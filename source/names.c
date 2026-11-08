@@ -535,10 +535,19 @@ void 	add_userhost_to_channel (const char *channel, const char *nick, int server
 		 */
 		else
 		{
-		    /* XXX This does not smell right */
+		    Nick *	old;
+
 		    remove_from_alist(&chan->nicks, new_n->nick);
 		    malloc_strcpy(&new_n->nick, nick);
-		    add_to_alist(&chan->nicks, nick, new_n);
+		    /* 
+		     * This is completely messed up if this returns something.
+		     */
+		    if ((old = add_to_alist(&chan->nicks, nick, new_n)))
+		    {
+			new_free(&old->nick);
+			new_free(&old->userhost);
+			new_free((char **)&old);
+		    }
 		    debug(DEBUG_CHANNELS, "Detected and corrected a nickname mangled by server-side truncation bug");
 		    debug(DEBUG_CHANNELS, "Server [%d] Channel [%s] Nickname [%s]", server, channel, nick);
 
@@ -591,6 +600,7 @@ void 	rename_nick (const char *old_nick, const char *new_nick, int server)
 {
 	Channel *chan = NULL;
 	Nick	*tmp;
+	Nick *	old;
 
 	if (server == NOSERV) return;		/* Sanity check */
 
@@ -600,7 +610,14 @@ void 	rename_nick (const char *old_nick, const char *new_nick, int server)
 		{
 			malloc_strcpy(&tmp->nick, new_nick);
 			malloc_strcpy(&tmp->userhost, FromUserHost);
-			add_to_alist(&chan->nicks, new_nick, tmp);
+
+			/* This is completely screwed up if this returns anything */
+			if ((old = add_to_alist(&chan->nicks, new_nick, tmp)))
+			{
+				new_free(&old->nick);
+				new_free(&old->userhost); 
+				new_free((char **)&old);
+			}
 		}
 	}
 }

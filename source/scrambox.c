@@ -468,6 +468,8 @@ static int	scram_process_server_first_message(scram_state_t *state, const char *
 		yell("Error: Could not parse 'i' from server-first-message");
 		return -1;
 	}
+
+	/* Not attached to the if, so don't "fix" it.  XXX This smells funny. */
 	{
 		char *		endp = NULL;
 		unsigned long	count;

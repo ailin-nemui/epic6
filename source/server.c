@@ -2275,6 +2275,7 @@ static void 	vsend_to_aserver_with_payload (int refnum, const char *payload, con
 	 * (If you really need to send raw bytes, use /XQUOTE -U)
 	 */
 	{
+		/* XXX This smells funny */
 		size_t	eol = strcspn(buffer, "\r\n");
 
 		if (buffer[eol] && buffer[eol + strspn(buffer + eol, "\r\n")])

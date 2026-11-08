@@ -375,6 +375,7 @@ const 	char *		x;
 			break;
 
 		/* Convert code_point from utf8 to users encoding */
+		/* XXX - !!!! This can fail.  don't be bogus. */
 		ucs_to_console(code_point, utf8str, 8);
 
 		for (x = utf8str; *x; x++)
@@ -1719,5 +1720,8 @@ static void	input_expand (void)
 	memset(LOGICAL_COLUMN, 0, sizeof(int) * (INPUT_BUFFER_SIZE + 1));
 	memmove(LOGICAL_COLUMN, old_logical_columns, sizeof(int) * old_input_buffer_size);
 
+	new_free(&old_input_buffer);
+	new_free((char **)&old_logical_chars);
+	new_free((char **)&old_logical_columns);
 	return;
 }

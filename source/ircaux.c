@@ -5116,6 +5116,19 @@ static ssize_t	base85_decode (const char *input, unsigned char *output, size_t o
 	{
 		char c;
 
+		/*
+		 * The "~>" trailer with no partial group pending means we're
+		 * done.  (This happens when the data ends in a 'z' group,
+		 * since 'z' leaves char_count at 0 -- for instance, any
+		 * data that ends in four nul bytes.)  Without this, we would
+		 * pad an empty group with five 'u's, write a bogus value,
+		 * and then back up a byte (4 - extra, with extra == 5).
+		 */
+		if (*current_input == '~' && 
+		    current_input[1] == '>' && 
+		    char_count == 0)
+			break;
+
 		/* 
 		 * If we reach the end of the string, just pretend
 		 * we have 'u's as far as the eye can see.

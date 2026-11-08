@@ -634,7 +634,7 @@ do
 			put_it(format, channel, nick, status, user, host, name);
 
 		new_free(&buffer);
-		return;
+		break;
 	}
 
 	if (new_w->who_mask)

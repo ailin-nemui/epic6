@@ -10139,7 +10139,8 @@ char 	*windowctl 	(char *input)
 	    } else if (!my_strnicmp(listc, "CURRENT_CHANNEL", len)) {
 		RETURN_STR(window_current_channel(w->refnum, w->server));
 	    } else if (!my_strnicmp(listc, "WAITING_CHANNEL", len)) {
-		RETURN_MSTR(get_waiting_channels_by_window(w->refnum));
+		char *x = get_waiting_channels_by_window(w->refnum);
+		RETURN_MSTR(x);
 	    } else if (!my_strnicmp(listc, "BIND_CHANNEL", len)) {
 		RETURN_EMPTY;
 	    } else if (!my_strnicmp(listc, "QUERY_NICK", len)) {

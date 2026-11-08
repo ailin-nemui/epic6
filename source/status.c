@@ -674,7 +674,8 @@ int	make_status (int window_, Status *status)
 		while ((code_point = next_code_point2(s, &offset, 1)))
 		{
 			/* Out of byte-room on this side?  Stop here. */
-			if (cp >= cp_end)
+			/* Unless it's the first \f we've seen, to avoid jamming */
+			if (cp >= cp_end && !(code_point == '\f' && start_rhs == NULL))
 			{
 				if (start_rhs)
 					break;		/* No more room for anything */

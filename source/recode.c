@@ -962,14 +962,24 @@ const char *	inbound_recode (const char *from, int server, const char *to, const
 
 
 /*
- * ucs_to_console - Return the unicode key point in whatever format is 
- * 		    suitable for the console's encoding
- *		    It works like ucs_to_utf8.
+ * ucs_to_console - Transform a unicode code point into whatever encoding the 
+ *		    user is using for their console (just in case they aren't
+ *		    using utf8)
  *
  * Arguments:
- *	key	- A unicode code point
- *	utf8str	- Where to put the code point in the user's encoding
- *	utf8strsiz - How big utf8str is.
+ *	codepoint	- (INPUT) A codepoint as a 32 bit integer
+ *	deststr		- (OUTPUT) Where to write the console representation of it
+ *	deststrsiz	- (INPUT) How big deststrsiz is.  
+ *				This must be at least 2; but it should be 32.
+ *
+ * Return value: 
+ *	-1		- The conversion failed.
+ *	 0		- The conversion succeeded
+ *
+ * Notes:
+ *	If the conversion failed, then if deststr is not null and if
+ *	deststrsiz is at least 2, then "?" will be placed in deststr,
+ *	otherwise, it won't be.
  */
 int     ucs_to_console (uint32_t codepoint, char *deststr, size_t deststrsiz)
 {
@@ -978,6 +988,11 @@ int     ucs_to_console (uint32_t codepoint, char *deststr, size_t deststrsiz)
 	iconv_t	xlat = (iconv_t)-1;
 	char *	source;
 	char *	dest;
+	size_t	destleft;
+
+	if (!deststr || deststrsiz < 2)
+		return -1;	/* What? */
+	*deststr = 0;
 
 	utf8str = alloca(16);
 	utf8strsiz = ucs_to_utf8(codepoint, utf8str, 16) + 1;
@@ -986,18 +1001,32 @@ int     ucs_to_console (uint32_t codepoint, char *deststr, size_t deststrsiz)
 	find_recoding("console", NULL, &xlat);
 	/* XXX What to do is 'xlat' is (iconv_t)-1? */
 	if (xlat == (iconv_t)-1)
-		return -1;	/* What to do? */
+	{
+		deststr[0] = '?';
+		deststr[1] = 0;
+		return -1;	/* Return a zero-length-string, that's what */
+	}
 
 	dest = deststr;
+	destleft = deststrsiz;
 
-	if (iconv(xlat, &source, &utf8strsiz, &dest, &deststrsiz) != 0)
+	/*
+	 * iconv() returns (size_t)-1 on failure.  (Any other value is the
+	 * number of irreversible conversions, which is still a success.)
+	 * Whatever the reason -- EILSEQ (the console encoding can't show
+	 * this character, or it's invalid, like a UTF-16 surrogate),
+	 * EINVAL, or E2BIG (no room) -- 'deststr' may hold a partial
+	 * result with no nul, so replace it with a "?".
+	 */
+	if (iconv(xlat, &source, &utf8strsiz, &dest, &destleft) == (size_t)-1)
 	{
-		if (errno == EINVAL || errno == EILSEQ)
-		{
-			/* What to do? */
-			return -1;
-		}
+		/* Reset any shift state the failed conversion left behind */
+		iconv(xlat, NULL, NULL, NULL, NULL);
+		deststr[0] = '?';
+		deststr[1] = 0;
+		return -1;
 	}
+	deststr[deststrsiz - 1] = 0;
 	return 0;
 }
 

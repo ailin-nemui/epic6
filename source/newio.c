@@ -583,6 +583,9 @@ void	do_filedesc (void)
  * Notes:
  * 	This function should only be called from the function we called above
  *	in do_filedesc()  [io_rec[fd]->callback(fd)]
+ *
+ * 	For line buffering (either partial or full), the result in 'buf' will
+ *	be an ordinary nul-terminated C string, so don't forget room for the nul!
  */
 ssize_t	dgets (int fd, char *buf, size_t buflen, int buffer)
 {
@@ -592,7 +595,7 @@ ssize_t	dgets (int fd, char *buf, size_t buflen, int buffer)
 	char	h = 0;
 	MyIO *	ioe;
 
-	if (buflen == 0)
+	if (!buf || buflen == 0)
 	{
 	    syserr(SRV(fd),
 			"dgets: Destination buffer for fd [%d] is zero length."
@@ -600,8 +603,19 @@ ssize_t	dgets (int fd, char *buf, size_t buflen, int buffer)
 	    return -1;
 	}
 
+	if (fd < 0 || fd > global_max_fd)
+		panic(1, "dgets called on unsetup fd %d", fd);
+
 	if (!(ioe = io_rec[fd]))
 		panic(1, "dgets called on unsetup fd %d", fd);
+
+	if (buffer < -2 || buffer > 1)
+	{
+		syserr(SRV(fd),
+			"dgets: For fd [%d], buffering strategy [%d] is not valid."
+			" This is surely a bug.", fd, buffer);
+		return -1;
+	}
 
 	if (ioe->error)
 	{
@@ -638,7 +652,6 @@ ssize_t	dgets (int fd, char *buf, size_t buflen, int buffer)
 	/*
 	 * AT THIS POINT WE'VE COMMITED TO RETURNING WHATEVER WE HAVE.
 	 */
-
 	/*
 	 * For buffered (null terminated) results, 'buf' is 'buflen' bytes
 	 * *including* the nul, so we copy at most buflen - 1 bytes.
@@ -693,11 +706,8 @@ ssize_t	dgets (int fd, char *buf, size_t buflen, int buffer)
 					fd, (long)consumed, (long)cnt);
 
 		/* If the line had a newline, then put the newline in. */
-		if (buffer >= 0 && h == '\n' && buflen >= 2)
-		{
-			cnt = buflen - 2;
-			buf[cnt++] = '\n';
-		}
+		if (buffer >= 0 && h == '\n' && cnt > 0)
+			buf[cnt - 1] = '\n';
 	}
 
 	/*

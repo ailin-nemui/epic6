@@ -51,6 +51,7 @@
 	x = next_arg((y), &(y));	\
 }
 /* Evaluate 'x' only once -- it's often a function call returning malloc()ed memory */
+/* XXXX THIS IS A BLETCHEROUS HACK.  WHY DID YOU DO THIS TO ME. FIX THE CALLERS DON'T HACK THE MACRO */
 #define RETURN_MSTR(x) do { char *rmstr_ = (char *)(x); return rmstr_ ? rmstr_ : EMPTY_STRING; } while (0)
 #define RETURN_STR(x) return malloc_strdup((x) ? (x) : EMPTY)
 #define RETURN_FSTR(x) return malloc_strdup( x )	/* Only fixed char arrays! */

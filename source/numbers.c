@@ -307,36 +307,6 @@ void 	numbered_command (const char *from, const char *comm, char const **args)
 		break;
 	}
 
-	case 10:		/* EFNext "Use another server"	010 */
-	{
-		const char *new_server /*, *new_port_s, *message */;
-		int	new_port, old_server;
-		char *	str = NULL;
-		int	new_servref;
-
-		PasteArgs(args, 2);
-		if (!(new_server = args[0]))
-			{ rfc1459_odd(from, comm, args); goto END; }
-		if (!(/* new_port_s = */ args[1]))
-			{ rfc1459_odd(from, comm, args); goto END; }
-		if (!(/* message = */ args[2]))
-			{ rfc1459_odd(from, comm, args); goto END; }
-		new_port = (int)atol(args[1]);
-
-		/* Must do these things before calling "display_msg" */
-		old_server = from_server;
-		malloc_sprintf(&str, "%s:%d:::%s:", new_server, new_port, 
-					get_server_group(from_server));
-		if ((new_servref = serverdesc_lookup(str)) == NOSERV)
-			new_servref = serverdesc_insert(str);
-
-		say("The server has asked you to switch to %s:%d.  I set up server refnum %d for you.", new_server, new_port, new_servref);
-		say("If you want to switch, do /SERVER %d", new_servref);
-
-		from_server = old_server;
-		break;
-	}
-
 	case 14:		/* Erf/TS4 "cookie" numeric	014 */
 	{
 		const char *	cookie;

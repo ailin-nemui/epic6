@@ -581,4 +581,12 @@ $ Add $serverctl(GET|SET x CAP_HOLD y)
 * Fix $serverctl() call in /load sasl
 * FIx many memory leaks all over the place.
 * <<< End of LLM review suggestions
+* >>> These were all recommended by another LLM static code analysis
+* Don't let a rogue \ at the end of a pattern walk off the end
+* Remove builtin support for 010 ("Use another server") numeric.
+* Avoid a jam when the lhs of a status bar (before %>) is really long.
+* Fix whoreply() to clean up the context stack properly
+* Make ucs_to_console() more robust about error handling.
+* Handle an edge case in base85_decode better.
+* <<< End of LLM review suggestions
 

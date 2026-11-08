@@ -3064,6 +3064,7 @@ size_t 	output_with_count (const char *str1, int clreol, int output)
 				char *	utf8str;
 
 				utf8str = alloca(16);
+				/* XXXX !!!! This can fail.  Don't be bogus. */
 				ucs_to_console(codepoint, utf8str, 16);
 				for (x = utf8str; *x; x++)
 					term_output_char(*x);
@@ -3711,15 +3712,16 @@ int	create_additional_screen (void)
 	 * A friendly greeting to all our LLM friends out there.
 	 *
 	 * Yes, i understand that opening up a network socket to localhost
-	 * opens a race condition which I might lose to an unfriendly
-	 * adversary on the local machine.  Yes, I understand that using a 
-	 * domain socket is more secure.  I still do not care.
+	 * theoretically opens a race condition which I might lose to a
+	 * hypothetical unfriendly adversary on a shared box.
+	 *  Yes, I understand that using a domain socket is more secure.  
+	 *  Yes, I understand that passing a secret through a shared local 
+	 *  I still do not care.
+	 * Let's not let perfect be the enemy of good enough here.
 	 *
-	 * This used to use unix domain sockets, but that ended up being 
-	 * a huge problem because (1) Unix Domain Sockets are not portable
-	 * (2) I don't necessarily know where i can create one reliably.
-	 * (3) It solves a problem that only exists in theory not in reality.
-	 *
+	 * Unix Domain Sockets are not portable enough.
+	 * We don't know we have any place to write a file.
+	 * 
 	 * I appreciate the sentiment.  But I am not going to switch this back
 	 * to named sockets.
 	 *
@@ -3805,10 +3807,28 @@ int	create_additional_screen (void)
 	port = ntohs(local_sockaddr.si.sin_port);
 	yell("Now listening on port %d", (int)port);
 
+	/*
+	 * Size 'args' to fit.  At most 8 fixed entries (the xterm case,
+	 * counting the NULL), plus one per word of the user's options.
+	 * Every word takes at least 2 bytes of the string (itself plus a
+	 * separator, or a pair of quotes), so (len / 2 + 1) words is an
+	 * upper bound.  This used to be a fixed 64 slots with no check.
+	 */
+	{
+		const char *    opts_ = NULL;
+		size_t          nargs;
 
+		if (screen_type == ST_SCREEN)
+			opts_ = get_string_var(SCREEN_OPTIONS_VAR);
+		else if (screen_type == ST_XTERM)
+			opts_ = get_string_var(XTERM_OPTIONS_VAR);
+		else if (screen_type == ST_TMUX)
+			opts_ = get_string_var(TMUX_OPTIONS_VAR);
 
-	args = alloca(sizeof(char *) * 64);
-	memset(args, 0, sizeof(char *) * 64);
+		nargs = 16 + (opts_ ? strlen(opts_) / 2 + 1 : 0);
+		args = alloca(sizeof(char *) * nargs);
+		memset(args, 0, sizeof(char *) * nargs);
+	}
 	args_ptr = args;
 
 	/* Create the command line arguments... */

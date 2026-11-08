@@ -463,6 +463,9 @@ int wild_match (const char *p, const char *str)
 				case ']' :  ptr2 = ptr + 2;
 					    nest--;
 					    break;
+					/* A trailing \ shouldn't step over a nul */
+				case 0:     ptr2 = ptr + 1;
+					    break;
 				default:
 					    ptr2 = ptr + 2;
 					    break;
